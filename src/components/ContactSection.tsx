@@ -138,8 +138,8 @@ export function ContactSection() {
                   <div>
                     <h4 className="font-heading uppercase mb-1">Service Area</h4>
                     <p className="text-muted-foreground">
-                      Oklahoma City Metro Area<br />
-                      Including Edmond, Norman, Moore, Yukon & more
+                      Oklahoma, Kansas & Texas<br />
+                      OKC Metro, Dallas-Fort Worth, Wichita & more
                     </p>
                   </div>
                 </div>
@@ -158,17 +158,17 @@ export function ContactSection() {
               </div>
             </div>
 
-            {/* Map Embed */}
+            {/* Map Embed - Regional View including OK, KS, TX */}
             <div className="bg-background rounded-lg overflow-hidden h-48 shadow-lg">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d414461.6892429867!2d-97.6947149!3d35.4729886!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x87ad8a547ef8d281%3A0x33a21274d14f3a9d!2sOklahoma%20City%2C%20OK!5e0!3m2!1sen!2sus!4v1703864800000!5m2!1sen!2sus"
+                src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3400000!2d-98.5!3d35.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1703864800000!5m2!1sen!2sus"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Oklahoma City Map"
+                title="Service Area Map - Oklahoma, Kansas, Texas"
               />
             </div>
           </div>
