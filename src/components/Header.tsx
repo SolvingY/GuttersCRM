@@ -40,7 +40,7 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-primary/90 backdrop-blur-sm text-primary-foreground shadow-lg">
       <div className="container-custom">
         <div className="flex items-center justify-between h-16 md:h-20 px-4">
           {/* Logo */}
@@ -54,6 +54,15 @@ export function Header() {
               Next Generation Roofing
             </span>
           </a>
+
+          {/* Center - Roof Quote Button */}
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
+            <a href="tel:4057248092">
+              <Button variant="cta" size="sm" className="font-heading uppercase tracking-wider">
+                Roof Quote
+              </Button>
+            </a>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-6">
