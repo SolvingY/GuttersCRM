@@ -8,28 +8,43 @@ const values = [
   {
     icon: Target,
     title: "Growth",
-    description: "We continuously improve our skills, processes, and service to deliver the best possible results for our clients. Our team stays current with the latest roofing technologies and best practices.",
+    description: "We continuously improve our skills, processes, and service to deliver the best possible results for our clients.",
+  },
+  {
+    icon: Award,
+    title: "Customer Service",
+    description: "Every homeowner deserves a partner who communicates clearly and puts their needs first throughout the entire process.",
+  },
+  {
+    icon: Shield,
+    title: "Humility",
+    description: "We listen, learn, and adapt. Our team approaches every project with an open mind and respect for our customers.",
   },
   {
     icon: Award,
     title: "Excellence",
-    description: "Every project receives our full attention and commitment to quality, from the initial inspection to the final cleanup. We don't cut corners, and we don't settle for 'good enough.'",
+    description: "Every project receives our full attention and commitment to quality. We don't cut corners, and we don't settle for 'good enough.'",
   },
   {
     icon: Shield,
-    title: "Integrity",
-    description: "Honesty and transparency guide every interaction. We provide accurate assessments, fair pricing, and keep you informed throughout the entire process. We do what we say, and we say what we do.",
+    title: "Employee Empowerment",
+    description: "Our team members are trained, trusted, and equipped to deliver exceptional results on every job.",
+  },
+  {
+    icon: Target,
+    title: "Reputation",
+    description: "We believe in building long-term relationships through honest work. Your satisfaction is our greatest advertisement.",
   },
 ];
 
 const highlights = [
-  "Veteran-Owned & Operated",
+  "Veteran-Operated & Supported",
   "7-Year Workmanship Guarantee",
-  "200+ 5-Star Reviews",
+  "OK House Bill 1940 Compliant",
+  "45+ Years Combined Leadership Experience",
   "GAF Certified Contractors",
   "BBB A+ Rating",
   "Licensed & Fully Insured",
-  "Free Inspections",
   "Insurance Claim Specialists",
 ];
 
@@ -53,7 +68,7 @@ export default function AboutPage() {
                 Dedicated to <span className="text-accent">Excellence</span>
               </h1>
               <p className="text-xl text-primary-foreground/80 leading-relaxed">
-                Next Generation Roofing is a Veteran-Owned roofing company proudly serving Oklahoma City and the surrounding metro area.
+                Next Generation Roofing is a Veteran-Operated & Supported roofing company proudly serving Oklahoma City and the surrounding metro area.
               </p>
             </div>
           </div>
@@ -67,14 +82,17 @@ export default function AboutPage() {
                 <h2 className="text-3xl md:text-4xl font-heading uppercase">
                   Our Story
                 </h2>
+                <h3 className="font-heading text-xl uppercase text-accent mb-2">Why We Exist</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Founded by veterans who served our country with honor, Next Generation Roofing was built on the principles that guided our military service: discipline, precision, and an unwavering commitment to mission success.
+                  We exist to provide Oklahoma residents with trusted roofing solutions built on integrity and high-level insurance expertise. We believe homeowners deserve a partner who values reputation over profit.
                 </p>
+                <h3 className="font-heading text-xl uppercase text-accent mb-2">How We Do It</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  When we transitioned from military service, we knew we wanted to continue serving our community. Roofing was a natural fit—it requires attention to detail, problem-solving skills, and the ability to work as a cohesive team under pressure.
+                  By leveraging 45+ years of combined leadership experience, utilizing NGR-supervised crews, and maintaining strict Oklahoma House Bill 1940 compliance.
                 </p>
+                <h3 className="font-heading text-xl uppercase text-accent mb-2">What We Deliver</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Today, we bring that same dedication to every roofing project we undertake. Whether it's a simple repair or a complete roof replacement, we approach each job with the same level of professionalism and care.
+                  Professional residential roofing, turnkey commercial solutions, seamless gutter installations, and expert insurance claim negotiation.
                 </p>
               </div>
               <div className="bg-section-alt rounded-lg p-8">
