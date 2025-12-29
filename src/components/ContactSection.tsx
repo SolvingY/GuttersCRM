@@ -1,36 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Phone, Mail, Clock, Send } from "lucide-react";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { MapPin, Phone, Mail, Clock } from "lucide-react";
 
 export function ContactSection() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    message: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    toast({
-      title: "Message Sent!",
-      description: "We'll get back to you within 24 hours.",
-    });
-
-    setFormData({ name: "", email: "", phone: "", address: "", message: "" });
-    setIsSubmitting(false);
-  };
-
   return (
     <div className="section-padding bg-section-alt">
       <div className="container-custom">
@@ -50,58 +21,29 @@ export function ContactSection() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Form */}
-          <div className="bg-background rounded-lg p-8 shadow-lg">
-            <h3 className="text-2xl font-heading uppercase mb-6 flex items-center gap-2">
-              <Send className="w-6 h-6 text-accent" />
-              Request Your Free Estimate
+          {/* Call to Action */}
+          <div className="bg-background rounded-lg p-8 shadow-lg flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-6">
+              <Phone className="w-10 h-10 text-accent" />
+            </div>
+            <h3 className="text-2xl md:text-3xl font-heading uppercase mb-4">
+              Schedule Your Inspection NOW
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  type="text"
-                  placeholder="Your Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="h-12"
-                />
-                <Input
-                  type="email"
-                  placeholder="Email Address"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="h-12"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  type="tel"
-                  placeholder="Phone Number"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  required
-                  className="h-12"
-                />
-                <Input
-                  type="text"
-                  placeholder="Property Address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="h-12"
-                />
-              </div>
-              <Textarea
-                placeholder="Tell us about your roofing needs..."
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                rows={4}
-              />
-              <Button type="submit" variant="cta" size="lg" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Sending..." : "Get My Free Estimate"}
-              </Button>
-            </form>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Call us today for a FREE no-obligation roof inspection. Our experts are standing by to help protect your home.
+            </p>
+            <Button asChild variant="cta" size="lg" className="text-xl px-8 py-6">
+              <a href="tel:4057248092">
+                <Phone className="w-6 h-6 mr-2" />
+                (405) 724-8092
+              </a>
+            </Button>
+            <p className="text-sm text-muted-foreground mt-4">
+              Or email us at{" "}
+              <a href="mailto:nextgenroofing@oknextgen.com" className="text-accent hover:underline">
+                nextgenroofing@oknextgen.com
+              </a>
+            </p>
           </div>
 
           {/* Contact Info */}
