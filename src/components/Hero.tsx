@@ -24,18 +24,18 @@ export function Hero() {
             <div className="flex items-center gap-2 text-accent">
               <Shield className="w-5 h-5" />
               <span className="font-heading text-sm uppercase tracking-wider">
-                Veteran-Owned & Operated
+                Veteran-Operated & Supported
               </span>
             </div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading uppercase leading-tight">
               Oklahoma's Trusted{" "}
-              <span className="text-accent">Veteran-Owned</span>{" "}
-              Roofing Experts
+              <span className="text-accent">Roofing</span>{" "}
+              Experts
             </h1>
             
             <p className="text-xl md:text-2xl text-primary-foreground/90 font-heading">
-              7-Year Workmanship Guarantee | 200+ 5-Star Reviews
+              7-Year Workmanship Guarantee | HB 1940 Compliant
             </p>
 
             <div className="flex items-center gap-4 pt-2">

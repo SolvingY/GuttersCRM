@@ -30,7 +30,7 @@ export function Footer() {
               </div>
             </div>
             <p className="text-sm text-primary-foreground/80 leading-relaxed">
-              Oklahoma's trusted Veteran-Owned roofing experts. Serving the OKC metro with excellence, integrity, and a 7-year workmanship guarantee.
+              Oklahoma's trusted Veteran-Operated & Supported roofing experts. Serving the OKC metro with excellence, integrity, and a 7-year workmanship guarantee.
             </p>
             <div className="flex gap-4">
               <a href="#" className="p-2 bg-primary-foreground/10 rounded hover:bg-accent transition-colors" aria-label="Facebook">
@@ -128,9 +128,13 @@ export function Footer() {
             <p className="text-sm text-primary-foreground/60">
               © {new Date().getFullYear()} Next Generation Roofing. All rights reserved.
             </p>
-            <p className="text-sm text-primary-foreground/60">
-              Proudly Veteran-Owned | Oklahoma City, OK
-            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-sm text-primary-foreground/60">
+              <span>Veteran-Operated & Supported</span>
+              <span className="hidden sm:inline">|</span>
+              <span>7-Year Workmanship Guarantee</span>
+              <span className="hidden sm:inline">|</span>
+              <span>OK HB 1940 Compliant</span>
+            </div>
           </div>
         </div>
       </div>

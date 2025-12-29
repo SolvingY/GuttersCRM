@@ -3,10 +3,11 @@ import { Shield, Award, Star } from "lucide-react";
 const trustItems = [
   { icon: Award, text: "BBB A+ Rating" },
   { icon: Shield, text: "GAF Certified" },
-  { icon: Star, text: "Veteran-Owned Business" },
+  { icon: Star, text: "Veteran-Operated & Supported" },
   { icon: Award, text: "200+ 5-Star Reviews" },
   { icon: Shield, text: "7-Year Workmanship Guarantee" },
-  { icon: Star, text: "Licensed & Insured" },
+  { icon: Star, text: "OK House Bill 1940 Compliant" },
+  { icon: Award, text: "Licensed & Insured" },
 ];
 
 export function TrustBar() {

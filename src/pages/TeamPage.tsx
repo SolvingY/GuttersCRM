@@ -4,21 +4,21 @@ import { Users, Mail, Phone } from "lucide-react";
 
 const teamMembers = [
   {
-    name: "Rob",
+    name: "Rob Baker",
     role: "Owner",
-    description: "As a proud veteran and founder of Next Generation Roofing, Rob brings military precision and leadership to every aspect of the business. His commitment to excellence and customer satisfaction drives the company's success.",
+    description: "With 15+ years of roofing and insurance industry experience, Rob is the founder and visionary behind Next Generation Roofing. His leadership is guided by NGR's Core Values: Growth, Customer Service, Humility, Excellence, Employee Empowerment, and Reputation.",
     image: null,
   },
   {
-    name: "Jonathan",
+    name: "Jonathan Whitton",
     role: "General Manager",
-    description: "Jonathan oversees day-to-day operations, ensuring every project runs smoothly from start to finish. His attention to detail and organizational skills keep the team on track and customers happy.",
+    description: "Jonathan brings 20+ years of experience in construction and roofing to his role as General Manager. He oversees all company-wide operations and sales accountability, ensuring every project meets our high standards.",
     image: null,
   },
   {
-    name: "Matt",
-    role: "Field Manager",
-    description: "Matt leads our field crews with hands-on expertise and a keen eye for quality. He ensures every installation meets our rigorous standards and that our crews are equipped for success.",
+    name: "Kara",
+    role: "Office Manager",
+    description: "With 10+ years of experience in office management and specialized insurance company correspondence, Kara manages all documentation flow, compliance, and internal scheduling to keep operations running smoothly.",
     image: null,
   },
 ];
@@ -42,7 +42,7 @@ export default function TeamPage() {
                 Meet the <span className="text-accent">Leadership</span>
               </h1>
               <p className="text-xl text-primary-foreground/80 leading-relaxed">
-                The experienced professionals behind Oklahoma's most trusted roofing company.
+                45+ years of combined experience. The trusted professionals behind Oklahoma's premier roofing company.
               </p>
             </div>
           </div>
