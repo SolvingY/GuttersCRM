@@ -33,11 +33,11 @@ export function FloatingSocial() {
 
   return (
     <div
-      className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex items-center"
+      className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex flex-row-reverse items-center"
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
-      {/* Toggle Button */}
+      {/* Toggle Button - always flush right */}
       <button
         className="bg-accent text-accent-foreground p-2 rounded-l-lg shadow-lg transition-all duration-300"
         aria-label={isExpanded ? "Collapse social links" : "Expand social links"}
@@ -52,7 +52,7 @@ export function FloatingSocial() {
       {/* Social Links */}
       <div
         className={`flex flex-col gap-2 bg-background/95 backdrop-blur-sm p-2 rounded-l-lg shadow-xl transition-all duration-300 ${
-          isExpanded ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
+          isExpanded ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
         }`}
       >
         {socialLinks.map((link) => (
