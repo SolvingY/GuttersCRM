@@ -52,7 +52,7 @@ export function FloatingSocial() {
       {/* Social Links */}
       <div
         className={`flex flex-col gap-2 bg-background/95 backdrop-blur-sm p-2 rounded-l-lg shadow-xl transition-all duration-300 ${
-          isExpanded ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
+          isExpanded ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
         }`}
       >
         {socialLinks.map((link) => (
