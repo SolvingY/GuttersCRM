@@ -5,9 +5,8 @@ const trustItems = [
   { icon: Shield, text: "GAF Certified" },
   { icon: Star, text: "Veteran-Operated & Supported" },
   { icon: Award, text: "200+ 5-Star Reviews" },
-  { icon: Shield, text: "7-Year Workmanship Guarantee" },
-  { icon: Star, text: "OK House Bill 1940 Compliant" },
-  { icon: Award, text: "Licensed & Insured" },
+  { icon: Shield, text: "Licensed & Insured" },
+  { icon: Star, text: "45+ Years Combined Experience" },
 ];
 
 export function TrustBar() {

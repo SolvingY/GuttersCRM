@@ -1,4 +1,4 @@
-import { Shield, Target, Award, CheckCircle } from "lucide-react";
+import { Shield, Target, Award, CheckCircle, ArrowDown } from "lucide-react";
 
 const values = [
   {
@@ -35,13 +35,29 @@ const values = [
 
 const highlights = [
   "Veteran-Operated & Supported",
-  "7-Year Workmanship Guarantee",
-  "OK House Bill 1940 Compliant",
   "45+ Years Combined Leadership Experience",
   "GAF Certified Contractors",
   "BBB A+ Rating",
   "Licensed & Fully Insured",
   "Insurance Claim Specialists",
+];
+
+const goldenCircle = [
+  {
+    label: "WHY",
+    title: "Our Purpose",
+    description: "We exist to provide homeowners with trusted roofing solutions built on integrity and insurance expertise. We believe every family deserves a partner who values your peace of mind over profit.",
+  },
+  {
+    label: "HOW",
+    title: "Our Approach",
+    description: "Through 45+ years of combined leadership experience, NGR-supervised crews, and unwavering commitment to quality. Every decision is guided by our core values of growth, humility, and excellence.",
+  },
+  {
+    label: "WHAT",
+    title: "Our Craft",
+    description: "Professional residential roofing, turnkey commercial solutions, seamless gutter installations, and expert insurance claim navigation—all delivered with the care your home deserves.",
+  },
 ];
 
 export function AboutSection() {
@@ -63,32 +79,65 @@ export function AboutSection() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <h3 className="font-heading text-xl uppercase text-accent mb-2">Why We Exist</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                We exist to provide Oklahoma residents with trusted roofing solutions built on integrity and high-level insurance expertise. We believe homeowners deserve a partner who values reputation over profit.
-              </p>
-              <h3 className="font-heading text-xl uppercase text-accent mb-2">How We Do It</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                By leveraging 45+ years of combined leadership experience, utilizing NGR-supervised crews, and maintaining strict Oklahoma House Bill 1940 compliance.
-              </p>
-              <h3 className="font-heading text-xl uppercase text-accent mb-2">What We Deliver</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Professional residential roofing, turnkey commercial solutions, seamless gutter installations, and expert insurance claim negotiation.
-              </p>
+          {/* Golden Circle Section */}
+          <div className="max-w-4xl mx-auto mb-16">
+            <div className="flex flex-col items-center">
+              {goldenCircle.map((item, index) => (
+                <div key={item.label} className="w-full">
+                  <div className="bg-card border border-border rounded-xl p-8 hover:shadow-xl transition-shadow">
+                    <div className="flex flex-col md:flex-row md:items-start gap-6">
+                      {/* Label Badge */}
+                      <div className="flex-shrink-0">
+                        <span className="inline-block bg-accent text-accent-foreground px-6 py-3 rounded-lg font-heading text-2xl uppercase tracking-wider font-bold shadow-lg">
+                          {item.label}
+                        </span>
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1">
+                        <h3 className="font-heading text-xl uppercase text-foreground mb-3">
+                          {item.title}
+                        </h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Arrow to next */}
+                  {index < goldenCircle.length - 1 && (
+                    <div className="flex justify-center py-4">
+                      <div className="bg-accent/20 p-2 rounded-full">
+                        <ArrowDown className="w-6 h-6 text-accent" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Arrow pointing to services */}
+              <div className="flex flex-col items-center py-8">
+                <div className="bg-accent p-3 rounded-full animate-bounce">
+                  <ArrowDown className="w-8 h-8 text-accent-foreground" />
+                </div>
+                <p className="font-heading text-sm uppercase tracking-wider text-accent mt-4">
+                  Explore Our Services Above
+                </p>
+              </div>
             </div>
-            <div className="bg-section-alt rounded-lg p-8">
-              <h3 className="font-heading text-2xl uppercase mb-6">Why Choose Us?</h3>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {highlights.map((item) => (
-                  <li key={item} className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-accent flex-shrink-0" />
-                    <span className="text-sm">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          </div>
+
+          {/* Highlights */}
+          <div className="bg-section-alt rounded-lg p-8">
+            <h3 className="font-heading text-2xl uppercase mb-6 text-center">Why Choose Us?</h3>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {highlights.map((item) => (
+                <li key={item} className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-accent flex-shrink-0" />
+                  <span className="text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
