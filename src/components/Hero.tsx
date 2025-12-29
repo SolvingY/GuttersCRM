@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Star, Shield, Phone } from "lucide-react";
+import { ArrowRight, Star, Phone } from "lucide-react";
 import heroImage from "@/assets/hero-roof.jpg";
+import heroLogo from "@/assets/hero-logo.png";
 
 export function Hero() {
   return (
@@ -20,11 +21,13 @@ export function Hero() {
         <div className="max-w-3xl mx-auto text-center">
           {/* Text Content */}
           <div className="text-primary-foreground space-y-6 animate-fade-in">
-            <div className="flex items-center justify-center gap-2 text-accent">
-              <Shield className="w-5 h-5" />
-              <span className="font-heading text-sm uppercase tracking-wider">
-                Veteran-Operated & Supported
-              </span>
+            {/* Logo */}
+            <div className="flex justify-center mb-4">
+              <img 
+                src={heroLogo} 
+                alt="Next Generation Roofing - Veteran Founded & Operated since 2020" 
+                className="w-64 md:w-80 lg:w-96 h-auto"
+              />
             </div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading uppercase leading-tight">
