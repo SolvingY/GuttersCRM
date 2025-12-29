@@ -1,35 +1,81 @@
-import { Link } from "react-router-dom";
-import { Home, Building2, Droplets, Shield, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Home, Building2, Droplets, Shield, ChevronDown, CheckCircle } from "lucide-react";
+
+import residentialImg from "@/assets/service-residential.jpg";
+import commercialImg from "@/assets/service-commercial.jpg";
+import guttersImg from "@/assets/service-gutters.jpg";
+import stormImg from "@/assets/service-storm.jpg";
 
 const services = [
   {
     icon: Home,
     title: "Residential Roofing",
     description: "Premium GAF shingles, metal roofing, and SBS impact-resistant solutions for Oklahoma homes.",
-    href: "/services/residential",
+    image: residentialImg,
+    details: [
+      "GAF Timberline HDZ Shingles",
+      "Metal Roofing Systems",
+      "SBS Modified Bitumen",
+      "Impact-Resistant Options",
+      "Complete Tear-Off & Replacement",
+      "Roof Inspections & Maintenance",
+    ],
+    fullDescription: "Your home deserves protection that stands the test of Oklahoma's extreme weather. Our residential roofing solutions combine industry-leading materials with expert installation by NGR-supervised crews. We prioritize your family's safety and your home's long-term value.",
   },
   {
     icon: Building2,
     title: "Commercial Roofing",
     description: "TPO, coatings, and flat roof systems designed for commercial durability and longevity.",
-    href: "/services/commercial",
+    image: commercialImg,
+    details: [
+      "TPO Single-Ply Membrane",
+      "Silicone Roof Coatings",
+      "Built-Up Roofing (BUR)",
+      "EPDM Rubber Roofing",
+      "Preventive Maintenance Programs",
+      "Emergency Leak Repair",
+    ],
+    fullDescription: "Protect your business investment with commercial roofing solutions engineered for durability. Our turnkey approach means minimal disruption to your operations while delivering maximum protection and energy efficiency for your commercial property.",
   },
   {
     icon: Droplets,
     title: "Gutter Division",
     description: "Seamless gutters in custom colors, professionally installed for optimal water management.",
-    href: "/services/gutters",
+    image: guttersImg,
+    details: [
+      "Seamless Aluminum Gutters",
+      "Custom Color Matching",
+      "Gutter Guards & Protection",
+      "Downspout Installation",
+      "Fascia & Soffit Repair",
+      "Complete Drainage Solutions",
+    ],
+    fullDescription: "Proper water management protects your home's foundation, landscaping, and structural integrity. Our seamless gutter systems are custom-fabricated on-site for a perfect fit, available in colors that complement your home's exterior.",
   },
   {
     icon: Shield,
     title: "Storm Damage & Insurance",
     description: "Expert storm damage assessment and insurance claim negotiation support for homeowners.",
-    href: "/services/storm-damage",
+    image: stormImg,
+    details: [
+      "Free Storm Damage Inspections",
+      "Insurance Claim Assistance",
+      "Documentation & Photography",
+      "Adjuster Meeting Support",
+      "Hail & Wind Damage Repair",
+      "Emergency Tarping Services",
+    ],
+    fullDescription: "Navigating insurance claims after storm damage can be overwhelming. With our 45+ years of combined experience and insurance expertise, we advocate on your behalf to ensure you receive fair compensation for necessary repairs. We handle the paperwork so you can focus on your family.",
   },
 ];
 
 export function ServicesSection() {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  const toggleExpand = (index: number) => {
+    setExpandedIndex(expandedIndex === index ? null : index);
+  };
+
   return (
     <section className="section-padding">
       <div className="container-custom">
@@ -38,30 +84,79 @@ export function ServicesSection() {
             Our Services
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Comprehensive roofing solutions for residential and commercial properties across Oklahoma.
+            Comprehensive roofing solutions for residential and commercial properties across Oklahoma, Kansas & Texas.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {services.map((service, index) => (
             <div
               key={service.title}
-              className="group bg-card border border-border rounded-lg p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-2"
+              className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-all duration-300"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              <div className="w-14 h-14 bg-accent/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-accent transition-colors">
-                <service.icon className="w-7 h-7 text-accent group-hover:text-accent-foreground transition-colors" />
+              {/* Image Header */}
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src={service.image}
+                  alt={service.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/50 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4 text-primary-foreground">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
+                      <service.icon className="w-5 h-5 text-accent-foreground" />
+                    </div>
+                    <h3 className="font-heading text-xl uppercase">{service.title}</h3>
+                  </div>
+                </div>
               </div>
-              <h3 className="font-heading text-xl uppercase mb-3">{service.title}</h3>
-              <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-                {service.description}
-              </p>
-              <Link to={service.href}>
-                <Button variant="outline" size="sm" className="group/btn">
-                  Learn More
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-                </Button>
-              </Link>
+
+              {/* Content */}
+              <div className="p-6">
+                <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+                  {service.description}
+                </p>
+
+                {/* Expand Button */}
+                <button
+                  onClick={() => toggleExpand(index)}
+                  className="flex items-center gap-2 text-accent font-heading uppercase text-sm tracking-wider hover:text-accent/80 transition-colors"
+                >
+                  {expandedIndex === index ? "Show Less" : "Learn More"}
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-300 ${
+                      expandedIndex === index ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Expandable Content */}
+                <div
+                  className={`overflow-hidden transition-all duration-500 ${
+                    expandedIndex === index ? "max-h-[500px] opacity-100 mt-6" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <p className="text-foreground mb-4 leading-relaxed">
+                    {service.fullDescription}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {service.details.map((detail) => (
+                      <div key={detail} className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-accent flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground">{detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <a
+                    href="#contact"
+                    className="inline-block mt-6 bg-accent text-accent-foreground px-6 py-3 rounded-lg font-heading uppercase text-sm tracking-wider hover:bg-accent/90 transition-colors"
+                  >
+                    Get Free Estimate
+                  </a>
+                </div>
+              </div>
             </div>
           ))}
         </div>

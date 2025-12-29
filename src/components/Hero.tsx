@@ -35,7 +35,7 @@ export function Hero() {
             </h1>
             
             <p className="text-xl md:text-2xl text-primary-foreground/90 font-heading">
-              7-Year Workmanship Guarantee | HB 1940 Compliant
+              Integrity-Driven | Expert Insurance Navigation
             </p>
 
             <div className="flex items-center gap-4 pt-2">
