@@ -26,17 +26,17 @@ export function Hero() {
               <img 
                 src={heroLogo} 
                 alt="Next Generation Roofing - Veteran Founded & Operated since 2020" 
-                className="w-64 md:w-80 lg:w-96 h-auto drop-shadow-[0_0_25px_rgba(255,255,255,0.8)]"
+                className="w-48 sm:w-64 md:w-80 lg:w-96 h-auto drop-shadow-[0_0_25px_rgba(255,255,255,0.8)]"
               />
             </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading uppercase leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading uppercase leading-tight">
               Oklahoma's Trusted{" "}
               <span className="text-accent">Roofing</span>{" "}
               Experts
             </h1>
             
-            <p className="text-xl md:text-2xl text-primary-foreground/90 font-heading">
+            <p className="text-base sm:text-xl md:text-2xl text-primary-foreground/90 font-heading px-2">
               Integrity-Driven | Expert Insurance Navigation
             </p>
 
@@ -51,17 +51,17 @@ export function Hero() {
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-center">
-              <a href="tel:4057248092">
-                <Button variant="hero" size="xl" className="w-full sm:w-auto">
-                  <Phone className="w-5 h-5" />
-                  Schedule Your Inspection NOW
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 justify-center px-4 sm:px-0">
+              <a href="tel:4057248092" className="w-full sm:w-auto">
+                <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Schedule Inspection NOW
                 </Button>
               </a>
-              <a href="#services">
-                <Button variant="heroOutline" size="xl" className="w-full sm:w-auto">
+              <a href="#services" className="w-full sm:w-auto">
+                <Button variant="heroOutline" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
                   View Our Services
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
               </a>
             </div>

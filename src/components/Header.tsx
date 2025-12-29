@@ -56,7 +56,7 @@ export function Header() {
           </a>
 
           {/* Center - Roof Quote Button */}
-          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
+          <div className="hidden xl:flex absolute left-1/2 -translate-x-1/2">
             <a href="tel:4057248092">
               <Button variant="cta" size="sm" className="font-heading uppercase tracking-wider">
                 Roof Quote
