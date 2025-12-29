@@ -1,55 +1,69 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Phone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.jpg";
 
 const services = [
-  { name: "Residential Roofing", href: "/services/residential" },
-  { name: "Commercial Roofing", href: "/services/commercial" },
-  { name: "Gutter Division", href: "/services/gutters" },
-  { name: "Storm Damage & Insurance", href: "/services/storm-damage" },
+  { name: "Residential Roofing", href: "#services" },
+  { name: "Commercial Roofing", href: "#services" },
+  { name: "Gutter Division", href: "#services" },
+  { name: "Storm Damage & Insurance", href: "#services" },
 ];
 
 const navLinks = [
-  { name: "Home", href: "/" },
-  { name: "About Us", href: "/about" },
-  { name: "Meet the Team", href: "/team" },
-  { name: "Contact", href: "/contact" },
+  { name: "Home", href: "#home" },
+  { name: "Services", href: "#services" },
+  { name: "About Us", href: "#about" },
+  { name: "Team", href: "#team" },
+  { name: "Reviews", href: "#reviews" },
+  { name: "Contact", href: "#contact" },
 ];
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
-  const location = useLocation();
 
-  const isActive = (href: string) => location.pathname === href;
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const element = document.querySelector(href);
+    if (element) {
+      const headerOffset = 80;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
+    setMobileMenuOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground shadow-lg">
       <div className="container-custom">
         <div className="flex items-center justify-between h-16 md:h-20 px-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <a 
+            href="#home" 
+            onClick={(e) => scrollToSection(e, "#home")}
+            className="flex items-center gap-3"
+          >
             <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
             <span className="hidden sm:block font-heading text-lg md:text-xl font-bold uppercase tracking-wide">
               Next Generation Roofing
             </span>
-          </Link>
+          </a>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-8">
-            {navLinks.slice(0, 1).map((link) => (
-              <Link
-                key={link.name}
-                to={link.href}
-                className={`font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent ${
-                  isActive(link.href) ? "text-accent" : ""
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
+          <nav className="hidden lg:flex items-center gap-6">
+            <a
+              href="#home"
+              onClick={(e) => scrollToSection(e, "#home")}
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+            >
+              Home
+            </a>
 
             {/* Services Dropdown */}
             <div
@@ -57,36 +71,58 @@ export function Header() {
               onMouseEnter={() => setServicesOpen(true)}
               onMouseLeave={() => setServicesOpen(false)}
             >
-              <button className="flex items-center gap-1 font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent">
+              <a 
+                href="#services"
+                onClick={(e) => scrollToSection(e, "#services")}
+                className="flex items-center gap-1 font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              >
                 Services
                 <ChevronDown className={`w-4 h-4 transition-transform ${servicesOpen ? "rotate-180" : ""}`} />
-              </button>
+              </a>
               {servicesOpen && (
                 <div className="absolute top-full left-0 mt-2 w-64 bg-background text-foreground rounded-lg shadow-xl border border-border overflow-hidden animate-fade-in">
                   {services.map((service) => (
-                    <Link
+                    <a
                       key={service.name}
-                      to={service.href}
+                      href={service.href}
+                      onClick={(e) => scrollToSection(e, service.href)}
                       className="block px-4 py-3 text-sm hover:bg-secondary transition-colors"
                     >
                       {service.name}
-                    </Link>
+                    </a>
                   ))}
                 </div>
               )}
             </div>
 
-            {navLinks.slice(1).map((link) => (
-              <Link
-                key={link.name}
-                to={link.href}
-                className={`font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent ${
-                  isActive(link.href) ? "text-accent" : ""
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
+            <a
+              href="#about"
+              onClick={(e) => scrollToSection(e, "#about")}
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+            >
+              About
+            </a>
+            <a
+              href="#team"
+              onClick={(e) => scrollToSection(e, "#team")}
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+            >
+              Team
+            </a>
+            <a
+              href="#reviews"
+              onClick={(e) => scrollToSection(e, "#reviews")}
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+            >
+              Reviews
+            </a>
+            <a
+              href="#contact"
+              onClick={(e) => scrollToSection(e, "#contact")}
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+            >
+              Contact
+            </a>
           </nav>
 
           {/* CTA Button */}
@@ -113,42 +149,15 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="lg:hidden bg-primary border-t border-primary-foreground/20 animate-slide-up">
             <nav className="py-4 px-4 space-y-2">
-              {navLinks.slice(0, 1).map((link) => (
-                <Link
+              {navLinks.map((link) => (
+                <a
                   key={link.name}
-                  to={link.href}
-                  className="block py-2 font-heading uppercase tracking-wider"
-                  onClick={() => setMobileMenuOpen(false)}
+                  href={link.href}
+                  onClick={(e) => scrollToSection(e, link.href)}
+                  className="block py-2 font-heading uppercase tracking-wider hover:text-accent transition-colors"
                 >
                   {link.name}
-                </Link>
-              ))}
-              
-              <div className="py-2">
-                <span className="font-heading uppercase tracking-wider text-accent">Services</span>
-                <div className="ml-4 mt-2 space-y-2">
-                  {services.map((service) => (
-                    <Link
-                      key={service.name}
-                      to={service.href}
-                      className="block py-1 text-sm text-primary-foreground/80 hover:text-primary-foreground"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {service.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              
-              {navLinks.slice(1).map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.href}
-                  className="block py-2 font-heading uppercase tracking-wider"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {link.name}
-                </Link>
+                </a>
               ))}
 
               <a href="tel:4057248092" className="block pt-4">
