@@ -26,7 +26,7 @@ export function Hero() {
               <img 
                 src={heroLogo} 
                 alt="Next Generation Roofing - Veteran Founded & Operated since 2020" 
-                className="w-48 sm:w-64 md:w-80 lg:w-96 h-auto drop-shadow-[0_0_25px_rgba(255,255,255,0.8)]"
+                className="w-48 sm:w-64 md:w-80 lg:w-96 h-auto drop-shadow-[0_0_50px_rgba(255,255,255,1)] [filter:drop-shadow(0_0_30px_rgba(255,255,255,0.9))_drop-shadow(0_0_60px_rgba(255,255,255,0.7))]"
               />
             </div>
             
