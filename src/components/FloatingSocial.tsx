@@ -36,6 +36,8 @@ export function FloatingSocial() {
       className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex flex-row-reverse items-center"
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
+      onTouchStart={() => setIsExpanded(true)}
+      onTouchEnd={() => setIsExpanded(false)}
     >
       {/* Toggle Button - always flush right */}
       <button
