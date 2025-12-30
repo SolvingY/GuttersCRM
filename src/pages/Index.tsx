@@ -9,7 +9,6 @@ import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
 import { StickyCallCTA } from "@/components/StickyCallCTA";
-import { SectionArrow } from "@/components/SectionArrow";
 
 const Index = () => {
   return (
@@ -20,25 +19,19 @@ const Index = () => {
           <Hero />
         </section>
         <TrustBar />
-        <SectionArrow />
         <section id="services">
           <ServicesSection />
         </section>
-        <SectionArrow />
         <WhyChooseUsSection />
-        <SectionArrow />
         <section id="about">
           <AboutSection />
         </section>
-        <SectionArrow />
         <section id="team">
           <TeamSection />
         </section>
-        <SectionArrow />
         <section id="reviews">
           <TestimonialsSection />
         </section>
-        <SectionArrow />
         <section id="contact">
           <ContactSection />
         </section>
