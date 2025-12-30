@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Star, Phone } from "lucide-react";
 import heroImage from "@/assets/hero-split-building.jpg";
-import heroLogo from "@/assets/hero-logo.png";
+import heroLogo from "@/assets/hero-logo-new.png";
 
 export function Hero() {
   return (
