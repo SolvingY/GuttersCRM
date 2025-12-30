@@ -101,69 +101,69 @@ export function ContactSection() {
             </div>
 
             {/* Map - Regional View including OK, KS, TX with accurate state shapes */}
-            <div className="bg-background rounded-lg overflow-hidden h-72 shadow-lg p-4 flex items-center justify-center">
-              <svg viewBox="0 0 500 400" className="w-full h-full max-w-lg">
-                {/* Kansas - rectangular with slight angle on west */}
+            <div className="bg-background rounded-lg overflow-hidden h-80 shadow-lg p-4 flex items-center justify-center">
+              <svg viewBox="0 0 450 380" className="w-full h-full max-w-lg">
+                {/* Kansas - accurate shape (mostly rectangular with slight variations) */}
                 <path
-                  d="M150 40 L350 40 L350 95 L145 95 Z"
-                  fill="hsl(var(--accent) / 0.1)"
+                  d="M120 25 L340 25 L340 85 L118 85 L115 70 L120 25"
+                  fill="hsl(var(--accent) / 0.15)"
                   stroke="hsl(var(--accent))"
                   strokeWidth="2.5"
                 />
-                <text x="250" y="72" textAnchor="middle" className="fill-accent font-heading text-xs font-bold">
+                <text x="230" y="60" textAnchor="middle" className="fill-accent font-heading text-[10px] font-bold">
                   KANSAS
                 </text>
                 
-                {/* Oklahoma - panhandle shape */}
+                {/* Oklahoma - accurate panhandle shape */}
                 <path
-                  d="M100 95 L145 95 L145 115 L350 115 L350 95 L355 95 L370 110 L370 180 L100 180 L100 130 Z"
-                  fill="hsl(var(--accent) / 0.1)"
+                  d="M60 85 L60 110 L175 110 L175 85 L340 85 L355 90 L360 100 L360 170 L340 175 L280 175 L260 180 L60 180 L60 85"
+                  fill="hsl(var(--accent) / 0.15)"
                   stroke="hsl(var(--accent))"
                   strokeWidth="2.5"
                 />
-                <text x="235" y="150" textAnchor="middle" className="fill-accent font-heading text-xs font-bold">
+                <text x="210" y="145" textAnchor="middle" className="fill-accent font-heading text-[10px] font-bold">
                   OKLAHOMA
                 </text>
                 
-                {/* Texas - distinctive shape */}
+                {/* Texas - accurate distinctive shape with panhandle, gulf coast, rio grande */}
                 <path
-                  d="M100 180 L370 180 L400 200 L400 260 L380 280 L360 320 L300 360 L250 370 L200 360 L150 340 L120 300 L100 260 Z"
-                  fill="hsl(var(--accent) / 0.1)"
+                  d="M60 180 L175 180 L175 195 L260 195 L280 180 L340 180 L360 175 L380 185 L390 210 L395 250 L385 280 L370 310 L340 340 L300 355 L260 365 L220 360 L180 345 L150 320 L130 290 L110 260 L90 230 L70 210 L60 195 L60 180"
+                  fill="hsl(var(--accent) / 0.15)"
                   stroke="hsl(var(--accent))"
                   strokeWidth="2.5"
                 />
-                <text x="260" y="260" textAnchor="middle" className="fill-accent font-heading text-xs font-bold">
+                <text x="240" y="270" textAnchor="middle" className="fill-accent font-heading text-[10px] font-bold">
                   TEXAS
                 </text>
                 
                 {/* City Stars */}
-                {/* Wichita, KS */}
-                <polygon points="280,65 282,70 288,70 283,74 285,80 280,76 275,80 277,74 272,70 278,70" fill="hsl(var(--accent))" />
-                <text x="280" y="58" textAnchor="middle" className="fill-foreground text-[8px]">Wichita</text>
+                {/* Wichita, KS - south-central Kansas */}
+                <polygon points="270,70 272,75 278,75 273,79 275,85 270,81 265,85 267,79 262,75 268,75" fill="hsl(var(--accent))" />
+                <text x="270" y="64" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Wichita</text>
                 
-                {/* OKC, OK */}
-                <polygon points="230,145 232,150 238,150 233,154 235,160 230,156 225,160 227,154 222,150 228,150" fill="hsl(var(--accent))" />
-                <text x="230" y="138" textAnchor="middle" className="fill-foreground text-[8px]">OKC</text>
+                {/* OKC, OK - central Oklahoma */}
+                <polygon points="220,140 222,145 228,145 223,149 225,155 220,151 215,155 217,149 212,145 218,145" fill="hsl(var(--accent))" />
+                <text x="220" y="134" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">OKC</text>
                 
-                {/* Tulsa, OK */}
-                <polygon points="310,130 312,135 318,135 313,139 315,145 310,141 305,145 307,139 302,135 308,135" fill="hsl(var(--accent))" />
-                <text x="310" y="123" textAnchor="middle" className="fill-foreground text-[8px]">Tulsa</text>
+                {/* Tulsa, OK - northeast Oklahoma */}
+                <polygon points="300,120 302,125 308,125 303,129 305,135 300,131 295,135 297,129 292,125 298,125" fill="hsl(var(--accent))" />
+                <text x="300" y="114" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Tulsa</text>
                 
-                {/* Lawton, OK */}
-                <polygon points="180,165 182,170 188,170 183,174 185,180 180,176 175,180 177,174 172,170 178,170" fill="hsl(var(--accent))" />
-                <text x="180" y="158" textAnchor="middle" className="fill-foreground text-[8px]">Lawton</text>
+                {/* Lawton, OK - southwest Oklahoma */}
+                <polygon points="170,160 172,165 178,165 173,169 175,175 170,171 165,175 167,169 162,165 168,165" fill="hsl(var(--accent))" />
+                <text x="170" y="154" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Lawton</text>
                 
-                {/* Dallas, TX */}
+                {/* Dallas, TX - north-central Texas */}
                 <polygon points="280,220 282,225 288,225 283,229 285,235 280,231 275,235 277,229 272,225 278,225" fill="hsl(var(--accent))" />
-                <text x="280" y="213" textAnchor="middle" className="fill-foreground text-[8px]">Dallas</text>
+                <text x="280" y="214" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Dallas</text>
                 
-                {/* Austin, TX */}
-                <polygon points="230,290 232,295 238,295 233,299 235,305 230,301 225,305 227,299 222,295 228,295" fill="hsl(var(--accent))" />
-                <text x="230" y="283" textAnchor="middle" className="fill-foreground text-[8px]">Austin</text>
+                {/* Austin, TX - central Texas */}
+                <polygon points="210,290 212,295 218,295 213,299 215,305 210,301 205,305 207,299 202,295 208,295" fill="hsl(var(--accent))" />
+                <text x="210" y="284" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Austin</text>
                 
-                {/* San Antonio, TX */}
-                <polygon points="200,320 202,325 208,325 203,329 205,335 200,331 195,335 197,329 192,325 198,325" fill="hsl(var(--accent))" />
-                <text x="200" y="313" textAnchor="middle" className="fill-foreground text-[8px]">San Antonio</text>
+                {/* San Antonio, TX - south-central Texas */}
+                <polygon points="190,315 192,320 198,320 193,324 195,330 190,326 185,330 187,324 182,320 188,320" fill="hsl(var(--accent))" />
+                <text x="190" y="309" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">San Antonio</text>
               </svg>
             </div>
           </div>
