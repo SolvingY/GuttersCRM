@@ -117,6 +117,14 @@ export function AboutSection() {
               
             </div>
           </div>
+          
+          {/* Arrow to Core Values */}
+          <div className="flex justify-center py-4">
+            <div className="flex flex-col items-center">
+              <div className="w-0.5 h-12 bg-accent/40" />
+              <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[12px] border-t-accent" />
+            </div>
+          </div>
         </div>
       </div>
 
