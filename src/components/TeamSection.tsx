@@ -14,6 +14,12 @@ const teamMembers = [
     description: "Jonathan brings 20+ years of experience in construction and roofing to his role as General Manager. He oversees all company-wide operations and sales accountability, ensuring every project meets our high standards.",
   },
   {
+    name: "Dustin Jameson",
+    role: "Lead Project Manager",
+    email: "D.Jameson@oknextgen.com",
+    description: "As a veteran, Dustin brings unmatched professionalism and discipline to every project. A founding member of Next Generation Roofing, he leads our project management team with exceptional client communication, seamless coordination, and a commitment to delivering outstanding results on every job.",
+  },
+  {
     name: "Kara Jameson",
     role: "Office Manager",
     email: "k.jameson@oknextgen.com",
