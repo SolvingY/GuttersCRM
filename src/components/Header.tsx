@@ -45,7 +45,7 @@ const socialLinks = [
   {
     icon: TikTokIcon,
     label: "TikTok",
-    href: "https://www.tiktok.com/@nextgenroofingok",
+    href: "https://www.tiktok.com/@nextgenerationroofingokc",
   },
   {
     icon: Star,
