@@ -10,10 +10,14 @@ export function StickyCallCTA() {
       <div className="max-w-7xl mx-auto">
         <Button 
           variant="cta" 
-          className="w-full text-xs sm:text-sm md:text-base lg:text-lg py-3 sm:py-4 px-3 sm:px-4 leading-snug h-auto min-h-[48px] flex flex-col items-center"
+          className="w-full text-[10px] sm:text-sm md:text-base lg:text-lg py-2 sm:py-4 px-2 sm:px-4 leading-tight h-auto min-h-[48px] flex flex-col items-center gap-0.5"
           onClick={handleCall}
         >
-          <span><span className="text-xl sm:text-2xl md:text-3xl">$</span> <span className="text-green-400">Save Thousands on Insurance:</span> Click to Qualify for an IR Shingle</span>
+          <span className="flex items-center gap-1 flex-wrap justify-center">
+            <span className="text-lg sm:text-2xl md:text-3xl">$</span> 
+            <span className="text-green-400">Save Thousands on Insurance:</span>
+          </span>
+          <span>Click to Qualify for an IR Shingle</span>
           <span>(Upgrade Before You Renew)!</span>
         </Button>
       </div>
