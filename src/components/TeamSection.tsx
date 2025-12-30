@@ -9,7 +9,6 @@ const teamMembers = [
   {
     name: "Rob Baker",
     role: "Owner",
-    email: "R.baker@oknextgen.com",
     description: "With 15+ years of roofing and insurance industry experience, Rob is the founder and visionary behind NGR's Core Values: Growth, Customer Service, Humility, Excellence, Employee Empowerment, and Reputation.",
     image: teamRob,
   },
@@ -21,18 +20,18 @@ const teamMembers = [
     image: teamJonathan,
   },
   {
-    name: "Dustin Jameson",
-    role: "Lead Project Manager",
-    email: "D.Jameson@oknextgen.com",
-    description: "As a veteran, Dustin brings unmatched professionalism and discipline to every project. A founding member of Next Generation Roofing, he leads our project management team with exceptional client communication, seamless coordination, and a commitment to delivering outstanding results on every job.",
-    image: teamDustin,
-  },
-  {
     name: "Kara Jameson",
     role: "Office Manager",
     email: "k.jameson@oknextgen.com",
     description: "With 10+ years of experience in office management and specialized insurance company correspondence, Kara manages all documentation flow, compliance, and internal scheduling to keep operations running smoothly.",
     image: teamKara,
+  },
+  {
+    name: "Dustin Jameson",
+    role: "Lead Project Manager",
+    email: "D.Jameson@oknextgen.com",
+    description: "As a veteran, Dustin brings unmatched professionalism and discipline to every project. A founding member of Next Generation Roofing, he leads our project management team with exceptional client communication, seamless coordination, and a commitment to delivering outstanding results on every job.",
+    image: teamDustin,
   },
 ];
 
@@ -59,6 +58,61 @@ const joinBenefits = [
   },
 ];
 
+interface TeamMember {
+  name: string;
+  role: string;
+  email?: string;
+  description: string;
+  image: string;
+}
+
+function TeamMemberCard({ member }: { member: TeamMember }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-shadow group">
+      <div className="h-48 bg-section-alt flex items-center justify-center overflow-hidden">
+        <img 
+          src={member.image} 
+          alt={member.name}
+          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
+        />
+      </div>
+      <div className="p-6">
+        <h3 className="font-heading text-2xl uppercase mb-1">{member.name}</h3>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 text-accent font-heading uppercase text-sm mb-3 hover:text-accent/80 transition-colors"
+        >
+          {member.role}
+          <ChevronDown 
+            className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} 
+          />
+        </button>
+        
+        <div 
+          className={`overflow-hidden transition-all duration-300 ${
+            isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+            {member.description}
+          </p>
+          {member.email && (
+            <a 
+              href={`mailto:${member.email}`}
+              className="inline-flex items-center gap-2 text-sm text-accent hover:underline"
+            >
+              <Mail className="w-4 h-4" />
+              {member.email}
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TeamSection() {
   const [isJoinExpanded, setIsJoinExpanded] = useState(false);
 
@@ -82,32 +136,7 @@ export function TeamSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {teamMembers.map((member) => (
-            <div
-              key={member.name}
-              className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-shadow group"
-            >
-              <div className="h-48 bg-section-alt flex items-center justify-center overflow-hidden">
-                <img 
-                  src={member.image} 
-                  alt={member.name}
-                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
-                />
-              </div>
-              <div className="p-6">
-                <h3 className="font-heading text-2xl uppercase mb-1">{member.name}</h3>
-                <p className="text-accent font-heading uppercase text-sm mb-3">{member.role}</p>
-                <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-                  {member.description}
-                </p>
-                <a 
-                  href={`mailto:${member.email}`}
-                  className="inline-flex items-center gap-2 text-sm text-accent hover:underline"
-                >
-                  <Mail className="w-4 h-4" />
-                  {member.email}
-                </a>
-              </div>
-            </div>
+            <TeamMemberCard key={member.name} member={member} />
           ))}
         </div>
 

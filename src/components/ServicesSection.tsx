@@ -55,18 +55,18 @@ const services = [
   },
   {
     icon: Shield,
-    title: "Storm Damage & Insurance",
-    description: "We fight for every dollar you deserve. Our insurance experts advocate aggressively to maximize your claim.",
+    title: "Emergency Services & Maintenance",
+    description: "24-hour emergency response, water mitigation, restoration services, and commercial maintenance agreements.",
     image: stormImg,
     details: [
-      "Free Storm Damage Inspections",
-      "Aggressive Insurance Advocacy",
-      "Maximum Claim Recovery",
-      "Adjuster Meeting Support",
-      "Documentation & Photography",
-      "Emergency Tarping Services",
+      "24-Hour Water Mitigation",
+      "Emergency Restoration Services",
+      "Commercial Maintenance Agreements",
+      "Emergency Tarping & Board-Up",
+      "Storm Damage Response",
+      "Preventive Maintenance Programs",
     ],
-    fullDescription: "When storms strike, insurance companies don't always have your best interests at heart. That's where we step in. Our team fights for every dollar you deserve—we know the tactics adjusters use and we push back to ensure you get the highest quality roof, not the cheapest repair. With 45+ years of combined experience navigating Oklahoma insurance claims, we've recovered millions for homeowners who were initially underpaid or denied. We document every shingle, every dent, and every detail to build an airtight case. You shouldn't have to settle for less when you've been paying premiums for years. Let us be your advocate and get you what you're truly owed.",
+    fullDescription: "When disaster strikes, every minute counts. Our emergency services team is available 24/7 to respond to water damage, storm damage, and other roofing emergencies. We provide rapid water mitigation to prevent further damage to your property, professional restoration services to get you back to normal, and comprehensive commercial building maintenance agreements to prevent issues before they start. Trust our experienced team to protect your property when you need it most.",
   },
 ];
 

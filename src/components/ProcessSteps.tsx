@@ -7,19 +7,9 @@ const steps = [
     description: "Our certified inspectors thoroughly examine your roof for storm damage, wear, and potential issues. We document everything with photos and detailed reports to build your case.",
   },
   {
-    icon: FileText,
-    title: "Adjustment",
-    description: "We meet with your insurance adjuster on-site to ensure nothing is missed. Our expertise ensures all damage is properly identified and documented for your claim.",
-  },
-  {
     icon: FileCheck,
-    title: "Insurance Claim",
-    description: "We handle the complex paperwork and communication with your insurance company. Our team fights to maximize your claim value and get you what you deserve.",
-  },
-  {
-    icon: Receipt,
-    title: "Supplements",
-    description: "If additional damage is discovered or initial estimates fall short, we file supplements to ensure every necessary repair is covered by your insurance.",
+    title: "Insurance & Supplements",
+    description: "We meet with your insurance adjuster on-site, handle the complex paperwork, and file any supplements needed. Our team fights to maximize your claim value and ensure every necessary repair is covered.",
   },
   {
     icon: Package,
