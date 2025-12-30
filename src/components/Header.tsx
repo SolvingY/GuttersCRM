@@ -65,7 +65,7 @@ export function Header() {
           {/* Left side: Social Icons + Logo */}
           <div className="flex items-center gap-4">
             {/* Social Icons */}
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {socialLinks.map((link) => (
                 <a
                   key={link.label}
