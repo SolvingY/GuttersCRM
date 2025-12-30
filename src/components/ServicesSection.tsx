@@ -55,17 +55,17 @@ const services = [
   {
     icon: Shield,
     title: "Storm Damage & Insurance",
-    description: "Expert storm damage assessment and insurance claim negotiation support for homeowners.",
+    description: "We fight for every dollar you deserve. Our insurance experts advocate aggressively to maximize your claim.",
     image: stormImg,
     details: [
       "Free Storm Damage Inspections",
-      "Insurance Claim Assistance",
-      "Documentation & Photography",
+      "Aggressive Insurance Advocacy",
+      "Maximum Claim Recovery",
       "Adjuster Meeting Support",
-      "Hail & Wind Damage Repair",
+      "Documentation & Photography",
       "Emergency Tarping Services",
     ],
-    fullDescription: "Navigating insurance claims after storm damage can be overwhelming. With our 45+ years of combined experience and insurance expertise, we advocate on your behalf to ensure you receive fair compensation for necessary repairs. We handle the paperwork so you can focus on your family.",
+    fullDescription: "When storms strike, insurance companies don't always have your best interests at heart. That's where we step in. Our team fights for every dollar you deserve—we know the tactics adjusters use and we push back to ensure you get the highest quality roof, not the cheapest repair. With 45+ years of combined experience navigating Oklahoma insurance claims, we've recovered millions for homeowners who were initially underpaid or denied. We document every shingle, every dent, and every detail to build an airtight case. You shouldn't have to settle for less when you've been paying premiums for years. Let us be your advocate and get you what you're truly owed.",
   },
 ];
 
