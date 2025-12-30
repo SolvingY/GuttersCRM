@@ -56,20 +56,20 @@ export function CommercialProcessSteps() {
         <div className="hidden lg:block absolute top-6 left-0 right-0 h-0.5 bg-accent/30" />
         
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {steps.map((step, index) => (
             <div key={step.title} className="relative">
               {/* Step Card */}
-              <div className="bg-primary/10 backdrop-blur-sm border border-border/50 rounded-lg p-5 h-full hover:bg-primary/20 transition-colors">
+              <div className="bg-primary/10 backdrop-blur-sm border border-border/50 rounded-lg p-4 h-full hover:bg-primary/20 transition-colors text-center">
                 {/* Step Number Circle */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="flex flex-col items-center gap-2 mb-3">
+                  <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
                     <span className="text-accent-foreground font-bold text-sm">
                       {index + 1}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <step.icon className="w-5 h-5 text-accent" />
+                  <div className="flex items-center justify-center gap-2">
+                    <step.icon className="w-4 h-4 text-accent" />
                     <h5 className="font-heading uppercase text-sm text-foreground">
                       {step.title}
                     </h5>
@@ -77,7 +77,7 @@ export function CommercialProcessSteps() {
                 </div>
                 
                 {/* Description */}
-                <p className="text-muted-foreground text-sm leading-relaxed pl-[52px]">
+                <p className="text-muted-foreground text-xs leading-relaxed">
                   {step.description}
                 </p>
               </div>
