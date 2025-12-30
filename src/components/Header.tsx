@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.jpg";
 
@@ -46,6 +46,11 @@ const socialLinks = [
     icon: TikTokIcon,
     label: "TikTok",
     href: "https://www.tiktok.com/@nextgenerationroofingokc",
+  },
+  {
+    icon: Linkedin,
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/oknextgen/",
   },
   {
     icon: Star,
