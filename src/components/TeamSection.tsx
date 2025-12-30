@@ -1,4 +1,8 @@
 import { Users, Mail } from "lucide-react";
+import teamRob from "@/assets/team-rob.png";
+import teamJonathan from "@/assets/team-jonathan.png";
+import teamDustin from "@/assets/team-dustin.png";
+import teamKara from "@/assets/team-kara.png";
 
 const teamMembers = [
   {
@@ -6,24 +10,28 @@ const teamMembers = [
     role: "Owner",
     email: "R.baker@oknextgen.com",
     description: "With 15+ years of roofing and insurance industry experience, Rob is the founder and visionary behind NGR's Core Values: Growth, Customer Service, Humility, Excellence, Employee Empowerment, and Reputation.",
+    image: teamRob,
   },
   {
     name: "Jonathan Whitton",
     role: "General Manager",
     email: "J.whitton@oknextgen.com",
     description: "Jonathan brings 20+ years of experience in construction and roofing to his role as General Manager. He oversees all company-wide operations and sales accountability, ensuring every project meets our high standards.",
+    image: teamJonathan,
   },
   {
     name: "Dustin Jameson",
     role: "Lead Project Manager",
     email: "D.Jameson@oknextgen.com",
     description: "As a veteran, Dustin brings unmatched professionalism and discipline to every project. A founding member of Next Generation Roofing, he leads our project management team with exceptional client communication, seamless coordination, and a commitment to delivering outstanding results on every job.",
+    image: teamDustin,
   },
   {
     name: "Kara Jameson",
     role: "Office Manager",
     email: "k.jameson@oknextgen.com",
     description: "With 10+ years of experience in office management and specialized insurance company correspondence, Kara manages all documentation flow, compliance, and internal scheduling to keep operations running smoothly.",
+    image: teamKara,
   },
 ];
 
@@ -52,12 +60,12 @@ export function TeamSection() {
               key={member.name}
               className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-shadow group"
             >
-              <div className="h-48 bg-section-alt flex items-center justify-center">
-                <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <span className="text-4xl font-heading text-primary-foreground">
-                    {member.name[0]}
-                  </span>
-                </div>
+              <div className="h-48 bg-section-alt flex items-center justify-center overflow-hidden">
+                <img 
+                  src={member.image} 
+                  alt={member.name}
+                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
+                />
               </div>
               <div className="p-6">
                 <h3 className="font-heading text-2xl uppercase mb-1">{member.name}</h3>
