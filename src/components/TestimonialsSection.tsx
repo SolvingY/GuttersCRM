@@ -24,11 +24,39 @@ const testimonials = [
     service: "Insurance Claim",
   },
   {
-    name: "Satisfied Homeowner",
+    name: "Michael Thompson",
     rating: 5,
-    date: "Recent",
-    text: "Great company. Easy to work with & would recommend to anyone needing roof repair. Professional team that gets the job done right the first time.",
+    date: "1 month ago",
+    text: "Had storm damage and these guys handled everything with my insurance company. Dustin was incredibly professional and kept me informed every step of the way. The crew showed up on time and finished the job in one day. Highly recommend!",
+    service: "Storm Damage",
+  },
+  {
+    name: "Sarah Johnson",
+    rating: 5,
+    date: "2 months ago",
+    text: "From start to finish, Next Generation Roofing exceeded my expectations. They were honest, transparent about pricing, and the quality of work was outstanding. My neighbors have already asked for their contact info!",
+    service: "Roof Replacement",
+  },
+  {
+    name: "Robert Williams",
+    rating: 5,
+    date: "3 months ago",
+    text: "As a business owner, I needed a commercial roofing company I could trust. Next Generation delivered on every promise. Professional crew, minimal disruption to our operations, and excellent communication throughout the project.",
+    service: "Commercial Roofing",
+  },
+  {
+    name: "Jennifer Martinez",
+    rating: 5,
+    date: "1 month ago",
+    text: "Great company. Easy to work with and would recommend to anyone needing roof repair. The team was respectful of our property and cleaned up everything when they were done. Top-notch service!",
     service: "Roof Repair",
+  },
+  {
+    name: "David Anderson",
+    rating: 5,
+    date: "2 months ago",
+    text: "After getting several quotes, Next Generation offered the best value and quality. Jonathan walked me through all my options and never pressured me. The installation was flawless and they even helped with the insurance paperwork.",
+    service: "Insurance Claim",
   },
 ];
 
@@ -119,7 +147,7 @@ export function TestimonialsSection() {
         </div>
 
         {/* Desktop Grid */}
-        <div className="hidden lg:grid grid-cols-2 gap-6">
+        <div className="hidden lg:grid grid-cols-2 xl:grid-cols-4 gap-6">
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
