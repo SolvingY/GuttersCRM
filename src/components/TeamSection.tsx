@@ -42,6 +42,10 @@ const additionalTeamMembers = [
   { name: "Tyler Story", role: "Senior Supplement Representative" },
   { name: "Michael Beck", role: "Production Office Manager" },
   { name: "Aldo Rodriguez", role: "Production Field Manager" },
+  { name: "Dru Dawson", role: "Senior Project Manager" },
+  { name: "David Olsen", role: "Senior Canvasser" },
+  { name: "Andre Runnels", role: "Senior Project Manager" },
+  { name: "Joshua Light", role: "Field Production Technician" },
 ];
 
 const joinBenefits = [
@@ -157,7 +161,7 @@ export function TeamSection() {
             className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-center gap-3 hover:border-accent transition-colors group"
           >
             <Users className="w-5 h-5 text-accent" />
-            <span className="font-heading text-lg uppercase">More of the Team</span>
+            <span className="font-heading text-lg uppercase">Key Team Members</span>
             <ChevronDown 
               className={`w-5 h-5 text-accent transition-transform duration-300 ${isMoreTeamExpanded ? 'rotate-180' : ''}`} 
             />
