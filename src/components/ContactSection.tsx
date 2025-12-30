@@ -100,18 +100,45 @@ export function ContactSection() {
               </div>
             </div>
 
-            {/* Map Embed - Regional View including OK, KS, TX */}
-            <div className="bg-background rounded-lg overflow-hidden h-48 shadow-lg">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3400000!2d-98.5!3d35.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1703864800000!5m2!1sen!2sus"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Service Area Map - Oklahoma, Kansas, Texas"
-              />
+            {/* Map - Regional View including OK, KS, TX */}
+            <div className="bg-background rounded-lg overflow-hidden h-64 shadow-lg p-4 flex items-center justify-center">
+              <svg viewBox="0 0 400 300" className="w-full h-full max-w-md">
+                {/* Kansas */}
+                <path
+                  d="M120 50 L280 50 L280 100 L120 100 Z"
+                  fill="none"
+                  stroke="hsl(var(--accent))"
+                  strokeWidth="3"
+                  className="drop-shadow-sm"
+                />
+                <text x="200" y="80" textAnchor="middle" className="fill-accent font-heading text-sm font-bold">
+                  KANSAS
+                </text>
+                
+                {/* Oklahoma */}
+                <path
+                  d="M100 100 L280 100 L280 130 L300 130 L300 180 L120 180 L120 130 L100 130 Z"
+                  fill="none"
+                  stroke="hsl(var(--accent))"
+                  strokeWidth="3"
+                  className="drop-shadow-sm"
+                />
+                <text x="200" y="150" textAnchor="middle" className="fill-accent font-heading text-sm font-bold">
+                  OKLAHOMA
+                </text>
+                
+                {/* Texas */}
+                <path
+                  d="M80 180 L300 180 L320 200 L320 280 L200 280 L180 260 L100 260 L80 240 Z"
+                  fill="none"
+                  stroke="hsl(var(--accent))"
+                  strokeWidth="3"
+                  className="drop-shadow-sm"
+                />
+                <text x="200" y="230" textAnchor="middle" className="fill-accent font-heading text-sm font-bold">
+                  TEXAS
+                </text>
+              </svg>
             </div>
           </div>
         </div>

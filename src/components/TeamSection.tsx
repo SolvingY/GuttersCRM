@@ -191,7 +191,7 @@ export function TeamSection() {
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">Ready to join a winning team?</p>
                 <a 
-                  href="mailto:careers@oknextgen.com"
+                  href="mailto:j.whitton@oknextgen.com"
                   className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-lg font-heading uppercase text-sm hover:bg-accent/90 transition-colors"
                 >
                   <Mail className="w-4 h-4" />

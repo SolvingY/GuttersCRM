@@ -47,7 +47,7 @@ export function WhyChooseUsSection() {
     <section id="why-choose-us" className="section-padding bg-secondary/30">
       <div className="container-custom">
         <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading uppercase mb-4">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading uppercase mb-4 text-accent font-bold">
             Why Choose Us
           </h2>
           <p className="text-muted-foreground max-w-3xl mx-auto">
