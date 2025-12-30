@@ -1,19 +1,8 @@
-import { Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function StickyCallCTA() {
-  const scrollToContact = () => {
-    const element = document.querySelector("#contact");
-    if (element) {
-      const headerOffset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth"
-      });
-    }
+  const handleCall = () => {
+    window.location.href = "tel:4057248092";
   };
 
   return (
@@ -22,7 +11,7 @@ export function StickyCallCTA() {
         <Button 
           variant="cta" 
           className="w-full text-xs sm:text-sm md:text-base lg:text-lg py-3 sm:py-4 px-3 sm:px-4 leading-snug whitespace-normal h-auto min-h-[48px]"
-          onClick={scrollToContact}
+          onClick={handleCall}
         >
           💲💲 Save Thousands on Insurance: Click to Qualify for an IR Shingle Upgrade Before You Renew! 💲💲
         </Button>
