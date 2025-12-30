@@ -39,6 +39,7 @@ const teamDepartments = [
   {
     name: "Project Managers",
     members: [
+      { name: "Matt Fowler", role: "Field Trainer" },
       { name: "Dru Dawson", role: "Senior Project Manager" },
       { name: "Andre Runnels", role: "Senior Project Manager" },
       { name: "Jarred Deer", role: "Senior Project Manager" },
@@ -49,7 +50,6 @@ const teamDepartments = [
   {
     name: "Production",
     members: [
-      { name: "Matt Fowler", role: "Field Trainer" },
       { name: "Michael Beck", role: "Production Office Manager" },
       { name: "Aldo Rodriguez", role: "Production Field Manager" },
       { name: "Joshua Light", role: "Field Production Technician" },
@@ -61,6 +61,7 @@ const teamDepartments = [
       { name: "Tyler Story", role: "Senior Supplement Representative" },
       { name: "Macie Kenworthy", role: "Supplement Specialist" },
       { name: "Kaleb Webster", role: "Supplement Specialist" },
+      { name: "Connor Marsh", role: "Adjustment Relation Specialist" },
     ],
   },
   {
@@ -69,7 +70,6 @@ const teamDepartments = [
       { name: "Abigail Whisman", role: "Accounting Manager" },
       { name: "Devan Quinton", role: "Customer Service Representative" },
       { name: "Abby Vaughn", role: "Client Service Specialist" },
-      { name: "Connor Marsh", role: "Adjustment Relation Specialist" },
     ],
   },
 ];
@@ -154,6 +154,7 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
 
 export function TeamSection() {
   const [isJoinExpanded, setIsJoinExpanded] = useState(false);
+  const [isKeyTeamExpanded, setIsKeyTeamExpanded] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
 
   const toggleDepartment = (departmentName: string) => {
@@ -188,46 +189,60 @@ export function TeamSection() {
           ))}
         </div>
 
-        {/* Key Team Members by Department */}
+        {/* Key Team Members - Collapsible Parent */}
         <div className="mt-12">
-          <h3 className="font-heading text-2xl uppercase text-center mb-6">
-            Key Team <span className="text-accent">Members</span>
-          </h3>
-          <div className="space-y-3">
-            {teamDepartments.map((department) => (
-              <div key={department.name}>
-                <button
-                  onClick={() => toggleDepartment(department.name)}
-                  className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:border-accent transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-accent" />
-                    <span className="font-heading text-lg uppercase">{department.name}</span>
-                    <span className="text-muted-foreground text-sm">({department.members.length})</span>
-                  </div>
-                  <ChevronDown 
-                    className={`w-5 h-5 text-accent transition-transform duration-300 ${expandedDepartments.includes(department.name) ? 'rotate-180' : ''}`} 
-                  />
-                </button>
+          <button
+            onClick={() => setIsKeyTeamExpanded(!isKeyTeamExpanded)}
+            className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-center gap-3 hover:border-accent transition-colors"
+          >
+            <Users className="w-5 h-5 text-accent" />
+            <span className="font-heading text-lg uppercase">Key Team Members</span>
+            <ChevronDown 
+              className={`w-5 h-5 text-accent transition-transform duration-300 ${isKeyTeamExpanded ? 'rotate-180' : ''}`} 
+            />
+          </button>
 
-                <div 
-                  className={`overflow-hidden transition-all duration-500 ease-in-out ${
-                    expandedDepartments.includes(department.name) ? 'max-h-[1000px] opacity-100 mt-2' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="bg-card border border-border rounded-lg p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {department.members.map((member) => (
-                        <div key={member.name} className="p-4 bg-section-alt rounded-lg">
-                          <h4 className="font-heading text-lg uppercase">{member.name}</h4>
-                          <p className="text-accent text-sm font-heading uppercase">{member.role}</p>
-                        </div>
-                      ))}
+          <div 
+            className={`overflow-hidden transition-all duration-500 ease-in-out ${
+              isKeyTeamExpanded ? 'max-h-[3000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="space-y-3">
+              {teamDepartments.map((department) => (
+                <div key={department.name}>
+                  <button
+                    onClick={() => toggleDepartment(department.name)}
+                    className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:border-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5 text-accent" />
+                      <span className="font-heading text-lg uppercase">{department.name}</span>
+                      <span className="text-muted-foreground text-sm">({department.members.length})</span>
+                    </div>
+                    <ChevronDown 
+                      className={`w-5 h-5 text-accent transition-transform duration-300 ${expandedDepartments.includes(department.name) ? 'rotate-180' : ''}`} 
+                    />
+                  </button>
+
+                  <div 
+                    className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                      expandedDepartments.includes(department.name) ? 'max-h-[1000px] opacity-100 mt-2' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="bg-card border border-border rounded-lg p-4 ml-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {department.members.map((member) => (
+                          <div key={member.name} className="p-4 bg-section-alt rounded-lg">
+                            <h4 className="font-heading text-lg uppercase">{member.name}</h4>
+                            <p className="text-accent text-sm font-heading uppercase">{member.role}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
