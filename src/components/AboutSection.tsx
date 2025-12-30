@@ -118,11 +118,11 @@ export function AboutSection() {
             </div>
           </div>
           
-          {/* Arrow to Core Values */}
-          <div className="flex justify-center py-4">
+          {/* Arrow to Core Values - matching other section arrows */}
+          <div className="flex justify-center -mt-4 -mb-2">
             <div className="flex flex-col items-center">
-              <div className="w-0.5 h-12 bg-accent/40" />
-              <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[12px] border-t-accent" />
+              <div className="w-2 h-10 bg-accent/50" />
+              <div className="w-0 h-0 border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent border-t-[18px] border-t-accent" />
             </div>
           </div>
         </div>

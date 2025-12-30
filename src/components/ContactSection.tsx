@@ -100,71 +100,18 @@ export function ContactSection() {
               </div>
             </div>
 
-            {/* Map - Regional View including OK, KS, TX with accurate state shapes */}
-            <div className="bg-background rounded-lg overflow-hidden h-80 shadow-lg p-4 flex items-center justify-center">
-              <svg viewBox="0 0 450 380" className="w-full h-full max-w-lg">
-                {/* Kansas - accurate shape (mostly rectangular with slight variations) */}
-                <path
-                  d="M120 25 L340 25 L340 85 L118 85 L115 70 L120 25"
-                  fill="hsl(var(--accent) / 0.15)"
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2.5"
-                />
-                <text x="230" y="60" textAnchor="middle" className="fill-accent font-heading text-[10px] font-bold">
-                  KANSAS
-                </text>
-                
-                {/* Oklahoma - accurate panhandle shape */}
-                <path
-                  d="M60 85 L60 110 L175 110 L175 85 L340 85 L355 90 L360 100 L360 170 L340 175 L280 175 L260 180 L60 180 L60 85"
-                  fill="hsl(var(--accent) / 0.15)"
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2.5"
-                />
-                <text x="210" y="145" textAnchor="middle" className="fill-accent font-heading text-[10px] font-bold">
-                  OKLAHOMA
-                </text>
-                
-                {/* Texas - accurate distinctive shape with panhandle, gulf coast, rio grande */}
-                <path
-                  d="M60 180 L175 180 L175 195 L260 195 L280 180 L340 180 L360 175 L380 185 L390 210 L395 250 L385 280 L370 310 L340 340 L300 355 L260 365 L220 360 L180 345 L150 320 L130 290 L110 260 L90 230 L70 210 L60 195 L60 180"
-                  fill="hsl(var(--accent) / 0.15)"
-                  stroke="hsl(var(--accent))"
-                  strokeWidth="2.5"
-                />
-                <text x="240" y="270" textAnchor="middle" className="fill-accent font-heading text-[10px] font-bold">
-                  TEXAS
-                </text>
-                
-                {/* City Stars */}
-                {/* Wichita, KS - south-central Kansas */}
-                <polygon points="270,70 272,75 278,75 273,79 275,85 270,81 265,85 267,79 262,75 268,75" fill="hsl(var(--accent))" />
-                <text x="270" y="64" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Wichita</text>
-                
-                {/* OKC, OK - central Oklahoma */}
-                <polygon points="220,140 222,145 228,145 223,149 225,155 220,151 215,155 217,149 212,145 218,145" fill="hsl(var(--accent))" />
-                <text x="220" y="134" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">OKC</text>
-                
-                {/* Tulsa, OK - northeast Oklahoma */}
-                <polygon points="300,120 302,125 308,125 303,129 305,135 300,131 295,135 297,129 292,125 298,125" fill="hsl(var(--accent))" />
-                <text x="300" y="114" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Tulsa</text>
-                
-                {/* Lawton, OK - southwest Oklahoma */}
-                <polygon points="170,160 172,165 178,165 173,169 175,175 170,171 165,175 167,169 162,165 168,165" fill="hsl(var(--accent))" />
-                <text x="170" y="154" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Lawton</text>
-                
-                {/* Dallas, TX - north-central Texas */}
-                <polygon points="280,220 282,225 288,225 283,229 285,235 280,231 275,235 277,229 272,225 278,225" fill="hsl(var(--accent))" />
-                <text x="280" y="214" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Dallas</text>
-                
-                {/* Austin, TX - central Texas */}
-                <polygon points="210,290 212,295 218,295 213,299 215,305 210,301 205,305 207,299 202,295 208,295" fill="hsl(var(--accent))" />
-                <text x="210" y="284" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">Austin</text>
-                
-                {/* San Antonio, TX - south-central Texas */}
-                <polygon points="190,315 192,320 198,320 193,324 195,330 190,326 185,330 187,324 182,320 188,320" fill="hsl(var(--accent))" />
-                <text x="190" y="309" textAnchor="middle" className="fill-foreground text-[7px] font-semibold">San Antonio</text>
-              </svg>
+            {/* Map Embed - Regional View including OK, KS, TX */}
+            <div className="bg-background rounded-lg overflow-hidden h-48 shadow-lg">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3400000!2d-98.5!3d35.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1703864800000!5m2!1sen!2sus"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Service Area Map - Oklahoma, Kansas, Texas"
+              />
             </div>
           </div>
         </div>
