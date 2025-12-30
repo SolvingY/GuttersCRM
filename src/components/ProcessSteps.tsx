@@ -23,13 +23,8 @@ const steps = [
   },
   {
     icon: ClipboardCheck,
-    title: "Quality Control Inspection",
-    description: "Before we call it complete, our quality control team inspects every detail. We ensure installation meets manufacturer specifications and our high standards.",
-  },
-  {
-    icon: FileText,
-    title: "Final Supplements",
-    description: "Any remaining items discovered during installation are documented and submitted. We ensure you receive full compensation for your complete roof replacement.",
+    title: "Quality Control & Final Supplements",
+    description: "Our quality control team inspects every detail before completion. Any remaining items discovered during installation are documented and submitted to ensure you receive full compensation.",
   },
   {
     icon: Award,

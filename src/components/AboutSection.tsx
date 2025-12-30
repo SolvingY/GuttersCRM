@@ -115,28 +115,7 @@ export function AboutSection() {
                 </div>
               ))}
               
-              {/* Arrow pointing to services */}
-              <div className="flex flex-col items-center py-8">
-                <div className="bg-accent p-3 rounded-full animate-bounce">
-                  <ArrowDown className="w-8 h-8 text-accent-foreground" />
-                </div>
-                <p className="font-heading text-sm uppercase tracking-wider text-accent mt-4">
-                  Explore Our Services Above
-                </p>
-              </div>
             </div>
-          </div>
-
-          {/* Highlights */}
-          <div className="bg-section-alt rounded-lg p-8">
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {highlights.map((item) => (
-                <li key={item} className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-accent flex-shrink-0" />
-                  <span className="text-sm">{item}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </div>
@@ -145,7 +124,7 @@ export function AboutSection() {
       <div className="section-padding bg-section-alt">
         <div className="container-custom">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-heading uppercase mb-4">
+            <h2 className="text-3xl md:text-4xl font-heading uppercase mb-4 text-accent font-bold">
               Our Core Values
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -162,7 +141,7 @@ export function AboutSection() {
                 <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
                   <value.icon className="w-8 h-8 text-accent" />
                 </div>
-                <h3 className="font-heading text-2xl uppercase mb-4">{value.title}</h3>
+                <h3 className="font-heading text-2xl uppercase mb-4 text-accent font-bold">{value.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">
                   {value.description}
                 </p>
