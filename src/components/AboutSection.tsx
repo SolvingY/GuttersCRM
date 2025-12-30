@@ -129,7 +129,6 @@ export function AboutSection() {
 
           {/* Highlights */}
           <div className="bg-section-alt rounded-lg p-8">
-            <h3 className="font-heading text-2xl uppercase mb-6 text-center">Why Choose Us?</h3>
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {highlights.map((item) => (
                 <li key={item} className="flex items-center gap-3">
