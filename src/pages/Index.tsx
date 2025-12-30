@@ -9,7 +9,6 @@ import { ReviewSlider } from "@/components/ReviewSlider";
 import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
 import { StickyCallCTA } from "@/components/StickyCallCTA";
-import { FloatingSocial } from "@/components/FloatingSocial";
 
 const Index = () => {
   return (
@@ -39,7 +38,6 @@ const Index = () => {
       </main>
       <Footer />
       <StickyCallCTA />
-      <FloatingSocial />
     </div>
   );
 };

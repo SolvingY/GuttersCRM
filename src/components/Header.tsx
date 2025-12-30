@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X, Phone, ChevronDown } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.jpg";
 
@@ -18,6 +18,24 @@ const navLinks = [
   { name: "Team", href: "#team" },
   { name: "Reviews", href: "#reviews" },
   { name: "Contact", href: "#contact" },
+];
+
+const socialLinks = [
+  {
+    icon: Instagram,
+    label: "Instagram",
+    href: "https://www.instagram.com/next_generation_roofing/",
+  },
+  {
+    icon: Facebook,
+    label: "Facebook",
+    href: "https://www.facebook.com/people/Next-Generation-Roofing/100064277643225/?mibextid=LQQJ4d",
+  },
+  {
+    icon: Star,
+    label: "Google Reviews",
+    href: "https://share.google/APxY30i8K9jflKJOx",
+  },
 ];
 
 export function Header() {
@@ -44,17 +62,36 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-primary/90 backdrop-blur-sm text-primary-foreground shadow-lg">
       <div className="container-custom">
         <div className="flex items-center justify-between h-16 md:h-20 px-4">
-          {/* Logo */}
-          <a 
-            href="#home" 
-            onClick={(e) => scrollToSection(e, "#home")}
-            className="flex items-center gap-3"
-          >
-            <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
-            <span className="hidden sm:block font-heading text-lg md:text-xl font-bold uppercase tracking-wide">
-              Next Generation Roofing
-            </span>
-          </a>
+          {/* Left side: Social Icons + Logo */}
+          <div className="flex items-center gap-4">
+            {/* Social Icons */}
+            <div className="hidden sm:flex items-center gap-2">
+              {socialLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-full bg-primary-foreground/10 hover:bg-accent hover:text-accent-foreground transition-colors"
+                  aria-label={link.label}
+                >
+                  <link.icon className="w-4 h-4" />
+                </a>
+              ))}
+            </div>
+
+            {/* Logo */}
+            <a 
+              href="#home" 
+              onClick={(e) => scrollToSection(e, "#home")}
+              className="flex items-center gap-3"
+            >
+              <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
+              <span className="hidden md:block font-heading text-lg md:text-xl font-bold uppercase tracking-wide">
+                Next Generation Roofing
+              </span>
+            </a>
+          </div>
 
 
           {/* Desktop Navigation */}
