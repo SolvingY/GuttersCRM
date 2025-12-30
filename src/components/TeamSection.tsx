@@ -46,6 +46,12 @@ const additionalTeamMembers = [
   { name: "David Olsen", role: "Senior Canvasser" },
   { name: "Andre Runnels", role: "Senior Project Manager" },
   { name: "Joshua Light", role: "Field Production Technician" },
+  { name: "Joe McGuiness", role: "Commercial Project Manager" },
+  { name: "Jarred Deer", role: "Senior Project Manager" },
+  { name: "Abby Vaughn", role: "Client Service Specialist" },
+  { name: "Macie Kenworthy", role: "Supplement Specialist" },
+  { name: "Kaleb Webster", role: "Supplement Specialist" },
+  { name: "Connor Marsh", role: "Adjustment Relation Specialist" },
 ];
 
 const joinBenefits = [
