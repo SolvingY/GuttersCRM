@@ -35,23 +35,43 @@ const teamMembers = [
   },
 ];
 
-const additionalTeamMembers = [
-  { name: "Matt Fowler", role: "Field Trainer" },
-  { name: "Abigail Whisman", role: "Accounting Manager" },
-  { name: "Devan Quinton", role: "Customer Service Representative" },
-  { name: "Tyler Story", role: "Senior Supplement Representative" },
-  { name: "Michael Beck", role: "Production Office Manager" },
-  { name: "Aldo Rodriguez", role: "Production Field Manager" },
-  { name: "Dru Dawson", role: "Senior Project Manager" },
-  { name: "David Olsen", role: "Senior Canvasser" },
-  { name: "Andre Runnels", role: "Senior Project Manager" },
-  { name: "Joshua Light", role: "Field Production Technician" },
-  { name: "Joe McGuiness", role: "Commercial Project Manager" },
-  { name: "Jarred Deer", role: "Senior Project Manager" },
-  { name: "Abby Vaughn", role: "Client Service Specialist" },
-  { name: "Macie Kenworthy", role: "Supplement Specialist" },
-  { name: "Kaleb Webster", role: "Supplement Specialist" },
-  { name: "Connor Marsh", role: "Adjustment Relation Specialist" },
+const teamDepartments = [
+  {
+    name: "Project Managers",
+    members: [
+      { name: "Dru Dawson", role: "Senior Project Manager" },
+      { name: "Andre Runnels", role: "Senior Project Manager" },
+      { name: "Jarred Deer", role: "Senior Project Manager" },
+      { name: "Joe McGuiness", role: "Commercial Project Manager" },
+      { name: "David Olsen", role: "Senior Canvasser" },
+    ],
+  },
+  {
+    name: "Production",
+    members: [
+      { name: "Matt Fowler", role: "Field Trainer" },
+      { name: "Michael Beck", role: "Production Office Manager" },
+      { name: "Aldo Rodriguez", role: "Production Field Manager" },
+      { name: "Joshua Light", role: "Field Production Technician" },
+    ],
+  },
+  {
+    name: "Supplements",
+    members: [
+      { name: "Tyler Story", role: "Senior Supplement Representative" },
+      { name: "Macie Kenworthy", role: "Supplement Specialist" },
+      { name: "Kaleb Webster", role: "Supplement Specialist" },
+    ],
+  },
+  {
+    name: "Office",
+    members: [
+      { name: "Abigail Whisman", role: "Accounting Manager" },
+      { name: "Devan Quinton", role: "Customer Service Representative" },
+      { name: "Abby Vaughn", role: "Client Service Specialist" },
+      { name: "Connor Marsh", role: "Adjustment Relation Specialist" },
+    ],
+  },
 ];
 
 const joinBenefits = [
@@ -134,7 +154,15 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
 
 export function TeamSection() {
   const [isJoinExpanded, setIsJoinExpanded] = useState(false);
-  const [isMoreTeamExpanded, setIsMoreTeamExpanded] = useState(false);
+  const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
+
+  const toggleDepartment = (departmentName: string) => {
+    setExpandedDepartments(prev => 
+      prev.includes(departmentName) 
+        ? prev.filter(d => d !== departmentName)
+        : [...prev, departmentName]
+    );
+  };
 
   return (
     <div className="section-padding bg-background">
@@ -160,34 +188,46 @@ export function TeamSection() {
           ))}
         </div>
 
-        {/* More of the Team Dropdown */}
-        <div className="mt-8">
-          <button
-            onClick={() => setIsMoreTeamExpanded(!isMoreTeamExpanded)}
-            className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-center gap-3 hover:border-accent transition-colors group"
-          >
-            <Users className="w-5 h-5 text-accent" />
-            <span className="font-heading text-lg uppercase">Key Team Members</span>
-            <ChevronDown 
-              className={`w-5 h-5 text-accent transition-transform duration-300 ${isMoreTeamExpanded ? 'rotate-180' : ''}`} 
-            />
-          </button>
-
-          <div 
-            className={`overflow-hidden transition-all duration-500 ease-in-out ${
-              isMoreTeamExpanded ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {additionalTeamMembers.map((member) => (
-                  <div key={member.name} className="p-4 bg-section-alt rounded-lg">
-                    <h4 className="font-heading text-lg uppercase">{member.name}</h4>
-                    <p className="text-accent text-sm font-heading uppercase">{member.role}</p>
+        {/* Key Team Members by Department */}
+        <div className="mt-12">
+          <h3 className="font-heading text-2xl uppercase text-center mb-6">
+            Key Team <span className="text-accent">Members</span>
+          </h3>
+          <div className="space-y-3">
+            {teamDepartments.map((department) => (
+              <div key={department.name}>
+                <button
+                  onClick={() => toggleDepartment(department.name)}
+                  className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:border-accent transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5 text-accent" />
+                    <span className="font-heading text-lg uppercase">{department.name}</span>
+                    <span className="text-muted-foreground text-sm">({department.members.length})</span>
                   </div>
-                ))}
+                  <ChevronDown 
+                    className={`w-5 h-5 text-accent transition-transform duration-300 ${expandedDepartments.includes(department.name) ? 'rotate-180' : ''}`} 
+                  />
+                </button>
+
+                <div 
+                  className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                    expandedDepartments.includes(department.name) ? 'max-h-[1000px] opacity-100 mt-2' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {department.members.map((member) => (
+                        <div key={member.name} className="p-4 bg-section-alt rounded-lg">
+                          <h4 className="font-heading text-lg uppercase">{member.name}</h4>
+                          <p className="text-accent text-sm font-heading uppercase">{member.role}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
 
