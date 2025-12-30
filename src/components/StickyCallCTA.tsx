@@ -18,19 +18,13 @@ export function StickyCallCTA() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-primary border-t border-primary-foreground/20 p-3">
-      <div className="flex gap-3 max-w-7xl mx-auto">
-        <a href="tel:4057248092" className="flex-1">
-          <Button variant="cta" className="w-full gap-2">
-            <Phone className="w-4 h-4" />
-            Call Now
-          </Button>
-        </a>
+      <div className="max-w-7xl mx-auto">
         <Button 
-          variant="nav" 
-          className="flex-1"
+          variant="cta" 
+          className="w-full text-sm md:text-base lg:text-lg py-4 px-4 leading-tight"
           onClick={scrollToContact}
         >
-          Get Quote Now
+          Save Thousands on Insurance: Click to Qualify for an IR Shingle Upgrade Before You Renew!
         </Button>
       </div>
     </div>
