@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Home, Building2, Droplets, Shield, ChevronDown, CheckCircle } from "lucide-react";
-
+import { ProcessSteps } from "./ProcessSteps";
 import residentialImg from "@/assets/service-residential.jpg";
 import commercialImg from "@/assets/service-commercial.jpg";
 import guttersImg from "@/assets/service-gutters.jpg";
@@ -135,7 +135,7 @@ export function ServicesSection() {
                 {/* Expandable Content */}
                 <div
                   className={`overflow-hidden transition-all duration-500 ${
-                    expandedIndex === index ? "max-h-[500px] opacity-100 mt-6" : "max-h-0 opacity-0"
+                    expandedIndex === index ? "max-h-[2000px] opacity-100 mt-6" : "max-h-0 opacity-0"
                   }`}
                 >
                   <p className="text-foreground mb-4 leading-relaxed">
@@ -149,6 +149,10 @@ export function ServicesSection() {
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Show Process Steps only for Residential Roofing */}
+                  {index === 0 && <ProcessSteps />}
+                  
                   <a
                     href="#contact"
                     className="inline-block mt-6 bg-accent text-accent-foreground px-6 py-3 rounded-lg font-heading uppercase text-sm tracking-wider hover:bg-accent/90 transition-colors"
