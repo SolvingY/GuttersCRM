@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, X, Phone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "react-router-dom";
 import logo from "@/assets/logo.jpg";
 
 const services = [
@@ -13,6 +14,7 @@ const services = [
 const navLinks = [
   { name: "Home", href: "#home" },
   { name: "Services", href: "#services" },
+  { name: "Why Choose Us", href: "/why-choose-us", isPage: true },
   { name: "About Us", href: "#about" },
   { name: "Team", href: "#team" },
   { name: "Reviews", href: "#reviews" },
@@ -22,9 +24,17 @@ const navLinks = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
-
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
+    
+    // If not on home page and it's a hash link, navigate to home first
+    if (!isHomePage && href.startsWith("#")) {
+      window.location.href = "/" + href;
+      return;
+    }
+    
     const element = document.querySelector(href);
     if (element) {
       const headerOffset = 80;
@@ -117,6 +127,12 @@ export function Header() {
             >
               Reviews
             </a>
+            <Link
+              to="/why-choose-us"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+            >
+              Why Choose Us
+            </Link>
             <a
               href="#contact"
               onClick={(e) => scrollToSection(e, "#contact")}
@@ -151,14 +167,25 @@ export function Header() {
           <div className="lg:hidden bg-primary border-t border-primary-foreground/20 animate-slide-up">
             <nav className="py-4 px-4 space-y-2">
               {navLinks.map((link) => (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  onClick={(e) => scrollToSection(e, link.href)}
-                  className="block py-2 font-heading uppercase tracking-wider hover:text-accent transition-colors"
-                >
-                  {link.name}
-                </a>
+                link.isPage ? (
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block py-2 font-heading uppercase tracking-wider hover:text-accent transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    onClick={(e) => scrollToSection(e, link.href)}
+                    className="block py-2 font-heading uppercase tracking-wider hover:text-accent transition-colors"
+                  >
+                    {link.name}
+                  </a>
+                )
               ))}
 
               <a href="tel:4057248092" className="block pt-4">
