@@ -11,7 +11,7 @@ export function Hero() {
         <img
           src={heroImage}
           alt="Beautiful residential home with new roof in Oklahoma"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover brightness-110"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/80 to-primary/60" />
       </div>
