@@ -81,8 +81,8 @@ export function ServicesSection() {
     <section className="section-padding">
       <div className="container-custom">
         <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading uppercase mb-4">
-            Our Services
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading uppercase mb-4 text-accent font-bold">
+            Next Generation Solutions
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Comprehensive roofing solutions for residential and commercial properties across Oklahoma, Kansas & Texas.
