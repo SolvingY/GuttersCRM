@@ -13,7 +13,7 @@ export function StickyCallCTA() {
           className="w-full text-xs sm:text-sm md:text-base lg:text-lg py-3 sm:py-4 px-3 sm:px-4 leading-snug whitespace-normal h-auto min-h-[48px]"
           onClick={handleCall}
         >
-          <span className="text-xl sm:text-2xl md:text-3xl">$</span> <span className="text-green-400">Save Thousands on Insurance:</span> Click to Qualify for an IR Shingle <span className="whitespace-nowrap">(Upgrade Before You Renew)!</span>
+          <span className="text-xl sm:text-2xl md:text-3xl">$</span> <span className="text-green-400">Save Thousands on Insurance:</span> Click to Qualify for an IR Shingle<br /><span className="whitespace-nowrap">(Upgrade Before You Renew)!</span>
         </Button>
       </div>
     </div>
