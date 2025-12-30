@@ -172,7 +172,7 @@ export function Header() {
             <a
               href="#why-choose-us"
               onClick={(e) => scrollToSection(e, "#why-choose-us")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent whitespace-nowrap"
             >
               Why Choose Us
             </a>
