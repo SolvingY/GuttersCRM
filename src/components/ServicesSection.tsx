@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Home, Building2, Droplets, Shield, ChevronDown, CheckCircle } from "lucide-react";
 import { ProcessSteps } from "./ProcessSteps";
+import { CommercialProcessSteps } from "./CommercialProcessSteps";
 import residentialImg from "@/assets/service-residential.jpg";
 import commercialImg from "@/assets/service-commercial.jpg";
 import guttersImg from "@/assets/service-gutters.jpg";
@@ -150,8 +151,11 @@ export function ServicesSection() {
                     ))}
                   </div>
                   
-                  {/* Show Process Steps only for Residential Roofing */}
+                  {/* Show Process Steps for Residential Roofing */}
                   {index === 0 && <ProcessSteps />}
+                  
+                  {/* Show Process Steps for Commercial Roofing */}
+                  {index === 1 && <CommercialProcessSteps />}
                   
                   <a
                     href="#contact"
