@@ -10,7 +10,7 @@ export function StickyCallCTA() {
       <div className="max-w-7xl mx-auto">
         <Button 
           variant="cta" 
-          className="w-full text-xs sm:text-sm md:text-base lg:text-lg py-3 sm:py-4 px-3 sm:px-4 leading-snug whitespace-normal h-auto min-h-[48px] animate-pulse-slow"
+          className="w-full text-xs sm:text-sm md:text-base lg:text-lg py-3 sm:py-4 px-3 sm:px-4 leading-snug whitespace-normal h-auto min-h-[48px]"
           onClick={handleCall}
         >
           💲💲 Save Thousands on Insurance: Click to Qualify for an IR Shingle Upgrade Before You Renew! 💲💲
