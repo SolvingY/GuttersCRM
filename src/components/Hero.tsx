@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Star, Phone } from "lucide-react";
-import heroImage from "@/assets/hero-roof.jpg";
+import heroImage from "@/assets/hero-split-building.jpg";
 import heroLogo from "@/assets/hero-logo.png";
 
 export function Hero() {
@@ -31,9 +31,9 @@ export function Hero() {
             </div>
             
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading uppercase leading-tight">
-              Oklahoma's Trusted{" "}
-              <span className="text-accent">Roofing</span>{" "}
-              Experts
+              The Last{" "}
+              <span className="text-accent">Contractor</span>{" "}
+              You Will Ever Need
             </h1>
             
             <p className="text-base sm:text-xl md:text-2xl text-primary-foreground/90 font-heading px-2">
