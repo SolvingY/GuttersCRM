@@ -42,7 +42,7 @@ export function Hero() {
 
             <div className="flex items-center justify-center gap-4 pt-2">
               <span className="text-primary-foreground/90 text-sm sm:text-base font-heading uppercase tracking-wide">
-                We Protect 1.15 Million Square Footage In Oklahoma Annually
+                We Cover <span className="text-accent font-bold">1.15 Million</span> Square Feet Of Oklahoma Homes & Businesses Every Year.
               </span>
             </div>
 
