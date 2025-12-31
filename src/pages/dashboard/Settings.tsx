@@ -46,21 +46,29 @@ export default function Settings() {
     if (!user) return;
 
     setSaving(true);
-    const { error } = await supabase
+    
+    // Update profile table
+    const { error: profileError } = await supabase
       .from('profiles')
       .update({ full_name: fullName })
       .eq('id', user.id);
 
-    if (error) {
+    // Also update display_name in ALL user_metrics records for this user
+    const { error: metricsError } = await supabase
+      .from('user_metrics')
+      .update({ display_name: fullName })
+      .eq('user_id', user.id);
+
+    if (profileError || metricsError) {
       toast({
         title: 'Error updating profile',
-        description: error.message,
+        description: profileError?.message || metricsError?.message,
         variant: 'destructive',
       });
     } else {
       toast({
         title: 'Profile updated',
-        description: 'Your profile has been saved.',
+        description: 'Your name has been updated across the system.',
       });
     }
     setSaving(false);

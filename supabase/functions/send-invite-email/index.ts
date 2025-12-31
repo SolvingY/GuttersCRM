@@ -47,8 +47,9 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
 
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Extract the JWT token and get the authenticated user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       console.error("Failed to get user:", userError?.message);
       return new Response(
