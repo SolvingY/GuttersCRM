@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle, Mail } from 'lucide-react';
+import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle, Mail, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { RANK_OPTIONS } from '@/lib/constants';
 
@@ -37,6 +38,8 @@ interface Invitation {
 export default function InviteUsers() {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Invite form state
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [salesRank, setSalesRank] = useState('SR1');
@@ -45,6 +48,14 @@ export default function InviteUsers() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  
+  // Manual user creation state
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPassword, setManualPassword] = useState('');
+  const [manualDisplayName, setManualDisplayName] = useState('');
+  const [manualSalesRank, setManualSalesRank] = useState('SR1');
+  const [manualYearlyGoal, setManualYearlyGoal] = useState('');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
     fetchInvitations();
@@ -135,6 +146,71 @@ export default function InviteUsers() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualEmail.trim() || !manualPassword.trim()) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(manualEmail.trim())) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (manualPassword.length < 6) {
+      toast({
+        title: 'Password Too Short',
+        description: 'Password must be at least 6 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreatingUser(true);
+    try {
+      const response = await supabase.functions.invoke('create-user', {
+        body: {
+          email: manualEmail.trim().toLowerCase(),
+          password: manualPassword,
+          displayName: manualDisplayName.trim() || null,
+          salesRank: manualSalesRank,
+          yearlyGoal: manualYearlyGoal ? parseFloat(manualYearlyGoal) : 0,
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      if (!data.success) throw new Error(data.error || 'Failed to create user');
+
+      toast({
+        title: 'User Created',
+        description: `Account created for ${manualEmail}. They can now log in with the password you set.`,
+      });
+      
+      // Reset form
+      setManualEmail('');
+      setManualPassword('');
+      setManualDisplayName('');
+      setManualSalesRank('SR1');
+      setManualYearlyGoal('');
+    } catch (error: unknown) {
+      console.error('Error creating user:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -255,162 +331,270 @@ export default function InviteUsers() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Invite Users</h1>
-        <p className="text-muted-foreground">Invite new team members to join the dashboard</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center sm:text-left">
+        <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Manage Users</h1>
+        <p className="text-sm text-muted-foreground">Invite or create new team members</p>
       </div>
 
-      {/* Invite Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Send Invitation</CardTitle>
-          <CardDescription>
-            Enter an email address and set initial parameters for the new team member.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleInvite} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name (optional)</Label>
-                <Input
-                  id="displayName"
-                  type="text"
-                  placeholder="Enter display name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="salesRank">Starting Rank</Label>
-                <Select value={salesRank} onValueChange={setSalesRank} disabled={isSubmitting}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select rank" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RANK_OPTIONS.map((rank) => (
-                      <SelectItem key={rank} value={rank}>
-                        {rank}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="yearlyGoal">Yearly Goal (optional)</Label>
-                <Input
-                  id="yearlyGoal"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  placeholder="e.g., 500000"
-                  value={yearlyGoal}
-                  onChange={(e) => setYearlyGoal(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-            <Button type="submit" disabled={isSubmitting || !email.trim()}>
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Invite
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="invite" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="invite" className="text-xs sm:text-sm">
+            <Send className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Send</span> Invite
+          </TabsTrigger>
+          <TabsTrigger value="create" className="text-xs sm:text-sm">
+            <UserPlus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Create</span> User
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Invitations List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invitations</CardTitle>
-          <CardDescription>
-            Manage pending and used invitations
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {invitations.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No invitations yet. Send your first invitation above.
-            </p>
-          ) : (
-            <div className="divide-y divide-border">
-              {invitations.map((invitation) => (
-                <div key={invitation.id} className="py-4 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{invitation.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Code: <span className="font-mono">{invitation.invite_code}</span>
-                      {' • '}
-                      Rank: {invitation.preset_sales_rank || 'SR1'}
-                      {invitation.preset_yearly_goal ? ` • Goal: ${formatCurrency(invitation.preset_yearly_goal)}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Created {format(new Date(invitation.created_at), 'MMM d, yyyy')}
-                    </p>
+        <TabsContent value="invite" className="space-y-4 sm:space-y-6 mt-4">
+          {/* Invite Form */}
+          <Card>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">Send Invitation</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                User will receive an invite link to create their own account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleInvite} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm">Email Address *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isSubmitting}
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(invitation)}
-                    {!invitation.is_used && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => sendInviteEmail(invitation)}
-                          disabled={sendingEmailId === invitation.id}
-                          title="Send invite email"
-                        >
-                          {sendingEmailId === invitation.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Mail className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => copyInviteLink(invitation)}
-                          title="Copy invite link"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteInvitation(invitation.id)}
-                          title="Delete invitation"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName" className="text-sm">Display Name (optional)</Label>
+                    <Input
+                      id="displayName"
+                      type="text"
+                      placeholder="Enter display name"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      disabled={isSubmitting}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="salesRank" className="text-sm">Starting Rank</Label>
+                    <Select value={salesRank} onValueChange={setSalesRank} disabled={isSubmitting}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select rank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RANK_OPTIONS.map((rank) => (
+                          <SelectItem key={rank} value={rank}>
+                            {rank}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="yearlyGoal" className="text-sm">Yearly Goal (optional)</Label>
+                    <Input
+                      id="yearlyGoal"
+                      type="number"
+                      min="0"
+                      step="1000"
+                      placeholder="e.g., 500000"
+                      value={yearlyGoal}
+                      onChange={(e) => setYearlyGoal(e.target.value)}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" disabled={isSubmitting || !email.trim()} className="w-full sm:w-auto">
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Invite
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Invitations List */}
+          <Card>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">Invitations</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Manage pending and used invitations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {invitations.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8 text-sm">
+                  No invitations yet. Send your first invitation above.
+                </p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {invitations.map((invitation) => (
+                    <div key={invitation.id} className="py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate text-sm">{invitation.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Code: <span className="font-mono">{invitation.invite_code}</span>
+                          {' • '}
+                          Rank: {invitation.preset_sales_rank || 'SR1'}
+                          {invitation.preset_yearly_goal ? ` • Goal: ${formatCurrency(invitation.preset_yearly_goal)}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Created {format(new Date(invitation.created_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getStatusBadge(invitation)}
+                        {!invitation.is_used && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => sendInviteEmail(invitation)}
+                              disabled={sendingEmailId === invitation.id}
+                              title="Send invite email"
+                            >
+                              {sendingEmailId === invitation.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Mail className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => copyInviteLink(invitation)}
+                              title="Copy invite link"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteInvitation(invitation.id)}
+                              title="Delete invitation"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="create" className="mt-4">
+          {/* Manual User Creation Form */}
+          <Card>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">Create User Account</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Directly create an account with a password. User can log in immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="manualEmail" className="text-sm">Email Address *</Label>
+                    <Input
+                      id="manualEmail"
+                      type="email"
+                      placeholder="Enter email address"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      disabled={isCreatingUser}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="manualPassword" className="text-sm">Password *</Label>
+                    <Input
+                      id="manualPassword"
+                      type="password"
+                      placeholder="Min 6 characters"
+                      value={manualPassword}
+                      onChange={(e) => setManualPassword(e.target.value)}
+                      disabled={isCreatingUser}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="manualDisplayName" className="text-sm">Display Name (optional)</Label>
+                    <Input
+                      id="manualDisplayName"
+                      type="text"
+                      placeholder="Enter display name"
+                      value={manualDisplayName}
+                      onChange={(e) => setManualDisplayName(e.target.value)}
+                      disabled={isCreatingUser}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="manualSalesRank" className="text-sm">Starting Rank</Label>
+                    <Select value={manualSalesRank} onValueChange={setManualSalesRank} disabled={isCreatingUser}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select rank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RANK_OPTIONS.map((rank) => (
+                          <SelectItem key={rank} value={rank}>
+                            {rank}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="manualYearlyGoal" className="text-sm">Yearly Goal (optional)</Label>
+                    <Input
+                      id="manualYearlyGoal"
+                      type="number"
+                      min="0"
+                      step="1000"
+                      placeholder="e.g., 500000"
+                      value={manualYearlyGoal}
+                      onChange={(e) => setManualYearlyGoal(e.target.value)}
+                      disabled={isCreatingUser}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" disabled={isCreatingUser || !manualEmail.trim() || !manualPassword.trim()} className="w-full sm:w-auto">
+                  {isCreatingUser ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Create User
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

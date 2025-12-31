@@ -9,8 +9,10 @@ export default function DashboardLayout() {
       <DashboardHeader />
       <div className="flex flex-1">
         <DashboardSidebar />
-        <main className="flex-1 p-6 overflow-auto">
-          <Outlet />
+        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
+          <div className="w-full max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
       <GoalSettingModal />

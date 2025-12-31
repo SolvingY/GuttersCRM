@@ -366,11 +366,11 @@ export default function Contests() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-heading text-foreground">Contests</h2>
-          <p className="text-muted-foreground">Compete for prizes and recognition</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="text-center sm:text-left">
+          <h2 className="text-xl sm:text-2xl font-heading text-foreground">Contests</h2>
+          <p className="text-sm text-muted-foreground">Compete for prizes and recognition</p>
         </div>
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -682,12 +682,12 @@ export default function Contests() {
               {leaders[activeContest.id] && leaders[activeContest.id].length > 0 && (
                 <div className="w-full lg:w-auto">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3 text-center">Leaderboard</p>
-                  <div className="flex items-end justify-center gap-2">
-                    {/* 2nd Place */}
+                  <div className="flex items-end justify-center gap-2 sm:gap-3">
+                    {/* 2nd Place - Medium Height */}
                     {leaders[activeContest.id][1] && (
                       <div className="flex flex-col items-center">
-                        <span className="text-2xl">🥈</span>
-                        <div className="bg-muted/70 rounded-lg p-3 w-24 text-center">
+                        <span className="text-xl sm:text-2xl">🥈</span>
+                        <div className="bg-muted/70 rounded-lg p-2 sm:p-3 w-20 sm:w-24 text-center h-28 sm:h-32 flex flex-col justify-start pt-3">
                           <p className="text-xs font-medium text-foreground truncate">{leaders[activeContest.id][1].name}</p>
                           <p className="text-xs text-muted-foreground">
                             {activeContest.metric_type === 'sales' 
@@ -711,14 +711,14 @@ export default function Contests() {
                       </div>
                     )}
                     
-                    {/* 1st Place */}
+                    {/* 1st Place - Tallest Podium */}
                     {leaders[activeContest.id][0] && (
-                      <div className="flex flex-col items-center -mt-4">
-                        <Crown className="h-6 w-6 text-yellow-500 mb-1" />
-                        <span className="text-3xl">🥇</span>
-                        <div className="bg-accent/20 border border-accent/30 rounded-lg p-3 w-28 text-center">
-                          <p className="text-sm font-semibold text-foreground truncate">{leaders[activeContest.id][0].name}</p>
-                          <p className="text-sm text-accent font-bold">
+                      <div className="flex flex-col items-center">
+                        <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 mb-1" />
+                        <span className="text-2xl sm:text-3xl">🥇</span>
+                        <div className="bg-accent/20 border border-accent/30 rounded-lg p-2 sm:p-3 w-24 sm:w-28 text-center h-36 sm:h-44 flex flex-col justify-start pt-3">
+                          <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{leaders[activeContest.id][0].name}</p>
+                          <p className="text-xs sm:text-sm text-accent font-bold">
                             {activeContest.metric_type === 'sales' 
                               ? `$${leaders[activeContest.id][0].value.toLocaleString()}`
                               : leaders[activeContest.id][0].value.toLocaleString()
@@ -732,11 +732,11 @@ export default function Contests() {
                       </div>
                     )}
                     
-                    {/* 3rd Place */}
+                    {/* 3rd Place - Shortest Podium */}
                     {leaders[activeContest.id][2] && (
                       <div className="flex flex-col items-center">
-                        <span className="text-2xl">🥉</span>
-                        <div className="bg-muted/70 rounded-lg p-3 w-24 text-center">
+                        <span className="text-xl sm:text-2xl">🥉</span>
+                        <div className="bg-muted/70 rounded-lg p-2 sm:p-3 w-20 sm:w-24 text-center h-24 sm:h-28 flex flex-col justify-start pt-3">
                           <p className="text-xs font-medium text-foreground truncate">{leaders[activeContest.id][2].name}</p>
                           <p className="text-xs text-muted-foreground">
                             {activeContest.metric_type === 'sales' 
