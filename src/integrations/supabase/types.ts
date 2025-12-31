@@ -20,6 +20,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           end_date: string
+          icon: string | null
           id: string
           is_active: boolean | null
           metric_type: string
@@ -28,12 +29,16 @@ export type Database = {
           start_date: string
           title: string
           updated_at: string | null
+          winner_display_name: string | null
+          winner_user_id: string | null
+          winner_value: number | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           end_date: string
+          icon?: string | null
           id?: string
           is_active?: boolean | null
           metric_type?: string
@@ -42,12 +47,16 @@ export type Database = {
           start_date: string
           title: string
           updated_at?: string | null
+          winner_display_name?: string | null
+          winner_user_id?: string | null
+          winner_value?: number | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           end_date?: string
+          icon?: string | null
           id?: string
           is_active?: boolean | null
           metric_type?: string
@@ -56,6 +65,9 @@ export type Database = {
           start_date?: string
           title?: string
           updated_at?: string | null
+          winner_display_name?: string | null
+          winner_user_id?: string | null
+          winner_value?: number | null
         }
         Relationships: []
       }
