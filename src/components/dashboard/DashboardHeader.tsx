@@ -1,4 +1,4 @@
-import { KeyRound, LogOut } from 'lucide-react';
+import { KeyRound, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
-export function DashboardHeader() {
+interface DashboardHeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,8 +34,18 @@ export function DashboardHeader() {
 
   return (
     <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
-      <div className="flex items-center gap-2">
-        <h1 className="text-lg font-heading text-foreground">Next Gen Dashboard</h1>
+      <div className="flex items-center gap-3">
+        {/* Mobile hamburger menu */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 md:hidden text-foreground"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Open menu</span>
+        </Button>
+        <h1 className="text-base sm:text-lg font-heading text-foreground">Next Gen Dashboard</h1>
       </div>
       
       <div className="flex items-center">
