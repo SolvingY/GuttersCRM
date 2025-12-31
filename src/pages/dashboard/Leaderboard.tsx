@@ -121,10 +121,10 @@ export default function Leaderboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-heading text-foreground">Leaderboard</h2>
-        <p className="text-muted-foreground">See how you rank against the team</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center sm:text-left">
+        <h2 className="text-xl sm:text-2xl font-heading text-foreground">Leaderboard</h2>
+        <p className="text-sm text-muted-foreground">See how you rank against the team</p>
       </div>
 
       <LeaderboardTable entries={entries} currentUserId={user?.id} />
