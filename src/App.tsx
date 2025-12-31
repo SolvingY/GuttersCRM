@@ -10,6 +10,7 @@ import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import MyStats from "./pages/dashboard/MyStats";
 import Leaderboard from "./pages/dashboard/Leaderboard";
 import AdminOverview from "./pages/dashboard/AdminOverview";
+import InviteUsers from "./pages/dashboard/InviteUsers";
 import Settings from "./pages/dashboard/Settings";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -43,6 +44,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminOverview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="invites"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <InviteUsers />
                 </ProtectedRoute>
               }
             />

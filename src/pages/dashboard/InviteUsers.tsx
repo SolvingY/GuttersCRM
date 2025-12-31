@@ -1,0 +1,286 @@
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { format } from 'date-fns';
+
+interface Invitation {
+  id: string;
+  email: string;
+  invite_code: string;
+  created_at: string;
+  expires_at: string;
+  used_at: string | null;
+  is_used: boolean;
+}
+
+export default function InviteUsers() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchInvitations();
+  }, []);
+
+  const fetchInvitations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setInvitations(data || []);
+    } catch (error: any) {
+      console.error('Error fetching invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load invitations',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateInviteCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !user) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const inviteCode = generateInviteCode();
+      
+      const { error } = await supabase
+        .from('invitations')
+        .insert({
+          email: email.trim().toLowerCase(),
+          invite_code: inviteCode,
+          invited_by: user.id,
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('An invitation for this email already exists');
+        }
+        throw error;
+      }
+
+      toast({
+        title: 'Invitation Created',
+        description: `Invitation sent to ${email}`,
+      });
+      setEmail('');
+      fetchInvitations();
+    } catch (error: any) {
+      console.error('Error creating invitation:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create invitation',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const copyInviteLink = (invitation: Invitation) => {
+    const baseUrl = window.location.origin;
+    const inviteLink = `${baseUrl}/auth?invite=${invitation.invite_code}&email=${encodeURIComponent(invitation.email)}`;
+    navigator.clipboard.writeText(inviteLink);
+    toast({
+      title: 'Link Copied',
+      description: 'Invite link copied to clipboard',
+    });
+  };
+
+  const deleteInvitation = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('invitations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Invitation Deleted',
+        description: 'The invitation has been revoked',
+      });
+      fetchInvitations();
+    } catch (error: any) {
+      console.error('Error deleting invitation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete invitation',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getStatusBadge = (invitation: Invitation) => {
+    if (invitation.is_used) {
+      return (
+        <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Used
+        </Badge>
+      );
+    }
+    
+    const isExpired = new Date(invitation.expires_at) < new Date();
+    if (isExpired) {
+      return (
+        <Badge variant="secondary" className="bg-red-100 text-red-800">
+          <XCircle className="w-3 h-3 mr-1" />
+          Expired
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+        <Clock className="w-3 h-3 mr-1" />
+        Pending
+      </Badge>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-heading font-bold text-foreground">Invite Users</h1>
+        <p className="text-muted-foreground">Invite new team members to join the dashboard</p>
+      </div>
+
+      {/* Invite Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Send Invitation</CardTitle>
+          <CardDescription>
+            Enter an email address to send an invitation. The recipient will receive a unique code to sign up.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleInvite} className="flex gap-4">
+            <div className="flex-1">
+              <Label htmlFor="email" className="sr-only">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+            <Button type="submit" disabled={isSubmitting || !email.trim()}>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Invite
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Invitations List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Invitations</CardTitle>
+          <CardDescription>
+            Manage pending and used invitations
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invitations.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No invitations yet. Send your first invitation above.
+            </p>
+          ) : (
+            <div className="divide-y divide-border">
+              {invitations.map((invitation) => (
+                <div key={invitation.id} className="py-4 flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">{invitation.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Code: <span className="font-mono">{invitation.invite_code}</span>
+                      {' • '}
+                      Created {format(new Date(invitation.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(invitation)}
+                    {!invitation.is_used && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => copyInviteLink(invitation)}
+                          title="Copy invite link"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteInvitation(invitation.id)}
+                          title="Delete invitation"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
