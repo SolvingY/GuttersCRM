@@ -23,6 +23,9 @@ export type Database = {
           invite_code: string
           invited_by: string | null
           is_used: boolean
+          preset_display_name: string | null
+          preset_sales_rank: string | null
+          preset_yearly_goal: number | null
           used_at: string | null
         }
         Insert: {
@@ -33,6 +36,9 @@ export type Database = {
           invite_code: string
           invited_by?: string | null
           is_used?: boolean
+          preset_display_name?: string | null
+          preset_sales_rank?: string | null
+          preset_yearly_goal?: number | null
           used_at?: string | null
         }
         Update: {
@@ -43,6 +49,9 @@ export type Database = {
           invite_code?: string
           invited_by?: string | null
           is_used?: boolean
+          preset_display_name?: string | null
+          preset_sales_rank?: string | null
+          preset_yearly_goal?: number | null
           used_at?: string | null
         }
         Relationships: []
@@ -97,6 +106,7 @@ export type Database = {
           closed_deals: number | null
           created_at: string
           display_name: string | null
+          earnings_ytd: number | null
           id: string
           leads: number | null
           metric_date: string
@@ -111,6 +121,7 @@ export type Database = {
           closed_deals?: number | null
           created_at?: string
           display_name?: string | null
+          earnings_ytd?: number | null
           id?: string
           leads?: number | null
           metric_date?: string
@@ -125,6 +136,7 @@ export type Database = {
           closed_deals?: number | null
           created_at?: string
           display_name?: string | null
+          earnings_ytd?: number | null
           id?: string
           leads?: number | null
           metric_date?: string
