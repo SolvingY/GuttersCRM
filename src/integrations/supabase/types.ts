@@ -183,7 +183,7 @@ export type Database = {
           sales: number | null
           sales_rank: string | null
           updated_at: string
-          user_id: string | null
+          user_id: string
           yearly_goal: number | null
         }
         Insert: {
@@ -198,7 +198,7 @@ export type Database = {
           sales?: number | null
           sales_rank?: string | null
           updated_at?: string
-          user_id?: string | null
+          user_id: string
           yearly_goal?: number | null
         }
         Update: {
@@ -213,7 +213,7 @@ export type Database = {
           sales?: number | null
           sales_rank?: string | null
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
           yearly_goal?: number | null
         }
         Relationships: []
