@@ -23,6 +23,10 @@ interface Contest {
   description: string | null;
   prize_description: string;
   prize_value: number;
+  prize_2nd_value: number | null;
+  prize_2nd_description: string | null;
+  prize_3rd_value: number | null;
+  prize_3rd_description: string | null;
   start_date: string;
   end_date: string;
   metric_type: string;
@@ -55,6 +59,10 @@ export default function Contests() {
     description: '',
     prize_description: '',
     prize_value: '',
+    prize_2nd_value: '',
+    prize_2nd_description: '',
+    prize_3rd_value: '',
+    prize_3rd_description: '',
     start_date: undefined as Date | undefined,
     start_time: '09:00',
     end_date: undefined as Date | undefined,
@@ -152,6 +160,10 @@ export default function Contests() {
       description: '',
       prize_description: '',
       prize_value: '',
+      prize_2nd_value: '',
+      prize_2nd_description: '',
+      prize_3rd_value: '',
+      prize_3rd_description: '',
       start_date: undefined,
       start_time: '09:00',
       end_date: undefined,
@@ -171,6 +183,10 @@ export default function Contests() {
       description: contest.description || '',
       prize_description: contest.prize_description,
       prize_value: contest.prize_value.toString(),
+      prize_2nd_value: (contest.prize_2nd_value || '').toString(),
+      prize_2nd_description: contest.prize_2nd_description || '',
+      prize_3rd_value: (contest.prize_3rd_value || '').toString(),
+      prize_3rd_description: contest.prize_3rd_description || '',
       start_date: startDate,
       start_time: format(startDate, 'HH:mm'),
       end_date: endDate,
@@ -203,6 +219,10 @@ export default function Contests() {
       description: formData.description || null,
       prize_description: formData.prize_description,
       prize_value: parseFloat(formData.prize_value) || 0,
+      prize_2nd_value: parseFloat(formData.prize_2nd_value) || 0,
+      prize_2nd_description: formData.prize_2nd_description || null,
+      prize_3rd_value: parseFloat(formData.prize_3rd_value) || 0,
+      prize_3rd_description: formData.prize_3rd_description || null,
       start_date: startDateTime.toISOString(),
       end_date: endDateTime.toISOString(),
       metric_type: formData.metric_type,
@@ -404,24 +424,83 @@ export default function Contests() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="prize_description">Prize Description</Label>
-                  <Input
-                    id="prize_description"
-                    value={formData.prize_description}
-                    onChange={(e) => setFormData({ ...formData, prize_description: e.target.value })}
-                    placeholder="e.g., $500 Gift Card"
-                    required
-                  />
+                {/* 1st Place Prize */}
+                <div className="space-y-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">🥇</span>
+                    <Label className="font-semibold">1st Place Prize</Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="prize_description">Description</Label>
+                    <Input
+                      id="prize_description"
+                      value={formData.prize_description}
+                      onChange={(e) => setFormData({ ...formData, prize_description: e.target.value })}
+                      placeholder="e.g., $500 Gift Card"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prize_value">Value ($)</Label>
+                    <Input
+                      id="prize_value"
+                      type="number"
+                      value={formData.prize_value}
+                      onChange={(e) => setFormData({ ...formData, prize_value: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="prize_value">Prize Value ($)</Label>
-                  <Input
-                    id="prize_value"
-                    type="number"
-                    value={formData.prize_value}
-                    onChange={(e) => setFormData({ ...formData, prize_value: e.target.value })}
-                  />
+
+                {/* 2nd Place Prize */}
+                <div className="space-y-2 p-3 bg-gray-400/10 rounded-lg border border-gray-400/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">🥈</span>
+                    <Label className="font-semibold">2nd Place Prize</Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="prize_2nd_description">Description</Label>
+                    <Input
+                      id="prize_2nd_description"
+                      value={formData.prize_2nd_description}
+                      onChange={(e) => setFormData({ ...formData, prize_2nd_description: e.target.value })}
+                      placeholder="e.g., $250 Gift Card"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prize_2nd_value">Value ($)</Label>
+                    <Input
+                      id="prize_2nd_value"
+                      type="number"
+                      value={formData.prize_2nd_value}
+                      onChange={(e) => setFormData({ ...formData, prize_2nd_value: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* 3rd Place Prize */}
+                <div className="space-y-2 p-3 bg-amber-600/10 rounded-lg border border-amber-600/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">🥉</span>
+                    <Label className="font-semibold">3rd Place Prize</Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="prize_3rd_description">Description</Label>
+                    <Input
+                      id="prize_3rd_description"
+                      value={formData.prize_3rd_description}
+                      onChange={(e) => setFormData({ ...formData, prize_3rd_description: e.target.value })}
+                      placeholder="e.g., $100 Gift Card"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prize_3rd_value">Value ($)</Label>
+                    <Input
+                      id="prize_3rd_value"
+                      type="number"
+                      value={formData.prize_3rd_value}
+                      onChange={(e) => setFormData({ ...formData, prize_3rd_value: e.target.value })}
+                    />
+                  </div>
                 </div>
                 
                 {/* Date Pickers */}
@@ -557,14 +636,27 @@ export default function Contests() {
                   {activeContest.description && (
                     <p className="text-muted-foreground mb-3">{activeContest.description}</p>
                   )}
-                  <div className="flex items-center gap-6 text-sm mb-4">
+                  <div className="flex flex-wrap items-center gap-3 text-sm mb-4">
                     <div className="flex items-center gap-2">
                       <Gift className="h-4 w-4 text-accent" />
                       <span className="font-semibold text-foreground">{activeContest.prize_description}</span>
                     </div>
                     {activeContest.prize_value > 0 && (
-                      <div className="flex items-center gap-1 bg-green-500/20 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
-                        <span className="font-bold">1st Place Prize: ${activeContest.prize_value.toLocaleString()}</span>
+                      <div className="flex items-center gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-1 rounded-full text-xs">
+                        <span className="text-lg">🥇</span>
+                        <span className="font-bold">${activeContest.prize_value.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {activeContest.prize_2nd_value && activeContest.prize_2nd_value > 0 && (
+                      <div className="flex items-center gap-1 bg-gray-400/20 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full text-xs">
+                        <span className="text-lg">🥈</span>
+                        <span className="font-bold">${activeContest.prize_2nd_value.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {activeContest.prize_3rd_value && activeContest.prize_3rd_value > 0 && (
+                      <div className="flex items-center gap-1 bg-amber-600/20 text-amber-700 dark:text-amber-400 px-2 py-1 rounded-full text-xs">
+                        <span className="text-lg">🥉</span>
+                        <span className="font-bold">${activeContest.prize_3rd_value.toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -612,6 +704,9 @@ export default function Contests() {
                             </p>
                           )}
                           <p className="text-xs text-gray-500 font-semibold mt-1">+50 pts</p>
+                          {activeContest.prize_2nd_value && activeContest.prize_2nd_value > 0 && (
+                            <p className="text-xs text-green-600 font-medium mt-1">${activeContest.prize_2nd_value.toLocaleString()}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -630,6 +725,9 @@ export default function Contests() {
                             }
                           </p>
                           <p className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold mt-1">+100 pts</p>
+                          {activeContest.prize_value > 0 && (
+                            <p className="text-xs text-green-600 font-medium mt-1">${activeContest.prize_value.toLocaleString()}</p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -655,6 +753,9 @@ export default function Contests() {
                             </p>
                           )}
                           <p className="text-xs text-amber-600 font-semibold mt-1">+25 pts</p>
+                          {activeContest.prize_3rd_value && activeContest.prize_3rd_value > 0 && (
+                            <p className="text-xs text-green-600 font-medium mt-1">${activeContest.prize_3rd_value.toLocaleString()}</p>
+                          )}
                         </div>
                       </div>
                     )}
