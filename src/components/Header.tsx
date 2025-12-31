@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin, KeyRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logo from "@/assets/logo.jpg";
 
 // Custom TikTok icon since Lucide doesn't have one
@@ -185,14 +192,32 @@ export function Header() {
             </a>
           </nav>
 
-          {/* CTA Button */}
-          <div className="flex items-center gap-4">
+          {/* CTA Button + Dashboard Key */}
+          <div className="flex items-center gap-2 md:gap-4">
             <a href="tel:4057248092" className="hidden md:flex">
               <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1">
                 <Phone className="w-4 h-4" />
                 <span>(405) 724-8092</span>
               </Button>
             </a>
+
+            {/* Dashboard Key Icon Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-accent hover:text-accent hover:bg-accent/10">
+                  <KeyRound className="h-5 w-5" />
+                  <span className="sr-only">Dashboard</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="cursor-pointer">
+                    <KeyRound className="h-4 w-4 mr-2 text-accent" />
+                    Team Dashboard
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             {/* Mobile Menu Button */}
             <button
@@ -219,6 +244,15 @@ export function Header() {
                   {link.name}
                 </a>
               ))}
+
+              <Link
+                to="/dashboard"
+                className="block py-2 font-heading uppercase tracking-wider text-accent hover:text-accent/80 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <KeyRound className="inline w-4 h-4 mr-2" />
+                Team Dashboard
+              </Link>
 
               <a href="tel:4057248092" className="block pt-4">
                 <Button variant="cta" className="w-full gap-2">
