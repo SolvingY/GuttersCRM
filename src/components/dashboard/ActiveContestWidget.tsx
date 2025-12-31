@@ -4,8 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, Clock, Flame } from 'lucide-react';
-import { differenceInDays, differenceInHours, isPast, isFuture } from 'date-fns';
+import { Trophy, TrendingUp, Clock, Flame, Gift, Star } from 'lucide-react';
+import { differenceInDays, differenceInHours, isPast } from 'date-fns';
 
 interface Contest {
   id: string;
@@ -15,6 +15,8 @@ interface Contest {
   end_date: string;
   metric_type: string;
   is_active: boolean;
+  prize_value: number;
+  prize_description: string;
 }
 
 interface UserRanking {
@@ -26,14 +28,55 @@ interface UserRanking {
   leaderValue: number;
 }
 
+// Contest point system
+const CONTEST_POINTS = {
+  1: 100,
+  2: 50,
+  3: 25,
+};
+
 export function ActiveContestWidget() {
   const { user } = useAuth();
   const [contests, setContests] = useState<Contest[]>([]);
   const [rankings, setRankings] = useState<Record<string, UserRanking>>({});
   const [loading, setLoading] = useState(true);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
+
+  // Fetch user's display name from profile or user_metrics
+  const fetchUserDisplayName = async (userId: string) => {
+    // First try profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+
+    if (profileData?.full_name) {
+      setUserDisplayName(profileData.full_name);
+      return profileData.full_name;
+    }
+
+    // Fallback to user_metrics display_name
+    const { data: metricsData } = await supabase
+      .from('user_metrics')
+      .select('display_name')
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+
+    if (metricsData?.display_name) {
+      setUserDisplayName(metricsData.display_name);
+      return metricsData.display_name;
+    }
+
+    return null;
+  };
 
   const fetchActiveContests = async () => {
     if (!user) return;
+    
+    // Get user's display name first
+    const displayName = await fetchUserDisplayName(user.id);
     
     // Get active contests
     const { data: contestsData } = await supabase
@@ -58,7 +101,7 @@ export function ActiveContestWidget() {
 
     // Get user rankings for each contest
     for (const contest of activeContests) {
-      await fetchUserRanking(contest, user.id);
+      await fetchUserRanking(contest, user.id, displayName);
     }
 
     setLoading(false);
@@ -87,7 +130,7 @@ export function ActiveContestWidget() {
     };
   }, [user]);
 
-  const fetchUserRanking = async (contest: Contest, userId: string) => {
+  const fetchUserRanking = async (contest: Contest, userId: string, displayName: string | null) => {
     const { data: metricsData } = await supabase
       .from('user_metrics')
       .select('user_id, display_name, sales, leads, closed_deals')
@@ -95,11 +138,11 @@ export function ActiveContestWidget() {
 
     if (!metricsData || metricsData.length === 0) return;
 
-    // Get latest per user
-    const latestByUser = new Map<string, { name: string; value: number }>();
+    // Get latest per user - use display_name as unique key for ALL users (not just those with user_id)
+    const latestByDisplayName = new Map<string, { userId: string | null; name: string; value: number }>();
     for (const item of metricsData) {
-      const key = item.user_id || '';
-      if (!latestByUser.has(key) && key) {
+      const key = item.display_name || 'Unknown';
+      if (!latestByDisplayName.has(key)) {
         let value = 0;
         if (contest.metric_type === 'sales') {
           value = Number(item.sales) || 0;
@@ -108,18 +151,27 @@ export function ActiveContestWidget() {
         } else {
           value = Number(item.closed_deals) || 0;
         }
-        latestByUser.set(key, {
+        latestByDisplayName.set(key, {
+          userId: item.user_id,
           name: item.display_name || 'Unknown',
           value,
         });
       }
     }
 
-    const sorted = Array.from(latestByUser.entries())
-      .map(([id, data]) => ({ userId: id, ...data }))
+    const sorted = Array.from(latestByDisplayName.entries())
+      .map(([key, data]) => ({ displayNameKey: key, ...data }))
       .sort((a, b) => b.value - a.value);
 
-    const userIndex = sorted.findIndex(s => s.userId === userId);
+    // Find user by display_name first (more reliable), then fallback to user_id
+    let userIndex = -1;
+    if (displayName) {
+      userIndex = sorted.findIndex(s => s.name.toLowerCase() === displayName.toLowerCase());
+    }
+    if (userIndex === -1) {
+      userIndex = sorted.findIndex(s => s.userId === userId);
+    }
+
     const userEntry = sorted[userIndex];
     const leader = sorted[0];
 
@@ -189,6 +241,17 @@ export function ActiveContestWidget() {
     return value.toLocaleString();
   };
 
+  const getPrizeExamples = (prizeValue: number) => {
+    if (prizeValue >= 1000) return ["🎮 PS5 + games", "✈️ Weekend trip", "🍽️ Dinner for 4"];
+    if (prizeValue >= 500) return ["🛍️ Shopping spree", "🎫 Concert tickets", "💆 Spa day"];
+    if (prizeValue >= 100) return ["🍕 Pizza party", "🎬 Movie night", "☕ Coffee month"];
+    return ["🍺 Drinks on you", "🎁 Treat yourself", "🎉 Celebrate!"];
+  };
+
+  const getContestPoints = (rank: number) => {
+    return CONTEST_POINTS[rank as keyof typeof CONTEST_POINTS] || 0;
+  };
+
   if (loading || contests.length === 0) {
     return null;
   }
@@ -204,6 +267,8 @@ export function ActiveContestWidget() {
       <CardContent className="space-y-4">
         {contests.map((contest) => {
           const ranking = rankings[contest.id];
+          const prizeExamples = getPrizeExamples(contest.prize_value || 0);
+          const potentialPoints = ranking ? getContestPoints(ranking.rank) : 0;
           
           return (
             <div key={contest.id} className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-3">
@@ -247,6 +312,35 @@ export function ActiveContestWidget() {
                       {getMotivationalMessage(ranking.rank, ranking.gap, contest.metric_type)}
                     </p>
                   </div>
+
+                  {/* Prize and Points Section */}
+                  {contest.prize_value > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-border/30">
+                      <div className="flex items-center gap-2">
+                        <Gift className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                          Prize: ${contest.prize_value.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {prizeExamples.map((example, i) => (
+                          <span key={i} className="text-xs bg-muted/50 px-2 py-1 rounded-full text-muted-foreground">
+                            {example}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contest Points */}
+                  {potentialPoints > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-muted-foreground">
+                        {ranking.rank === 1 ? 'Holding' : 'Could earn'} <span className="font-semibold text-yellow-600 dark:text-yellow-400">+{potentialPoints} pts</span> for {ranking.rank === 1 ? '1st' : ranking.rank === 2 ? '2nd' : '3rd'} place!
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </div>

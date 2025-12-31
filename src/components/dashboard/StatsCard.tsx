@@ -10,15 +10,16 @@ interface StatsCardProps {
     isPositive: boolean;
   };
   className?: string;
+  valueClassName?: string;
 }
 
-export function StatsCard({ title, value, icon: Icon, trend, className }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, trend, className, valueClassName }: StatsCardProps) {
   return (
     <div className={cn('bg-card border border-border rounded-lg p-6', className)}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-3xl font-heading text-foreground mt-1">{value}</p>
+          <p className={cn('text-3xl font-heading mt-1', valueClassName || 'text-foreground')}>{value}</p>
           {trend && (
             <p
               className={cn(
