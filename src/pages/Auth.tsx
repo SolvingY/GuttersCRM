@@ -1,24 +1,28 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, KeyRound } from 'lucide-react';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+const inviteCodeSchema = z.string().min(1, 'Invite code is required');
 
 export default function Auth() {
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; inviteCode?: string }>({});
 
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
@@ -27,6 +31,20 @@ export default function Auth() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
+  // Pre-fill from URL params (invite link)
+  useEffect(() => {
+    const inviteParam = searchParams.get('invite');
+    const emailParam = searchParams.get('email');
+    
+    if (inviteParam) {
+      setInviteCode(inviteParam);
+      setIsLogin(false);
+    }
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     if (!loading && user) {
       navigate(from, { replace: true });
@@ -34,7 +52,7 @@ export default function Auth() {
   }, [user, loading, navigate, from]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { email?: string; password?: string; inviteCode?: string } = {};
 
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
@@ -46,8 +64,70 @@ export default function Auth() {
       newErrors.password = passwordResult.error.errors[0].message;
     }
 
+    // Require invite code for signup
+    if (!isLogin) {
+      const inviteResult = inviteCodeSchema.safeParse(inviteCode);
+      if (!inviteResult.success) {
+        newErrors.inviteCode = inviteResult.error.errors[0].message;
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateInviteCode = async (): Promise<boolean> => {
+    const { data: invitation, error } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('invite_code', inviteCode.toUpperCase())
+      .maybeSingle();
+
+    if (error || !invitation) {
+      toast({
+        title: 'Invalid invite code',
+        description: 'The invite code you entered is not valid.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (invitation.is_used) {
+      toast({
+        title: 'Invite code already used',
+        description: 'This invite code has already been used.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (new Date(invitation.expires_at) < new Date()) {
+      toast({
+        title: 'Invite code expired',
+        description: 'This invite code has expired. Please request a new one.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    // Check if email matches (if specified in invitation)
+    if (invitation.email && invitation.email.toLowerCase() !== email.toLowerCase()) {
+      toast({
+        title: 'Email mismatch',
+        description: 'Please use the email address this invitation was sent to.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const markInviteAsUsed = async () => {
+    await supabase
+      .from('invitations')
+      .update({ is_used: true, used_at: new Date().toISOString() })
+      .eq('invite_code', inviteCode.toUpperCase());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,6 +156,13 @@ export default function Auth() {
           }
         }
       } else {
+        // Validate invite code first
+        const isValidInvite = await validateInviteCode();
+        if (!isValidInvite) {
+          setIsSubmitting(false);
+          return;
+        }
+
         const { error } = await signUp(email, password, fullName);
         if (error) {
           if (error.message.includes('already registered')) {
@@ -92,6 +179,8 @@ export default function Auth() {
             });
           }
         } else {
+          // Mark invite as used after successful signup
+          await markInviteAsUsed();
           toast({
             title: 'Account created!',
             description: 'You have been signed in automatically.',
@@ -121,23 +210,47 @@ export default function Auth() {
           <CardDescription className="text-muted-foreground">
             {isLogin
               ? 'Sign in to access your performance dashboard'
-              : 'Sign up to start tracking your performance'}
+              : 'Sign up with your invite code to join the team'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Doe"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="border-input"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="inviteCode" className="text-foreground">
+                    Invite Code
+                  </Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="inviteCode"
+                      type="text"
+                      placeholder="Enter your invite code"
+                      value={inviteCode}
+                      onChange={(e) => {
+                        setInviteCode(e.target.value.toUpperCase());
+                        setErrors(prev => ({ ...prev, inviteCode: undefined }));
+                      }}
+                      className={`pl-10 uppercase ${errors.inviteCode ? 'border-destructive' : 'border-input'}`}
+                    />
+                  </div>
+                  {errors.inviteCode && (
+                    <p className="text-sm text-destructive">{errors.inviteCode}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="border-input"
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground">Email</Label>
@@ -194,7 +307,7 @@ export default function Auth() {
               className="text-sm text-muted-foreground hover:text-accent transition-colors"
             >
               {isLogin
-                ? "Don't have an account? Sign up"
+                ? "Have an invite code? Sign up"
                 : 'Already have an account? Sign in'}
             </button>
           </div>

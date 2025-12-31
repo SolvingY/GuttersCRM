@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      invitations: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invite_code: string
+          invited_by: string | null
+          is_used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invite_code: string
+          invited_by?: string | null
+          is_used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invite_code?: string
+          invited_by?: string | null
+          is_used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       leaderboard_comments: {
         Row: {
           content: string
@@ -68,8 +101,10 @@ export type Database = {
           metric_date: string
           points: number | null
           sales: number | null
+          sales_rank: string | null
           updated_at: string
           user_id: string
+          yearly_goal: number | null
         }
         Insert: {
           closed_deals?: number | null
@@ -79,8 +114,10 @@ export type Database = {
           metric_date?: string
           points?: number | null
           sales?: number | null
+          sales_rank?: string | null
           updated_at?: string
           user_id: string
+          yearly_goal?: number | null
         }
         Update: {
           closed_deals?: number | null
@@ -90,8 +127,10 @@ export type Database = {
           metric_date?: string
           points?: number | null
           sales?: number | null
+          sales_rank?: string | null
           updated_at?: string
           user_id?: string
+          yearly_goal?: number | null
         }
         Relationships: []
       }

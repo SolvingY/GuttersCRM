@@ -10,6 +10,9 @@ interface LeaderboardEntry {
   name: string;
   points: number;
   userId: string;
+  sales: number;
+  yearlyGoal: number;
+  salesRank: string;
 }
 
 export default function Leaderboard() {
@@ -19,10 +22,10 @@ export default function Leaderboard() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      // Fetch metrics
+      // Fetch metrics including the new columns
       const { data: metricsData, error: metricsError } = await supabase
         .from('user_metrics')
-        .select('user_id, points, metric_date')
+        .select('user_id, points, sales, yearly_goal, sales_rank, metric_date')
         .order('metric_date', { ascending: false });
 
       if (metricsError) {
@@ -38,10 +41,21 @@ export default function Leaderboard() {
       }
 
       // Get latest metric per user
-      const latestByUser = new Map<string, number>();
+      const latestByUser = new Map<string, {
+        points: number;
+        sales: number;
+        yearlyGoal: number;
+        salesRank: string;
+      }>();
+      
       for (const item of metricsData) {
         if (!latestByUser.has(item.user_id)) {
-          latestByUser.set(item.user_id, Number(item.points));
+          latestByUser.set(item.user_id, {
+            points: Number(item.points) || 0,
+            sales: Number(item.sales) || 0,
+            yearlyGoal: Number(item.yearly_goal) || 0,
+            salesRank: item.sales_rank || 'SR1',
+          });
         }
       }
 
@@ -54,14 +68,14 @@ export default function Leaderboard() {
 
       const profilesMap = new Map(profilesData?.map((p) => [p.id, p.full_name]) || []);
 
-      // Convert to array and sort by points
+      // Convert to array and sort by sales (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
-        .map(([userId, points]) => ({
+        .map(([userId, data]) => ({
           userId,
-          points,
+          ...data,
           name: profilesMap.get(userId) || 'Unknown User',
         }))
-        .sort((a, b) => b.points - a.points)
+        .sort((a, b) => b.sales - a.sales)
         .map((entry, index) => ({
           ...entry,
           rank: index + 1,

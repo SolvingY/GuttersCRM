@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2 } from 'lucide-react';
+import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Target } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface AggregateMetrics {
   totalSales: number;
@@ -18,6 +20,8 @@ interface UserDetail {
   points: number;
   leads: number;
   closedDeals: number;
+  yearlyGoal: number;
+  salesRank: string;
 }
 
 export default function AdminOverview() {
@@ -30,74 +34,97 @@ export default function AdminOverview() {
   });
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
+
+  const fetchAdminData = async () => {
+    // Fetch all metrics (admin has access via RLS)
+    const { data: metrics, error: metricsError } = await supabase
+      .from('user_metrics')
+      .select('user_id, sales, points, leads, closed_deals, yearly_goal, sales_rank, metric_date')
+      .order('metric_date', { ascending: false });
+
+    if (metricsError) {
+      console.error('Error fetching admin metrics:', metricsError);
+      setLoading(false);
+      return;
+    }
+
+    if (!metrics || metrics.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    // Get latest metric per user
+    const latestByUser = new Map<string, Omit<UserDetail, 'name'>>();
+    
+    for (const item of metrics) {
+      if (!latestByUser.has(item.user_id)) {
+        latestByUser.set(item.user_id, {
+          userId: item.user_id,
+          sales: Number(item.sales) || 0,
+          points: Number(item.points) || 0,
+          leads: item.leads || 0,
+          closedDeals: item.closed_deals || 0,
+          yearlyGoal: Number(item.yearly_goal) || 0,
+          salesRank: item.sales_rank || 'SR1',
+        });
+      }
+    }
+
+    // Fetch profiles for all user_ids
+    const userIds = Array.from(latestByUser.keys());
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', userIds);
+
+    const profilesMap = new Map(profilesData?.map((p) => [p.id, p.full_name]) || []);
+
+    const users: UserDetail[] = Array.from(latestByUser.entries()).map(([userId, data]) => ({
+      ...data,
+      name: profilesMap.get(userId) || 'Unknown User',
+    }));
+    
+    // Calculate aggregates
+    const totals = users.reduce(
+      (acc, user) => ({
+        totalSales: acc.totalSales + user.sales,
+        totalPoints: acc.totalPoints + user.points,
+        totalLeads: acc.totalLeads + user.leads,
+        totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
+        totalUsers: acc.totalUsers + 1,
+      }),
+      { totalSales: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0 }
+    );
+
+    setAggregates(totals);
+    setUserDetails(users.sort((a, b) => b.sales - a.sales));
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchAdminData = async () => {
-      // Fetch all metrics (admin has access via RLS)
-      const { data: metrics, error: metricsError } = await supabase
-        .from('user_metrics')
-        .select('user_id, sales, points, leads, closed_deals, metric_date')
-        .order('metric_date', { ascending: false });
-
-      if (metricsError) {
-        console.error('Error fetching admin metrics:', metricsError);
-        setLoading(false);
-        return;
-      }
-
-      if (!metrics || metrics.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      // Get latest metric per user
-      const latestByUser = new Map<string, Omit<UserDetail, 'name'>>();
-      
-      for (const item of metrics) {
-        if (!latestByUser.has(item.user_id)) {
-          latestByUser.set(item.user_id, {
-            userId: item.user_id,
-            sales: Number(item.sales),
-            points: Number(item.points),
-            leads: item.leads,
-            closedDeals: item.closed_deals,
-          });
-        }
-      }
-
-      // Fetch profiles for all user_ids
-      const userIds = Array.from(latestByUser.keys());
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', userIds);
-
-      const profilesMap = new Map(profilesData?.map((p) => [p.id, p.full_name]) || []);
-
-      const users: UserDetail[] = Array.from(latestByUser.entries()).map(([userId, data]) => ({
-        ...data,
-        name: profilesMap.get(userId) || 'Unknown User',
-      }));
-      
-      // Calculate aggregates
-      const totals = users.reduce(
-        (acc, user) => ({
-          totalSales: acc.totalSales + user.sales,
-          totalPoints: acc.totalPoints + user.points,
-          totalLeads: acc.totalLeads + user.leads,
-          totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
-          totalUsers: acc.totalUsers + 1,
-        }),
-        { totalSales: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0 }
-      );
-
-      setAggregates(totals);
-      setUserDetails(users.sort((a, b) => b.points - a.points));
-      setLoading(false);
-    };
-
     fetchAdminData();
   }, []);
+
+  const handleEditUser = (user: UserDetail) => {
+    setSelectedUser(user);
+    setEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setLoading(true);
+    fetchAdminData();
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   if (loading) {
     return (
@@ -122,7 +149,7 @@ export default function AdminOverview() {
         />
         <StatsCard
           title="Total Sales"
-          value={`$${aggregates.totalSales.toLocaleString()}`}
+          value={formatCurrency(aggregates.totalSales)}
           icon={DollarSign}
         />
         <StatsCard
@@ -151,30 +178,58 @@ export default function AdminOverview() {
             <p className="text-muted-foreground">No user data available yet.</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Sales</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Points</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Leads</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Closed Deals</th>
-              </tr>
-            </thead>
-            <tbody>
-              {userDetails.map((user) => (
-                <tr key={user.userId} className="border-t border-border">
-                  <td className="py-3 px-4 text-foreground">{user.name}</td>
-                  <td className="py-3 px-4 text-right text-foreground">${user.sales.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
-                  <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Sales</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed Deals</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {userDetails.map((user) => (
+                  <tr key={user.userId} className="border-t border-border hover:bg-muted/30 transition-colors">
+                    <td className="py-3 px-4 text-foreground font-medium">{user.name}</td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                        {user.salesRank}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.sales)}</td>
+                    <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
+                    <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
+                    <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
+                    <td className="py-3 px-4 text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditUser(user)}
+                        title="Edit metrics"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      <EditMetricsModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        user={selectedUser}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 }

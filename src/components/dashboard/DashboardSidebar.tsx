@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Trophy, Settings, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Trophy, Settings, Users, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ const navItems = [
 
 const adminItems = [
   { icon: Users, label: 'Master Overview', path: '/dashboard/admin' },
+  { icon: UserPlus, label: 'Invite Users', path: '/dashboard/invites' },
 ];
 
 export function DashboardSidebar() {
