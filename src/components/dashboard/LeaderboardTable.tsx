@@ -41,11 +41,22 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
     return (sales / goal) * 100;
   };
 
-  const getPercentageColor = (percentage: number) => {
-    if (percentage >= 75) return 'text-green-600 bg-green-100';
-    if (percentage >= 50) return 'text-yellow-600 bg-yellow-100';
-    if (percentage >= 25) return 'text-orange-600 bg-orange-100';
-    return 'text-red-600 bg-red-100';
+  // Get row background color based on percentage of goal
+  const getRowColor = (percentage: number) => {
+    if (percentage >= 100) return 'bg-emerald-500 text-white'; // Deep green for 100%+
+    if (percentage >= 75) return 'bg-green-400 text-green-950'; // Light green for 75-99%
+    if (percentage >= 50) return 'bg-yellow-300 text-yellow-950'; // Yellow for 50-74%
+    if (percentage >= 25) return 'bg-orange-400 text-orange-950'; // Orange for 25-49%
+    return 'bg-red-300 text-red-950'; // Red/Pink for below 25%
+  };
+
+  // Get percentage badge color (matches row but slightly different for contrast)
+  const getPercentageBadgeColor = (percentage: number) => {
+    if (percentage >= 100) return 'bg-emerald-700 text-white';
+    if (percentage >= 75) return 'bg-green-600 text-white';
+    if (percentage >= 50) return 'bg-yellow-600 text-white';
+    if (percentage >= 25) return 'bg-orange-600 text-white';
+    return 'bg-red-600 text-white';
   };
 
   if (entries.length === 0) {
@@ -57,31 +68,34 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
+    <div className="bg-card border border-border rounded-lg overflow-hidden shadow-lg">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-muted/50">
+          <thead className="bg-slate-800 text-white">
             <tr>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Place</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">NGR Sales Rep</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
-              <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Indiv. Rep Goals</th>
-              <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Approved Rev</th>
-              <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Amount Until Goal</th>
-              <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">% of Goal</th>
+              <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
+              <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">NGR Sales Rep</th>
+              <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Rank</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Indiv. Rep Goals</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
+            {entries.map((entry, index) => {
               const percentage = calculatePercentage(entry.sales, entry.yearlyGoal);
               const amountUntilGoal = Math.max(0, entry.yearlyGoal - entry.sales);
+              const rowColor = getRowColor(percentage);
+              const isCurrentUser = entry.userId === currentUserId;
               
               return (
                 <tr
                   key={entry.userId}
                   className={cn(
-                    'border-t border-border transition-colors',
-                    entry.userId === currentUserId && 'bg-accent/10'
+                    'border-t border-slate-200/20 transition-all',
+                    rowColor,
+                    isCurrentUser && 'ring-2 ring-inset ring-slate-900 font-bold'
                   )}
                 >
                   <td className="py-3 px-4">
@@ -90,48 +104,49 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                         <Trophy
                           className={cn(
                             'h-5 w-5',
-                            entry.rank === 1 && 'text-yellow-500',
-                            entry.rank === 2 && 'text-gray-400',
-                            entry.rank === 3 && 'text-amber-600'
+                            entry.rank === 1 && 'text-yellow-400 drop-shadow-lg',
+                            entry.rank === 2 && 'text-slate-300 drop-shadow-lg',
+                            entry.rank === 3 && 'text-amber-600 drop-shadow-lg'
                           )}
+                          fill={entry.rank === 1 ? '#facc15' : entry.rank === 2 ? '#cbd5e1' : '#d97706'}
                         />
                       ) : (
-                        <span className="w-5 text-center text-muted-foreground font-medium">{entry.rank}</span>
+                        <span className="w-5 text-center font-bold">{entry.rank}</span>
                       )}
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className={cn('text-foreground', entry.userId === currentUserId && 'font-semibold')}>
+                    <span className="font-semibold">
                       {entry.name}
-                      {entry.userId === currentUserId && (
-                        <span className="ml-2 text-xs text-accent font-medium">(You)</span>
+                      {isCurrentUser && (
+                        <span className="ml-2 text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full">(You)</span>
                       )}
                     </span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900/20 backdrop-blur-sm">
                       {entry.salesRank || 'SR1'}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="font-medium text-foreground">
+                    <span className="font-bold">
                       {formatCurrencyShort(entry.yearlyGoal)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="font-medium text-foreground">
+                    <span className="font-bold">
                       {formatCurrency(entry.sales)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="text-muted-foreground">
+                    <span className="font-medium">
                       {formatCurrency(amountUntilGoal)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className={cn(
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      getPercentageColor(percentage)
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold',
+                      getPercentageBadgeColor(percentage)
                     )}>
                       {percentage.toFixed(2)}%
                     </span>

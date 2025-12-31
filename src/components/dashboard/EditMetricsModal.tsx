@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { RANK_OPTIONS } from '@/lib/constants';
 
 interface UserMetrics {
   userId: string;
@@ -29,6 +30,7 @@ interface UserMetrics {
   yearlyGoal: number;
   salesRank: string;
   closedDeals: number;
+  earningsYtd?: number;
 }
 
 interface EditMetricsModalProps {
@@ -37,8 +39,6 @@ interface EditMetricsModalProps {
   user: UserMetrics | null;
   onSuccess: () => void;
 }
-
-const RANK_OPTIONS = ['SR1', 'SR2', 'SR3', 'SR4', 'CEO', 'GM'];
 
 export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMetricsModalProps) {
   const { toast } = useToast();
@@ -49,6 +49,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     yearlyGoal: 0,
     salesRank: 'SR1',
     closedDeals: 0,
+    earningsYtd: 0,
   });
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         yearlyGoal: user.yearlyGoal || 0,
         salesRank: user.salesRank || 'SR1',
         closedDeals: user.closedDeals || 0,
+        earningsYtd: user.earningsYtd || 0,
       });
     }
   }, [user]);
@@ -78,6 +80,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           yearly_goal: formData.yearlyGoal,
           sales_rank: formData.salesRank,
           closed_deals: formData.closedDeals,
+          earnings_ytd: formData.earningsYtd,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.userId);
@@ -135,6 +138,21 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 onChange={(e) => setFormData({ ...formData, sales: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter sales amount"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="earningsYtd" className="text-right">
+                YTD Earnings
+              </Label>
+              <Input
+                id="earningsYtd"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.earningsYtd}
+                onChange={(e) => setFormData({ ...formData, earningsYtd: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter YTD earnings"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

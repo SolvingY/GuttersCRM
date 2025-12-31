@@ -4,11 +4,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { RANK_OPTIONS } from '@/lib/constants';
 
 interface Invitation {
   id: string;
@@ -18,12 +26,18 @@ interface Invitation {
   expires_at: string;
   used_at: string | null;
   is_used: boolean;
+  preset_sales_rank?: string;
+  preset_yearly_goal?: number;
+  preset_display_name?: string;
 }
 
 export default function InviteUsers() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [salesRank, setSalesRank] = useState('SR1');
+  const [yearlyGoal, setYearlyGoal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +101,9 @@ export default function InviteUsers() {
           email: email.trim().toLowerCase(),
           invite_code: inviteCode,
           invited_by: user.id,
+          preset_sales_rank: salesRank,
+          preset_yearly_goal: yearlyGoal ? parseFloat(yearlyGoal) : 0,
+          preset_display_name: displayName.trim() || null,
         });
 
       if (error) {
@@ -98,9 +115,12 @@ export default function InviteUsers() {
 
       toast({
         title: 'Invitation Created',
-        description: `Invitation sent to ${email}`,
+        description: `Invitation sent to ${email} with rank ${salesRank}`,
       });
       setEmail('');
+      setDisplayName('');
+      setSalesRank('SR1');
+      setYearlyGoal('');
       fetchInvitations();
     } catch (error: any) {
       console.error('Error creating invitation:', error);
@@ -176,6 +196,16 @@ export default function InviteUsers() {
     );
   };
 
+  const formatCurrency = (value: number) => {
+    if (!value) return '-';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -196,21 +226,64 @@ export default function InviteUsers() {
         <CardHeader>
           <CardTitle>Send Invitation</CardTitle>
           <CardDescription>
-            Enter an email address to send an invitation. The recipient will receive a unique code to sign up.
+            Enter an email address and set initial parameters for the new team member.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleInvite} className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="email" className="sr-only">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isSubmitting}
-              />
+          <form onSubmit={handleInvite} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name (optional)</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder="Enter display name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="salesRank">Starting Rank</Label>
+                <Select value={salesRank} onValueChange={setSalesRank} disabled={isSubmitting}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select rank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RANK_OPTIONS.map((rank) => (
+                      <SelectItem key={rank} value={rank}>
+                        {rank}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="yearlyGoal">Yearly Goal (optional)</Label>
+                <Input
+                  id="yearlyGoal"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  placeholder="e.g., 500000"
+                  value={yearlyGoal}
+                  onChange={(e) => setYearlyGoal(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
             </div>
             <Button type="submit" disabled={isSubmitting || !email.trim()}>
               {isSubmitting ? (
@@ -248,6 +321,10 @@ export default function InviteUsers() {
                     <p className="text-sm text-muted-foreground">
                       Code: <span className="font-mono">{invitation.invite_code}</span>
                       {' • '}
+                      Rank: {invitation.preset_sales_rank || 'SR1'}
+                      {invitation.preset_yearly_goal ? ` • Goal: ${formatCurrency(invitation.preset_yearly_goal)}` : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Created {format(new Date(invitation.created_at), 'MMM d, yyyy')}
                     </p>
                   </div>
