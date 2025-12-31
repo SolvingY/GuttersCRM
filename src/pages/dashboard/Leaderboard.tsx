@@ -22,10 +22,10 @@ export default function Leaderboard() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      // Fetch metrics including the new columns
+      // Fetch metrics including display_name for test users
       const { data: metricsData, error: metricsError } = await supabase
         .from('user_metrics')
-        .select('user_id, points, sales, yearly_goal, sales_rank, metric_date')
+        .select('id, user_id, display_name, points, sales, yearly_goal, sales_rank, metric_date')
         .order('metric_date', { ascending: false });
 
       if (metricsError) {
@@ -40,40 +40,50 @@ export default function Leaderboard() {
         return;
       }
 
-      // Get latest metric per user
+      // Get latest metric per user (use metric id for test users without user_id)
       const latestByUser = new Map<string, {
+        metricId: string;
         points: number;
         sales: number;
         yearlyGoal: number;
         salesRank: string;
+        displayName: string | null;
       }>();
       
       for (const item of metricsData) {
-        if (!latestByUser.has(item.user_id)) {
-          latestByUser.set(item.user_id, {
+        // Use user_id if available, otherwise use metric id as key
+        const key = item.user_id || `metric_${item.id}`;
+        if (!latestByUser.has(key)) {
+          latestByUser.set(key, {
+            metricId: item.id,
             points: Number(item.points) || 0,
             sales: Number(item.sales) || 0,
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
+            displayName: item.display_name,
           });
         }
       }
 
-      // Fetch profiles for all user_ids
-      const userIds = Array.from(latestByUser.keys());
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', userIds);
+      // Fetch profiles only for real user_ids (not null)
+      const realUserIds = Array.from(latestByUser.keys()).filter(id => !id.startsWith('metric_'));
+      const { data: profilesData } = realUserIds.length > 0 
+        ? await supabase.from('profiles').select('id, full_name').in('id', realUserIds)
+        : { data: [] };
 
-      const profilesMap = new Map(profilesData?.map((p) => [p.id, p.full_name]) || []);
+      const profilesMap = new Map<string, string | null>(
+        profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
+      );
 
       // Convert to array and sort by sales (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => ({
           userId,
-          ...data,
-          name: profilesMap.get(userId) || 'Unknown User',
+          points: data.points,
+          sales: data.sales,
+          yearlyGoal: data.yearlyGoal,
+          salesRank: data.salesRank,
+          name: data.displayName || profilesMap.get(userId) || 'Unknown User',
         }))
         .sort((a, b) => b.sales - a.sales)
         .map((entry, index) => ({

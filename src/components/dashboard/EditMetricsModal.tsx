@@ -69,46 +69,20 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
 
     setIsSubmitting(true);
     try {
-      // Check if user has existing metrics for today
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existingMetric } = await supabase
+      // userId is now the metric ID, update directly
+      const { error } = await supabase
         .from('user_metrics')
-        .select('id')
-        .eq('user_id', user.userId)
-        .eq('metric_date', today)
-        .maybeSingle();
+        .update({
+          sales: formData.sales,
+          points: formData.points,
+          yearly_goal: formData.yearlyGoal,
+          sales_rank: formData.salesRank,
+          closed_deals: formData.closedDeals,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.userId);
 
-      if (existingMetric) {
-        // Update existing metric
-        const { error } = await supabase
-          .from('user_metrics')
-          .update({
-            sales: formData.sales,
-            points: formData.points,
-            yearly_goal: formData.yearlyGoal,
-            sales_rank: formData.salesRank,
-            closed_deals: formData.closedDeals,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingMetric.id);
-
-        if (error) throw error;
-      } else {
-        // Insert new metric
-        const { error } = await supabase
-          .from('user_metrics')
-          .insert({
-            user_id: user.userId,
-            sales: formData.sales,
-            points: formData.points,
-            yearly_goal: formData.yearlyGoal,
-            sales_rank: formData.salesRank,
-            closed_deals: formData.closedDeals,
-            metric_date: today,
-          });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: 'Success',
