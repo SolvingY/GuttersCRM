@@ -14,7 +14,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { RANK_OPTIONS } from '@/lib/constants';
 
@@ -41,6 +41,7 @@ export default function InviteUsers() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInvitations();
@@ -165,6 +166,44 @@ export default function InviteUsers() {
         description: 'Failed to delete invitation',
         variant: 'destructive',
       });
+    }
+  };
+
+  const sendInviteEmail = async (invitation: Invitation) => {
+    setSendingEmailId(invitation.id);
+    try {
+      const baseUrl = window.location.origin;
+      const inviteLink = `${baseUrl}/auth?invite=${invitation.invite_code}&email=${encodeURIComponent(invitation.email)}`;
+
+      const response = await supabase.functions.invoke('send-invite-email', {
+        body: {
+          email: invitation.email,
+          inviteCode: invitation.invite_code,
+          displayName: invitation.preset_display_name,
+          salesRank: invitation.preset_sales_rank,
+          yearlyGoal: invitation.preset_yearly_goal,
+          inviteLink,
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      if (!data.success) throw new Error(data.error || 'Failed to send email');
+
+      toast({
+        title: 'Email Sent',
+        description: `Invitation email sent to ${invitation.email}`,
+      });
+    } catch (error: any) {
+      console.error('Error sending invite email:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send invitation email',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingEmailId(null);
     }
   };
 
@@ -332,6 +371,19 @@ export default function InviteUsers() {
                     {getStatusBadge(invitation)}
                     {!invitation.is_used && (
                       <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => sendInviteEmail(invitation)}
+                          disabled={sendingEmailId === invitation.id}
+                          title="Send invite email"
+                        >
+                          {sendingEmailId === invitation.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Mail className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

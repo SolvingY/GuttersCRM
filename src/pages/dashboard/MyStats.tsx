@@ -127,39 +127,53 @@ export default function MyStats() {
     }));
   };
 
-  // Prepare monthly chart data (last 6 months)
+  // Prepare monthly chart data (12-month fiscal year: Dec → Nov)
   const getMonthlyData = () => {
-    const months: { [key: string]: { sales: number; cumulativeSales: number } } = {};
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const now = new Date();
+    // Fiscal year month order: Dec (start) → Nov (end)
+    const fiscalMonthOrder = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
+    const monthNameToIndex: { [key: string]: number } = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
     
-    // Initialize last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = monthNames[monthDate.getMonth()];
-      months[monthKey] = { sales: 0, cumulativeSales: 0 };
-    }
+    // Initialize all 12 fiscal months with zero sales
+    const fiscalMonths: { [key: string]: number } = {};
+    fiscalMonthOrder.forEach(month => {
+      fiscalMonths[month] = 0;
+    });
 
-    // Populate with data
+    // Calculate fiscal year boundaries (Dec 15, 2025 - Dec 15, 2026)
+    const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
+    const fiscalEnd = FISCAL_YEAR.CURRENT_YEAR_END;
+
+    // Populate with metric data that falls within the fiscal year
     metrics.forEach((m) => {
       const metricDate = new Date(m.metric_date);
-      const monthKey = monthNames[metricDate.getMonth()];
-      if (months[monthKey] !== undefined) {
-        months[monthKey].sales += Number(m.sales) || 0;
+      
+      // Only include metrics within the fiscal year
+      if (metricDate >= fiscalStart && metricDate <= fiscalEnd) {
+        const monthIndex = metricDate.getMonth();
+        const monthName = Object.keys(monthNameToIndex).find(
+          key => monthNameToIndex[key] === monthIndex
+        );
+        
+        if (monthName && fiscalMonths[monthName] !== undefined) {
+          fiscalMonths[monthName] += Number(m.sales) || 0;
+        }
       }
     });
 
-    // Calculate cumulative
+    // Build chart data with cumulative sales and goal pace
     let cumulative = 0;
     const monthlyGoalPace = yearlyGoal / 12;
     let goalCumulative = 0;
     
-    return Object.entries(months).map(([month, data]) => {
-      cumulative += data.sales;
+    return fiscalMonthOrder.map((month) => {
+      cumulative += fiscalMonths[month];
       goalCumulative += monthlyGoalPace;
       return {
         period: month,
-        sales: data.sales,
+        sales: fiscalMonths[month],
         cumulative,
         goalPace: goalCumulative,
       };

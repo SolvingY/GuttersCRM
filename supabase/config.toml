@@ -2,3 +2,6 @@ project_id = "xuxvqvzkkjgbsqiwjzke"
 
 [functions.sync-metrics]
 verify_jwt = false
+
+[functions.send-invite-email]
+verify_jwt = false
