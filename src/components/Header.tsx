@@ -188,7 +188,7 @@ export function Header() {
           {/* CTA Button */}
           <div className="flex items-center gap-4">
             <a href="tel:4057248092" className="hidden md:flex">
-              <Button variant="nav" size="sm" className="gap-2">
+              <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1">
                 <Phone className="w-4 h-4" />
                 <span>(405) 724-8092</span>
               </Button>
