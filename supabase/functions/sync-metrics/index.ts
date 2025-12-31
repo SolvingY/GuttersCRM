@@ -14,10 +14,6 @@ interface MetricPayload {
   metric_date?: string;
 }
 
-interface BatchPayload {
-  metrics: MetricPayload[];
-}
-
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -106,11 +102,6 @@ Deno.serve(async (req) => {
     console.error('Error in sync-metrics:', errorMessage);
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
