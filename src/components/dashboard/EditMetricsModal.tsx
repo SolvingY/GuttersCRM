@@ -31,6 +31,7 @@ interface UserMetrics {
   salesRank: string;
   closedDeals: number;
   earningsYtd?: number;
+  leads: number;
 }
 
 interface EditMetricsModalProps {
@@ -50,6 +51,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     salesRank: 'SR1',
     closedDeals: 0,
     earningsYtd: 0,
+    leads: 0,
   });
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         salesRank: user.salesRank || 'SR1',
         closedDeals: user.closedDeals || 0,
         earningsYtd: user.earningsYtd || 0,
+        leads: user.leads || 0,
       });
     }
   }, [user]);
@@ -81,6 +84,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           sales_rank: formData.salesRank,
           closed_deals: formData.closedDeals,
           earnings_ytd: formData.earningsYtd,
+          leads: formData.leads,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.userId);
@@ -216,6 +220,20 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 onChange={(e) => setFormData({ ...formData, closedDeals: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter closed deals"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="leads" className="text-right">
+                Leads
+              </Label>
+              <Input
+                id="leads"
+                type="number"
+                min="0"
+                value={formData.leads}
+                onChange={(e) => setFormData({ ...formData, leads: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter leads count"
               />
             </div>
           </div>
