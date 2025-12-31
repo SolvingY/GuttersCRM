@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
-import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
@@ -86,6 +86,19 @@ export default function MyStats() {
   const leads = Number(latestMetric?.leads) || 0;
   const averageJobSize = closedDeals > 0 ? currentSales / closedDeals : 0;
   const leadToCloseRate = leads > 0 ? (closedDeals / leads) * 100 : 0;
+
+  // Color coding functions
+  const getLeadToCloseColor = (rate: number) => {
+    if (rate >= 60) return 'text-green-500';
+    if (rate >= 30) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const getAvgJobSizeColor = (size: number) => {
+    if (size >= 25000) return 'text-green-500';
+    if (size >= 20000) return 'text-yellow-500';
+    return 'text-red-500';
+  };
 
   // Fiscal year progress
   const fiscalYearProgress = getFiscalYearProgress();
@@ -242,14 +255,22 @@ export default function MyStats() {
               trend={previousMetric ? calculateTrend(latestMetric?.closed_deals || 0, previousMetric?.closed_deals || 0) : undefined}
             />
             <StatsCard
+              title="Leads"
+              value={leads.toLocaleString()}
+              icon={Users}
+              trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
+            />
+            <StatsCard
               title="Avg Job Size"
               value={formatCurrency(averageJobSize)}
               icon={Calculator}
+              valueClassName={getAvgJobSizeColor(averageJobSize)}
             />
             <StatsCard
               title="Lead to Close %"
               value={`${leadToCloseRate.toFixed(1)}%`}
               icon={Percent}
+              valueClassName={getLeadToCloseColor(leadToCloseRate)}
             />
           </div>
 

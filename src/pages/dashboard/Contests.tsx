@@ -611,6 +611,7 @@ export default function Contests() {
                               }
                             </p>
                           )}
+                          <p className="text-xs text-gray-500 font-semibold mt-1">+50 pts</p>
                         </div>
                       </div>
                     )}
@@ -628,6 +629,7 @@ export default function Contests() {
                               : leaders[activeContest.id][0].value.toLocaleString()
                             }
                           </p>
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold mt-1">+100 pts</p>
                         </div>
                       </div>
                     )}
@@ -652,6 +654,7 @@ export default function Contests() {
                               }
                             </p>
                           )}
+                          <p className="text-xs text-amber-600 font-semibold mt-1">+25 pts</p>
                         </div>
                       </div>
                     )}
