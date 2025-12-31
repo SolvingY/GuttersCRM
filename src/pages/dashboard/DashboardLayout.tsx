@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
+import { GoalSettingModal } from '@/components/dashboard/GoalSettingModal';
 
 export default function DashboardLayout() {
   return (
@@ -12,6 +13,7 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <GoalSettingModal />
     </div>
   );
 }
