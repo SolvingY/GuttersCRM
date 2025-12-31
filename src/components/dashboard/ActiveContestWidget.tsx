@@ -130,6 +130,24 @@ export function ActiveContestWidget() {
     };
   }, [user]);
 
+  // Real-time subscription for metrics changes (for ranking updates)
+  useEffect(() => {
+    const channel = supabase
+      .channel('metrics-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_metrics'
+      }, () => {
+        fetchActiveContests();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const fetchUserRanking = async (contest: Contest, userId: string, displayName: string | null) => {
     const { data: metricsData } = await supabase
       .from('user_metrics')
