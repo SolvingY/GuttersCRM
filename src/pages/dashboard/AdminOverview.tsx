@@ -1,0 +1,180 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2 } from 'lucide-react';
+
+interface AggregateMetrics {
+  totalSales: number;
+  totalPoints: number;
+  totalLeads: number;
+  totalClosedDeals: number;
+  totalUsers: number;
+}
+
+interface UserDetail {
+  userId: string;
+  name: string;
+  sales: number;
+  points: number;
+  leads: number;
+  closedDeals: number;
+}
+
+export default function AdminOverview() {
+  const [aggregates, setAggregates] = useState<AggregateMetrics>({
+    totalSales: 0,
+    totalPoints: 0,
+    totalLeads: 0,
+    totalClosedDeals: 0,
+    totalUsers: 0,
+  });
+  const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      // Fetch all metrics (admin has access via RLS)
+      const { data: metrics, error: metricsError } = await supabase
+        .from('user_metrics')
+        .select('user_id, sales, points, leads, closed_deals, metric_date')
+        .order('metric_date', { ascending: false });
+
+      if (metricsError) {
+        console.error('Error fetching admin metrics:', metricsError);
+        setLoading(false);
+        return;
+      }
+
+      if (!metrics || metrics.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // Get latest metric per user
+      const latestByUser = new Map<string, Omit<UserDetail, 'name'>>();
+      
+      for (const item of metrics) {
+        if (!latestByUser.has(item.user_id)) {
+          latestByUser.set(item.user_id, {
+            userId: item.user_id,
+            sales: Number(item.sales),
+            points: Number(item.points),
+            leads: item.leads,
+            closedDeals: item.closed_deals,
+          });
+        }
+      }
+
+      // Fetch profiles for all user_ids
+      const userIds = Array.from(latestByUser.keys());
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+
+      const profilesMap = new Map(profilesData?.map((p) => [p.id, p.full_name]) || []);
+
+      const users: UserDetail[] = Array.from(latestByUser.entries()).map(([userId, data]) => ({
+        ...data,
+        name: profilesMap.get(userId) || 'Unknown User',
+      }));
+      
+      // Calculate aggregates
+      const totals = users.reduce(
+        (acc, user) => ({
+          totalSales: acc.totalSales + user.sales,
+          totalPoints: acc.totalPoints + user.points,
+          totalLeads: acc.totalLeads + user.leads,
+          totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
+          totalUsers: acc.totalUsers + 1,
+        }),
+        { totalSales: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0 }
+      );
+
+      setAggregates(totals);
+      setUserDetails(users.sort((a, b) => b.points - a.points));
+      setLoading(false);
+    };
+
+    fetchAdminData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-heading text-foreground">Master Overview</h2>
+        <p className="text-muted-foreground">Aggregate performance across all users</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatsCard
+          title="Total Users"
+          value={aggregates.totalUsers}
+          icon={UserCheck}
+        />
+        <StatsCard
+          title="Total Sales"
+          value={`$${aggregates.totalSales.toLocaleString()}`}
+          icon={DollarSign}
+        />
+        <StatsCard
+          title="Total Points"
+          value={aggregates.totalPoints.toLocaleString()}
+          icon={Star}
+        />
+        <StatsCard
+          title="Total Leads"
+          value={aggregates.totalLeads}
+          icon={Users}
+        />
+        <StatsCard
+          title="Total Closed Deals"
+          value={aggregates.totalClosedDeals}
+          icon={Briefcase}
+        />
+      </div>
+
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="p-4 border-b border-border">
+          <h3 className="text-lg font-heading text-foreground">All Users Performance</h3>
+        </div>
+        {userDetails.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">No user data available yet.</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Sales</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Points</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Leads</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Closed Deals</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userDetails.map((user) => (
+                <tr key={user.userId} className="border-t border-border">
+                  <td className="py-3 px-4 text-foreground">{user.name}</td>
+                  <td className="py-3 px-4 text-right text-foreground">${user.sales.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
+                  <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
