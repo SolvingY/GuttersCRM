@@ -45,7 +45,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, displayName, salesRank, yearlyGoal } = await req.json();
+    const { email, password, displayName, salesRank, yearlyGoal, role } = await req.json();
 
     // Validate required fields
     if (!email || !password) {
@@ -94,12 +94,13 @@ serve(async (req) => {
       console.error("Error creating profile:", profileError);
     }
 
-    // Create user_roles entry (default to 'user')
+    // Create user_roles entry (default to 'user', can be 'admin' if specified)
+    const userRole = role === "admin" ? "admin" : "user";
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
       .insert({
         user_id: newUser.user.id,
-        role: "user",
+        role: userRole,
       });
 
     if (roleInsertError) {

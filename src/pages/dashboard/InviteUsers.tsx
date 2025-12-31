@@ -55,6 +55,7 @@ export default function InviteUsers() {
   const [manualDisplayName, setManualDisplayName] = useState('');
   const [manualSalesRank, setManualSalesRank] = useState('SR1');
   const [manualYearlyGoal, setManualYearlyGoal] = useState('');
+  const [manualRole, setManualRole] = useState<'user' | 'admin'>('user');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
@@ -182,6 +183,7 @@ export default function InviteUsers() {
           displayName: manualDisplayName.trim() || null,
           salesRank: manualSalesRank,
           yearlyGoal: manualYearlyGoal ? parseFloat(manualYearlyGoal) : 0,
+          role: manualRole,
         },
       });
 
@@ -201,6 +203,7 @@ export default function InviteUsers() {
       setManualDisplayName('');
       setManualSalesRank('SR1');
       setManualYearlyGoal('');
+      setManualRole('user');
     } catch (error: unknown) {
       console.error('Error creating user:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
@@ -578,6 +581,18 @@ export default function InviteUsers() {
                       onChange={(e) => setManualYearlyGoal(e.target.value)}
                       disabled={isCreatingUser}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="manualRole" className="text-sm">Role</Label>
+                    <Select value={manualRole} onValueChange={(val) => setManualRole(val as 'user' | 'admin')} disabled={isCreatingUser}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <Button type="submit" disabled={isCreatingUser || !manualEmail.trim() || !manualPassword.trim()} className="w-full sm:w-auto">
