@@ -64,7 +64,8 @@ serve(async (req) => {
       },
     });
 
-    // Create the user
+    // Create the user with metadata
+    // The handle_new_user trigger will automatically create profile, user_roles, and user_metrics
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
@@ -75,6 +76,7 @@ serve(async (req) => {
     });
 
     if (createError) {
+      console.error("Error creating user:", createError);
       throw new Error(createError.message);
     }
 
@@ -82,48 +84,39 @@ serve(async (req) => {
       throw new Error("Failed to create user");
     }
 
-    // Create profile for the user
-    const { error: profileError } = await adminClient
-      .from("profiles")
-      .insert({
-        id: newUser.user.id,
-        full_name: displayName || null,
-      });
+    console.log("User created successfully:", newUser.user.id);
 
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
+    // Wait a brief moment for trigger to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Update user_roles to the specified role if admin was requested
+    if (role === "admin") {
+      const { error: roleUpdateError } = await adminClient
+        .from("user_roles")
+        .update({ role: "admin" })
+        .eq("user_id", newUser.user.id);
+
+      if (roleUpdateError) {
+        console.error("Error updating user role:", roleUpdateError);
+      } else {
+        console.log("User role updated to admin");
+      }
     }
 
-    // Create user_roles entry (default to 'user', can be 'admin' if specified)
-    const userRole = role === "admin" ? "admin" : "user";
-    const { error: roleInsertError } = await adminClient
-      .from("user_roles")
-      .insert({
-        user_id: newUser.user.id,
-        role: userRole,
-      });
-
-    if (roleInsertError) {
-      console.error("Error creating user role:", roleInsertError);
-    }
-
-    // Create initial metrics for the user
-    const { error: metricsError } = await adminClient
+    // Update user_metrics with the specified values
+    const { error: metricsUpdateError } = await adminClient
       .from("user_metrics")
-      .insert({
-        user_id: newUser.user.id,
+      .update({
         display_name: displayName || null,
         sales_rank: salesRank || "SR1",
         yearly_goal: yearlyGoal || 0,
-        sales: 0,
-        leads: 0,
-        closed_deals: 0,
-        points: 0,
-        earnings_ytd: 0,
-      });
+      })
+      .eq("user_id", newUser.user.id);
 
-    if (metricsError) {
-      console.error("Error creating user metrics:", metricsError);
+    if (metricsUpdateError) {
+      console.error("Error updating user metrics:", metricsUpdateError);
+    } else {
+      console.log("User metrics updated");
     }
 
     return new Response(
