@@ -96,6 +96,7 @@ export type Database = {
         Row: {
           closed_deals: number | null
           created_at: string
+          display_name: string | null
           id: string
           leads: number | null
           metric_date: string
@@ -103,12 +104,13 @@ export type Database = {
           sales: number | null
           sales_rank: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           yearly_goal: number | null
         }
         Insert: {
           closed_deals?: number | null
           created_at?: string
+          display_name?: string | null
           id?: string
           leads?: number | null
           metric_date?: string
@@ -116,12 +118,13 @@ export type Database = {
           sales?: number | null
           sales_rank?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           yearly_goal?: number | null
         }
         Update: {
           closed_deals?: number | null
           created_at?: string
+          display_name?: string | null
           id?: string
           leads?: number | null
           metric_date?: string
@@ -129,7 +132,7 @@ export type Database = {
           sales?: number | null
           sales_rank?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           yearly_goal?: number | null
         }
         Relationships: []
