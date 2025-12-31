@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Trophy, Settings, Users, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { BarChart3, Trophy, Settings, Users, ChevronLeft, ChevronRight, UserPlus, Gift } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { icon: BarChart3, label: 'My Stats', path: '/dashboard/stats' },
   { icon: Trophy, label: 'Leaderboard', path: '/dashboard/leaderboard' },
+  { icon: Gift, label: 'Contests', path: '/dashboard/contests' },
   { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
 ];
 

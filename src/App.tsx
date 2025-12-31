@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import MyStats from "./pages/dashboard/MyStats";
 import Leaderboard from "./pages/dashboard/Leaderboard";
+import Contests from "./pages/dashboard/Contests";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
 import Settings from "./pages/dashboard/Settings";
@@ -38,6 +39,7 @@ const App = () => (
             <Route index element={<Navigate to="/dashboard/stats" replace />} />
             <Route path="stats" element={<MyStats />} />
             <Route path="leaderboard" element={<Leaderboard />} />
+            <Route path="contests" element={<Contests />} />
             <Route path="settings" element={<Settings />} />
             <Route
               path="admin"
