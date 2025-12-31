@@ -20,7 +20,7 @@ export function Hero() {
       <div className="relative z-10 container-custom section-padding lg:pt-2">
         <div className="max-w-3xl mx-auto text-center">
           {/* Text Content */}
-          <div className="text-primary-foreground space-y-6 lg:space-y-2 animate-fade-in">
+          <div className="text-primary-foreground space-y-6 lg:space-y-1 animate-fade-in">
             {/* Logo */}
             <div className="flex justify-center mb-4 lg:mb-0">
               <img 
@@ -30,7 +30,7 @@ export function Hero() {
               />
             </div>
             
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading uppercase leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-heading uppercase leading-tight">
               The Last{" "}
               <span className="text-accent">Contractor</span>{" "}
               You Will Ever Need
@@ -40,13 +40,13 @@ export function Hero() {
               Integrity-Driven | Expert Insurance Navigation
             </p>
 
-            <div className="flex items-center justify-center gap-4 pt-2">
+            <div className="flex items-center justify-center gap-4 pt-2 lg:pt-0">
               <span className="text-primary-foreground/90 text-sm sm:text-base font-heading uppercase tracking-wide">
                 We Cover <span className="text-accent font-bold">1.15 Million</span> Square Feet Of Oklahoma Homes & Businesses Every Year.
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 lg:pt-4 justify-center px-4 sm:px-0">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 lg:pt-2 justify-center px-4 sm:px-0">
               <a href="tel:4057248092" className="w-full sm:w-auto">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
                   <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
