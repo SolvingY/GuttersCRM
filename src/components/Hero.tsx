@@ -20,13 +20,13 @@ export function Hero() {
       <div className="relative z-10 container-custom section-padding lg:pt-8">
         <div className="max-w-3xl mx-auto text-center">
           {/* Text Content */}
-          <div className="text-primary-foreground space-y-6 animate-fade-in">
+          <div className="text-primary-foreground space-y-6 lg:space-y-4 animate-fade-in">
             {/* Logo */}
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-4 lg:mb-2">
               <img 
                 src={heroLogo} 
                 alt="Next Generation Roofing - Veteran Founded & Operated since 2020" 
-                className="w-60 sm:w-80 md:w-96 lg:w-[30rem] h-auto [filter:drop-shadow(0_0_40px_rgba(255,255,255,1))_drop-shadow(0_0_80px_rgba(255,255,255,0.9))_drop-shadow(0_20px_40px_rgba(255,255,255,0.8))_drop-shadow(0_30px_60px_rgba(255,255,255,0.6))]"
+                className="w-60 sm:w-80 md:w-96 lg:w-[22rem] xl:w-[26rem] h-auto [filter:drop-shadow(0_0_40px_rgba(255,255,255,1))_drop-shadow(0_0_80px_rgba(255,255,255,0.9))_drop-shadow(0_20px_40px_rgba(255,255,255,0.8))_drop-shadow(0_30px_60px_rgba(255,255,255,0.6))]"
               />
             </div>
             
@@ -46,7 +46,7 @@ export function Hero() {
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 justify-center px-4 sm:px-0">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 lg:pt-4 justify-center px-4 sm:px-0">
               <a href="tel:4057248092" className="w-full sm:w-auto">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
                   <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
