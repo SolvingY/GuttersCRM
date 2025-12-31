@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
-import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
@@ -80,6 +80,12 @@ export default function MyStats() {
   const earningsYtd = Number(latestMetric?.earnings_ytd) || 0;
   const goalPercentage = yearlyGoal > 0 ? (currentSales / yearlyGoal) * 100 : 0;
   const amountRemaining = Math.max(0, yearlyGoal - currentSales);
+
+  // Calculate average job size and lead to close %
+  const closedDeals = Number(latestMetric?.closed_deals) || 0;
+  const leads = Number(latestMetric?.leads) || 0;
+  const averageJobSize = closedDeals > 0 ? currentSales / closedDeals : 0;
+  const leadToCloseRate = leads > 0 ? (closedDeals / leads) * 100 : 0;
 
   // Fiscal year progress
   const fiscalYearProgress = getFiscalYearProgress();
@@ -211,7 +217,7 @@ export default function MyStats() {
           <ActiveContestWidget />
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatsCard
               title="Total Sales"
               value={formatCurrency(currentSales)}
@@ -234,6 +240,16 @@ export default function MyStats() {
               value={latestMetric?.closed_deals || 0}
               icon={Briefcase}
               trend={previousMetric ? calculateTrend(latestMetric?.closed_deals || 0, previousMetric?.closed_deals || 0) : undefined}
+            />
+            <StatsCard
+              title="Avg Job Size"
+              value={formatCurrency(averageJobSize)}
+              icon={Calculator}
+            />
+            <StatsCard
+              title="Lead to Close %"
+              value={`${leadToCloseRate.toFixed(1)}%`}
+              icon={Percent}
             />
           </div>
 
