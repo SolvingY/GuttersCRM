@@ -187,10 +187,14 @@ export default function InviteUsers() {
         },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        const msg = response.error.message || 'Failed to create user';
+        toast({ title: 'Error', description: msg, variant: 'destructive' });
+        return;
+      }
 
       const data = response.data;
-      if (!data.success) throw new Error(data.error || 'Failed to create user');
+      if (!data?.success) throw new Error(data?.error || 'Failed to create user');
 
       toast({
         title: 'User Created',
