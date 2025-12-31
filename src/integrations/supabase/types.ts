@@ -24,6 +24,10 @@ export type Database = {
           id: string
           is_active: boolean | null
           metric_type: string
+          prize_2nd_description: string | null
+          prize_2nd_value: number | null
+          prize_3rd_description: string | null
+          prize_3rd_value: number | null
           prize_description: string
           prize_value: number | null
           start_date: string
@@ -42,6 +46,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           metric_type?: string
+          prize_2nd_description?: string | null
+          prize_2nd_value?: number | null
+          prize_3rd_description?: string | null
+          prize_3rd_value?: number | null
           prize_description: string
           prize_value?: number | null
           start_date: string
@@ -60,6 +68,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           metric_type?: string
+          prize_2nd_description?: string | null
+          prize_2nd_value?: number | null
+          prize_3rd_description?: string | null
+          prize_3rd_value?: number | null
           prize_description?: string
           prize_value?: number | null
           start_date?: string

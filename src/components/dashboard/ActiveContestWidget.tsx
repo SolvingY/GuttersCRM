@@ -241,12 +241,6 @@ export function ActiveContestWidget() {
     return value.toLocaleString();
   };
 
-  const getPrizeExamples = (prizeValue: number) => {
-    if (prizeValue >= 1000) return ["🎮 PS5 + games", "✈️ Weekend trip", "🍽️ Dinner for 4"];
-    if (prizeValue >= 500) return ["🛍️ Shopping spree", "🎫 Concert tickets", "💆 Spa day"];
-    if (prizeValue >= 100) return ["🍕 Pizza party", "🎬 Movie night", "☕ Coffee month"];
-    return ["🍺 Drinks on you", "🎁 Treat yourself", "🎉 Celebrate!"];
-  };
 
   const getContestPoints = (rank: number) => {
     return CONTEST_POINTS[rank as keyof typeof CONTEST_POINTS] || 0;
@@ -267,7 +261,6 @@ export function ActiveContestWidget() {
       <CardContent className="space-y-4">
         {contests.map((contest) => {
           const ranking = rankings[contest.id];
-          const prizeExamples = getPrizeExamples(contest.prize_value || 0);
           const potentialPoints = ranking ? getContestPoints(ranking.rank) : 0;
           
           return (
@@ -313,21 +306,14 @@ export function ActiveContestWidget() {
                     </p>
                   </div>
 
-                  {/* Prize and Points Section */}
+                  {/* Prize Section */}
                   {contest.prize_value > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-border/30">
+                    <div className="pt-2 border-t border-border/30">
                       <div className="flex items-center gap-2">
                         <Gift className="h-4 w-4 text-green-500" />
                         <span className="text-sm font-medium text-green-600 dark:text-green-400">
                           Prize: ${contest.prize_value.toLocaleString()}
                         </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {prizeExamples.map((example, i) => (
-                          <span key={i} className="text-xs bg-muted/50 px-2 py-1 rounded-full text-muted-foreground">
-                            {example}
-                          </span>
-                        ))}
                       </div>
                     </div>
                   )}

@@ -3,8 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface AggregateMetrics {
   totalSales: number;
@@ -24,7 +26,15 @@ interface UserDetail {
   yearlyGoal: number;
   salesRank: string;
   earningsYtd: number;
+  avgJobSize: number;
+  leadToClosePercent: number;
 }
+
+// Performance thresholds
+const THRESHOLDS = {
+  leadToClosePercent: { green: 60, yellow: 30 },
+  avgJobSize: { green: 25000, yellow: 20000 },
+};
 
 export default function AdminOverview() {
   const [aggregates, setAggregates] = useState<AggregateMetrics>({
@@ -39,6 +49,23 @@ export default function AdminOverview() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
+
+  const getLeadToCloseColor = (rate: number) => {
+    if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
+    if (rate >= THRESHOLDS.leadToClosePercent.yellow) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const getAvgJobSizeColor = (size: number) => {
+    if (size >= THRESHOLDS.avgJobSize.green) return 'text-green-600 dark:text-green-400';
+    if (size >= THRESHOLDS.avgJobSize.yellow) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const needsAttention = (user: UserDetail) => {
+    return user.leadToClosePercent < THRESHOLDS.leadToClosePercent.yellow || 
+           user.avgJobSize < THRESHOLDS.avgJobSize.yellow;
+  };
 
   const fetchAdminData = async () => {
     // Fetch all metrics including display_name for test users
@@ -59,7 +86,7 @@ export default function AdminOverview() {
     }
 
     // Get latest metric per user (use metric id for test users without user_id)
-    const latestByUser = new Map<string, Omit<UserDetail, 'name'> & { displayName: string | null; metricId: string }>();
+    const latestByUser = new Map<string, Omit<UserDetail, 'name' | 'avgJobSize' | 'leadToClosePercent'> & { displayName: string | null; metricId: string }>();
     
     for (const item of metrics) {
       // Use user_id if available, otherwise use metric id as key
@@ -90,17 +117,24 @@ export default function AdminOverview() {
       profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
     );
 
-    const users: UserDetail[] = Array.from(latestByUser.entries()).map(([userId, data]) => ({
-      userId: data.metricId, // Use metricId for editing
-      sales: data.sales,
-      points: data.points,
-      leads: data.leads,
-      closedDeals: data.closedDeals,
-      yearlyGoal: data.yearlyGoal,
-      salesRank: data.salesRank,
-      earningsYtd: data.earningsYtd,
-      name: data.displayName || profilesMap.get(userId) || 'Unknown User',
-    }));
+    const users: UserDetail[] = Array.from(latestByUser.entries()).map(([userId, data]) => {
+      const avgJobSize = data.closedDeals > 0 ? data.sales / data.closedDeals : 0;
+      const leadToClosePercent = data.leads > 0 ? (data.closedDeals / data.leads) * 100 : 0;
+      
+      return {
+        userId: data.metricId, // Use metricId for editing
+        sales: data.sales,
+        points: data.points,
+        leads: data.leads,
+        closedDeals: data.closedDeals,
+        yearlyGoal: data.yearlyGoal,
+        salesRank: data.salesRank,
+        earningsYtd: data.earningsYtd,
+        name: data.displayName || profilesMap.get(userId) || 'Unknown User',
+        avgJobSize,
+        leadToClosePercent,
+      };
+    });
     
     // Calculate aggregates
     const totals = users.reduce(
@@ -156,6 +190,8 @@ export default function AdminOverview() {
     );
   }
 
+  const usersNeedingAttention = userDetails.filter(needsAttention);
+
   return (
     <div className="space-y-6">
       <div>
@@ -191,6 +227,21 @@ export default function AdminOverview() {
         />
       </div>
 
+      {/* Users Needing Attention Alert */}
+      {usersNeedingAttention.length > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <h3 className="font-semibold text-red-600 dark:text-red-400">
+              {usersNeedingAttention.length} User{usersNeedingAttention.length > 1 ? 's' : ''} Need{usersNeedingAttention.length === 1 ? 's' : ''} Attention
+            </h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Users with Lead-to-Close % below 30% or Avg Job Size below $20k are highlighted below.
+          </p>
+        </div>
+      )}
+
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="p-4 border-b border-border">
           <h3 className="text-lg font-heading text-foreground">All Users Performance</h3>
@@ -211,45 +262,74 @@ export default function AdminOverview() {
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed Deals</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Avg Job Size</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Lead to Close %</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {userDetails.map((user) => (
-                  <tr key={user.userId} className="border-t border-border hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-4 text-foreground font-medium">{user.name}</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                        {user.salesRank}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.sales)}</td>
-                    <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
-                    <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
-                    <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewUser(user)}
-                          title="View stats"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditUser(user)}
-                          title="Edit metrics"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {userDetails.map((user) => {
+                  const attention = needsAttention(user);
+                  return (
+                    <tr 
+                      key={user.userId} 
+                      className={cn(
+                        "border-t border-border transition-colors",
+                        attention 
+                          ? "bg-red-500/5 hover:bg-red-500/10" 
+                          : "hover:bg-muted/30"
+                      )}
+                    >
+                      <td className="py-3 px-4 text-foreground font-medium">
+                        <div className="flex items-center gap-2">
+                          {user.name}
+                          {attention && (
+                            <Badge variant="destructive" className="text-xs">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Needs Attention
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                          {user.salesRank}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.sales)}</td>
+                      <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
+                      <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
+                      <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
+                      <td className={cn("py-3 px-4 text-right font-medium", getAvgJobSizeColor(user.avgJobSize))}>
+                        {formatCurrency(user.avgJobSize)}
+                      </td>
+                      <td className={cn("py-3 px-4 text-right font-medium", getLeadToCloseColor(user.leadToClosePercent))}>
+                        {user.leadToClosePercent.toFixed(1)}%
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleViewUser(user)}
+                            title="View stats"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditUser(user)}
+                            title="Edit metrics"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
