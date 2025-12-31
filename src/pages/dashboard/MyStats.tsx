@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { DollarSign, Star, Briefcase, Target, Loader2 } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 
 interface UserMetric {
   id: string;
@@ -19,6 +20,7 @@ interface UserMetric {
   metric_date: string;
   yearly_goal: number;
   sales_rank: string;
+  earnings_ytd: number;
 }
 
 type TimeView = 'weekly' | 'monthly';
@@ -74,8 +76,13 @@ export default function MyStats() {
   // Calculate goal progress
   const yearlyGoal = Number(latestMetric?.yearly_goal) || 0;
   const currentSales = Number(latestMetric?.sales) || 0;
+  const earningsYtd = Number(latestMetric?.earnings_ytd) || 0;
   const goalPercentage = yearlyGoal > 0 ? (currentSales / yearlyGoal) * 100 : 0;
   const amountRemaining = Math.max(0, yearlyGoal - currentSales);
+
+  // Fiscal year progress
+  const fiscalYearProgress = getFiscalYearProgress();
+  const daysRemaining = getDaysRemainingInFiscalYear();
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -186,12 +193,17 @@ export default function MyStats() {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatsCard
               title="Total Sales"
               value={formatCurrency(currentSales)}
               icon={DollarSign}
               trend={previousMetric ? calculateTrend(Number(latestMetric?.sales), Number(previousMetric?.sales)) : undefined}
+            />
+            <StatsCard
+              title="YTD Earnings"
+              value={formatCurrency(earningsYtd)}
+              icon={Wallet}
             />
             <StatsCard
               title="Points"
@@ -206,6 +218,32 @@ export default function MyStats() {
               trend={previousMetric ? calculateTrend(latestMetric?.closed_deals || 0, previousMetric?.closed_deals || 0) : undefined}
             />
           </div>
+
+          {/* Fiscal Year Progress */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-5 w-5 text-accent" />
+                Fiscal Year Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Dec 15, 2025 - Dec 15, 2026
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {daysRemaining} days remaining
+                  </span>
+                </div>
+                <Progress value={fiscalYearProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground text-center">
+                  {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Goal Progress Card */}
           {yearlyGoal > 0 && (

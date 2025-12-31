@@ -123,12 +123,7 @@ export default function Auth() {
     return true;
   };
 
-  const markInviteAsUsed = async () => {
-    await supabase
-      .from('invitations')
-      .update({ is_used: true, used_at: new Date().toISOString() })
-      .eq('invite_code', inviteCode.toUpperCase());
-  };
+  // markInviteAsUsed is now handled by database trigger (handle_invitation_on_signup)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,8 +174,7 @@ export default function Auth() {
             });
           }
         } else {
-          // Mark invite as used after successful signup
-          await markInviteAsUsed();
+          // Invite is automatically marked as used by database trigger
           toast({
             title: 'Account created!',
             description: 'You have been signed in automatically.',
