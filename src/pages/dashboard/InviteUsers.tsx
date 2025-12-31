@@ -18,6 +18,9 @@ import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle, Mail } from '
 import { format } from 'date-fns';
 import { RANK_OPTIONS } from '@/lib/constants';
 
+// Production URL for invite links
+const PRODUCTION_URL = 'https://oknextgen.com';
+
 interface Invitation {
   id: string;
   email: string;
@@ -136,8 +139,7 @@ export default function InviteUsers() {
   };
 
   const copyInviteLink = (invitation: Invitation) => {
-    const baseUrl = window.location.origin;
-    const inviteLink = `${baseUrl}/auth?invite=${invitation.invite_code}&email=${encodeURIComponent(invitation.email)}`;
+    const inviteLink = `${PRODUCTION_URL}/auth?invite=${invitation.invite_code}&email=${encodeURIComponent(invitation.email)}`;
     navigator.clipboard.writeText(inviteLink);
     toast({
       title: 'Link Copied',
@@ -172,8 +174,7 @@ export default function InviteUsers() {
   const sendInviteEmail = async (invitation: Invitation) => {
     setSendingEmailId(invitation.id);
     try {
-      const baseUrl = window.location.origin;
-      const inviteLink = `${baseUrl}/auth?invite=${invitation.invite_code}&email=${encodeURIComponent(invitation.email)}`;
+      const inviteLink = `${PRODUCTION_URL}/auth?invite=${invitation.invite_code}&email=${encodeURIComponent(invitation.email)}`;
 
       const response = await supabase.functions.invoke('send-invite-email', {
         body: {
