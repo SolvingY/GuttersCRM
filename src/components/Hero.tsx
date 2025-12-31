@@ -5,7 +5,7 @@ import heroLogo from "@/assets/hero-logo-new.png";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center lg:items-start pt-20">
+    <section className="relative min-h-screen flex items-center lg:items-start pt-20 lg:pt-[72px]">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
@@ -17,12 +17,12 @@ export function Hero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container-custom section-padding lg:pt-8">
+      <div className="relative z-10 container-custom section-padding lg:pt-2">
         <div className="max-w-3xl mx-auto text-center">
           {/* Text Content */}
-          <div className="text-primary-foreground space-y-6 lg:space-y-4 animate-fade-in">
+          <div className="text-primary-foreground space-y-6 lg:space-y-2 animate-fade-in">
             {/* Logo */}
-            <div className="flex justify-center mb-4 lg:mb-2">
+            <div className="flex justify-center mb-4 lg:mb-0">
               <img 
                 src={heroLogo} 
                 alt="Next Generation Roofing - Veteran Founded & Operated since 2020" 
