@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Target } from 'lucide-react';
+import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AggregateMetrics {
@@ -22,6 +23,7 @@ interface UserDetail {
   closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
+  earningsYtd: number;
 }
 
 export default function AdminOverview() {
@@ -35,13 +37,14 @@ export default function AdminOverview() {
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
 
   const fetchAdminData = async () => {
     // Fetch all metrics including display_name for test users
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, sales, points, leads, closed_deals, yearly_goal, sales_rank, metric_date')
+      .select('id, user_id, display_name, sales, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date')
       .order('metric_date', { ascending: false });
 
     if (metricsError) {
@@ -72,6 +75,7 @@ export default function AdminOverview() {
           yearlyGoal: Number(item.yearly_goal) || 0,
           salesRank: item.sales_rank || 'SR1',
           displayName: item.display_name,
+          earningsYtd: Number(item.earnings_ytd) || 0,
         });
       }
     }
@@ -94,6 +98,7 @@ export default function AdminOverview() {
       closedDeals: data.closedDeals,
       yearlyGoal: data.yearlyGoal,
       salesRank: data.salesRank,
+      earningsYtd: data.earningsYtd,
       name: data.displayName || profilesMap.get(userId) || 'Unknown User',
     }));
     
@@ -118,8 +123,14 @@ export default function AdminOverview() {
     fetchAdminData();
   }, []);
 
+  const handleViewUser = (user: UserDetail) => {
+    setSelectedUser(user);
+    setViewModalOpen(true);
+  };
+
   const handleEditUser = (user: UserDetail) => {
     setSelectedUser(user);
+    setViewModalOpen(false);
     setEditModalOpen(true);
   };
 
@@ -218,14 +229,24 @@ export default function AdminOverview() {
                     <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
                     <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
                     <td className="py-3 px-4 text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditUser(user)}
-                        title="Edit metrics"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewUser(user)}
+                          title="View stats"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditUser(user)}
+                          title="Edit metrics"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -234,6 +255,13 @@ export default function AdminOverview() {
           </div>
         )}
       </div>
+
+      <UserStatsModal
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        user={selectedUser}
+        onEdit={() => handleEditUser(selectedUser!)}
+      />
 
       <EditMetricsModal
         open={editModalOpen}

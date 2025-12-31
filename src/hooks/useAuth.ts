@@ -8,7 +8,8 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
-  loading: boolean;
+  sessionLoading: boolean;
+  roleLoading: boolean;
 }
 
 export function useAuth() {
@@ -16,7 +17,8 @@ export function useAuth() {
     user: null,
     session: null,
     role: null,
-    loading: true,
+    sessionLoading: true,
+    roleLoading: true,
   });
 
   const fetchUserRole = useCallback(async (userId: string) => {
@@ -42,18 +44,19 @@ export function useAuth() {
           ...prev,
           session,
           user: session?.user ?? null,
-          loading: false,
+          sessionLoading: false,
+          roleLoading: session?.user ? true : false,
         }));
 
         // Defer role fetch to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
             fetchUserRole(session.user.id).then(role => {
-              setAuthState(prev => ({ ...prev, role }));
+              setAuthState(prev => ({ ...prev, role, roleLoading: false }));
             });
           }, 0);
         } else {
-          setAuthState(prev => ({ ...prev, role: null }));
+          setAuthState(prev => ({ ...prev, role: null, roleLoading: false }));
         }
       }
     );
@@ -64,18 +67,24 @@ export function useAuth() {
         ...prev,
         session,
         user: session?.user ?? null,
-        loading: false,
+        sessionLoading: false,
+        roleLoading: session?.user ? true : false,
       }));
 
       if (session?.user) {
         fetchUserRole(session.user.id).then(role => {
-          setAuthState(prev => ({ ...prev, role }));
+          setAuthState(prev => ({ ...prev, role, roleLoading: false }));
         });
+      } else {
+        setAuthState(prev => ({ ...prev, roleLoading: false }));
       }
     });
 
     return () => subscription.unsubscribe();
   }, [fetchUserRole]);
+
+  // Loading is true until both session AND role are resolved
+  const loading = authState.sessionLoading || authState.roleLoading;
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -112,7 +121,7 @@ export function useAuth() {
     user: authState.user,
     session: authState.session,
     role: authState.role,
-    loading: authState.loading,
+    loading,
     isAdmin,
     signIn,
     signUp,
