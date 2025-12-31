@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
 serve(async (req) => {
@@ -12,11 +13,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log("create-user request:", { method: req.method });
+
   try {
     // Get the authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      console.warn("create-user: missing Authorization header");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: missing token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     // Create a Supabase client with the user's JWT
@@ -41,7 +48,11 @@ serve(async (req) => {
     });
 
     if (roleError || !roleData) {
-      throw new Error("Unauthorized: Admin access required");
+      console.warn("create-user: non-admin attempted access", { userId: user.id });
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized: Admin access required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     // Parse request body
@@ -49,11 +60,17 @@ serve(async (req) => {
 
     // Validate required fields
     if (!email || !password) {
-      throw new Error("Email and password are required");
+      return new Response(
+        JSON.stringify({ success: false, error: "Email and password are required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     if (password.length < 6) {
-      throw new Error("Password must be at least 6 characters");
+      return new Response(
+        JSON.stringify({ success: false, error: "Password must be at least 6 characters" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     // Create user with service role key (admin privileges)
@@ -143,7 +160,7 @@ serve(async (req) => {
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: 200,
       }
     );
   }
