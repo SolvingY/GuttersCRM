@@ -13,6 +13,7 @@ interface LeaderboardEntry {
   sales: number;
   yearlyGoal: number;
   salesRank: string;
+  contestsWon: number;
 }
 
 export default function Leaderboard() {
@@ -75,6 +76,18 @@ export default function Leaderboard() {
         profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
       );
 
+      // Fetch contest wins
+      const { data: contestWinsData } = await supabase
+        .from('contests')
+        .select('winner_user_id')
+        .not('winner_user_id', 'is', null);
+
+      const contestWinsMap = new Map<string, number>();
+      contestWinsData?.forEach(c => {
+        const current = contestWinsMap.get(c.winner_user_id!) || 0;
+        contestWinsMap.set(c.winner_user_id!, current + 1);
+      });
+
       // Convert to array and sort by sales (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => ({
@@ -84,6 +97,7 @@ export default function Leaderboard() {
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
+          contestsWon: contestWinsMap.get(userId) || 0,
         }))
         .sort((a, b) => b.sales - a.sales)
         .map((entry, index) => ({

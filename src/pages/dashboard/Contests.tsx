@@ -278,7 +278,7 @@ export default function Contests() {
     const seconds = differenceInSeconds(end, now) % 60;
     
     if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
+      return `${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
     return `${hours}h ${minutes}m ${seconds}s`;
   };
@@ -562,6 +562,11 @@ export default function Contests() {
                       <Gift className="h-4 w-4 text-accent" />
                       <span className="font-semibold text-foreground">{activeContest.prize_description}</span>
                     </div>
+                    {activeContest.prize_value > 0 && (
+                      <div className="flex items-center gap-1 bg-green-500/20 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
+                        <span className="font-bold">1st Place Prize: ${activeContest.prize_value.toLocaleString()}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Progress Bar with Countdown */}
@@ -598,6 +603,14 @@ export default function Contests() {
                               : leaders[activeContest.id][1].value.toLocaleString()
                             }
                           </p>
+                          {leaders[activeContest.id][0] && (
+                            <p className="text-xs text-red-500 font-medium mt-1">
+                              -{activeContest.metric_type === 'sales' 
+                                ? `$${(leaders[activeContest.id][0].value - leaders[activeContest.id][1].value).toLocaleString()}`
+                                : (leaders[activeContest.id][0].value - leaders[activeContest.id][1].value).toLocaleString()
+                              }
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -631,6 +644,14 @@ export default function Contests() {
                               : leaders[activeContest.id][2].value.toLocaleString()
                             }
                           </p>
+                          {leaders[activeContest.id][0] && (
+                            <p className="text-xs text-red-500 font-medium mt-1">
+                              -{activeContest.metric_type === 'sales' 
+                                ? `$${(leaders[activeContest.id][0].value - leaders[activeContest.id][2].value).toLocaleString()}`
+                                : (leaders[activeContest.id][0].value - leaders[activeContest.id][2].value).toLocaleString()
+                              }
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}

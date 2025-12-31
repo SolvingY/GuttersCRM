@@ -32,40 +32,59 @@ export function ActiveContestWidget() {
   const [rankings, setRankings] = useState<Record<string, UserRanking>>({});
   const [loading, setLoading] = useState(true);
 
+  const fetchActiveContests = async () => {
+    if (!user) return;
+    
+    // Get active contests
+    const { data: contestsData } = await supabase
+      .from('contests')
+      .select('*')
+      .eq('is_active', true);
+
+    if (!contestsData) {
+      setLoading(false);
+      return;
+    }
+
+    // Filter to only active (in-progress) contests
+    const activeContests = contestsData.filter(c => {
+      const now = new Date();
+      const start = new Date(c.start_date);
+      const end = new Date(c.end_date);
+      return now >= start && now <= end;
+    });
+
+    setContests(activeContests);
+
+    // Get user rankings for each contest
+    for (const contest of activeContests) {
+      await fetchUserRanking(contest, user.id);
+    }
+
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (!user) return;
-
-    const fetchActiveContests = async () => {
-      // Get active contests
-      const { data: contestsData } = await supabase
-        .from('contests')
-        .select('*')
-        .eq('is_active', true);
-
-      if (!contestsData) {
-        setLoading(false);
-        return;
-      }
-
-      // Filter to only active (in-progress) contests
-      const activeContests = contestsData.filter(c => {
-        const now = new Date();
-        const start = new Date(c.start_date);
-        const end = new Date(c.end_date);
-        return now >= start && now <= end;
-      });
-
-      setContests(activeContests);
-
-      // Get user rankings for each contest
-      for (const contest of activeContests) {
-        await fetchUserRanking(contest, user.id);
-      }
-
-      setLoading(false);
-    };
-
     fetchActiveContests();
+  }, [user]);
+
+  // Real-time subscription for contest changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('contests-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'contests'
+      }, () => {
+        fetchActiveContests();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchUserRanking = async (contest: Contest, userId: string) => {

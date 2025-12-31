@@ -9,6 +9,7 @@ interface LeaderboardEntry {
   sales: number;
   yearlyGoal: number;
   salesRank: string;
+  contestsWon: number;
 }
 
 interface LeaderboardTableProps {
@@ -80,6 +81,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
+              <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">Contests Won</th>
             </tr>
           </thead>
           <tbody>
@@ -150,6 +152,15 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                     )}>
                       {percentage.toFixed(2)}%
                     </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {entry.contestsWon > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">
+                        🏆 {entry.contestsWon}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               );
