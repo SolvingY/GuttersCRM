@@ -41,6 +41,7 @@ export default function MyStats() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<UserMetric[]>([]);
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyMetric[]>([]);
+  const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyMetric[]>([]); // For 52-week chart
   const [loading, setLoading] = useState(true);
   const [timeView, setTimeView] = useState<TimeView>('weekly');
 
@@ -62,7 +63,7 @@ export default function MyStats() {
         setMetrics(data || []);
       }
 
-      // Fetch weekly metrics (last 8 weeks)
+      // Fetch weekly metrics (last 8 weeks for Recent Weekly Updates)
       const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
@@ -75,6 +76,21 @@ export default function MyStats() {
         console.error('Error fetching weekly metrics:', weeklyError);
       } else {
         setWeeklyMetrics(weeklyData || []);
+      }
+
+      // Fetch all weekly metrics (up to 52 weeks for 52-week chart)
+      const fiftyTwoWeeksAgo = format(subWeeks(new Date(), 52), 'yyyy-MM-dd');
+      const { data: allWeeklyData, error: allWeeklyError } = await supabase
+        .from('weekly_user_metrics')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('week_start', fiftyTwoWeeksAgo)
+        .order('week_start', { ascending: true });
+
+      if (allWeeklyError) {
+        console.error('Error fetching all weekly metrics:', allWeeklyError);
+      } else {
+        setAllWeeklyMetrics(allWeeklyData || []);
       }
 
       setLoading(false);
@@ -176,14 +192,10 @@ export default function MyStats() {
     }));
   };
 
-  // Prepare monthly chart data (12-month fiscal year: Dec → Nov)
+  // Prepare monthly chart data from weekly_user_metrics
   const getMonthlyData = () => {
     // Fiscal year month order: Dec (start) → Nov (end)
     const fiscalMonthOrder = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
-    const monthNameToIndex: { [key: string]: number } = {
-      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-    };
     
     // Initialize all 12 fiscal months with zero sales
     const fiscalMonths: { [key: string]: number } = {};
@@ -195,19 +207,18 @@ export default function MyStats() {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const fiscalEnd = FISCAL_YEAR.CURRENT_YEAR_END;
 
-    // Populate with metric data that falls within the fiscal year
-    metrics.forEach((m) => {
-      const metricDate = new Date(m.metric_date);
+    // Aggregate from weekly_user_metrics instead of user_metrics
+    allWeeklyMetrics.forEach((w) => {
+      const weekStartDate = new Date(w.week_start);
       
-      // Only include metrics within the fiscal year
-      if (metricDate >= fiscalStart && metricDate <= fiscalEnd) {
-        const monthIndex = metricDate.getMonth();
-        const monthName = Object.keys(monthNameToIndex).find(
-          key => monthNameToIndex[key] === monthIndex
-        );
+      // Only include weeks within the fiscal year
+      if (weekStartDate >= fiscalStart && weekStartDate <= fiscalEnd) {
+        const monthIndex = weekStartDate.getMonth();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthName = monthNames[monthIndex];
         
-        if (monthName && fiscalMonths[monthName] !== undefined) {
-          fiscalMonths[monthName] += Number(m.sales) || 0;
+        if (fiscalMonths[monthName] !== undefined) {
+          fiscalMonths[monthName] += Number(w.sales) || 0;
         }
       }
     });
@@ -225,6 +236,22 @@ export default function MyStats() {
         sales: fiscalMonths[month],
         cumulative,
         goalPace: goalCumulative,
+      };
+    });
+  };
+
+  // Prepare 52-week progression data
+  const get52WeekData = () => {
+    let cumulative = 0;
+    const weeklyGoalPace = yearlyGoal / 52;
+    
+    return allWeeklyMetrics.map((w, index) => {
+      cumulative += Number(w.sales) || 0;
+      return {
+        week: `W${index + 1}`,
+        weekLabel: format(new Date(w.week_start), 'MMM d'),
+        cumulativeSales: cumulative,
+        goalPace: weeklyGoalPace * (index + 1),
       };
     });
   };
@@ -489,6 +516,73 @@ export default function MyStats() {
                         stroke="hsl(var(--accent))"
                         strokeWidth={2}
                         dot={{ fill: 'hsl(var(--accent))' }}
+                        name="Cumulative Sales"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="goalPace"
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        name="Goal Pace"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 52-Week Progression Chart */}
+          {allWeeklyMetrics.length > 0 && yearlyGoal > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-accent" />
+                  52-Week Progress Towards Goal
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={get52WeekData()}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="week" 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={10}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={12}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number, name: string) => [
+                          formatCurrency(value),
+                          name === 'cumulativeSales' ? 'Actual Sales' : 'Goal Pace'
+                        ]}
+                        labelFormatter={(label, payload) => {
+                          if (payload && payload[0]) {
+                            return `Week of ${payload[0].payload.weekLabel}`;
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="cumulativeSales"
+                        stroke="hsl(var(--accent))"
+                        strokeWidth={3}
+                        dot={false}
                         name="Cumulative Sales"
                       />
                       <Line
