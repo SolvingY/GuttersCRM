@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Trophy, Settings, Users, ChevronLeft, ChevronRight, UserPlus, Gift, X } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { BarChart3, Trophy, Settings, ChevronLeft, ChevronRight, Gift, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,22 +11,14 @@ const navItems = [
   { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
 ];
 
-const adminItems = [
-  { icon: Users, label: 'Master Overview', path: '/dashboard/admin' },
-  { icon: UserPlus, label: 'Invite Users', path: '/dashboard/invites' },
-];
-
 interface DashboardSidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
 
 export function DashboardSidebar({ mobileOpen = false, onMobileClose }: DashboardSidebarProps) {
-  const { isAdmin } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-
-  const allItems = isAdmin ? [...navItems, ...adminItems] : navItems;
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -75,7 +66,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         </div>
 
         <nav className="flex-1 p-2 space-y-1">
-          {allItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <NavLink
@@ -116,7 +107,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         </div>
 
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {allItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <NavLink
