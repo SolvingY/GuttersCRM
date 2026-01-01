@@ -29,6 +29,7 @@ interface SalesRepEntry {
   points: number;
   userId: string;
   sales: number;
+  closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
@@ -50,6 +51,9 @@ interface CanvasserEntry {
   userId: string;
   yearlyGoal: number;
   leadsClosed: number;
+  leadsSet: number;
+  leadsWithDamage: number;
+  points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
   contestsWon: number;
@@ -107,7 +111,7 @@ export default function AdminLeaderboards() {
 
       const { data: metricsData } = await supabase
         .from('user_metrics')
-        .select('id, user_id, display_name, points, sales, yearly_goal, sales_rank, metric_date')
+        .select('id, user_id, display_name, points, sales, closed_deals, yearly_goal, sales_rank, metric_date')
         .order('metric_date', { ascending: false });
 
       if (!metricsData || metricsData.length === 0) {
@@ -154,6 +158,7 @@ export default function AdminLeaderboards() {
           userId,
           points: data.points,
           sales: data.sales,
+          closedDeals: data.closedDeals,
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
@@ -300,7 +305,7 @@ export default function AdminLeaderboards() {
 
       const { data } = await supabase
         .from('canvasser_metrics')
-        .select('user_id, display_name, leads_closed, yearly_goal, points')
+        .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, yearly_goal, points')
         .order('leads_closed', { ascending: false });
 
       if (!data || data.length === 0) {
@@ -354,6 +359,9 @@ export default function AdminLeaderboards() {
             name: entry.display_name || 'Anonymous',
             yearlyGoal,
             leadsClosed,
+            leadsSet: entry.leads_set || 0,
+            leadsWithDamage: entry.leads_with_damage || 0,
+            points: Number(entry.points) || 0,
             amountUntilGoal,
             percentOfGoal,
             contestsWon: contestWins.get(entry.user_id) || 0,

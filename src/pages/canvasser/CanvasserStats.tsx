@@ -91,7 +91,7 @@ export default function CanvasserStats() {
     // Fetch YTD canvasser metrics for leaderboard
     const { data: metricsData, error } = await supabase
       .from("canvasser_metrics")
-      .select("user_id, display_name, leads_closed, yearly_goal, points")
+      .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, yearly_goal, points")
       .order("leads_closed", { ascending: false });
 
     if (error) {
@@ -148,6 +148,9 @@ export default function CanvasserStats() {
           name: entry.display_name || "Anonymous",
           yearlyGoal,
           leadsClosed,
+          leadsSet: entry.leads_set || 0,
+          leadsWithDamage: entry.leads_with_damage || 0,
+          points: Number(entry.points) || 0,
           amountUntilGoal,
           percentOfGoal,
           contestsWon: contestWins.get(entry.user_id) || 0,

@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
 
 export interface WeeklyCanvasserEntry {
   rank: number;
@@ -94,9 +95,19 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.shiftsWorked}</td>
                   <td className="py-3 px-4 text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
-                      {entry.pointsEarned.toLocaleString()}
-                    </span>
+                    <PointsBreakdownTooltip
+                      data={{
+                        type: 'canvasser',
+                        leadsSet: entry.leadsSet,
+                        leadsWithDamage: entry.leadsWithDamage,
+                        leadsClosed: entry.leadsClosed,
+                        totalPoints: entry.pointsEarned,
+                      }}
+                    >
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
+                        {entry.pointsEarned.toLocaleString()}
+                      </span>
+                    </PointsBreakdownTooltip>
                   </td>
                 </tr>
               );

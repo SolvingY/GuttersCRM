@@ -18,6 +18,7 @@ interface LeaderboardEntry {
   points: number;
   userId: string;
   sales: number;
+  closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
@@ -69,7 +70,7 @@ export default function Leaderboard() {
       // Fetch metrics including display_name for test users
       const { data: metricsData, error: metricsError } = await supabase
         .from('user_metrics')
-        .select('id, user_id, display_name, points, sales, yearly_goal, sales_rank, metric_date')
+        .select('id, user_id, display_name, points, sales, closed_deals, yearly_goal, sales_rank, metric_date')
         .order('metric_date', { ascending: false });
 
       if (metricsError) {
@@ -89,6 +90,7 @@ export default function Leaderboard() {
         metricId: string;
         points: number;
         sales: number;
+        closedDeals: number;
         yearlyGoal: number;
         salesRank: string;
         displayName: string | null;
@@ -107,6 +109,7 @@ export default function Leaderboard() {
             metricId: item.id,
             points: Number(item.points) || 0,
             sales: Number(item.sales) || 0,
+            closedDeals: Number(item.closed_deals) || 0,
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
@@ -142,6 +145,7 @@ export default function Leaderboard() {
           userId,
           points: data.points,
           sales: data.sales,
+          closedDeals: data.closedDeals,
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
