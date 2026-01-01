@@ -9,6 +9,9 @@ import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { CanvasserLeaderboardTable, CanvasserLeaderboardEntry } from "@/components/dashboard/CanvasserLeaderboardTable";
 import { WeeklyCanvasserLeaderboardTable, WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+} from 'recharts';
 interface CanvasserMetrics {
   display_name: string | null;
   leads_set: number;
@@ -35,6 +38,7 @@ export default function CanvasserStats() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<CanvasserMetrics | null>(null);
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
+  const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]); // For 52-week chart
   const [loading, setLoading] = useState(true);
   
   // Leaderboard states
@@ -65,7 +69,7 @@ export default function CanvasserStats() {
       setMetrics(data);
     }
 
-    // Fetch weekly metrics (last 8 weeks)
+    // Fetch weekly metrics (last 8 weeks for Recent Weekly Updates)
     const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
     const { data: weeklyData, error: weeklyError } = await supabase
       .from('weekly_canvasser_metrics')
@@ -78,6 +82,21 @@ export default function CanvasserStats() {
       console.error('Error fetching weekly metrics:', weeklyError);
     } else {
       setWeeklyMetrics(weeklyData || []);
+    }
+
+    // Fetch all weekly metrics (up to 52 weeks for 52-week chart)
+    const fiftyTwoWeeksAgo = format(subWeeks(new Date(), 52), 'yyyy-MM-dd');
+    const { data: allWeeklyData, error: allWeeklyError } = await supabase
+      .from('weekly_canvasser_metrics')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('week_start', fiftyTwoWeeksAgo)
+      .order('week_start', { ascending: true });
+
+    if (allWeeklyError) {
+      console.error('Error fetching all weekly metrics:', allWeeklyError);
+    } else {
+      setAllWeeklyMetrics(allWeeklyData || []);
     }
 
     setLoading(false);
@@ -236,6 +255,23 @@ export default function CanvasserStats() {
     }).format(value);
   };
 
+  // Prepare 52-week progression data for leads closed
+  const get52WeekData = () => {
+    const yearlyGoal = metrics?.yearly_goal || 0;
+    let cumulative = 0;
+    const weeklyGoalPace = yearlyGoal / 52;
+    
+    return allWeeklyMetrics.map((w, index) => {
+      cumulative += Number(w.leads_closed) || 0;
+      return {
+        week: `W${index + 1}`,
+        weekLabel: format(new Date(w.week_start), 'MMM d'),
+        cumulativeLeadsClosed: cumulative,
+        goalPace: weeklyGoalPace * (index + 1),
+      };
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -279,6 +315,75 @@ export default function CanvasserStats() {
             <p className="text-sm text-muted-foreground">
               Leads closed this year towards your annual target
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 52-Week Progression Chart */}
+      {allWeeklyMetrics.length > 0 && metrics?.yearly_goal && metrics.yearly_goal > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              52-Week Progress Towards Goal
+            </CardTitle>
+            <CardDescription>
+              Track your leads closed progress week by week
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={get52WeekData()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="week" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={10}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: number, name: string) => [
+                      value.toLocaleString(),
+                      name === 'cumulativeLeadsClosed' ? 'Leads Closed' : 'Goal Pace'
+                    ]}
+                    labelFormatter={(label, payload) => {
+                      if (payload && payload[0]) {
+                        return `Week of ${payload[0].payload.weekLabel}`;
+                      }
+                      return label;
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="cumulativeLeadsClosed"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={3}
+                    dot={false}
+                    name="Leads Closed"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="goalPace"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    name="Goal Pace"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       )}

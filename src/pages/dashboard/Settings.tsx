@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, User, Lock } from 'lucide-react';
+import { Loader2, User, Lock, Target } from 'lucide-react';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -19,26 +19,46 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  
+  const [yearlyGoal, setYearlyGoal] = useState('');
+  const [savingGoal, setSavingGoal] = useState(false);
 
   useEffect(() => {
     if (!user) return;
 
-    const fetchProfile = async () => {
-      const { data, error } = await supabase
+    const fetchData = async () => {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('full_name')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else if (data) {
-        setFullName(data.full_name || '');
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      } else if (profileData) {
+        setFullName(profileData.full_name || '');
       }
+      
+      // Fetch yearly goal from user_metrics
+      const { data: metricsData, error: metricsError } = await supabase
+        .from('user_metrics')
+        .select('yearly_goal')
+        .eq('user_id', user.id)
+        .order('metric_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (metricsError) {
+        console.error('Error fetching metrics:', metricsError);
+      } else if (metricsData) {
+        setYearlyGoal(String(metricsData.yearly_goal || 0));
+      }
+      
       setLoading(false);
     };
 
-    fetchProfile();
+    fetchData();
   }, [user]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -118,6 +138,34 @@ export default function Settings() {
     setChangingPassword(false);
   };
 
+  const handleSaveGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSavingGoal(true);
+    
+    const goalValue = parseFloat(yearlyGoal) || 0;
+    
+    const { error } = await supabase
+      .from('user_metrics')
+      .update({ yearly_goal: goalValue })
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast({
+        title: 'Error updating goal',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Goal updated',
+        description: 'Your yearly sales goal has been updated.',
+      });
+    }
+    setSavingGoal(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -171,6 +219,43 @@ export default function Settings() {
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Save Profile
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-accent" />
+            <CardTitle className="text-foreground">Goals & Targets</CardTitle>
+          </div>
+          <CardDescription>Set your yearly sales goal to track progress</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveGoal} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="yearlyGoal" className="text-foreground">Yearly Sales Goal ($)</Label>
+              <Input
+                id="yearlyGoal"
+                type="number"
+                value={yearlyGoal}
+                onChange={(e) => setYearlyGoal(e.target.value)}
+                placeholder="500000"
+                min="0"
+                step="1000"
+              />
+              <p className="text-xs text-muted-foreground">
+                Set a sales target for the fiscal year to track your progress
+              </p>
+            </div>
+            <Button
+              type="submit"
+              disabled={savingGoal}
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              {savingGoal && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Goal
             </Button>
           </form>
         </CardContent>
