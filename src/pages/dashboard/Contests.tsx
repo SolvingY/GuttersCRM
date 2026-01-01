@@ -50,6 +50,20 @@ interface LeaderEntry {
 
 const EMOJI_OPTIONS = ['🏆', '🎯', '💰', '🔥', '⭐', '🚀', '💎', '👑', '🎉', '🏅', '💪', '🌟'];
 
+const getMetricLabel = (metric: string) => {
+  switch (metric) {
+    case 'sales': return 'Total Sales';
+    case 'leads': return 'Leads Generated';
+    case 'closed_deals': return 'Deals Closed';
+    case 'leads_set': return 'Leads Set';
+    case 'leads_closed': return 'Contracts Signed';
+    case 'leads_with_damage': return 'Damage Leads';
+    case 'points': return 'Points';
+    case 'conversion_rate': return 'Conversion Rate';
+    default: return metric.replace('_', ' ');
+  }
+};
+
 // Active Contest Banner Component
 function ActiveContestBanner({ 
   contest, 
@@ -73,9 +87,12 @@ function ActiveContestBanner({
               {contest.icon || '🏆'}
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="text-xl font-heading text-foreground">{contest.title}</h3>
                 <Badge variant="default">Active</Badge>
+                <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30">
+                  Tracking: {getMetricLabel(contest.metric_type)}
+                </Badge>
               </div>
               {contest.description && (
                 <p className="text-muted-foreground mb-3">{contest.description}</p>
@@ -244,10 +261,13 @@ function ContestCard({
     <Card className={isActive ? 'border-accent/30' : ''}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-2xl">{contest.icon || '🏆'}</span>
             <CardTitle className="text-lg">{contest.title}</CardTitle>
             <Badge variant={status.variant}>{status.label}</Badge>
+            <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30 text-xs">
+              {getMetricLabel(contest.metric_type)}
+            </Badge>
           </div>
           {isAdmin && (
             <div className="flex gap-1">

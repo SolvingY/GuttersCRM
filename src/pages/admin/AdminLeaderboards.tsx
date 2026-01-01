@@ -240,7 +240,7 @@ export default function AdminLeaderboards() {
         const { data: weeklyData } = await supabase
           .from('weekly_user_metrics')
           .select('user_id, sales, leads, closed_deals, points_earned')
-          .gte('week_end', monthStartStr)
+          .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -428,7 +428,7 @@ export default function AdminLeaderboards() {
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
           .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned')
-          .gte('week_end', monthStartStr)
+          .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
         if (!weeklyData || weeklyData.length === 0) {
