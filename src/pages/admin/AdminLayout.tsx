@@ -15,7 +15,8 @@ import {
   KeyRound,
   LogOut,
   Trophy,
-  UserCog
+  UserCog,
+  BarChart3
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ import ngrWatermark from '@/assets/ngr-watermark.png';
 
 const adminNavItems = [
   { icon: Users, label: 'Master Overview', path: '/admin/overview' },
+  { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
   { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
   { icon: UserCog, label: 'User Roles', path: '/admin/users' },
   { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
