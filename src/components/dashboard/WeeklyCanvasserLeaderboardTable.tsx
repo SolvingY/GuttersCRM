@@ -1,13 +1,12 @@
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface WeeklyCanvasserEntry {
+export interface WeeklyCanvasserEntry {
   rank: number;
   name: string;
   userId: string;
   leadsSet: number;
   leadsClosed: number;
-  leadsWithDamage: number;
   shiftsWorked: number;
   pointsEarned: number;
 }
@@ -45,8 +44,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Closed</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads w/ Damage</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Shifts</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Shifts Worked</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points Earned</th>
             </tr>
           </thead>
@@ -91,7 +89,6 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                   </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.shiftsWorked}</td>
                   <td className="py-3 px-4 text-right">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">

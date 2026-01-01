@@ -28,6 +28,7 @@ export type Database = {
           shifts_worked: number | null
           updated_at: string | null
           user_id: string
+          yearly_goal: number | null
         }
         Insert: {
           created_at?: string | null
@@ -42,6 +43,7 @@ export type Database = {
           shifts_worked?: number | null
           updated_at?: string | null
           user_id: string
+          yearly_goal?: number | null
         }
         Update: {
           created_at?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           shifts_worked?: number | null
           updated_at?: string | null
           user_id?: string
+          yearly_goal?: number | null
         }
         Relationships: []
       }

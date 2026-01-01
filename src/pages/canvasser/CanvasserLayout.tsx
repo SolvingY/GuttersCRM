@@ -4,6 +4,7 @@ import { CanvasserSidebar } from "@/components/canvasser/CanvasserSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import ngrWatermark from "@/assets/ngr-watermark.png";
 import { VictoryNotification } from "@/components/dashboard/VictoryNotification";
+import { CanvasserGoalModal } from "@/components/canvasser/CanvasserGoalModal";
 
 export default function CanvasserLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -35,6 +36,7 @@ export default function CanvasserLayout() {
         </main>
       </div>
       <VictoryNotification />
+      <CanvasserGoalModal />
     </div>
   );
 }
