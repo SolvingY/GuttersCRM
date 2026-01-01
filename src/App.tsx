@@ -15,6 +15,11 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
 import WeeklyUpdates from "./pages/admin/WeeklyUpdates";
+import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
+import CanvasserStats from "./pages/canvasser/CanvasserStats";
+import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
+import CanvasserContests from "./pages/canvasser/CanvasserContests";
+import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -29,7 +34,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           
-          {/* Protected Dashboard Routes */}
+          {/* Protected Dashboard Routes (Sales Reps) */}
           <Route
             path="/dashboard"
             element={
@@ -45,7 +50,23 @@ const App = () => (
             <Route path="settings" element={<Settings />} />
           </Route>
 
-          {/* Admin Portal Routes - Separate from Dashboard */}
+          {/* Canvasser Portal Routes */}
+          <Route
+            path="/canvasser"
+            element={
+              <ProtectedRoute requireCanvasser>
+                <CanvasserLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/canvasser/stats" replace />} />
+            <Route path="stats" element={<CanvasserStats />} />
+            <Route path="leaderboard" element={<CanvasserLeaderboard />} />
+            <Route path="contests" element={<CanvasserContests />} />
+            <Route path="settings" element={<CanvasserSettings />} />
+          </Route>
+
+          {/* Admin Portal Routes */}
           <Route
             path="/admin"
             element={

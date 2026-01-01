@@ -1,0 +1,120 @@
+import { useState, useEffect } from "react";
+import { BarChart3, Trophy, Award, Settings, Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
+const navItems = [
+  { icon: BarChart3, label: "My Stats", path: "/canvasser/stats" },
+  { icon: Trophy, label: "Leaderboard", path: "/canvasser/leaderboard" },
+  { icon: Award, label: "Contests", path: "/canvasser/contests" },
+  { icon: Settings, label: "Settings", path: "/canvasser/settings" },
+];
+
+interface CanvasserSidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: CanvasserSidebarProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+  }, [location.pathname]);
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          "hidden md:flex flex-col bg-card border-r border-border h-screen sticky top-0 transition-all duration-300",
+          collapsed ? "w-16" : "w-64"
+        )}
+      >
+        {/* Collapse button */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-6 z-50 bg-primary text-primary-foreground rounded-full p-1 shadow-md hover:bg-primary/90 transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+
+        <div className={cn("p-4 border-b border-border", collapsed && "px-2")}>
+          <h2 className={cn("font-bold text-xl text-foreground", collapsed && "text-center text-sm")}>
+            {collapsed ? "CV" : "Canvasser Portal"}
+          </h2>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-2">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  collapsed && "justify-center px-2",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              {!collapsed && <span className="font-medium">{item.label}</span>}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Mobile sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border transform transition-transform duration-300 ease-in-out md:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h2 className="font-bold text-xl text-foreground">Canvasser Portal</h2>
+          <button
+            onClick={onMobileClose}
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <nav className="p-4 space-y-2">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5" />
+              <span className="font-medium">{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+    </>
+  );
+}

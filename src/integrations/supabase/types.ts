@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      canvasser_metrics: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string
+          leads_closed: number | null
+          leads_set: number | null
+          leads_with_damage: number | null
+          metric_date: string
+          points: number | null
+          shifts_worked: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          metric_date?: string
+          points?: number | null
+          shifts_worked?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          metric_date?: string
+          points?: number | null
+          shifts_worked?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       contests: {
         Row: {
           created_at: string | null
@@ -31,6 +73,7 @@ export type Database = {
           prize_description: string
           prize_value: number | null
           start_date: string
+          target_role: string | null
           title: string
           updated_at: string | null
           winner_display_name: string | null
@@ -53,6 +96,7 @@ export type Database = {
           prize_description: string
           prize_value?: number | null
           start_date: string
+          target_role?: string | null
           title: string
           updated_at?: string | null
           winner_display_name?: string | null
@@ -75,6 +119,7 @@ export type Database = {
           prize_description?: string
           prize_value?: number | null
           start_date?: string
+          target_role?: string | null
           title?: string
           updated_at?: string | null
           winner_display_name?: string | null
@@ -250,7 +295,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "canvasser"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -378,7 +423,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "canvasser"],
     },
   },
 } as const
