@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CanvasserLeaderboardTable } from "@/components/dashboard/CanvasserLeaderboardTable";
 import { WeeklyCanvasserLeaderboardTable } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
+import { CommentsSection } from "@/components/dashboard/CommentsSection";
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -376,6 +377,9 @@ export default function CanvasserLeaderboard() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Team Comments Section */}
+      <CommentsSection />
     </div>
   );
 }
