@@ -14,7 +14,8 @@ import {
   ArrowLeft,
   KeyRound,
   LogOut,
-  Trophy
+  Trophy,
+  UserCog
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ import ngrWatermark from '@/assets/ngr-watermark.png';
 const adminNavItems = [
   { icon: Users, label: 'Master Overview', path: '/admin/overview' },
   { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
+  { icon: UserCog, label: 'User Roles', path: '/admin/users' },
   { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
   { icon: Trophy, label: 'Contests', path: '/admin/contests' },
 ];

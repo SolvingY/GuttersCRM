@@ -23,6 +23,21 @@ export default function Leaderboard() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
+      // First, get user IDs that are sales reps or admins (not canvassers)
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['user', 'admin']);
+
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
+        setLoading(false);
+        return;
+      }
+
+      // Create a set of eligible user IDs
+      const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
+
       // Fetch metrics including display_name for test users
       const { data: metricsData, error: metricsError } = await supabase
         .from('user_metrics')
@@ -41,7 +56,7 @@ export default function Leaderboard() {
         return;
       }
 
-      // Get latest metric per user (use metric id for test users without user_id)
+      // Get latest metric per user, filtering to only eligible users (sales reps/admins)
       const latestByUser = new Map<string, {
         metricId: string;
         points: number;
@@ -52,6 +67,11 @@ export default function Leaderboard() {
       }>();
       
       for (const item of metricsData) {
+        // Skip if user_id exists but is not eligible (is a canvasser)
+        if (item.user_id && !eligibleUserIds.has(item.user_id)) {
+          continue;
+        }
+        
         // Use user_id if available, otherwise use metric id as key
         const key = item.user_id || `metric_${item.id}`;
         if (!latestByUser.has(key)) {
