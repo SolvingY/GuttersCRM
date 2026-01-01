@@ -4,7 +4,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { GoalSettingModal } from '@/components/dashboard/GoalSettingModal';
 import { VictoryNotification } from '@/components/dashboard/VictoryNotification';
-import ngrWatermark from '@/assets/ngr-watermark.png';
+import nextGenLogo from '@/assets/next-gen-logo.png';
 
 export default function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -24,7 +24,7 @@ export default function DashboardLayout() {
             style={{ zIndex: 0 }}
           >
             <img 
-              src={ngrWatermark} 
+              src={nextGenLogo} 
               alt="" 
               className="w-64 h-64 md:w-96 md:h-96 object-contain opacity-[0.04]"
             />
