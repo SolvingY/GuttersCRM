@@ -17,6 +17,7 @@ interface CanvasserMetrics {
   shifts_worked: number;
   points: number;
   income: number;
+  yearly_goal: number;
 }
 
 interface WeeklyCanvasserMetric {
@@ -246,6 +247,41 @@ export default function CanvasserStats() {
 
       {/* Active Contests Widget */}
       <CanvasserActiveContestWidget />
+
+      {/* Yearly Goal Progress */}
+      {metrics?.yearly_goal && metrics.yearly_goal > 0 && (
+        <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Target className="h-5 w-5 text-primary" />
+              Yearly Goal Progress
+            </CardTitle>
+            <CardDescription>
+              {metrics.leads_closed >= metrics.yearly_goal
+                ? "🎉 Congratulations! You've reached your goal!"
+                : `${metrics.yearly_goal - metrics.leads_closed} leads closed to go`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-end justify-between">
+              <div>
+                <span className="text-4xl font-bold text-primary">{metrics.leads_closed}</span>
+                <span className="text-2xl text-muted-foreground"> / {metrics.yearly_goal}</span>
+              </div>
+              <span className="text-2xl font-semibold text-foreground">
+                {((metrics.leads_closed / metrics.yearly_goal) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <Progress 
+              value={Math.min((metrics.leads_closed / metrics.yearly_goal) * 100, 100)} 
+              className="h-3"
+            />
+            <p className="text-sm text-muted-foreground">
+              Leads closed this year towards your annual target
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
