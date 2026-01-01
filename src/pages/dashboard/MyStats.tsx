@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
-import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
+import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 
 interface UserMetric {
   id: string;
@@ -24,11 +25,22 @@ interface UserMetric {
   earnings_ytd: number;
 }
 
+interface WeeklyMetric {
+  week_start: string;
+  week_end: string;
+  sales: number;
+  leads: number;
+  closed_deals: number;
+  earnings: number;
+  points_earned: number;
+}
+
 type TimeView = 'weekly' | 'monthly';
 
 export default function MyStats() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<UserMetric[]>([]);
+  const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeView, setTimeView] = useState<TimeView>('weekly');
 
@@ -36,6 +48,7 @@ export default function MyStats() {
     if (!user) return;
 
     const fetchMetrics = async () => {
+      // Fetch YTD metrics
       const { data, error } = await supabase
         .from('user_metrics')
         .select('*')
@@ -48,6 +61,22 @@ export default function MyStats() {
       } else {
         setMetrics(data || []);
       }
+
+      // Fetch weekly metrics (last 8 weeks)
+      const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
+      const { data: weeklyData, error: weeklyError } = await supabase
+        .from('weekly_user_metrics')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('week_start', eightWeeksAgo)
+        .order('week_start', { ascending: false });
+
+      if (weeklyError) {
+        console.error('Error fetching weekly metrics:', weeklyError);
+      } else {
+        setWeeklyMetrics(weeklyData || []);
+      }
+
       setLoading(false);
     };
 
@@ -273,6 +302,39 @@ export default function MyStats() {
               valueClassName={getLeadToCloseColor(leadToCloseRate)}
             />
           </div>
+
+          {/* Weekly Updates Section */}
+          {weeklyMetrics.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <TrendingUp className="h-5 w-5 text-accent" />
+                  Recent Weekly Updates
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {weeklyMetrics.slice(0, 4).map((week) => (
+                    <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          Week of {format(new Date(week.week_start), 'MMM d')} - {format(new Date(week.week_end), 'MMM d')}
+                        </p>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>{week.leads} leads</span>
+                          <span>{week.closed_deals} closed</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.sales))}</p>
+                        <p className="text-xs text-accent">+{Number(week.points_earned)} pts</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Fiscal Year Progress */}
           <Card>
