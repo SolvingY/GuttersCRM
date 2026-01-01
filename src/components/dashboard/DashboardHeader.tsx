@@ -1,7 +1,8 @@
 import { KeyRound, LogOut, Menu, Shield } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +17,9 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, isCanvasser, role } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -33,6 +35,28 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     }
   };
 
+  // Determine portal title based on current route
+  const getPortalTitle = () => {
+    if (location.pathname.startsWith('/canvasser')) {
+      return 'Canvasser Portal';
+    }
+    if (location.pathname.startsWith('/admin')) {
+      return 'Admin Portal';
+    }
+    return 'Sales Rep Dashboard';
+  };
+
+  // Role badge component
+  const getRoleBadge = () => {
+    if (isAdmin) {
+      return <Badge variant="destructive" className="text-xs">Admin</Badge>;
+    }
+    if (isCanvasser) {
+      return <Badge className="bg-primary text-primary-foreground text-xs">Canvasser</Badge>;
+    }
+    return <Badge variant="secondary" className="text-xs">Sales Rep</Badge>;
+  };
+
   return (
     <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
       <div className="flex items-center gap-3">
@@ -46,7 +70,8 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           <Menu className="h-5 w-5" />
           <span className="sr-only">Open menu</span>
         </Button>
-        <h1 className="text-base sm:text-lg font-heading text-foreground">Next Gen Dashboard</h1>
+        <h1 className="text-base sm:text-lg font-heading text-foreground">{getPortalTitle()}</h1>
+        {user && getRoleBadge()}
       </div>
       
       <div className="flex items-center">

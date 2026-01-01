@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.finalize-contest]
 verify_jwt = false
+
+[functions.admin-set-user-role]
+verify_jwt = false
