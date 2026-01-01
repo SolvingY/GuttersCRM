@@ -5,10 +5,11 @@ import { Loader2 } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireCanvasser?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin } = useAuth();
+export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin, isCanvasser } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -25,6 +26,15 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
 
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireCanvasser && !isCanvasser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Redirect canvassers away from sales dashboard to canvasser dashboard
+  if (isCanvasser && location.pathname.startsWith('/dashboard')) {
+    return <Navigate to="/canvasser" replace />;
   }
 
   return <>{children}</>;

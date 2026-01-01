@@ -156,9 +156,9 @@ serve(async (req) => {
       console.log("create-user: Profile upserted successfully");
     }
 
-    // 2. UPSERT user_roles
+    // 2. UPSERT user_roles - now supports 'canvasser' role
     console.log("create-user: Upserting user role...");
-    const targetRole = role === "admin" ? "admin" : "user";
+    const targetRole = role === "admin" ? "admin" : (role === "canvasser" ? "canvasser" : "user");
     
     // First check if role exists
     const { data: existingRole } = await adminClient
@@ -192,50 +192,86 @@ serve(async (req) => {
       }
     }
 
-    // 3. UPSERT user_metrics
-    console.log("create-user: Upserting user metrics...");
-    
-    // Check if metrics exist
-    const { data: existingMetrics } = await adminClient
-      .from("user_metrics")
-      .select("id")
-      .eq("user_id", newUser.user.id)
-      .single();
+    // 3. Create appropriate metrics based on role
+    if (targetRole === "canvasser") {
+      // Create canvasser_metrics for canvasser role
+      console.log("create-user: Creating canvasser metrics...");
+      
+      const { data: existingCanvasserMetrics } = await adminClient
+        .from("canvasser_metrics")
+        .select("id")
+        .eq("user_id", newUser.user.id)
+        .single();
 
-    const metricsData = {
-      user_id: newUser.user.id,
-      display_name: displayName || null,
-      sales_rank: salesRank || "SR1",
-      yearly_goal: yearlyGoal || 0,
-      metric_date: new Date().toISOString().split('T')[0],
-    };
+      if (existingCanvasserMetrics) {
+        const { error: metricsUpdateError } = await adminClient
+          .from("canvasser_metrics")
+          .update({
+            display_name: displayName || null,
+          })
+          .eq("user_id", newUser.user.id);
 
-    if (existingMetrics) {
-      // Update existing metrics
-      const { error: metricsUpdateError } = await adminClient
-        .from("user_metrics")
-        .update({
-          display_name: displayName || null,
-          sales_rank: salesRank || "SR1",
-          yearly_goal: yearlyGoal || 0,
-        })
-        .eq("user_id", newUser.user.id);
-
-      if (metricsUpdateError) {
-        console.error("create-user: Error updating user metrics:", metricsUpdateError);
+        if (metricsUpdateError) {
+          console.error("create-user: Error updating canvasser metrics:", metricsUpdateError);
+        } else {
+          console.log("create-user: Canvasser metrics updated");
+        }
       } else {
-        console.log("create-user: User metrics updated");
+        const { error: metricsInsertError } = await adminClient
+          .from("canvasser_metrics")
+          .insert({
+            user_id: newUser.user.id,
+            display_name: displayName || null,
+            metric_date: new Date().toISOString().split('T')[0],
+          });
+
+        if (metricsInsertError) {
+          console.error("create-user: Error inserting canvasser metrics:", metricsInsertError);
+        } else {
+          console.log("create-user: Canvasser metrics inserted");
+        }
       }
     } else {
-      // Insert new metrics
-      const { error: metricsInsertError } = await adminClient
+      // Create user_metrics for user/admin roles
+      console.log("create-user: Upserting user metrics...");
+      
+      const { data: existingMetrics } = await adminClient
         .from("user_metrics")
-        .insert(metricsData);
+        .select("id")
+        .eq("user_id", newUser.user.id)
+        .single();
 
-      if (metricsInsertError) {
-        console.error("create-user: Error inserting user metrics:", metricsInsertError);
+      if (existingMetrics) {
+        const { error: metricsUpdateError } = await adminClient
+          .from("user_metrics")
+          .update({
+            display_name: displayName || null,
+            sales_rank: salesRank || "SR1",
+            yearly_goal: yearlyGoal || 0,
+          })
+          .eq("user_id", newUser.user.id);
+
+        if (metricsUpdateError) {
+          console.error("create-user: Error updating user metrics:", metricsUpdateError);
+        } else {
+          console.log("create-user: User metrics updated");
+        }
       } else {
-        console.log("create-user: User metrics inserted");
+        const { error: metricsInsertError } = await adminClient
+          .from("user_metrics")
+          .insert({
+            user_id: newUser.user.id,
+            display_name: displayName || null,
+            sales_rank: salesRank || "SR1",
+            yearly_goal: yearlyGoal || 0,
+            metric_date: new Date().toISOString().split('T')[0],
+          });
+
+        if (metricsInsertError) {
+          console.error("create-user: Error inserting user metrics:", metricsInsertError);
+        } else {
+          console.log("create-user: User metrics inserted");
+        }
       }
     }
 
