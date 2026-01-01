@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import ngrWatermark from '@/assets/ngr-watermark.png';
+import nextGenLogo from '@/assets/next-gen-logo.png';
 
 const adminNavItems = [
   { icon: Users, label: 'Master Overview', path: '/admin/overview' },
@@ -210,7 +210,7 @@ export default function AdminLayout() {
             style={{ zIndex: 0 }}
           >
             <img 
-              src={ngrWatermark} 
+              src={nextGenLogo} 
               alt="" 
               className="w-64 h-64 md:w-96 md:h-96 object-contain opacity-[0.04]"
             />
