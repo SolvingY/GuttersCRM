@@ -13,7 +13,8 @@ import {
   Menu,
   ArrowLeft,
   KeyRound,
-  LogOut
+  LogOut,
+  Trophy
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ const adminNavItems = [
   { icon: Users, label: 'Master Overview', path: '/admin/overview' },
   { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
   { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
+  { icon: Trophy, label: 'Contests', path: '/admin/contests' },
 ];
 
 export default function AdminLayout() {

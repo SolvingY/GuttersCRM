@@ -79,6 +79,7 @@ const App = () => (
             <Route path="overview" element={<AdminOverview />} />
             <Route path="invites" element={<InviteUsers />} />
             <Route path="weekly" element={<WeeklyUpdates />} />
+            <Route path="contests" element={<Contests />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
