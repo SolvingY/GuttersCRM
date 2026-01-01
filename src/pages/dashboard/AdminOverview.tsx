@@ -53,6 +53,7 @@ interface CanvasserDetail {
   leadsWithDamage: number;
   shiftsWorked: number;
   points: number;
+  income: number;
   conversionRate: number;
   role: 'canvasser';
 }
@@ -238,6 +239,7 @@ export default function AdminOverview() {
         leadsWithDamage: number;
         shiftsWorked: number;
         points: number;
+        income: number;
       }>();
 
       for (const item of canvasserMetrics) {
@@ -252,6 +254,7 @@ export default function AdminOverview() {
             leadsWithDamage: item.leads_with_damage || 0,
             shiftsWorked: item.shifts_worked || 0,
             points: Number(item.points) || 0,
+            income: Number((item as any).income) || 0,
           });
         }
       }
@@ -268,6 +271,7 @@ export default function AdminOverview() {
           leadsWithDamage: data.leadsWithDamage,
           shiftsWorked: data.shiftsWorked,
           points: data.points,
+          income: data.income,
           conversionRate,
           role: 'canvasser' as const,
         };
@@ -625,6 +629,7 @@ export default function AdminOverview() {
           leadsWithDamage: selectedCanvasser.leadsWithDamage,
           shiftsWorked: selectedCanvasser.shiftsWorked,
           points: selectedCanvasser.points,
+          income: selectedCanvasser.income || 0,
         } : null}
         onSuccess={handleEditSuccess}
       />
