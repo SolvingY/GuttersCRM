@@ -60,6 +60,7 @@ interface WeeklyCanvasserEntry {
   name: string;
   userId: string;
   leadsSet: number;
+  leadsWithDamage: number;
   leadsClosed: number;
   shiftsWorked: number;
   pointsEarned: number;
@@ -377,7 +378,7 @@ export default function AdminLeaderboards() {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_closed, shifts_worked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned')
           .eq('week_start', weekStartStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -402,6 +403,7 @@ export default function AdminLeaderboards() {
           .map(w => ({
             userId: w.user_id,
             leadsSet: Number(w.leads_set) || 0,
+            leadsWithDamage: Number(w.leads_with_damage) || 0,
             leadsClosed: Number(w.leads_closed) || 0,
             shiftsWorked: Number(w.shifts_worked) || 0,
             pointsEarned: Number(w.points_earned) || 0,
@@ -417,7 +419,7 @@ export default function AdminLeaderboards() {
 
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_closed, shifts_worked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned')
           .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
@@ -429,9 +431,10 @@ export default function AdminLeaderboards() {
 
         const aggregated = new Map<string, any>();
         weeklyData.forEach(w => {
-          const existing = aggregated.get(w.user_id) || { leadsSet: 0, leadsClosed: 0, shiftsWorked: 0, pointsEarned: 0 };
+          const existing = aggregated.get(w.user_id) || { leadsSet: 0, leadsWithDamage: 0, leadsClosed: 0, shiftsWorked: 0, pointsEarned: 0 };
           aggregated.set(w.user_id, {
             leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
+            leadsWithDamage: existing.leadsWithDamage + (Number(w.leads_with_damage) || 0),
             leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
             shiftsWorked: existing.shiftsWorked + (Number(w.shifts_worked) || 0),
             pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
