@@ -1,93 +1,152 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Trophy, Medal, Award } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { CanvasserLeaderboardTable } from "@/components/dashboard/CanvasserLeaderboardTable";
+import { WeeklyCanvasserLeaderboardTable } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
+import { startOfWeek, endOfWeek, format, addWeeks, subWeeks } from "date-fns";
 
-interface LeaderboardEntry {
-  user_id: string;
-  display_name: string | null;
-  leads_set: number;
-  leads_closed: number;
-  leads_with_damage: number;
-  shifts_worked: number;
+interface CanvasserEntry {
+  rank: number;
+  name: string;
+  userId: string;
+  leadsSet: number;
+  leadsClosed: number;
+  leadsWithDamage: number;
+  shiftsWorked: number;
   points: number;
 }
 
-type MetricType = "leads_set" | "leads_closed" | "points";
+interface WeeklyCanvasserEntry {
+  rank: number;
+  name: string;
+  userId: string;
+  leadsSet: number;
+  leadsClosed: number;
+  leadsWithDamage: number;
+  shiftsWorked: number;
+  pointsEarned: number;
+}
 
 export default function CanvasserLeaderboard() {
   const { user } = useAuth();
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [ytdEntries, setYtdEntries] = useState<CanvasserEntry[]>([]);
+  const [weeklyEntries, setWeeklyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMetric, setSelectedMetric] = useState<MetricType>("leads_set");
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Get selected week range
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setSelectedDate(direction === 'prev' ? subWeeks(selectedDate, 1) : addWeeks(selectedDate, 1));
+  };
+
+  // Fetch YTD leaderboard
   useEffect(() => {
-    fetchLeaderboard();
-  }, []);
+    const fetchYtdLeaderboard = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("canvasser_metrics")
+        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points")
+        .order("leads_set", { ascending: false });
 
-  const fetchLeaderboard = async () => {
-    const { data, error } = await supabase
-      .from("canvasser_metrics")
-      .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points")
-      .order("leads_set", { ascending: false });
+      if (error) {
+        console.error("Error fetching leaderboard:", error);
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      console.error("Error fetching leaderboard:", error);
-    } else {
       // Get unique entries per user (latest)
-      const uniqueUsers = new Map<string, LeaderboardEntry>();
+      const uniqueUsers = new Map<string, any>();
       data?.forEach((entry) => {
         if (!uniqueUsers.has(entry.user_id)) {
           uniqueUsers.set(entry.user_id, entry);
         }
       });
-      setEntries(Array.from(uniqueUsers.values()));
-    }
-    setLoading(false);
-  };
 
-  const getSortedEntries = () => {
-    return [...entries].sort((a, b) => {
-      return (b[selectedMetric] ?? 0) - (a[selectedMetric] ?? 0);
-    });
-  };
+      const sorted = Array.from(uniqueUsers.values())
+        .sort((a, b) => (b.leads_set || 0) - (a.leads_set || 0))
+        .map((entry, index) => ({
+          rank: index + 1,
+          userId: entry.user_id,
+          name: entry.display_name || "Anonymous",
+          leadsSet: entry.leads_set || 0,
+          leadsClosed: entry.leads_closed || 0,
+          leadsWithDamage: entry.leads_with_damage || 0,
+          shiftsWorked: entry.shifts_worked || 0,
+          points: entry.points || 0,
+        }));
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Trophy className="h-5 w-5 text-yellow-500" />;
-      case 2:
-        return <Medal className="h-5 w-5 text-gray-400" />;
-      case 3:
-        return <Award className="h-5 w-5 text-amber-600" />;
-      default:
-        return <span className="w-5 text-center text-muted-foreground font-medium">{rank}</span>;
-    }
-  };
+      setYtdEntries(sorted);
+      setLoading(false);
+    };
 
-  const getMetricLabel = (metric: MetricType) => {
-    switch (metric) {
-      case "leads_set":
-        return "Leads Set";
-      case "leads_closed":
-        return "Leads Closed";
-      case "points":
-        return "Points";
-    }
-  };
+    fetchYtdLeaderboard();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // Fetch weekly leaderboard
+  useEffect(() => {
+    const fetchWeeklyLeaderboard = async () => {
+      setWeeklyLoading(true);
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
 
-  const sortedEntries = getSortedEntries();
+      const { data: weeklyData, error } = await supabase
+        .from("weekly_canvasser_metrics")
+        .select("user_id, leads_set, leads_closed, leads_with_damage, shifts_worked, points_earned")
+        .eq("week_start", weekStartStr);
+
+      if (error) {
+        console.error("Error fetching weekly leaderboard:", error);
+        setWeeklyLoading(false);
+        return;
+      }
+
+      if (!weeklyData || weeklyData.length === 0) {
+        setWeeklyEntries([]);
+        setWeeklyLoading(false);
+        return;
+      }
+
+      // Fetch display names
+      const userIds = weeklyData.map(w => w.user_id);
+      const { data: metricsData } = userIds.length > 0
+        ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
+        : { data: [] };
+
+      const displayNameMap = new Map<string, string | null>();
+      metricsData?.forEach(m => {
+        if (m.display_name && !displayNameMap.has(m.user_id)) {
+          displayNameMap.set(m.user_id, m.display_name);
+        }
+      });
+
+      const sorted = weeklyData
+        .map(w => ({
+          userId: w.user_id,
+          leadsSet: Number(w.leads_set) || 0,
+          leadsClosed: Number(w.leads_closed) || 0,
+          leadsWithDamage: Number(w.leads_with_damage) || 0,
+          shiftsWorked: Number(w.shifts_worked) || 0,
+          pointsEarned: Number(w.points_earned) || 0,
+          name: displayNameMap.get(w.user_id) || "Anonymous",
+        }))
+        .sort((a, b) => b.leadsSet - a.leadsSet)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
+      setWeeklyEntries(sorted);
+      setWeeklyLoading(false);
+    };
+
+    fetchWeeklyLeaderboard();
+  }, [selectedDate]);
 
   return (
     <div className="space-y-6">
@@ -96,128 +155,57 @@ export default function CanvasserLeaderboard() {
         <p className="text-muted-foreground mt-1">See how you stack up against other canvassers</p>
       </div>
 
-      <Tabs defaultValue="leads_set" onValueChange={(v) => setSelectedMetric(v as MetricType)}>
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="leads_set">Leads Set</TabsTrigger>
-          <TabsTrigger value="leads_closed">Leads Closed</TabsTrigger>
-          <TabsTrigger value="points">Points</TabsTrigger>
+      <Tabs defaultValue="ytd" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="ytd">Year to Date</TabsTrigger>
+          <TabsTrigger value="weekly">This Week</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={selectedMetric} className="mt-6">
-          {/* Top 3 Podium */}
-          {sortedEntries.length >= 3 && (
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              {/* 2nd Place */}
-              <Card className={cn(
-                "text-center pt-8 pb-4",
-                sortedEntries[1]?.user_id === user?.id && "ring-2 ring-primary"
-              )}>
-                <CardContent className="space-y-2">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-gray-200 flex items-center justify-center">
-                    <Medal className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <div className="font-semibold text-foreground truncate px-2">
-                    {sortedEntries[1]?.display_name || "Anonymous"}
-                  </div>
-                  <div className="text-2xl font-bold text-muted-foreground">
-                    {sortedEntries[1]?.[selectedMetric]?.toLocaleString() ?? 0}
-                  </div>
-                  <div className="text-sm text-muted-foreground">2nd Place</div>
-                </CardContent>
-              </Card>
-
-              {/* 1st Place */}
-              <Card className={cn(
-                "text-center pt-4 pb-4 -mt-4 border-yellow-500/50 bg-gradient-to-b from-yellow-500/10 to-transparent",
-                sortedEntries[0]?.user_id === user?.id && "ring-2 ring-primary"
-              )}>
-                <CardContent className="space-y-2">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-yellow-100 flex items-center justify-center">
-                    <Trophy className="h-10 w-10 text-yellow-500" />
-                  </div>
-                  <div className="font-semibold text-foreground truncate px-2">
-                    {sortedEntries[0]?.display_name || "Anonymous"}
-                  </div>
-                  <div className="text-3xl font-bold text-yellow-600">
-                    {sortedEntries[0]?.[selectedMetric]?.toLocaleString() ?? 0}
-                  </div>
-                  <div className="text-sm font-medium text-yellow-600">1st Place</div>
-                </CardContent>
-              </Card>
-
-              {/* 3rd Place */}
-              <Card className={cn(
-                "text-center pt-8 pb-4",
-                sortedEntries[2]?.user_id === user?.id && "ring-2 ring-primary"
-              )}>
-                <CardContent className="space-y-2">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
-                    <Award className="h-8 w-8 text-amber-600" />
-                  </div>
-                  <div className="font-semibold text-foreground truncate px-2">
-                    {sortedEntries[2]?.display_name || "Anonymous"}
-                  </div>
-                  <div className="text-2xl font-bold text-muted-foreground">
-                    {sortedEntries[2]?.[selectedMetric]?.toLocaleString() ?? 0}
-                  </div>
-                  <div className="text-sm text-muted-foreground">3rd Place</div>
-                </CardContent>
-              </Card>
+        <TabsContent value="ytd" className="mt-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : (
+            <CanvasserLeaderboardTable entries={ytdEntries} currentUserId={user?.id} />
           )}
+        </TabsContent>
 
-          {/* Full Leaderboard */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Full Rankings - {getMetricLabel(selectedMetric)}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {sortedEntries.map((entry, index) => (
-                  <div
-                    key={entry.user_id}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-lg transition-colors",
-                      entry.user_id === user?.id
-                        ? "bg-primary/10 border border-primary/30"
-                        : "bg-muted/50 hover:bg-muted"
-                    )}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-8 flex justify-center">
-                        {getRankIcon(index + 1)}
-                      </div>
-                      <div>
-                        <div className="font-medium text-foreground">
-                          {entry.display_name || "Anonymous"}
-                          {entry.user_id === user?.id && (
-                            <span className="ml-2 text-xs text-primary">(You)</span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {entry.shifts_worked} shifts worked
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-bold text-foreground">
-                        {entry[selectedMetric]?.toLocaleString() ?? 0}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {getMetricLabel(selectedMetric)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+        <TabsContent value="weekly" className="mt-4">
+          {/* Week Selector */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[200px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="icon" onClick={() => navigateWeek('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
-                {sortedEntries.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No canvassers found. Be the first!
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {weeklyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <WeeklyCanvasserLeaderboardTable entries={weeklyEntries} currentUserId={user?.id} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

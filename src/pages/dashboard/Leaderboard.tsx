@@ -4,9 +4,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
 import { WeeklyLeaderboardTable } from '@/components/dashboard/WeeklyLeaderboardTable';
 import { CommentsSection } from '@/components/dashboard/CommentsSection';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { startOfWeek, endOfWeek, format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { startOfWeek, endOfWeek, format, addWeeks, subWeeks } from 'date-fns';
 
 interface LeaderboardEntry {
   rank: number;
@@ -35,11 +39,15 @@ export default function Leaderboard() {
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Get current week range
-  const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
+  // Get selected week range
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 }); // Sunday
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setSelectedDate(direction === 'prev' ? subWeeks(selectedDate, 1) : addWeeks(selectedDate, 1));
+  };
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -154,6 +162,8 @@ export default function Leaderboard() {
 
   useEffect(() => {
     const fetchWeeklyLeaderboard = async () => {
+      setWeeklyLoading(true);
+      
       // First, get user IDs that are sales reps or admins (not canvassers)
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
@@ -168,9 +178,8 @@ export default function Leaderboard() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
-      // Fetch weekly metrics for current week
+      // Fetch weekly metrics for selected week
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-      const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
 
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
@@ -235,7 +244,7 @@ export default function Leaderboard() {
     };
 
     fetchWeeklyLeaderboard();
-  }, []);
+  }, [selectedDate]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -261,9 +270,33 @@ export default function Leaderboard() {
         </TabsContent>
         
         <TabsContent value="weekly" className="mt-4">
-          <div className="mb-3 text-sm text-muted-foreground">
-            Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+          {/* Week Selector */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[200px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="icon" onClick={() => navigateWeek('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
+          
           {weeklyLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-accent" />

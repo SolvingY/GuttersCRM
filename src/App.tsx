@@ -15,6 +15,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
 import WeeklyUpdates from "./pages/admin/WeeklyUpdates";
+import AdminLeaderboards from "./pages/admin/AdminLeaderboards";
 import UserRoles from "./pages/admin/UserRoles";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
@@ -78,6 +79,7 @@ const App = () => (
           >
             <Route index element={<Navigate to="/admin/overview" replace />} />
             <Route path="overview" element={<AdminOverview />} />
+            <Route path="leaderboards" element={<AdminLeaderboards />} />
             <Route path="invites" element={<InviteUsers />} />
             <Route path="users" element={<UserRoles />} />
             <Route path="weekly" element={<WeeklyUpdates />} />
