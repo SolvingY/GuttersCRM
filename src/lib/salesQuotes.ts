@@ -30,3 +30,7 @@ export const salesQuotes = [
   "Action is the foundational key to all success.",
   "Fortune favors the bold."
 ];
+
+export function getRandomQuote(): string {
+  return salesQuotes[Math.floor(Math.random() * salesQuotes.length)];
+}

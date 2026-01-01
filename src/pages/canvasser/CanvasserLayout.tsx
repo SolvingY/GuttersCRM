@@ -5,6 +5,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import nextGenLogo from "@/assets/next-gen-logo.png";
 import { VictoryNotification } from "@/components/dashboard/VictoryNotification";
 import { CanvasserGoalModal } from "@/components/canvasser/CanvasserGoalModal";
+import { WelcomeBackNotification } from "@/components/dashboard/WelcomeBackNotification";
 
 export default function CanvasserLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function CanvasserLayout() {
       </div>
       <VictoryNotification />
       <CanvasserGoalModal />
+      <WelcomeBackNotification />
     </div>
   );
 }

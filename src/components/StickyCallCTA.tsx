@@ -10,7 +10,7 @@ export function StickyCallCTA() {
       <div className="max-w-7xl mx-auto">
         <Button 
           variant="cta" 
-          className="w-full text-[10px] sm:text-sm md:text-base lg:text-lg py-1.5 sm:py-2 px-2 sm:px-4 leading-tight h-auto min-h-[40px] flex flex-col items-center gap-0"
+          className="w-full text-xs sm:text-sm md:text-base lg:text-lg py-1.5 sm:py-2 px-2 sm:px-4 leading-tight h-auto min-h-[40px] flex flex-col items-center gap-0"
           onClick={handleCall}
         >
           <span className="flex items-center gap-1 flex-wrap justify-center">
