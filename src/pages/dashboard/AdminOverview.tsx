@@ -54,6 +54,7 @@ interface CanvasserDetail {
   shiftsWorked: number;
   points: number;
   income: number;
+  yearlyGoal: number;
   conversionRate: number;
   role: 'canvasser';
 }
@@ -131,7 +132,7 @@ export default function AdminOverview() {
     // Fetch canvasser metrics
     const { data: canvasserMetrics, error: canvasserError } = await supabase
       .from('canvasser_metrics')
-      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points, metric_date')
+      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points, income, yearly_goal, metric_date')
       .order('metric_date', { ascending: false });
 
     if (canvasserError) {
@@ -243,6 +244,7 @@ export default function AdminOverview() {
         shiftsWorked: number;
         points: number;
         income: number;
+        yearlyGoal: number;
       }>();
 
       for (const item of canvasserMetrics) {
@@ -257,7 +259,8 @@ export default function AdminOverview() {
             leadsWithDamage: item.leads_with_damage || 0,
             shiftsWorked: item.shifts_worked || 0,
             points: Number(item.points) || 0,
-            income: Number((item as any).income) || 0,
+            income: Number(item.income) || 0,
+            yearlyGoal: item.yearly_goal || 0,
           });
         }
       }
@@ -275,6 +278,7 @@ export default function AdminOverview() {
           shiftsWorked: data.shiftsWorked,
           points: data.points,
           income: data.income,
+          yearlyGoal: data.yearlyGoal,
           conversionRate,
           role: 'canvasser' as const,
         };
@@ -633,6 +637,7 @@ export default function AdminOverview() {
           shiftsWorked: selectedCanvasser.shiftsWorked,
           points: selectedCanvasser.points,
           income: selectedCanvasser.income || 0,
+          yearlyGoal: selectedCanvasser.yearlyGoal || 0,
         } : null}
         onSuccess={handleEditSuccess}
       />
