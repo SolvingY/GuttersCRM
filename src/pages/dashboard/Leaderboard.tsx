@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
+import { WeeklyLeaderboardTable } from '@/components/dashboard/WeeklyLeaderboardTable';
 import { CommentsSection } from '@/components/dashboard/CommentsSection';
 import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 
 interface LeaderboardEntry {
   rank: number;
@@ -16,10 +19,27 @@ interface LeaderboardEntry {
   contestsWon: number;
 }
 
+interface WeeklyLeaderboardEntry {
+  rank: number;
+  name: string;
+  userId: string;
+  sales: number;
+  leads: number;
+  closedDeals: number;
+  pointsEarned: number;
+}
+
 export default function Leaderboard() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [weeklyEntries, setWeeklyEntries] = useState<WeeklyLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
+
+  // Get current week range
+  const now = new Date();
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -132,13 +152,90 @@ export default function Leaderboard() {
     fetchLeaderboard();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    const fetchWeeklyLeaderboard = async () => {
+      // First, get user IDs that are sales reps or admins (not canvassers)
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['user', 'admin']);
+
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
+        setWeeklyLoading(false);
+        return;
+      }
+
+      const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
+
+      // Fetch weekly metrics for current week
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+
+      const { data: weeklyData, error: weeklyError } = await supabase
+        .from('weekly_user_metrics')
+        .select('user_id, sales, leads, closed_deals, points_earned')
+        .eq('week_start', weekStartStr);
+
+      if (weeklyError) {
+        console.error('Error fetching weekly leaderboard:', weeklyError);
+        setWeeklyLoading(false);
+        return;
+      }
+
+      if (!weeklyData || weeklyData.length === 0) {
+        setWeeklyEntries([]);
+        setWeeklyLoading(false);
+        return;
+      }
+
+      // Filter to eligible users only
+      const filteredWeekly = weeklyData.filter(w => eligibleUserIds.has(w.user_id));
+
+      // Fetch profiles for names
+      const userIds = filteredWeekly.map(w => w.user_id);
+      const { data: profilesData } = userIds.length > 0 
+        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+        : { data: [] };
+
+      // Also fetch display names from user_metrics
+      const { data: metricsData } = userIds.length > 0
+        ? await supabase.from('user_metrics').select('user_id, display_name').in('user_id', userIds)
+        : { data: [] };
+
+      const profilesMap = new Map<string, string | null>(
+        profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
+      );
+
+      const displayNameMap = new Map<string, string | null>();
+      metricsData?.forEach(m => {
+        if (m.display_name && !displayNameMap.has(m.user_id)) {
+          displayNameMap.set(m.user_id, m.display_name);
+        }
+      });
+
+      // Convert to array and sort by weekly sales
+      const sorted = filteredWeekly
+        .map(w => ({
+          userId: w.user_id,
+          sales: Number(w.sales) || 0,
+          leads: Number(w.leads) || 0,
+          closedDeals: Number(w.closed_deals) || 0,
+          pointsEarned: Number(w.points_earned) || 0,
+          name: displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User',
+        }))
+        .sort((a, b) => b.sales - a.sales)
+        .map((entry, index) => ({
+          ...entry,
+          rank: index + 1,
+        }));
+
+      setWeeklyEntries(sorted);
+      setWeeklyLoading(false);
+    };
+
+    fetchWeeklyLeaderboard();
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -147,7 +244,35 @@ export default function Leaderboard() {
         <p className="text-sm text-muted-foreground">See how you rank against the team</p>
       </div>
 
-      <LeaderboardTable entries={entries} currentUserId={user?.id} />
+      <Tabs defaultValue="ytd" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="ytd">Year to Date</TabsTrigger>
+          <TabsTrigger value="weekly">This Week</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="ytd" className="mt-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            </div>
+          ) : (
+            <LeaderboardTable entries={entries} currentUserId={user?.id} />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="weekly" className="mt-4">
+          <div className="mb-3 text-sm text-muted-foreground">
+            Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+          </div>
+          {weeklyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            </div>
+          ) : (
+            <WeeklyLeaderboardTable entries={weeklyEntries} currentUserId={user?.id} />
+          )}
+        </TabsContent>
+      </Tabs>
 
       <CommentsSection />
     </div>
