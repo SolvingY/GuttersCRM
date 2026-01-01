@@ -260,18 +260,26 @@ export default function CanvasserStats() {
   const get52WeekData = () => {
     const yearlyGoal = metrics?.yearly_goal || 0;
     const fiscalStart = new Date(2025, 11, 15); // Dec 15, 2025
+    const now = new Date();
     const weeklyGoalPace = yearlyGoal / 52;
     const weeks: { week: string; weekLabel: string; leadsClosed: number; goalPace: number; cumulativeGoal: number }[] = [];
     
-    // Generate all 52 weeks of the fiscal year
-    for (let i = 0; i < 52; i++) {
+    // Calculate current week number in fiscal year
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    const currentWeekNum = Math.ceil((now.getTime() - fiscalStart.getTime()) / msPerWeek);
+    
+    // Only show weeks up to current week + 2 (or minimum 4 weeks)
+    const weeksToShow = Math.max(Math.min(currentWeekNum + 2, 52), 4);
+    
+    // Generate weeks up to current + 2
+    for (let i = 0; i < weeksToShow; i++) {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
       
       // Find matching weekly metric data
       const weeklyMetric = allWeeklyMetrics.find(w => {
         const wStart = new Date(w.week_start);
-        return wStart >= weekStart && wStart < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return wStart >= weekStart && wStart < new Date(weekStart.getTime() + msPerWeek);
       });
       
       weeks.push({

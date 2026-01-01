@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          priority: string | null
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: string | null
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       canvasser_metrics: {
         Row: {
           created_at: string | null
@@ -289,6 +322,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          tour_completed: boolean | null
           updated_at: string
         }
         Insert: {
@@ -296,6 +330,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          tour_completed?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -303,9 +338,39 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          tour_completed?: boolean | null
           updated_at?: string
         }
         Relationships: []
+      }
+      user_announcement_reads: {
+        Row: {
+          announcement_id: string | null
+          id: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          announcement_id?: string | null
+          id?: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string | null
+          id?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_metrics: {
         Row: {
