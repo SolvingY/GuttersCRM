@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import nextGenLogo from '@/assets/next-gen-logo.png';
 
 const navItems = [
   { icon: BarChart3, label: "My Stats", path: "/canvasser/stats" },
@@ -38,7 +39,7 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:flex flex-col bg-primary text-primary-foreground h-[calc(100vh-3.5rem)] sticky top-14 transition-all duration-300",
+          "hidden md:flex flex-col bg-primary text-primary-foreground h-[calc(100vh-3.5rem)] sticky top-14 transition-all duration-300 relative overflow-hidden",
           collapsed ? "w-16" : "w-56"
         )}
       >
@@ -76,12 +77,21 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
             </NavLink>
           ))}
         </nav>
+
+        {/* Watermark */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+          <img 
+            src={nextGenLogo} 
+            alt="" 
+            className="w-24 h-24 object-contain opacity-[0.08]"
+          />
+        </div>
       </aside>
 
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground transform transition-transform duration-300 ease-in-out md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground transform transition-transform duration-300 ease-in-out md:hidden relative overflow-hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -114,6 +124,15 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
             </NavLink>
           ))}
         </nav>
+
+        {/* Watermark */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+          <img 
+            src={nextGenLogo} 
+            alt="" 
+            className="w-28 h-28 object-contain opacity-[0.08]"
+          />
+        </div>
       </aside>
     </>
   );
