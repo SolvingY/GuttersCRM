@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
 
 interface LeaderboardEntry {
   rank: number;
@@ -7,6 +8,7 @@ interface LeaderboardEntry {
   points: number;
   userId: string;
   sales: number;
+  closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
@@ -81,6 +83,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">Contests Won</th>
             </tr>
           </thead>
@@ -152,6 +155,20 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                     )}>
                       {percentage.toFixed(2)}%
                     </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <PointsBreakdownTooltip
+                      data={{
+                        type: 'salesRep',
+                        sales: entry.sales,
+                        closedDeals: entry.closedDeals || 0,
+                        totalPoints: entry.points,
+                      }}
+                    >
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
+                        {entry.points.toLocaleString()}
+                      </span>
+                    </PointsBreakdownTooltip>
                   </td>
                   <td className="py-3 px-4 text-center">
                     {entry.contestsWon > 0 ? (

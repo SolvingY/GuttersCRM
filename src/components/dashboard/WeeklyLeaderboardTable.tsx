@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
 
 interface WeeklyLeaderboardEntry {
   rank: number;
@@ -113,9 +114,18 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
-                      {entry.pointsEarned.toLocaleString()}
-                    </span>
+                    <PointsBreakdownTooltip
+                      data={{
+                        type: 'salesRep',
+                        sales: entry.sales,
+                        closedDeals: entry.closedDeals,
+                        totalPoints: entry.pointsEarned,
+                      }}
+                    >
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
+                        {entry.pointsEarned.toLocaleString()}
+                      </span>
+                    </PointsBreakdownTooltip>
                   </td>
                 </tr>
               );

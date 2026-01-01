@@ -23,6 +23,7 @@ interface CanvasserMetrics {
   shiftsWorked: number;
   points: number;
   income: number;
+  yearlyGoal: number;
 }
 
 interface EditCanvasserMetricsModalProps {
@@ -42,6 +43,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
     shiftsWorked: 0,
     points: 0,
     income: 0,
+    yearlyGoal: 0,
   });
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
         shiftsWorked: user.shiftsWorked || 0,
         points: user.points || 0,
         income: user.income || 0,
+        yearlyGoal: user.yearlyGoal || 0,
       });
     }
   }, [user]);
@@ -66,6 +69,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
       const { error } = await supabase
         .from('canvasser_metrics')
         .update({
+          yearly_goal: formData.yearlyGoal,
           leads_set: formData.leadsSet,
           leads_closed: formData.leadsClosed,
           leads_with_damage: formData.leadsWithDamage,
@@ -107,6 +111,20 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="yearlyGoal" className="text-right">
+                Yearly Goal
+              </Label>
+              <Input
+                id="yearlyGoal"
+                type="number"
+                min="0"
+                value={formData.yearlyGoal}
+                onChange={(e) => setFormData({ ...formData, yearlyGoal: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter yearly goal (leads closed)"
+              />
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="leadsSet" className="text-right">
                 Leads Set

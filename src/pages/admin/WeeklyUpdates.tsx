@@ -49,9 +49,11 @@ interface CanvasserWeeklyEntry {
   weeklyIncome: string;
 }
 
-// Calculate points: 10 points per $10,000 in revenue
-const calculatePoints = (revenue: number): number => {
-  return Math.floor(revenue / 10000) * 10;
+// Calculate points: 10 points per $10,000 in revenue + 10 points per closed deal
+const calculatePoints = (revenue: number, closedDeals: number): number => {
+  const revenuePoints = Math.floor(revenue / 10000) * 10;
+  const closedDealPoints = closedDeals * 10;
+  return revenuePoints + closedDealPoints;
 };
 
 export default function WeeklyUpdates() {
@@ -205,8 +207,8 @@ export default function WeeklyUpdates() {
           continue;
         }
 
-        // Calculate points for this week's sales: 10 points per $10,000
-        const weeklyPoints = calculatePoints(weeklySales);
+        // Calculate points for this week: 10 points per $10,000 + 10 per closed deal
+        const weeklyPoints = calculatePoints(weeklySales, weeklyClosedDeals);
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('user_metrics')
@@ -637,7 +639,7 @@ export default function WeeklyUpdates() {
                 <li>
                   <strong>Points are auto-calculated:</strong>
                   <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
-                    <li><strong>Sales Reps:</strong> 10 points per $10,000 in sales revenue</li>
+                    <li><strong>Sales Reps:</strong> 10 points per $10,000 in sales revenue + 10 points per closed deal</li>
                     <li><strong>Canvassers:</strong> 10 pts per lead closed, 5 pts per lead with damage, 1 pt per lead set</li>
                   </ul>
                 </li>

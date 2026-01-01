@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
 
 export interface CanvasserLeaderboardEntry {
   rank: number;
@@ -7,6 +8,9 @@ export interface CanvasserLeaderboardEntry {
   userId: string;
   yearlyGoal: number;
   leadsClosed: number;
+  leadsSet: number;
+  leadsWithDamage: number;
+  points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
   contestsWon: number;
@@ -56,6 +60,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Closed</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Until Goal</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contests Won</th>
             </tr>
           </thead>
@@ -119,6 +124,21 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                         No Goal
                       </span>
                     )}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <PointsBreakdownTooltip
+                      data={{
+                        type: 'canvasser',
+                        leadsSet: entry.leadsSet || 0,
+                        leadsWithDamage: entry.leadsWithDamage || 0,
+                        leadsClosed: entry.leadsClosed || 0,
+                        totalPoints: entry.points || 0,
+                      }}
+                    >
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
+                        {(entry.points || 0).toLocaleString()}
+                      </span>
+                    </PointsBreakdownTooltip>
                   </td>
                   <td className="py-3 px-4 text-right font-bold">
                     {entry.contestsWon > 0 ? entry.contestsWon : '-'}
