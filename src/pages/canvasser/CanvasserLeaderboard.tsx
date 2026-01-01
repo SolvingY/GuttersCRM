@@ -27,6 +27,7 @@ interface WeeklyCanvasserEntry {
   name: string;
   userId: string;
   leadsSet: number;
+  leadsWithDamage: number;
   leadsClosed: number;
   shiftsWorked: number;
   pointsEarned: number;
@@ -134,7 +135,7 @@ export default function CanvasserLeaderboard() {
 
       const { data: weeklyData, error } = await supabase
         .from("weekly_canvasser_metrics")
-        .select("user_id, leads_set, leads_closed, shifts_worked, points_earned")
+        .select("user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned")
         .eq("week_start", weekStartStr);
 
       if (error) {
@@ -166,6 +167,7 @@ export default function CanvasserLeaderboard() {
         .map(w => ({
           userId: w.user_id,
           leadsSet: Number(w.leads_set) || 0,
+          leadsWithDamage: Number(w.leads_with_damage) || 0,
           leadsClosed: Number(w.leads_closed) || 0,
           shiftsWorked: Number(w.shifts_worked) || 0,
           pointsEarned: Number(w.points_earned) || 0,
