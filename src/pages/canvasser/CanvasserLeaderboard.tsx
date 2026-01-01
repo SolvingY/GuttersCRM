@@ -15,11 +15,11 @@ interface CanvasserEntry {
   rank: number;
   name: string;
   userId: string;
-  leadsSet: number;
+  yearlyGoal: number;
   leadsClosed: number;
-  leadsWithDamage: number;
-  shiftsWorked: number;
-  points: number;
+  amountUntilGoal: number;
+  percentOfGoal: number;
+  contestsWon: number;
 }
 
 interface WeeklyCanvasserEntry {
@@ -28,7 +28,6 @@ interface WeeklyCanvasserEntry {
   userId: string;
   leadsSet: number;
   leadsClosed: number;
-  leadsWithDamage: number;
   shiftsWorked: number;
   pointsEarned: number;
 }
@@ -53,10 +52,12 @@ export default function CanvasserLeaderboard() {
   useEffect(() => {
     const fetchYtdLeaderboard = async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch canvasser metrics
+      const { data: metricsData, error } = await supabase
         .from("canvasser_metrics")
-        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points")
-        .order("leads_set", { ascending: false });
+        .select("user_id, display_name, leads_closed, yearly_goal, points")
+        .order("leads_closed", { ascending: false });
 
       if (error) {
         console.error("Error fetching leaderboard:", error);
@@ -64,26 +65,59 @@ export default function CanvasserLeaderboard() {
         return;
       }
 
+      // Fetch contests won for canvassers
+      const { data: contestsData } = await supabase
+        .from("contests")
+        .select("winner_user_id, winner_2nd_user_id, winner_3rd_user_id")
+        .eq("target_role", "canvasser");
+
+      // Count contest wins per user
+      const contestWins = new Map<string, number>();
+      contestsData?.forEach((contest) => {
+        if (contest.winner_user_id) {
+          contestWins.set(contest.winner_user_id, (contestWins.get(contest.winner_user_id) || 0) + 1);
+        }
+        if (contest.winner_2nd_user_id) {
+          contestWins.set(contest.winner_2nd_user_id, (contestWins.get(contest.winner_2nd_user_id) || 0) + 1);
+        }
+        if (contest.winner_3rd_user_id) {
+          contestWins.set(contest.winner_3rd_user_id, (contestWins.get(contest.winner_3rd_user_id) || 0) + 1);
+        }
+      });
+
       // Get unique entries per user (latest)
       const uniqueUsers = new Map<string, any>();
-      data?.forEach((entry) => {
+      metricsData?.forEach((entry) => {
         if (!uniqueUsers.has(entry.user_id)) {
           uniqueUsers.set(entry.user_id, entry);
         }
       });
 
       const sorted = Array.from(uniqueUsers.values())
-        .sort((a, b) => (b.leads_set || 0) - (a.leads_set || 0))
-        .map((entry, index) => ({
-          rank: index + 1,
-          userId: entry.user_id,
-          name: entry.display_name || "Anonymous",
-          leadsSet: entry.leads_set || 0,
-          leadsClosed: entry.leads_closed || 0,
-          leadsWithDamage: entry.leads_with_damage || 0,
-          shiftsWorked: entry.shifts_worked || 0,
-          points: entry.points || 0,
-        }));
+        .sort((a, b) => {
+          // Sort by % of goal first, then by leads closed
+          const aPercent = a.yearly_goal > 0 ? (a.leads_closed || 0) / a.yearly_goal : 0;
+          const bPercent = b.yearly_goal > 0 ? (b.leads_closed || 0) / b.yearly_goal : 0;
+          if (bPercent !== aPercent) return bPercent - aPercent;
+          return (b.leads_closed || 0) - (a.leads_closed || 0);
+        })
+        .map((entry, index) => {
+          const yearlyGoal = entry.yearly_goal || 0;
+          const leadsClosed = entry.leads_closed || 0;
+          const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
+          const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
+          
+          return {
+            rank: index + 1,
+            userId: entry.user_id,
+            name: entry.display_name || "Anonymous",
+            yearlyGoal,
+            leadsClosed,
+            amountUntilGoal,
+            percentOfGoal,
+            contestsWon: contestWins.get(entry.user_id) || 0,
+          };
+        });
 
       setYtdEntries(sorted);
       setLoading(false);
@@ -100,7 +134,7 @@ export default function CanvasserLeaderboard() {
 
       const { data: weeklyData, error } = await supabase
         .from("weekly_canvasser_metrics")
-        .select("user_id, leads_set, leads_closed, leads_with_damage, shifts_worked, points_earned")
+        .select("user_id, leads_set, leads_closed, shifts_worked, points_earned")
         .eq("week_start", weekStartStr);
 
       if (error) {
@@ -133,12 +167,11 @@ export default function CanvasserLeaderboard() {
           userId: w.user_id,
           leadsSet: Number(w.leads_set) || 0,
           leadsClosed: Number(w.leads_closed) || 0,
-          leadsWithDamage: Number(w.leads_with_damage) || 0,
           shiftsWorked: Number(w.shifts_worked) || 0,
           pointsEarned: Number(w.points_earned) || 0,
           name: displayNameMap.get(w.user_id) || "Anonymous",
         }))
-        .sort((a, b) => b.leadsSet - a.leadsSet)
+        .sort((a, b) => b.leadsClosed - a.leadsClosed)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
       setWeeklyEntries(sorted);

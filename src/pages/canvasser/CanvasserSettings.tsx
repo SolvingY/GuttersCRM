@@ -11,6 +11,7 @@ import { Loader2, Save, User } from "lucide-react";
 export default function CanvasserSettings() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState("");
+  const [yearlyGoal, setYearlyGoal] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -25,7 +26,7 @@ export default function CanvasserSettings() {
 
     const { data, error } = await supabase
       .from("canvasser_metrics")
-      .select("display_name")
+      .select("display_name, yearly_goal")
       .eq("user_id", user.id)
       .order("metric_date", { ascending: false })
       .limit(1)
@@ -35,6 +36,7 @@ export default function CanvasserSettings() {
       console.error("Error fetching settings:", error);
     } else if (data) {
       setDisplayName(data.display_name || "");
+      setYearlyGoal(data.yearly_goal?.toString() || "0");
     }
     setLoading(false);
   };
@@ -43,9 +45,10 @@ export default function CanvasserSettings() {
     if (!user) return;
 
     setSaving(true);
+    const goalValue = parseInt(yearlyGoal) || 0;
     const { error } = await supabase
       .from("canvasser_metrics")
-      .update({ display_name: displayName })
+      .update({ display_name: displayName, yearly_goal: goalValue })
       .eq("user_id", user.id);
 
     if (error) {
@@ -113,6 +116,21 @@ export default function CanvasserSettings() {
             />
             <p className="text-xs text-muted-foreground">
               This is how your name appears on the leaderboard
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="yearlyGoal">Yearly Goal (Leads Closed)</Label>
+            <Input
+              id="yearlyGoal"
+              type="number"
+              value={yearlyGoal}
+              onChange={(e) => setYearlyGoal(e.target.value)}
+              placeholder="Enter your yearly goal"
+              min={0}
+            />
+            <p className="text-xs text-muted-foreground">
+              Set a goal for leads closed this year to track your progress
             </p>
           </div>
 

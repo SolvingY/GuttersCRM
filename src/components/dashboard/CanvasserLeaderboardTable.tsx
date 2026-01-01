@@ -1,15 +1,15 @@
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface CanvasserLeaderboardEntry {
+export interface CanvasserLeaderboardEntry {
   rank: number;
   name: string;
   userId: string;
-  leadsSet: number;
+  yearlyGoal: number;
   leadsClosed: number;
-  leadsWithDamage: number;
-  shiftsWorked: number;
-  points: number;
+  amountUntilGoal: number;
+  percentOfGoal: number;
+  contestsWon: number;
 }
 
 interface CanvasserLeaderboardTableProps {
@@ -18,13 +18,22 @@ interface CanvasserLeaderboardTableProps {
 }
 
 export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserLeaderboardTableProps) {
-  // Get row background color based on rank (matching sales rep styling)
-  const getRowColor = (rank: number) => {
-    if (rank === 1) return 'bg-emerald-500 text-white';
-    if (rank === 2) return 'bg-green-400 text-green-950';
-    if (rank === 3) return 'bg-yellow-300 text-yellow-950';
-    if (rank <= 5) return 'bg-orange-400 text-orange-950';
-    return 'bg-card text-card-foreground';
+  // Color code based on % of goal (matching sales rep format)
+  const getRowColor = (percentOfGoal: number, hasGoal: boolean) => {
+    if (!hasGoal) return 'bg-card text-card-foreground';
+    if (percentOfGoal >= 100) return 'bg-emerald-500 text-white';
+    if (percentOfGoal >= 75) return 'bg-green-400 text-green-950';
+    if (percentOfGoal >= 50) return 'bg-yellow-300 text-yellow-950';
+    if (percentOfGoal >= 25) return 'bg-orange-400 text-orange-950';
+    return 'bg-red-400 text-red-950';
+  };
+
+  const getPercentBadgeColor = (percentOfGoal: number) => {
+    if (percentOfGoal >= 100) return 'bg-emerald-600 text-white';
+    if (percentOfGoal >= 75) return 'bg-green-600 text-white';
+    if (percentOfGoal >= 50) return 'bg-yellow-500 text-black';
+    if (percentOfGoal >= 25) return 'bg-orange-500 text-white';
+    return 'bg-red-500 text-white';
   };
 
   if (entries.length === 0) {
@@ -43,16 +52,17 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
             <tr>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Closed</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads w/ Damage</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Shifts Worked</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Total Points</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Yearly Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Closed</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Until Goal</th>
+              <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contests Won</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((entry) => {
-              const rowColor = getRowColor(entry.rank);
+              const hasGoal = entry.yearlyGoal > 0;
+              const rowColor = getRowColor(entry.percentOfGoal, hasGoal);
               const isCurrentUser = entry.userId === currentUserId;
               
               return (
@@ -89,14 +99,29 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                       )}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
+                  <td className="py-3 px-4 text-right font-bold">
+                    {hasGoal ? entry.yearlyGoal : '-'}
+                  </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.shiftsWorked}</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary">
-                      {entry.points.toLocaleString()}
-                    </span>
+                  <td className="py-3 px-4 text-right font-bold">
+                    {hasGoal ? entry.amountUntilGoal : '-'}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {hasGoal ? (
+                      <span className={cn(
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold',
+                        getPercentBadgeColor(entry.percentOfGoal)
+                      )}>
+                        {entry.percentOfGoal.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-muted text-muted-foreground">
+                        No Goal
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold">
+                    {entry.contestsWon > 0 ? entry.contestsWon : '-'}
                   </td>
                 </tr>
               );
