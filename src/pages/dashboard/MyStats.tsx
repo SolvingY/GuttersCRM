@@ -5,7 +5,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
 import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { 
-  LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+  ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar, Line 
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ interface WeeklyMetric {
   points_earned: number;
 }
 
-type TimeView = 'weekly' | 'monthly';
+
 
 export default function MyStats() {
   const { user } = useAuth();
@@ -44,7 +44,7 @@ export default function MyStats() {
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyMetric[]>([]);
   const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyMetric[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeView, setTimeView] = useState<TimeView>('weekly');
+  
 
   // Collapsible section states
   const [openSections, setOpenSections] = useState({
@@ -53,7 +53,6 @@ export default function MyStats() {
     weeklyUpdates: true,
     fiscalProgress: true,
     goalProgress: true,
-    performanceChart: true,
     weeklyChart: true,
   });
 
@@ -175,90 +174,25 @@ export default function MyStats() {
     }).format(value);
   };
 
-  // Prepare weekly chart data (last 8 weeks)
-  const getWeeklyData = () => {
-    const weeks: { [key: string]: { sales: number; points: number } } = {};
-    const now = new Date();
-    
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - (i * 7));
-      const weekKey = `Week ${8 - i}`;
-      weeks[weekKey] = { sales: 0, points: 0 };
-    }
-
-    metrics.forEach((m) => {
-      const metricDate = new Date(m.metric_date);
-      const weeksAgo = Math.floor((now.getTime() - metricDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksAgo >= 0 && weeksAgo < 8) {
-        const weekKey = `Week ${8 - weeksAgo}`;
-        if (weeks[weekKey]) {
-          weeks[weekKey].sales += Number(m.sales) || 0;
-          weeks[weekKey].points += Number(m.points) || 0;
-        }
-      }
-    });
-
-    return Object.entries(weeks).map(([week, data]) => ({
-      period: week,
-      sales: data.sales,
-      points: data.points,
-    }));
-  };
-
-  // Prepare monthly chart data from weekly_user_metrics
-  const getMonthlyData = () => {
-    const fiscalMonthOrder = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
-    const fiscalMonths: { [key: string]: number } = {};
-    fiscalMonthOrder.forEach(month => {
-      fiscalMonths[month] = 0;
-    });
-
-    const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
-    const fiscalEnd = FISCAL_YEAR.CURRENT_YEAR_END;
-
-    allWeeklyMetrics.forEach((w) => {
-      const weekStartDate = new Date(w.week_start);
-      if (weekStartDate >= fiscalStart && weekStartDate <= fiscalEnd) {
-        const monthIndex = weekStartDate.getMonth();
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthName = monthNames[monthIndex];
-        if (fiscalMonths[monthName] !== undefined) {
-          fiscalMonths[monthName] += Number(w.sales) || 0;
-        }
-      }
-    });
-
-    let cumulative = 0;
-    const monthlyGoalPace = yearlyGoal / 12;
-    let goalCumulative = 0;
-    
-    return fiscalMonthOrder.map((month) => {
-      cumulative += fiscalMonths[month];
-      goalCumulative += monthlyGoalPace;
-      return {
-        period: month,
-        sales: fiscalMonths[month],
-        cumulative,
-        goalPace: goalCumulative,
-      };
-    });
-  };
 
   // Prepare 52-week fiscal year progression data (bar chart)
+  // Prepare 52-week fiscal year progression data (always show all 52 weeks)
   const get52WeekData = () => {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const now = new Date();
     const weeklyGoalPace = yearlyGoal / 52;
-    const weeks: { week: string; weekLabel: string; sales: number; goalPace: number; cumulativeGoal: number }[] = [];
+    const weeks: { week: string; weekLabel: string; sales: number | null; goalPace: number; cumulativeGoal: number }[] = [];
     
     const msPerWeek = 7 * 24 * 60 * 60 * 1000;
     const currentWeekNum = Math.ceil((now.getTime() - fiscalStart.getTime()) / msPerWeek);
-    const weeksToShow = Math.max(Math.min(currentWeekNum + 2, 52), 4);
     
-    for (let i = 0; i < weeksToShow; i++) {
+    // Always show all 52 weeks
+    for (let i = 0; i < 52; i++) {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
+      
+      // Future weeks show as null
+      const isFutureWeek = i + 1 > currentWeekNum;
       
       const weeklyMetric = allWeeklyMetrics.find(w => {
         const wStart = new Date(w.week_start);
@@ -268,7 +202,7 @@ export default function MyStats() {
       weeks.push({
         week: `W${i + 1}`,
         weekLabel: format(weekStart, 'MMM d'),
-        sales: Number(weeklyMetric?.sales) || 0,
+        sales: isFutureWeek ? null : (Number(weeklyMetric?.sales) || 0),
         goalPace: weeklyGoalPace,
         cumulativeGoal: weeklyGoalPace * (i + 1),
       });
@@ -276,12 +210,14 @@ export default function MyStats() {
     
     let cumulative = 0;
     return weeks.map(w => {
-      cumulative += w.sales;
-      return { ...w, cumulativeSales: cumulative };
+      if (w.sales !== null) {
+        cumulative += w.sales;
+      }
+      return { ...w, cumulativeSales: w.sales === null ? null : cumulative };
     });
   };
 
-  const chartData = timeView === 'weekly' ? getWeeklyData() : getMonthlyData();
+  
 
   // Get color based on goal percentage
   const getGoalColor = () => {
@@ -376,6 +312,8 @@ export default function MyStats() {
                       title="YTD Earnings"
                       value={formatCurrency(earningsYtd)}
                       icon={Wallet}
+                      valueClassName="text-green-600 dark:text-green-400"
+                      className="bg-gradient-to-r from-green-500/10 to-green-500/5 border-green-500/20"
                     />
                     <StatsCard
                       title="Points"
@@ -528,146 +466,6 @@ export default function MyStats() {
             </Collapsible>
           )}
 
-          {/* Time View Toggle + Performance Charts */}
-          <Collapsible open={openSections.performanceChart} onOpenChange={() => toggleSection('performanceChart')}>
-            <Card>
-              <SectionHeader
-                title="Sales Performance"
-                icon={TrendingUp}
-                isOpen={openSections.performanceChart}
-              />
-              <CollapsibleContent>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant={timeView === 'weekly' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTimeView('weekly')}
-                    >
-                      Weekly
-                    </Button>
-                    <Button
-                      variant={timeView === 'monthly' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTimeView('monthly')}
-                    >
-                      Monthly
-                    </Button>
-                  </div>
-
-                  {/* Weekly Bar Chart */}
-                  {timeView === 'weekly' && chartData.length > 0 && (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number) => [formatCurrency(value), 'Sales']}
-                          />
-                          <Bar
-                            dataKey="sales"
-                            fill="hsl(var(--accent))"
-                            radius={[4, 4, 0, 0]}
-                            name="Sales"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* Monthly Line Chart with Goal Pace */}
-                  {timeView === 'monthly' && chartData.length > 0 && (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number) => formatCurrency(value)}
-                          />
-                          <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulative"
-                            stroke="hsl(var(--accent))"
-                            strokeWidth={2}
-                            dot={{ fill: 'hsl(var(--accent))' }}
-                            name="Cumulative Sales"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="goalPace"
-                            stroke="hsl(var(--muted-foreground))"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                            name="Goal Pace"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* Original Performance Trend */}
-                  {metrics.length > 1 && (
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="text-sm font-medium mb-4">Performance Trend Over Time</h4>
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={metrics.map((m) => ({
-                            date: new Date(m.metric_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                            sales: Number(m.sales),
-                            points: Number(m.points),
-                          }))}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--card))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '8px',
-                              }}
-                            />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="sales"
-                              stroke="hsl(var(--accent))"
-                              strokeWidth={2}
-                              dot={{ fill: 'hsl(var(--accent))' }}
-                              name="Sales ($)"
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="points"
-                              stroke="hsl(var(--primary))"
-                              strokeWidth={2}
-                              dot={{ fill: 'hsl(var(--primary))' }}
-                              name="Points"
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
 
           {/* 52-Week Fiscal Year Bar Chart - AT THE BOTTOM */}
           {yearlyGoal > 0 && (
@@ -688,7 +486,10 @@ export default function MyStats() {
                             dataKey="week" 
                             stroke="hsl(var(--muted-foreground))" 
                             fontSize={10}
-                            interval={3}
+                            interval={7}
+                            angle={-45}
+                            textAnchor="end"
+                            height={50}
                           />
                           <YAxis 
                             stroke="hsl(var(--muted-foreground))" 
