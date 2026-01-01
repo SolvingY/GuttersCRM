@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import nextGenLogo from '@/assets/next-gen-logo.png';
 
 const navItems = [
@@ -43,18 +44,18 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
           collapsed ? "w-16" : "w-56"
         )}
       >
-        {/* Collapse button */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 z-50 bg-accent text-accent-foreground rounded-full p-1 shadow-md hover:bg-accent/90 transition-colors"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-
-        <div className={cn("p-4 border-b border-primary-foreground/10", collapsed && "px-2")}>
-          <h2 className={cn("font-bold text-lg text-primary-foreground", collapsed && "text-center text-sm")}>
-            {collapsed ? "CV" : "Canvasser Portal"}
-          </h2>
+        <div className={cn("flex items-center justify-between p-3 border-b border-primary-foreground/10", collapsed && "justify-center")}>
+          {!collapsed && (
+            <h2 className="font-bold text-lg text-primary-foreground">Canvasser Portal</h2>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
