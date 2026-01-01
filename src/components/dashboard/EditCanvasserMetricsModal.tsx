@@ -1,0 +1,190 @@
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+
+interface CanvasserMetrics {
+  metricId: string;
+  name: string;
+  leadsSet: number;
+  leadsClosed: number;
+  leadsWithDamage: number;
+  shiftsWorked: number;
+  points: number;
+}
+
+interface EditCanvasserMetricsModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  user: CanvasserMetrics | null;
+  onSuccess: () => void;
+}
+
+export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess }: EditCanvasserMetricsModalProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    leadsSet: 0,
+    leadsClosed: 0,
+    leadsWithDamage: 0,
+    shiftsWorked: 0,
+    points: 0,
+  });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        leadsSet: user.leadsSet || 0,
+        leadsClosed: user.leadsClosed || 0,
+        leadsWithDamage: user.leadsWithDamage || 0,
+        shiftsWorked: user.shiftsWorked || 0,
+        points: user.points || 0,
+      });
+    }
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('canvasser_metrics')
+        .update({
+          leads_set: formData.leadsSet,
+          leads_closed: formData.leadsClosed,
+          leads_with_damage: formData.leadsWithDamage,
+          shifts_worked: formData.shiftsWorked,
+          points: formData.points,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.metricId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Metrics updated for ${user.name}`,
+      });
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error updating canvasser metrics:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update metrics',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit Canvasser Metrics</DialogTitle>
+          <DialogDescription>
+            Update metrics for {user?.name || 'canvasser'}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="leadsSet" className="text-right">
+                Leads Set
+              </Label>
+              <Input
+                id="leadsSet"
+                type="number"
+                min="0"
+                value={formData.leadsSet}
+                onChange={(e) => setFormData({ ...formData, leadsSet: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter leads set"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="leadsClosed" className="text-right">
+                Leads Closed
+              </Label>
+              <Input
+                id="leadsClosed"
+                type="number"
+                min="0"
+                value={formData.leadsClosed}
+                onChange={(e) => setFormData({ ...formData, leadsClosed: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter leads closed"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="leadsWithDamage" className="text-right">
+                With Damage
+              </Label>
+              <Input
+                id="leadsWithDamage"
+                type="number"
+                min="0"
+                value={formData.leadsWithDamage}
+                onChange={(e) => setFormData({ ...formData, leadsWithDamage: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter leads with damage"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="shiftsWorked" className="text-right">
+                Shifts Worked
+              </Label>
+              <Input
+                id="shiftsWorked"
+                type="number"
+                min="0"
+                value={formData.shiftsWorked}
+                onChange={(e) => setFormData({ ...formData, shiftsWorked: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter shifts worked"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="points" className="text-right">
+                Points
+              </Label>
+              <Input
+                id="points"
+                type="number"
+                min="0"
+                value={formData.points}
+                onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter points"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

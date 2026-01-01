@@ -55,7 +55,7 @@ export default function InviteUsers() {
   const [manualDisplayName, setManualDisplayName] = useState('');
   const [manualSalesRank, setManualSalesRank] = useState('SR1');
   const [manualYearlyGoal, setManualYearlyGoal] = useState('');
-  const [manualRole, setManualRole] = useState<'user' | 'admin'>('user');
+  const [manualRole, setManualRole] = useState<'user' | 'admin' | 'canvasser'>('user');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
@@ -617,12 +617,13 @@ export default function InviteUsers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="manualRole" className="text-sm">Role</Label>
-                    <Select value={manualRole} onValueChange={(val) => setManualRole(val as 'user' | 'admin')} disabled={isCreatingUser}>
+                    <Select value={manualRole} onValueChange={(val) => setManualRole(val as 'user' | 'admin' | 'canvasser')} disabled={isCreatingUser}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="user">User (Sales Rep)</SelectItem>
+                        <SelectItem value="canvasser">Canvasser</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
