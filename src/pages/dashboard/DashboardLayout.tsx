@@ -4,6 +4,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { GoalSettingModal } from '@/components/dashboard/GoalSettingModal';
 import { VictoryNotification } from '@/components/dashboard/VictoryNotification';
+import { WelcomeBackNotification } from '@/components/dashboard/WelcomeBackNotification';
 import nextGenLogo from '@/assets/next-gen-logo.png';
 
 export default function DashboardLayout() {
@@ -37,6 +38,7 @@ export default function DashboardLayout() {
       </div>
       <GoalSettingModal />
       <VictoryNotification />
+      <WelcomeBackNotification />
     </div>
   );
 }

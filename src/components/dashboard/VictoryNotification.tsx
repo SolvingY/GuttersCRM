@@ -37,7 +37,11 @@ export function VictoryNotification() {
 
   useEffect(() => {
     if (user) {
-      fetchUnacknowledgedVictories();
+      // Delay to let welcome toast show first
+      const timer = setTimeout(() => {
+        fetchUnacknowledgedVictories();
+      }, 1500);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 
