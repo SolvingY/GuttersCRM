@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Trophy, Info } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { format, subWeeks } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
-
+import { CanvasserLeaderboardTable, CanvasserLeaderboardEntry } from "@/components/dashboard/CanvasserLeaderboardTable";
+import { WeeklyCanvasserLeaderboardTable, WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
 interface CanvasserMetrics {
   display_name: string | null;
   leads_set: number;
@@ -33,7 +35,11 @@ export default function CanvasserStats() {
   const [metrics, setMetrics] = useState<CanvasserMetrics | null>(null);
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [loading, setLoading] = useState(true);
-
+  
+  // Leaderboard states
+  const [ytdEntries, setYtdEntries] = useState<CanvasserLeaderboardEntry[]>([]);
+  const [weeklyLeaderboardEntries, setWeeklyLeaderboardEntries] = useState<WeeklyCanvasserEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   useEffect(() => {
     if (user) {
       fetchMetrics();
@@ -74,6 +80,131 @@ export default function CanvasserStats() {
     }
 
     setLoading(false);
+    
+    // Fetch leaderboard data
+    await fetchLeaderboard();
+  };
+  
+  const fetchLeaderboard = async () => {
+    setLeaderboardLoading(true);
+    
+    // Fetch YTD canvasser metrics for leaderboard
+    const { data: metricsData, error } = await supabase
+      .from("canvasser_metrics")
+      .select("user_id, display_name, leads_closed, yearly_goal, points")
+      .order("leads_closed", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching leaderboard:", error);
+      setLeaderboardLoading(false);
+      return;
+    }
+
+    // Fetch contests won for canvassers
+    const { data: contestsData } = await supabase
+      .from("contests")
+      .select("winner_user_id, winner_2nd_user_id, winner_3rd_user_id")
+      .eq("target_role", "canvasser");
+
+    // Count contest wins per user
+    const contestWins = new Map<string, number>();
+    contestsData?.forEach((contest) => {
+      if (contest.winner_user_id) {
+        contestWins.set(contest.winner_user_id, (contestWins.get(contest.winner_user_id) || 0) + 1);
+      }
+      if (contest.winner_2nd_user_id) {
+        contestWins.set(contest.winner_2nd_user_id, (contestWins.get(contest.winner_2nd_user_id) || 0) + 1);
+      }
+      if (contest.winner_3rd_user_id) {
+        contestWins.set(contest.winner_3rd_user_id, (contestWins.get(contest.winner_3rd_user_id) || 0) + 1);
+      }
+    });
+
+    // Get unique entries per user (latest)
+    const uniqueUsers = new Map<string, any>();
+    metricsData?.forEach((entry) => {
+      if (!uniqueUsers.has(entry.user_id)) {
+        uniqueUsers.set(entry.user_id, entry);
+      }
+    });
+
+    const sortedYtd = Array.from(uniqueUsers.values())
+      .sort((a, b) => {
+        // Sort by % of goal first, then by leads closed
+        const aPercent = a.yearly_goal > 0 ? (a.leads_closed || 0) / a.yearly_goal : 0;
+        const bPercent = b.yearly_goal > 0 ? (b.leads_closed || 0) / b.yearly_goal : 0;
+        if (bPercent !== aPercent) return bPercent - aPercent;
+        return (b.leads_closed || 0) - (a.leads_closed || 0);
+      })
+      .map((entry, index) => {
+        const yearlyGoal = entry.yearly_goal || 0;
+        const leadsClosed = entry.leads_closed || 0;
+        const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
+        const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
+        
+        return {
+          rank: index + 1,
+          userId: entry.user_id,
+          name: entry.display_name || "Anonymous",
+          yearlyGoal,
+          leadsClosed,
+          amountUntilGoal,
+          percentOfGoal,
+          contestsWon: contestWins.get(entry.user_id) || 0,
+        };
+      });
+
+    setYtdEntries(sortedYtd);
+    
+    // Fetch current week leaderboard
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+
+    const { data: weeklyData, error: weeklyError } = await supabase
+      .from("weekly_canvasser_metrics")
+      .select("user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned")
+      .eq("week_start", weekStartStr);
+
+    if (weeklyError) {
+      console.error("Error fetching weekly leaderboard:", weeklyError);
+      setLeaderboardLoading(false);
+      return;
+    }
+
+    if (!weeklyData || weeklyData.length === 0) {
+      setWeeklyLeaderboardEntries([]);
+      setLeaderboardLoading(false);
+      return;
+    }
+
+    // Fetch display names
+    const userIds = weeklyData.map(w => w.user_id);
+    const { data: displayNameData } = userIds.length > 0
+      ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
+      : { data: [] };
+
+    const displayNameMap = new Map<string, string | null>();
+    displayNameData?.forEach(m => {
+      if (m.display_name && !displayNameMap.has(m.user_id)) {
+        displayNameMap.set(m.user_id, m.display_name);
+      }
+    });
+
+    const sortedWeekly = weeklyData
+      .map(w => ({
+        userId: w.user_id,
+        leadsSet: Number(w.leads_set) || 0,
+        leadsWithDamage: Number(w.leads_with_damage) || 0,
+        leadsClosed: Number(w.leads_closed) || 0,
+        shiftsWorked: Number(w.shifts_worked) || 0,
+        pointsEarned: Number(w.points_earned) || 0,
+        name: displayNameMap.get(w.user_id) || "Anonymous",
+      }))
+      .sort((a, b) => b.leadsClosed - a.leadsClosed)
+      .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
+    setWeeklyLeaderboardEntries(sortedWeekly);
+    setLeaderboardLoading(false);
   };
 
   if (loading) {
@@ -184,6 +315,39 @@ export default function CanvasserStats() {
         </Card>
       </div>
 
+      {/* Leaderboard Snapshot */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Trophy className="h-5 w-5 text-primary" />
+            Leaderboard
+          </CardTitle>
+          <CardDescription>See how you stack up against other canvassers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {leaderboardLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <Tabs defaultValue="ytd" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2 mb-4">
+                <TabsTrigger value="ytd">Year to Date</TabsTrigger>
+                <TabsTrigger value="weekly">This Week</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="ytd">
+                <CanvasserLeaderboardTable entries={ytdEntries} currentUserId={user?.id} />
+              </TabsContent>
+
+              <TabsContent value="weekly">
+                <WeeklyCanvasserLeaderboardTable entries={weeklyLeaderboardEntries} currentUserId={user?.id} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Weekly Updates Section */}
       {weeklyMetrics.length > 0 && (
         <Card>
@@ -192,6 +356,10 @@ export default function CanvasserStats() {
               <TrendingUp className="h-5 w-5 text-primary" />
               Recent Weekly Updates
             </CardTitle>
+            <CardDescription className="flex items-center gap-1.5 mt-1">
+              <Info className="h-3.5 w-3.5" />
+              <span>Points: 10 per lead closed, 5 per lead with damage, 1 per lead set</span>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
