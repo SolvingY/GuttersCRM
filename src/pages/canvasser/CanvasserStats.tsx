@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Calendar, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { format, subWeeks } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 import { 
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar, Line
 } from 'recharts';
@@ -40,15 +41,15 @@ export default function CanvasserStats() {
   const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Collapsible section states
+  // Collapsible section states - matching sales rep order
   const [openSections, setOpenSections] = useState({
     contests: true,
-    goal: true,
     stats: true,
     weeklyUpdates: true,
-    performance: true,
-    income: true,
-    chart: true,
+    fiscalProgress: true,
+    goalProgress: true,
+    performanceChart: true,
+    weeklyChart: true,
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -94,9 +95,8 @@ export default function CanvasserStats() {
       setWeeklyMetrics(weeklyData || []);
     }
 
-    // Fetch all weekly metrics from fiscal year start (Dec 15, 2025)
-    const fiscalStart = new Date(2025, 11, 15);
-    const fiscalStartStr = format(fiscalStart, 'yyyy-MM-dd');
+    // Fetch all weekly metrics from fiscal year start
+    const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
     const { data: allWeeklyData, error: allWeeklyError } = await supabase
       .from('weekly_canvasser_metrics')
       .select('*')
@@ -138,10 +138,27 @@ export default function CanvasserStats() {
     }).format(value);
   };
 
+  // Goal calculations
+  const yearlyGoal = metrics?.yearly_goal || 0;
+  const leadsClosed = metrics?.leads_closed || 0;
+  const goalPercentage = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
+  const amountRemaining = Math.max(0, yearlyGoal - leadsClosed);
+
+  // Fiscal year progress
+  const fiscalYearProgress = getFiscalYearProgress();
+  const daysRemaining = getDaysRemainingInFiscalYear();
+
+  // Get color based on goal percentage
+  const getGoalColor = () => {
+    if (goalPercentage >= 75) return 'text-green-600';
+    if (goalPercentage >= 50) return 'text-yellow-600';
+    if (goalPercentage >= 25) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
   // Prepare 52-week fiscal year progression data for leads closed (bar chart)
   const get52WeekData = () => {
-    const yearlyGoal = metrics?.yearly_goal || 0;
-    const fiscalStart = new Date(2025, 11, 15);
+    const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const now = new Date();
     const weeklyGoalPace = yearlyGoal / 52;
     const weeks: { week: string; weekLabel: string; leadsClosed: number; goalPace: number; cumulativeGoal: number }[] = [];
@@ -175,35 +192,6 @@ export default function CanvasserStats() {
     });
   };
 
-  const SectionHeader = ({ 
-    title, 
-    icon: Icon, 
-    isOpen, 
-    section,
-    iconColor = "text-primary",
-    description 
-  }: { 
-    title: string; 
-    icon: React.ElementType; 
-    isOpen: boolean; 
-    section: keyof typeof openSections;
-    iconColor?: string;
-    description?: string;
-  }) => (
-    <CollapsibleTrigger asChild>
-      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg" onClick={() => toggleSection(section)}>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Icon className={`h-5 w-5 ${iconColor}`} />
-            {title}
-          </CardTitle>
-          {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-        </div>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-    </CollapsibleTrigger>
-  );
-
   return (
     <div className="space-y-6">
       <div>
@@ -213,8 +201,8 @@ export default function CanvasserStats() {
         <p className="text-muted-foreground mt-1">Track your canvassing performance</p>
       </div>
 
-      {/* Active Contests Widget */}
-      <Collapsible open={openSections.contests} onOpenChange={() => toggleSection('contests')}>
+      {/* 1. Active Contests Widget */}
+      <Collapsible open={openSections.contests} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, contests: open }))}>
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -234,57 +222,23 @@ export default function CanvasserStats() {
         </Card>
       </Collapsible>
 
-      {/* Yearly Goal Progress */}
-      {metrics?.yearly_goal && metrics.yearly_goal > 0 && (
-        <Collapsible open={openSections.goal} onOpenChange={() => toggleSection('goal')}>
-          <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
-            <SectionHeader
-              title="Yearly Goal Progress"
-              icon={Target}
-              isOpen={openSections.goal}
-              section="goal"
-            />
-            <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <CardDescription>
-                  {metrics.leads_closed >= metrics.yearly_goal
-                    ? "🎉 Congratulations! You've reached your goal!"
-                    : `${metrics.yearly_goal - metrics.leads_closed} leads closed to go`}
-                </CardDescription>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <span className="text-4xl font-bold text-primary">{metrics.leads_closed}</span>
-                    <span className="text-2xl text-muted-foreground"> / {metrics.yearly_goal}</span>
-                  </div>
-                  <span className="text-2xl font-semibold text-foreground">
-                    {((metrics.leads_closed / metrics.yearly_goal) * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <Progress 
-                  value={Math.min((metrics.leads_closed / metrics.yearly_goal) * 100, 100)} 
-                  className="h-3"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Leads closed this year towards your annual target
-                </p>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-      )}
-
-      {/* Main Stats Grid */}
-      <Collapsible open={openSections.stats} onOpenChange={() => toggleSection('stats')}>
+      {/* 2. Key Metrics (includes leads, shifts, income, points) */}
+      <Collapsible open={openSections.stats} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, stats: open }))}>
         <Card>
-          <SectionHeader
-            title="Key Metrics"
-            icon={TrendingUp}
-            isOpen={openSections.stats}
-            section="stats"
-          />
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Key Metrics
+                </CardTitle>
+                {openSections.stats ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div className="bg-muted/30 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-muted-foreground">Leads Set</span>
@@ -320,23 +274,50 @@ export default function CanvasserStats() {
                   <div className="text-3xl font-bold text-foreground">{metrics?.shifts_worked ?? 0}</div>
                   <p className="text-xs text-muted-foreground mt-1">Total shifts completed</p>
                 </div>
+
+                <div className="bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">Total Income</span>
+                    <DollarSign className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(metrics?.income ?? 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Earnings from activities</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">Total Points</span>
+                    <Star className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="text-3xl font-bold text-primary">
+                    {metrics?.points?.toLocaleString() ?? 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Points earned</p>
+                </div>
               </div>
             </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
 
-      {/* Weekly Updates Section */}
+      {/* 3. Recent Weekly Updates */}
       {weeklyMetrics.length > 0 && (
-        <Collapsible open={openSections.weeklyUpdates} onOpenChange={() => toggleSection('weeklyUpdates')}>
+        <Collapsible open={openSections.weeklyUpdates} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, weeklyUpdates: open }))}>
           <Card>
-            <SectionHeader
-              title="Recent Weekly Updates"
-              icon={TrendingUp}
-              isOpen={openSections.weeklyUpdates}
-              section="weeklyUpdates"
-              description="Points: 10 per lead closed, 5 per lead with damage, 1 per lead set"
-            />
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Recent Weekly Updates
+                  </CardTitle>
+                  {openSections.weeklyUpdates ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                </div>
+                <CardDescription>Points: 10 per lead closed, 5 per lead with damage, 1 per lead set</CardDescription>
+              </CardHeader>
+            </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent>
                 <div className="space-y-3">
@@ -367,15 +348,105 @@ export default function CanvasserStats() {
         </Collapsible>
       )}
 
-      {/* Performance Metrics */}
-      <Collapsible open={openSections.performance} onOpenChange={() => toggleSection('performance')}>
+      {/* 4. Fiscal Year Progress */}
+      <Collapsible open={openSections.fiscalProgress} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, fiscalProgress: open }))}>
         <Card>
-          <SectionHeader
-            title="Performance Metrics"
-            icon={TrendingUp}
-            isOpen={openSections.performance}
-            section="performance"
-          />
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Fiscal Year Progress
+                </CardTitle>
+                {openSections.fiscalProgress ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Dec 15, 2025 - Dec 15, 2026
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {daysRemaining} days remaining
+                  </span>
+                </div>
+                <Progress value={fiscalYearProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground text-center">
+                  {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+                </p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* 5. Goal Progress */}
+      {yearlyGoal > 0 && (
+        <Collapsible open={openSections.goalProgress} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, goalProgress: open }))}>
+          <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Target className="h-5 w-5 text-primary" />
+                    Goal Progress
+                  </CardTitle>
+                  {openSections.goalProgress ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Yearly Goal</p>
+                      <p className="text-2xl font-bold text-foreground">{yearlyGoal} leads</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Current</p>
+                      <p className="text-2xl font-bold text-foreground">{leadsClosed} leads</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className={`font-semibold ${getGoalColor()}`}>
+                        {goalPercentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
+                  </div>
+
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Leads Remaining</p>
+                    <p className="text-lg font-semibold text-foreground">{amountRemaining} leads to go</p>
+                  </div>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
+      {/* 6. Performance Metrics (Conversion Rate, Damage Detection Rate) */}
+      <Collapsible open={openSections.performanceChart} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, performanceChart: open }))}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Performance Metrics
+                </CardTitle>
+                {openSections.performanceChart ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
@@ -412,58 +483,22 @@ export default function CanvasserStats() {
         </Card>
       </Collapsible>
 
-      {/* Income and Points Row */}
-      <Collapsible open={openSections.income} onOpenChange={() => toggleSection('income')}>
-        <Card>
-          <SectionHeader
-            title="Income & Points"
-            icon={DollarSign}
-            isOpen={openSections.income}
-            section="income"
-            iconColor="text-green-500"
-          />
-          <CollapsibleContent>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-lg font-medium">Total Income</h4>
-                    <DollarSign className="h-5 w-5 text-green-500" />
-                  </div>
-                  <div className="text-4xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(metrics?.income ?? 0)}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Earnings from all canvassing activities
-                  </p>
-                </div>
-
-                <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4">
-                  <h4 className="text-lg font-medium mb-2">Total Points</h4>
-                  <div className="text-4xl font-bold text-primary">
-                    {metrics?.points?.toLocaleString() ?? 0}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Points earned from all activities
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
-      {/* 52-Week Fiscal Year Bar Chart - AT THE BOTTOM */}
-      {metrics?.yearly_goal && metrics.yearly_goal > 0 && (
-        <Collapsible open={openSections.chart} onOpenChange={() => toggleSection('chart')}>
+      {/* 7. 52-Week Progress Chart - AT THE BOTTOM */}
+      {yearlyGoal > 0 && (
+        <Collapsible open={openSections.weeklyChart} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, weeklyChart: open }))}>
           <Card>
-            <SectionHeader
-              title="52-Week Progress (Fiscal Year Dec 15 - Dec 15)"
-              icon={TrendingUp}
-              isOpen={openSections.chart}
-              section="chart"
-              description="Track your leads closed progress week by week"
-            />
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    52-Week Progress (Fiscal Year Dec 15 - Dec 15)
+                  </CardTitle>
+                  {openSections.weeklyChart ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                </div>
+                <CardDescription>Track your leads closed progress week by week</CardDescription>
+              </CardHeader>
+            </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent>
                 <div className="h-80">

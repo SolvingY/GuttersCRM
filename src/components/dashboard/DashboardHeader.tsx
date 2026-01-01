@@ -46,6 +46,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     } else {
       sessionStorage.removeItem('dailyQuote');
       sessionStorage.removeItem('welcomeShown');
+      sessionStorage.removeItem('announcementsShown');
       navigate('/');
     }
   };

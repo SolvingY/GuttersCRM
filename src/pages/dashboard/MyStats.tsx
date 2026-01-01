@@ -295,19 +295,17 @@ export default function MyStats() {
     title, 
     icon: Icon, 
     isOpen, 
-    section,
     iconColor = "text-accent",
     description 
   }: { 
     title: string; 
     icon: React.ElementType; 
     isOpen: boolean; 
-    section: keyof typeof openSections;
     iconColor?: string;
     description?: string;
   }) => (
     <CollapsibleTrigger asChild>
-      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg" onClick={() => toggleSection(section)}>
+      <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Icon className={`h-5 w-5 ${iconColor}`} />
@@ -364,7 +362,6 @@ export default function MyStats() {
                 title="Key Metrics"
                 icon={TrendingUp}
                 isOpen={openSections.stats}
-                section="stats"
               />
               <CollapsibleContent>
                 <CardContent>
@@ -424,7 +421,6 @@ export default function MyStats() {
                   title="Recent Weekly Updates"
                   icon={TrendingUp}
                   isOpen={openSections.weeklyUpdates}
-                  section="weeklyUpdates"
                 />
                 <CollapsibleContent>
                   <CardContent>
@@ -460,7 +456,6 @@ export default function MyStats() {
                 title="Fiscal Year Progress"
                 icon={Calendar}
                 isOpen={openSections.fiscalProgress}
-                section="fiscalProgress"
               />
               <CollapsibleContent>
                 <CardContent>
@@ -491,7 +486,6 @@ export default function MyStats() {
                   title="Goal Progress"
                   icon={Target}
                   isOpen={openSections.goalProgress}
-                  section="goalProgress"
                 />
                 <CollapsibleContent>
                   <CardContent>
@@ -541,7 +535,6 @@ export default function MyStats() {
                 title="Sales Performance"
                 icon={TrendingUp}
                 isOpen={openSections.performanceChart}
-                section="performanceChart"
               />
               <CollapsibleContent>
                 <CardContent className="space-y-4">
@@ -684,7 +677,6 @@ export default function MyStats() {
                   title="52-Week Progress (Fiscal Year Dec 15 - Dec 15)"
                   icon={TrendingUp}
                   isOpen={openSections.weeklyChart}
-                  section="weeklyChart"
                 />
                 <CollapsibleContent>
                   <CardContent>
