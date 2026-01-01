@@ -176,6 +176,27 @@ export default function InviteUsers() {
 
     setIsCreatingUser(true);
     try {
+      // Ensure we have a fresh/valid JWT before calling the protected backend function
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({
+          title: 'Session expired',
+          description: 'Please sign out and sign back in, then try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const refreshRes = await supabase.auth.refreshSession();
+      if (refreshRes.error) {
+        toast({
+          title: 'Session refresh failed',
+          description: 'Please sign out and sign back in, then try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const response = await supabase.functions.invoke('create-user', {
         body: {
           email: manualEmail.trim().toLowerCase(),
@@ -189,7 +210,15 @@ export default function InviteUsers() {
 
       if (response.error) {
         const msg = response.error.message || 'Failed to create user';
-        toast({ title: 'Error', description: msg, variant: 'destructive' });
+        const looksLikeJwt = /invalid jwt|jwt/i.test(msg);
+
+        toast({
+          title: 'Error',
+          description: looksLikeJwt
+            ? 'Your session token is invalid. Please sign out and sign back in, then try again.'
+            : msg,
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -200,7 +229,7 @@ export default function InviteUsers() {
         title: 'User Created',
         description: `Account created for ${manualEmail}. They can now log in with the password you set.`,
       });
-      
+
       // Reset form
       setManualEmail('');
       setManualPassword('');
