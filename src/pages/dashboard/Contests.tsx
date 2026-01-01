@@ -17,6 +17,7 @@ import { Loader2, Trophy, Gift, Plus, Pencil, Trash2, Clock, Crown, CalendarIcon
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, isFuture } from 'date-fns';
 import { cn } from '@/lib/utils';
+import contestBackground from '@/assets/contest-background.jpg';
 
 interface Contest {
   id: string;
@@ -762,7 +763,18 @@ export default function Contests() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div 
+      className="min-h-screen relative"
+      style={{
+        backgroundImage: `url(${contestBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      <div className="absolute inset-0 bg-background/90" />
+      
+      <div className="relative z-10 space-y-4 sm:space-y-6 p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="text-center sm:text-left">
           <h2 className="text-xl sm:text-2xl font-heading text-foreground">Contests</h2>
@@ -1200,7 +1212,7 @@ export default function Contests() {
           </div>
         </TabsContent>
       </Tabs>
-
+      </div>
     </div>
   );
 }
