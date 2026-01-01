@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { KeyRound, LogOut, Menu, Shield } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import nextGenLogo from '@/assets/next-gen-logo.png';
+import { salesQuotes } from '@/lib/salesQuotes';
 
 interface DashboardHeaderProps {
   onMenuClick?: () => void;
@@ -22,6 +25,16 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const location = useLocation();
   const { toast } = useToast();
 
+  // Get a random quote per session
+  const [quote] = useState(() => {
+    const stored = sessionStorage.getItem('dailyQuote');
+    if (stored) return stored;
+    
+    const randomQuote = salesQuotes[Math.floor(Math.random() * salesQuotes.length)];
+    sessionStorage.setItem('dailyQuote', randomQuote);
+    return randomQuote;
+  });
+
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) {
@@ -31,6 +44,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         variant: 'destructive',
       });
     } else {
+      sessionStorage.removeItem('dailyQuote');
       navigate('/');
     }
   };
@@ -58,8 +72,17 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   };
 
   return (
-    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
-      <div className="flex items-center gap-3">
+    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6 relative overflow-hidden">
+      {/* Watermark */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <img 
+          src={nextGenLogo} 
+          alt="" 
+          className="w-24 h-24 object-contain opacity-[0.06]"
+        />
+      </div>
+
+      <div className="flex items-center gap-3 z-10">
         {/* Mobile hamburger menu */}
         <Button
           variant="ghost"
@@ -72,9 +95,21 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         </Button>
         <h1 className="text-base sm:text-lg font-heading text-foreground">{getPortalTitle()}</h1>
         {user && getRoleBadge()}
+        
+        {/* The 6 Figure System Tagline */}
+        <span className="hidden lg:inline-block text-sm font-semibold text-primary ml-4 italic">
+          The 6 Figure System
+        </span>
+      </div>
+
+      {/* Motivational Quote - Center */}
+      <div className="hidden md:flex flex-1 justify-center px-4 z-10">
+        <span className="text-xs text-muted-foreground italic truncate max-w-md text-center">
+          "{quote}"
+        </span>
       </div>
       
-      <div className="flex items-center">
+      <div className="flex items-center z-10">
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
