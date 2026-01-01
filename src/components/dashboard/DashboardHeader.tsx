@@ -45,6 +45,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       });
     } else {
       sessionStorage.removeItem('dailyQuote');
+      sessionStorage.removeItem('welcomeShown');
       navigate('/');
     }
   };
@@ -83,6 +84,13 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </div>
 
       <div className="flex items-center gap-3 z-10">
+        {/* Visible Logo */}
+        <img 
+          src={nextGenLogo} 
+          alt="Next Generation Roofing" 
+          className="h-8 w-8 object-contain"
+        />
+        
         {/* Mobile hamburger menu */}
         <Button
           variant="ghost"
@@ -97,7 +105,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         {user && getRoleBadge()}
         
         {/* The 6 Figure System Tagline */}
-        <span className="hidden lg:inline-block text-sm font-semibold text-primary ml-4 italic">
+        <span className="hidden md:inline-block text-sm font-bold text-primary ml-4 italic">
           The 6 Figure System
         </span>
       </div>
