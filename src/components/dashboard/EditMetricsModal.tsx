@@ -23,7 +23,7 @@ import { Loader2 } from 'lucide-react';
 import { RANK_OPTIONS } from '@/lib/constants';
 
 interface UserMetrics {
-  userId: string;
+  metricId: string;
   name: string;
   sales: number;
   points: number;
@@ -87,7 +87,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           leads: formData.leads,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.userId);
+        .eq('id', user.metricId);
 
       if (error) throw error;
 

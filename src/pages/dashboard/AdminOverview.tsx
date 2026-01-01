@@ -3,10 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface AggregateMetrics {
   totalSales: number;
@@ -17,7 +19,8 @@ interface AggregateMetrics {
 }
 
 interface UserDetail {
-  userId: string;
+  metricId: string;
+  realUserId: string | null;
   name: string;
   sales: number;
   points: number;
@@ -28,6 +31,7 @@ interface UserDetail {
   earningsYtd: number;
   avgJobSize: number;
   leadToClosePercent: number;
+  role: 'admin' | 'user';
 }
 
 // Performance thresholds
@@ -49,6 +53,7 @@ export default function AdminOverview() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -86,15 +91,26 @@ export default function AdminOverview() {
     }
 
     // Get latest metric per user (use metric id for test users without user_id)
-    const latestByUser = new Map<string, Omit<UserDetail, 'name' | 'avgJobSize' | 'leadToClosePercent'> & { displayName: string | null; metricId: string }>();
+    const latestByUser = new Map<string, { 
+      metricId: string; 
+      realUserId: string | null;
+      sales: number; 
+      points: number; 
+      leads: number; 
+      closedDeals: number; 
+      yearlyGoal: number; 
+      salesRank: string; 
+      displayName: string | null; 
+      earningsYtd: number; 
+    }>();
     
     for (const item of metrics) {
       // Use user_id if available, otherwise use metric id as key
       const key = item.user_id || `metric_${item.id}`;
       if (!latestByUser.has(key)) {
         latestByUser.set(key, {
-          userId: key,
           metricId: item.id,
+          realUserId: item.user_id,
           sales: Number(item.sales) || 0,
           points: Number(item.points) || 0,
           leads: item.leads || 0,
@@ -108,21 +124,35 @@ export default function AdminOverview() {
     }
 
     // Fetch profiles only for real user_ids (not null)
-    const realUserIds = Array.from(latestByUser.keys()).filter(id => !id.startsWith('metric_'));
+    const realUserIds = Array.from(latestByUser.values())
+      .map(v => v.realUserId)
+      .filter((id): id is string => id !== null);
+    
     const { data: profilesData } = realUserIds.length > 0
       ? await supabase.from('profiles').select('id, full_name').in('id', realUserIds)
+      : { data: [] };
+
+    // Fetch user roles
+    const { data: rolesData } = realUserIds.length > 0
+      ? await supabase.from('user_roles').select('user_id, role').in('user_id', realUserIds)
       : { data: [] };
 
     const profilesMap = new Map<string, string | null>(
       profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
     );
 
-    const users: UserDetail[] = Array.from(latestByUser.entries()).map(([userId, data]) => {
+    const rolesMap = new Map<string, 'admin' | 'user'>();
+    rolesData?.forEach((r) => {
+      rolesMap.set(r.user_id, r.role as 'admin' | 'user');
+    });
+
+    const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
       const avgJobSize = data.closedDeals > 0 ? data.sales / data.closedDeals : 0;
       const leadToClosePercent = data.leads > 0 ? (data.closedDeals / data.leads) * 100 : 0;
       
       return {
-        userId: data.metricId, // Use metricId for editing
+        metricId: data.metricId,
+        realUserId: data.realUserId,
         sales: data.sales,
         points: data.points,
         leads: data.leads,
@@ -130,9 +160,10 @@ export default function AdminOverview() {
         yearlyGoal: data.yearlyGoal,
         salesRank: data.salesRank,
         earningsYtd: data.earningsYtd,
-        name: data.displayName || profilesMap.get(userId) || 'Unknown User',
+        name: data.displayName || (data.realUserId ? profilesMap.get(data.realUserId) : null) || 'Unknown User',
         avgJobSize,
         leadToClosePercent,
+        role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
       };
     });
     
@@ -171,6 +202,29 @@ export default function AdminOverview() {
   const handleEditSuccess = () => {
     setLoading(true);
     fetchAdminData();
+  };
+
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'user') => {
+    setUpdatingRole(userId);
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: newRole })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast.success(`Role updated to ${newRole}`);
+      // Update local state
+      setUserDetails(prev => 
+        prev.map(u => u.realUserId === userId ? { ...u, role: newRole } : u)
+      );
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast.error(error.message || 'Failed to update role');
+    } finally {
+      setUpdatingRole(null);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -256,6 +310,7 @@ export default function AdminOverview() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Role</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Sales</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
@@ -272,7 +327,7 @@ export default function AdminOverview() {
                   const attention = needsAttention(user);
                   return (
                     <tr 
-                      key={user.userId} 
+                      key={user.metricId}
                       className={cn(
                         "border-t border-border transition-colors",
                         attention 
@@ -290,6 +345,33 @@ export default function AdminOverview() {
                             </Badge>
                           )}
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {user.realUserId ? (
+                          <Select
+                            value={user.role}
+                            onValueChange={(value: 'admin' | 'user') => handleRoleChange(user.realUserId!, value)}
+                            disabled={updatingRole === user.realUserId}
+                          >
+                            <SelectTrigger className={cn(
+                              "w-24 h-8",
+                              user.role === 'admin' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted"
+                            )}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover border border-border z-50">
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">
+                                <div className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" />
+                                  Admin
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">N/A</span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
