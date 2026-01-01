@@ -24,12 +24,12 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; inviteCode?: string }>({});
 
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, user, loading, isAdmin, isCanvasser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+  const fromState = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   // Pre-fill from URL params (invite link)
   useEffect(() => {
@@ -45,11 +45,25 @@ export default function Auth() {
     }
   }, [searchParams]);
 
+  // Role-based redirect after login
   useEffect(() => {
     if (!loading && user) {
-      navigate(from, { replace: true });
+      // If there's a specific "from" route, use it
+      if (fromState) {
+        navigate(fromState, { replace: true });
+        return;
+      }
+      
+      // Otherwise route based on role
+      if (isCanvasser) {
+        navigate('/canvasser', { replace: true });
+      } else if (isAdmin) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [user, loading, navigate, from]);
+  }, [user, loading, navigate, fromState, isAdmin, isCanvasser]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; inviteCode?: string } = {};

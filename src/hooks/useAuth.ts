@@ -21,19 +21,27 @@ export function useAuth() {
     roleLoading: true,
   });
 
-  const fetchUserRole = useCallback(async (userId: string) => {
+  const fetchUserRole = useCallback(async (userId: string): Promise<AppRole> => {
+    // Fetch all roles for the user (should be one after migration, but handle edge cases)
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error fetching user role:', error);
-      return 'user' as AppRole;
+      return 'user';
     }
 
-    return (data?.role as AppRole) || 'user';
+    if (!data || data.length === 0) {
+      return 'user';
+    }
+
+    // If somehow multiple roles exist, prioritize: admin > canvasser > user
+    const roles = data.map(r => r.role as AppRole);
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('canvasser')) return 'canvasser';
+    return 'user';
   }, []);
 
   useEffect(() => {
