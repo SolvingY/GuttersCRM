@@ -472,6 +472,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      verify_invite_code: {
+        Args: { _email: string; _invite_code: string }
+        Returns: {
+          error_message: string
+          is_valid: boolean
+          preset_display_name: string
+          preset_role: Database["public"]["Enums"]["app_role"]
+          preset_sales_rank: string
+          preset_yearly_goal: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "canvasser"

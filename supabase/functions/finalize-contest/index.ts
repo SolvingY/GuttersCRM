@@ -30,7 +30,49 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+    // Verify authorization - only admins can finalize contests
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('finalize-contest: Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Missing authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create a user client to verify the caller's identity
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      console.error('finalize-contest: Invalid user:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid user' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user is an admin using the has_role function
+    const { data: isAdmin, error: roleError } = await userClient.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
+
+    if (roleError || !isAdmin) {
+      console.error('finalize-contest: User is not an admin:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('finalize-contest: Admin authorization verified for user:', user.id);
+
+    // Now use service role for the actual operations
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { contestId } = await req.json();

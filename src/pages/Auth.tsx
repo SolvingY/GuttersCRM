@@ -110,44 +110,28 @@ export default function Auth() {
   };
 
   const validateInviteCode = async (): Promise<boolean> => {
-    const { data: invitation, error } = await supabase
-      .from('invitations')
-      .select('*')
-      .eq('invite_code', inviteCode.toUpperCase())
-      .maybeSingle();
+    // Use the secure RPC function instead of direct table query
+    const { data, error } = await supabase.rpc('verify_invite_code', {
+      _invite_code: inviteCode.toUpperCase(),
+      _email: email.toLowerCase()
+    });
 
-    if (error || !invitation) {
+    if (error) {
+      console.error('Error verifying invite code:', error);
       toast({
-        title: 'Invalid invite code',
-        description: 'The invite code you entered is not valid.',
+        title: 'Error',
+        description: 'Failed to verify invite code. Please try again.',
         variant: 'destructive',
       });
       return false;
     }
 
-    if (invitation.is_used) {
+    const result = data?.[0];
+    
+    if (!result?.is_valid) {
       toast({
-        title: 'Invite code already used',
-        description: 'This invite code has already been used.',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    if (new Date(invitation.expires_at) < new Date()) {
-      toast({
-        title: 'Invite code expired',
-        description: 'This invite code has expired. Please request a new one.',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    // Check if email matches (if specified in invitation)
-    if (invitation.email && invitation.email.toLowerCase() !== email.toLowerCase()) {
-      toast({
-        title: 'Email mismatch',
-        description: 'Please use the email address this invitation was sent to.',
+        title: 'Invalid invite',
+        description: result?.error_message || 'Invalid invite code or email.',
         variant: 'destructive',
       });
       return false;
