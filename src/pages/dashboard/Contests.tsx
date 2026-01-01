@@ -36,6 +36,8 @@ interface Contest {
   winner_user_id: string | null;
   winner_display_name: string | null;
   winner_value: number | null;
+  target_role: string;
+  points_awarded: boolean;
 }
 
 interface LeaderEntry {
@@ -72,6 +74,7 @@ export default function Contests() {
     icon: '🏆',
   });
   const [countdown, setCountdown] = useState<Record<string, string>>({});
+  const [finalizingContest, setFinalizingContest] = useState<string | null>(null);
 
   const fetchContests = async () => {
     const { data, error } = await supabase
@@ -96,40 +99,83 @@ export default function Contests() {
   };
 
   const fetchLeadersForContest = async (contest: Contest) => {
-    const { data: metricsData } = await supabase
-      .from('user_metrics')
-      .select('user_id, display_name, sales, leads, closed_deals')
-      .order('metric_date', { ascending: false });
+    const targetRole = contest.target_role || 'user';
+    const tableName = targetRole === 'canvasser' ? 'canvasser_metrics' : 'user_metrics';
+    
+    if (targetRole === 'canvasser') {
+      const { data: metricsData } = await supabase
+        .from('canvasser_metrics')
+        .select('user_id, display_name, leads_set, leads_closed, shifts_worked')
+        .order('metric_date', { ascending: false });
 
-    if (!metricsData || metricsData.length === 0) return;
+      if (!metricsData || metricsData.length === 0) return;
 
-    // Get latest per user and find top 3
-    const latestByUser = new Map<string, { name: string; value: number }>();
-    for (const item of metricsData) {
-      const key = item.user_id || `metric_${item.user_id}`;
-      if (!latestByUser.has(key)) {
-        let value = 0;
-        if (contest.metric_type === 'sales') {
-          value = Number(item.sales) || 0;
-        } else if (contest.metric_type === 'leads') {
-          value = Number(item.leads) || 0;
-        } else {
-          value = Number(item.closed_deals) || 0;
+      const latestByUser = new Map<string, { name: string; value: number }>();
+      for (const item of metricsData) {
+        const key = item.user_id;
+        if (!latestByUser.has(key)) {
+          let value = 0;
+          if (contest.metric_type === 'leads_set') {
+            value = Number(item.leads_set) || 0;
+          } else if (contest.metric_type === 'shifts_worked') {
+            value = Number(item.shifts_worked) || 0;
+          } else if (contest.metric_type === 'conversion_rate') {
+            const leadsSet = Number(item.leads_set) || 0;
+            const leadsClosed = Number(item.leads_closed) || 0;
+            value = leadsSet > 0 ? (leadsClosed / leadsSet) * 100 : 0;
+          } else if (contest.metric_type === 'leads_closed') {
+            value = Number(item.leads_closed) || 0;
+          }
+          latestByUser.set(key, {
+            name: item.display_name || 'Unknown',
+            value,
+          });
         }
-        latestByUser.set(key, {
-          name: item.display_name || 'Unknown',
-          value,
-        });
       }
-    }
 
-    const sorted = Array.from(latestByUser.entries())
-      .map(([userId, data]) => ({ userId, ...data }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3); // Get top 3
+      const sorted = Array.from(latestByUser.entries())
+        .map(([userId, data]) => ({ userId, ...data }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3);
 
-    if (sorted.length > 0) {
-      setLeaders(prev => ({ ...prev, [contest.id]: sorted }));
+      if (sorted.length > 0) {
+        setLeaders(prev => ({ ...prev, [contest.id]: sorted }));
+      }
+    } else {
+      const { data: metricsData } = await supabase
+        .from('user_metrics')
+        .select('user_id, display_name, sales, leads, closed_deals')
+        .order('metric_date', { ascending: false });
+
+      if (!metricsData || metricsData.length === 0) return;
+
+      const latestByUser = new Map<string, { name: string; value: number }>();
+      for (const item of metricsData) {
+        const key = item.user_id || `metric_${item.user_id}`;
+        if (!latestByUser.has(key)) {
+          let value = 0;
+          if (contest.metric_type === 'sales') {
+            value = Number(item.sales) || 0;
+          } else if (contest.metric_type === 'leads') {
+            value = Number(item.leads) || 0;
+          } else {
+            value = Number(item.closed_deals) || 0;
+          }
+          latestByUser.set(key, {
+            name: item.display_name || 'Unknown',
+            value,
+          });
+        }
+      }
+
+      const sorted = Array.from(latestByUser.entries())
+        .map(([userId, data]) => ({ userId, ...data }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3);
+
+      if (sorted.length > 0) {
+        setLeaders(prev => ({ ...prev, [contest.id]: sorted }));
+      }
     }
   };
 
@@ -194,9 +240,36 @@ export default function Contests() {
       end_date: endDate,
       end_time: format(endDate, 'HH:mm'),
       metric_type: contest.metric_type,
+      target_role: contest.target_role || 'user',
       icon: contest.icon || '🏆',
     });
     setDialogOpen(true);
+  };
+
+  const handleFinalizeContest = async (contestId: string) => {
+    setFinalizingContest(contestId);
+    try {
+      const { data, error } = await supabase.functions.invoke('finalize-contest', {
+        body: { contestId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Contest Finalized!',
+        description: 'Winners have been determined and points awarded.',
+      });
+      
+      fetchContests();
+    } catch (error: any) {
+      toast({
+        title: 'Error finalizing contest',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setFinalizingContest(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -573,6 +646,26 @@ export default function Contests() {
                 </div>
 
                 <div>
+                  <Label htmlFor="target_role">Target Team</Label>
+                  <Select
+                    value={formData.target_role}
+                    onValueChange={(value) => setFormData({ 
+                      ...formData, 
+                      target_role: value,
+                      metric_type: value === 'canvasser' ? 'leads_set' : 'sales' 
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">Sales Reps</SelectItem>
+                      <SelectItem value="canvasser">Canvassers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
                   <Label htmlFor="metric_type">Competition Metric</Label>
                   <Select
                     value={formData.metric_type}
@@ -582,9 +675,20 @@ export default function Contests() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sales">YTD Sales Revenue</SelectItem>
-                      <SelectItem value="leads">Leads Generated</SelectItem>
-                      <SelectItem value="closed_deals">Closed Deals</SelectItem>
+                      {formData.target_role === 'canvasser' ? (
+                        <>
+                          <SelectItem value="leads_set">Leads Set</SelectItem>
+                          <SelectItem value="leads_closed">Leads Closed</SelectItem>
+                          <SelectItem value="shifts_worked">Shifts Worked</SelectItem>
+                          <SelectItem value="conversion_rate">Conversion Rate</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="sales">YTD Sales Revenue</SelectItem>
+                          <SelectItem value="leads">Leads Generated</SelectItem>
+                          <SelectItem value="closed_deals">Closed Deals</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -797,6 +901,22 @@ export default function Contests() {
                     </div>
                     {isAdmin && (
                       <div className="flex gap-1">
+                        {isEnded && !contest.points_awarded && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleFinalizeContest(contest.id)}
+                            disabled={finalizingContest === contest.id}
+                            className="text-accent border-accent/50 hover:bg-accent/10"
+                          >
+                            {finalizingContest === contest.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <Trophy className="h-4 w-4 mr-1" />
+                            )}
+                            Finalize
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(contest)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -839,7 +959,11 @@ export default function Contests() {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Team</p>
+                      <p className="font-medium text-foreground capitalize">{contest.target_role === 'canvasser' ? 'Canvassers' : 'Sales Reps'}</p>
+                    </div>
                     <div>
                       <p className="text-muted-foreground">Prize</p>
                       <p className="font-medium text-foreground">{contest.prize_description}</p>
