@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { format, subWeeks } from "date-fns";
+import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -108,6 +109,9 @@ export default function CanvasserStats() {
         </h1>
         <p className="text-muted-foreground mt-1">Track your canvassing performance</p>
       </div>
+
+      {/* Active Contests Widget */}
+      <CanvasserActiveContestWidget />
 
       {/* Main Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

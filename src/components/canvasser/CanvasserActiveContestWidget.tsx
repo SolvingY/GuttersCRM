@@ -35,16 +35,28 @@ const CONTEST_POINTS = {
   3: 25,
 };
 
-export function ActiveContestWidget() {
+export function CanvasserActiveContestWidget() {
   const { user } = useAuth();
   const [contests, setContests] = useState<Contest[]>([]);
   const [rankings, setRankings] = useState<Record<string, UserRanking>>({});
   const [loading, setLoading] = useState(true);
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
 
-  // Fetch user's display name from profile or user_metrics
+  // Fetch user's display name from canvasser_metrics
   const fetchUserDisplayName = async (userId: string) => {
-    // First try profile
+    const { data: metricsData } = await supabase
+      .from('canvasser_metrics')
+      .select('display_name')
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+
+    if (metricsData?.display_name) {
+      setUserDisplayName(metricsData.display_name);
+      return metricsData.display_name;
+    }
+
+    // Fallback to profiles
     const { data: profileData } = await supabase
       .from('profiles')
       .select('full_name')
@@ -56,19 +68,6 @@ export function ActiveContestWidget() {
       return profileData.full_name;
     }
 
-    // Fallback to user_metrics display_name
-    const { data: metricsData } = await supabase
-      .from('user_metrics')
-      .select('display_name')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
-
-    if (metricsData?.display_name) {
-      setUserDisplayName(metricsData.display_name);
-      return metricsData.display_name;
-    }
-
     return null;
   };
 
@@ -78,12 +77,12 @@ export function ActiveContestWidget() {
     // Get user's display name first
     const displayName = await fetchUserDisplayName(user.id);
     
-    // Get active contests for sales reps only (target_role = 'user' or null)
+    // Get active contests for canvassers only
     const { data: contestsData } = await supabase
       .from('contests')
       .select('*')
       .eq('is_active', true)
-      .or('target_role.eq.user,target_role.is.null');
+      .eq('target_role', 'canvasser');
 
     if (!contestsData) {
       setLoading(false);
@@ -116,7 +115,7 @@ export function ActiveContestWidget() {
   // Real-time subscription for contest changes
   useEffect(() => {
     const channel = supabase
-      .channel('contests-realtime')
+      .channel('canvasser-contests-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -131,14 +130,14 @@ export function ActiveContestWidget() {
     };
   }, [user]);
 
-  // Real-time subscription for metrics changes (for ranking updates)
+  // Real-time subscription for canvasser metrics changes
   useEffect(() => {
     const channel = supabase
-      .channel('metrics-realtime')
+      .channel('canvasser-metrics-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'user_metrics'
+        table: 'canvasser_metrics'
       }, () => {
         fetchActiveContests();
       })
@@ -151,24 +150,28 @@ export function ActiveContestWidget() {
 
   const fetchUserRanking = async (contest: Contest, userId: string, displayName: string | null) => {
     const { data: metricsData } = await supabase
-      .from('user_metrics')
-      .select('user_id, display_name, sales, leads, closed_deals')
+      .from('canvasser_metrics')
+      .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked')
       .order('metric_date', { ascending: false });
 
     if (!metricsData || metricsData.length === 0) return;
 
-    // Get latest per user - use display_name as unique key for ALL users (not just those with user_id)
+    // Get latest per user by display_name
     const latestByDisplayName = new Map<string, { userId: string | null; name: string; value: number }>();
     for (const item of metricsData) {
       const key = item.display_name || 'Unknown';
       if (!latestByDisplayName.has(key)) {
         let value = 0;
-        if (contest.metric_type === 'sales') {
-          value = Number(item.sales) || 0;
-        } else if (contest.metric_type === 'leads') {
-          value = Number(item.leads) || 0;
+        if (contest.metric_type === 'leads_set') {
+          value = Number(item.leads_set) || 0;
+        } else if (contest.metric_type === 'leads_closed') {
+          value = Number(item.leads_closed) || 0;
+        } else if (contest.metric_type === 'leads_with_damage') {
+          value = Number(item.leads_with_damage) || 0;
+        } else if (contest.metric_type === 'shifts_worked') {
+          value = Number(item.shifts_worked) || 0;
         } else {
-          value = Number(item.closed_deals) || 0;
+          value = Number(item.leads_set) || 0;
         }
         latestByDisplayName.set(key, {
           userId: item.user_id,
@@ -182,7 +185,7 @@ export function ActiveContestWidget() {
       .map(([key, data]) => ({ displayNameKey: key, ...data }))
       .sort((a, b) => b.value - a.value);
 
-    // Find user by display_name first (more reliable), then fallback to user_id
+    // Find user by display_name first, then fallback to user_id
     let userIndex = -1;
     if (displayName) {
       userIndex = sorted.findIndex(s => s.name.toLowerCase() === displayName.toLowerCase());
@@ -240,10 +243,7 @@ export function ActiveContestWidget() {
     if (rank === 2) return "So close! Push to take the top spot!";
     if (rank === 3) return "On the podium! One more push!";
     
-    const gapText = metricType === 'sales' 
-      ? `$${gap.toLocaleString()}` 
-      : gap.toLocaleString();
-    return `${gapText} behind the leader. Time to make your move!`;
+    return `${gap} behind the leader. Time to make your move!`;
   };
 
   const getRankBadgeColor = (rank: number) => {
@@ -253,13 +253,15 @@ export function ActiveContestWidget() {
     return 'bg-muted text-muted-foreground';
   };
 
-  const formatValue = (value: number, metricType: string) => {
-    if (metricType === 'sales') {
-      return `$${value.toLocaleString()}`;
+  const formatMetricLabel = (metricType: string) => {
+    switch (metricType) {
+      case 'leads_set': return 'leads set';
+      case 'leads_closed': return 'leads closed';
+      case 'leads_with_damage': return 'leads w/ damage';
+      case 'shifts_worked': return 'shifts';
+      default: return metricType.replace('_', ' ');
     }
-    return value.toLocaleString();
   };
-
 
   const getContestPoints = (rank: number) => {
     return CONTEST_POINTS[rank as keyof typeof CONTEST_POINTS] || 0;
@@ -303,14 +305,14 @@ export function ActiveContestWidget() {
                         {ranking.rank === 1 ? '1st' : ranking.rank === 2 ? '2nd' : ranking.rank === 3 ? '3rd' : `${ranking.rank}th`} place
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        {formatValue(ranking.value, contest.metric_type)}
+                        {ranking.value} {formatMetricLabel(contest.metric_type)}
                       </span>
                     </div>
                     {ranking.rank !== 1 && ranking.gap > 0 && (
                       <div className="flex items-center gap-1 text-sm">
                         <TrendingUp className="h-3.5 w-3.5 text-accent" />
                         <span className="text-muted-foreground">
-                          {formatValue(ranking.gap, contest.metric_type)} to 1st
+                          {ranking.gap} to 1st
                         </span>
                       </div>
                     )}
