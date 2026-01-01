@@ -48,13 +48,8 @@ export default function CanvasserStats() {
     weeklyUpdates: true,
     fiscalProgress: true,
     goalProgress: true,
-    performanceChart: true,
     weeklyChart: true,
   });
-
-  const toggleSection = (section: keyof typeof openSections) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
 
   useEffect(() => {
     if (user) {
@@ -161,15 +156,18 @@ export default function CanvasserStats() {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const now = new Date();
     const weeklyGoalPace = yearlyGoal / 52;
-    const weeks: { week: string; weekLabel: string; leadsClosed: number; goalPace: number; cumulativeGoal: number }[] = [];
+    const weeks: { week: string; weekLabel: string; leadsClosed: number | null; goalPace: number; cumulativeGoal: number }[] = [];
     
     const msPerWeek = 7 * 24 * 60 * 60 * 1000;
     const currentWeekNum = Math.ceil((now.getTime() - fiscalStart.getTime()) / msPerWeek);
-    const weeksToShow = Math.max(Math.min(currentWeekNum + 2, 52), 4);
     
-    for (let i = 0; i < weeksToShow; i++) {
+    // Always show all 52 weeks
+    for (let i = 0; i < 52; i++) {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
+      
+      // Only include actual data for weeks that have passed
+      const isFutureWeek = i + 1 > currentWeekNum;
       
       const weeklyMetric = allWeeklyMetrics.find(w => {
         const wStart = new Date(w.week_start);
@@ -179,7 +177,7 @@ export default function CanvasserStats() {
       weeks.push({
         week: `W${i + 1}`,
         weekLabel: format(weekStart, 'MMM d'),
-        leadsClosed: Number(weeklyMetric?.leads_closed) || 0,
+        leadsClosed: isFutureWeek ? null : (Number(weeklyMetric?.leads_closed) || 0),
         goalPace: weeklyGoalPace,
         cumulativeGoal: weeklyGoalPace * (i + 1),
       });
@@ -187,8 +185,10 @@ export default function CanvasserStats() {
     
     let cumulative = 0;
     return weeks.map(w => {
-      cumulative += w.leadsClosed;
-      return { ...w, cumulativeLeadsClosed: cumulative };
+      if (w.leadsClosed !== null) {
+        cumulative += w.leadsClosed;
+      }
+      return { ...w, cumulativeLeadsClosed: w.leadsClosed === null ? null : cumulative };
     });
   };
 
@@ -238,7 +238,7 @@ export default function CanvasserStats() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="bg-muted/30 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-muted-foreground">Leads Set</span>
@@ -295,6 +295,28 @@ export default function CanvasserStats() {
                     {metrics?.points?.toLocaleString() ?? 0}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Points earned</p>
+                </div>
+
+                <div className="bg-muted/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">Conversion Rate</span>
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="text-3xl font-bold text-primary">{conversionRate}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {metrics?.leads_closed ?? 0} / {metrics?.leads_set ?? 0} leads closed
+                  </p>
+                </div>
+
+                <div className="bg-muted/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">Damage Detection</span>
+                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  </div>
+                  <div className="text-3xl font-bold text-yellow-500">{damageRate}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {metrics?.leads_with_damage ?? 0} / {metrics?.leads_set ?? 0} with damage
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -433,57 +455,7 @@ export default function CanvasserStats() {
         </Collapsible>
       )}
 
-      {/* 6. Performance Metrics (Conversion Rate, Damage Detection Rate) */}
-      <Collapsible open={openSections.performanceChart} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, performanceChart: open }))}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Performance Metrics
-                </CardTitle>
-                {openSections.performanceChart ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                  <h4 className="text-lg font-medium">Conversion Rate</h4>
-                  <div className="flex items-center justify-between">
-                    <span className="text-4xl font-bold text-primary">{conversionRate}%</span>
-                    <span className="text-sm text-muted-foreground">
-                      {metrics?.leads_closed ?? 0} / {metrics?.leads_set ?? 0} leads
-                    </span>
-                  </div>
-                  <Progress value={Number(conversionRate)} className="h-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Percentage of leads set that resulted in closed deals
-                  </p>
-                </div>
-
-                <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-                  <h4 className="text-lg font-medium">Damage Detection Rate</h4>
-                  <div className="flex items-center justify-between">
-                    <span className="text-4xl font-bold text-yellow-500">{damageRate}%</span>
-                    <span className="text-sm text-muted-foreground">
-                      {metrics?.leads_with_damage ?? 0} / {metrics?.leads_set ?? 0} leads
-                    </span>
-                  </div>
-                  <Progress value={Number(damageRate)} className="h-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Percentage of leads with confirmed property damage
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
-      {/* 7. 52-Week Progress Chart - AT THE BOTTOM */}
+      {/* 6. 52-Week Progress Chart - AT THE BOTTOM */}
       {yearlyGoal > 0 && (
         <Collapsible open={openSections.weeklyChart} onOpenChange={(open) => setOpenSections(prev => ({ ...prev, weeklyChart: open }))}>
           <Card>
@@ -509,7 +481,10 @@ export default function CanvasserStats() {
                         dataKey="week" 
                         stroke="hsl(var(--muted-foreground))" 
                         fontSize={10}
-                        interval={3}
+                        interval={7}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
                       />
                       <YAxis 
                         stroke="hsl(var(--muted-foreground))" 
