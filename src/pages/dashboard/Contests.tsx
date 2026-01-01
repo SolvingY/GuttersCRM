@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Trophy, Gift, Plus, Pencil, Trash2, Clock, Crown, CalendarIcon, Medal } from 'lucide-react';
+import { Loader2, Trophy, Gift, Plus, Pencil, Trash2, Clock, Crown, CalendarIcon, Medal, BarChart3, Users, DollarSign, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, isFuture } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -130,8 +130,8 @@ function ActiveContestBanner({
                 {leaders[contest.id][1] && (
                   <div className="flex flex-col items-center">
                     <span className="text-xl sm:text-2xl">🥈</span>
-                    <div className="bg-muted/70 rounded-lg p-2 sm:p-3 w-20 sm:w-24 text-center h-28 sm:h-32 flex flex-col justify-start pt-3">
-                      <p className="text-xs font-medium text-foreground truncate">{leaders[contest.id][1].name}</p>
+                    <div className="bg-muted/70 rounded-lg p-2 sm:p-3 w-20 sm:w-24 text-center h-32 sm:h-36 flex flex-col justify-start pt-2 overflow-hidden">
+                      <p className="text-xs font-medium text-foreground truncate px-1" title={leaders[contest.id][1].name}>{leaders[contest.id][1].name}</p>
                       <p className="text-xs text-muted-foreground">
                         {contest.metric_type === 'sales' 
                           ? `$${leaders[contest.id][1].value.toLocaleString()}`
@@ -139,16 +139,16 @@ function ActiveContestBanner({
                         }
                       </p>
                       {leaders[contest.id][0] && (
-                        <p className="text-xs text-red-500 font-medium mt-1">
+                        <p className="text-xs text-red-500 font-medium mt-0.5">
                           -{contest.metric_type === 'sales' 
                             ? `$${(leaders[contest.id][0].value - leaders[contest.id][1].value).toLocaleString()}`
                             : (leaders[contest.id][0].value - leaders[contest.id][1].value).toLocaleString()
                           }
                         </p>
                       )}
-                      <p className="text-xs text-gray-500 font-semibold mt-1">+50 pts</p>
+                      <p className="text-xs text-gray-500 font-semibold mt-0.5">+50 pts</p>
                       {contest.prize_2nd_value && contest.prize_2nd_value > 0 && (
-                        <p className="text-xs text-green-600 font-medium mt-1">${contest.prize_2nd_value.toLocaleString()}</p>
+                        <p className="text-xs text-green-600 font-medium mt-0.5">${contest.prize_2nd_value.toLocaleString()}</p>
                       )}
                     </div>
                   </div>
@@ -179,8 +179,8 @@ function ActiveContestBanner({
                 {leaders[contest.id][2] && (
                   <div className="flex flex-col items-center">
                     <span className="text-xl sm:text-2xl">🥉</span>
-                    <div className="bg-muted/70 rounded-lg p-2 sm:p-3 w-20 sm:w-24 text-center h-24 sm:h-28 flex flex-col justify-start pt-3">
-                      <p className="text-xs font-medium text-foreground truncate">{leaders[contest.id][2].name}</p>
+                    <div className="bg-muted/70 rounded-lg p-2 sm:p-3 w-20 sm:w-24 text-center h-28 sm:h-32 flex flex-col justify-start pt-2 overflow-hidden">
+                      <p className="text-xs font-medium text-foreground truncate px-1" title={leaders[contest.id][2].name}>{leaders[contest.id][2].name}</p>
                       <p className="text-xs text-muted-foreground">
                         {contest.metric_type === 'sales' 
                           ? `$${leaders[contest.id][2].value.toLocaleString()}`
@@ -188,16 +188,16 @@ function ActiveContestBanner({
                         }
                       </p>
                       {leaders[contest.id][0] && (
-                        <p className="text-xs text-red-500 font-medium mt-1">
+                        <p className="text-xs text-red-500 font-medium mt-0.5">
                           -{contest.metric_type === 'sales' 
                             ? `$${(leaders[contest.id][0].value - leaders[contest.id][2].value).toLocaleString()}`
                             : (leaders[contest.id][0].value - leaders[contest.id][2].value).toLocaleString()
                           }
                         </p>
                       )}
-                      <p className="text-xs text-amber-600 font-semibold mt-1">+25 pts</p>
+                      <p className="text-xs text-amber-600 font-semibold mt-0.5">+25 pts</p>
                       {contest.prize_3rd_value && contest.prize_3rd_value > 0 && (
-                        <p className="text-xs text-green-600 font-medium mt-1">${contest.prize_3rd_value.toLocaleString()}</p>
+                        <p className="text-xs text-green-600 font-medium mt-0.5">${contest.prize_3rd_value.toLocaleString()}</p>
                       )}
                     </div>
                   </div>
@@ -1020,6 +1020,59 @@ export default function Contests() {
           </Dialog>
         )}
       </div>
+
+      {/* Contest Analytics */}
+      {isAdmin && (
+        <Card className="bg-gradient-to-r from-primary/5 via-background to-background border-primary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Contest Analytics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Total Contests</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{contests.length}</p>
+              </div>
+              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-muted-foreground">Active Now</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {contests.filter(c => getContestStatus(c).label === 'Active').length}
+                </p>
+              </div>
+              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-4 w-4 text-yellow-500" />
+                  <span className="text-sm text-muted-foreground">Prizes Awarded</span>
+                </div>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                  ${contests
+                    .filter(c => getContestStatus(c).label === 'Ended' && c.winner_user_id)
+                    .reduce((sum, c) => sum + (c.prize_value || 0) + (c.prize_2nd_value || 0) + (c.prize_3rd_value || 0), 0)
+                    .toLocaleString()}
+                </p>
+              </div>
+              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {contests.filter(c => getContestStatus(c).label === 'Ended' && c.winner_user_id).length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Hall of Fame - Contest Wins Leaderboard */}
       {winsLeaderboard.length > 0 && (
