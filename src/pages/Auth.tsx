@@ -45,23 +45,42 @@ export default function Auth() {
     }
   }, [searchParams]);
 
-  // Role-based redirect after login
+  // Role-based redirect after login with cross-portal protection
   useEffect(() => {
     if (!loading && user) {
-      // If there's a specific "from" route, use it
-      if (fromState) {
-        navigate(fromState, { replace: true });
-        return;
+      // Determine correct portal based on role
+      let targetRoute = '/dashboard';
+      if (isCanvasser) {
+        targetRoute = '/canvasser';
+      } else if (isAdmin) {
+        targetRoute = '/admin';
       }
       
-      // Otherwise route based on role
-      if (isCanvasser) {
-        navigate('/canvasser', { replace: true });
-      } else if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
+      // Only honor fromState if it matches the user's portal
+      if (fromState) {
+        const isCanvasserRoute = fromState.startsWith('/canvasser');
+        const isAdminRoute = fromState.startsWith('/admin');
+        const isDashboardRoute = fromState.startsWith('/dashboard');
+        
+        // Canvassers can only go to canvasser routes
+        if (isCanvasser && isCanvasserRoute) {
+          navigate(fromState, { replace: true });
+          return;
+        }
+        // Admins can go to admin or dashboard routes
+        if (isAdmin && (isAdminRoute || isDashboardRoute)) {
+          navigate(fromState, { replace: true });
+          return;
+        }
+        // Regular users can only go to dashboard routes
+        if (!isCanvasser && !isAdmin && isDashboardRoute) {
+          navigate(fromState, { replace: true });
+          return;
+        }
       }
+      
+      // Default to role-appropriate portal
+      navigate(targetRoute, { replace: true });
     }
   }, [user, loading, navigate, fromState, isAdmin, isCanvasser]);
 

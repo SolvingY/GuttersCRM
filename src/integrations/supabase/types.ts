@@ -194,6 +194,7 @@ export type Database = {
           invited_by: string | null
           is_used: boolean
           preset_display_name: string | null
+          preset_role: Database["public"]["Enums"]["app_role"]
           preset_sales_rank: string | null
           preset_yearly_goal: number | null
           used_at: string | null
@@ -207,6 +208,7 @@ export type Database = {
           invited_by?: string | null
           is_used?: boolean
           preset_display_name?: string | null
+          preset_role?: Database["public"]["Enums"]["app_role"]
           preset_sales_rank?: string | null
           preset_yearly_goal?: number | null
           used_at?: string | null
@@ -220,6 +222,7 @@ export type Database = {
           invited_by?: string | null
           is_used?: boolean
           preset_display_name?: string | null
+          preset_role?: Database["public"]["Enums"]["app_role"]
           preset_sales_rank?: string | null
           preset_yearly_goal?: number | null
           used_at?: string | null
