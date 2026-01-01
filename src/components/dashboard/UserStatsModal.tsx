@@ -6,7 +6,7 @@ import { DollarSign, Star, Users, Briefcase, Target, Pencil, TrendingUp } from '
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 
 interface UserStats {
-  userId: string;
+  metricId: string;
   name: string;
   sales: number;
   points: number;
