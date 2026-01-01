@@ -446,7 +446,7 @@ export default function WeeklyUpdates() {
           </CardTitle>
           <CardDescription>
             Enter the weekly numbers for each team member. These will be added to their yearly totals. 
-            <span className="font-medium text-accent"> Points are auto-calculated: 10 pts per $10k revenue.</span>
+            <span className="font-medium text-accent"> Points are auto-calculated based on role.</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -634,7 +634,13 @@ export default function WeeklyUpdates() {
               <ul className="list-disc list-inside space-y-1">
                 <li>Enter the weekly numbers for each team member</li>
                 <li>Click "Save All" to add these numbers to their yearly totals</li>
-                <li><strong>Points are auto-calculated:</strong> 10 points per $10,000 in sales revenue</li>
+                <li>
+                  <strong>Points are auto-calculated:</strong>
+                  <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
+                    <li><strong>Sales Reps:</strong> 10 points per $10,000 in sales revenue</li>
+                    <li><strong>Canvassers:</strong> 10 pts per lead closed, 5 pts per lead with damage, 1 pt per lead set</li>
+                  </ul>
+                </li>
                 <li>Weekly data is tracked separately for contest periods</li>
                 <li>The leaderboard and contests will update automatically</li>
                 <li>You can go back and update previous weeks if needed</li>
