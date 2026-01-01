@@ -218,11 +218,11 @@ export default function CanvasserLeaderboard() {
       const monthStartStr = format(monthStart, 'yyyy-MM-dd');
       const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
-      // Use week_end >= monthStart to catch weeks that overlap with the month
+      // Filter weeks where week_start falls within this month
       const { data: weeklyData, error } = await supabase
         .from("weekly_canvasser_metrics")
         .select("user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned")
-        .gte("week_end", monthStartStr)
+        .gte("week_start", monthStartStr)
         .lte("week_start", monthEndStr);
 
       if (error) {

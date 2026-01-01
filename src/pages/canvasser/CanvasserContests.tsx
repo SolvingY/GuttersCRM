@@ -198,9 +198,12 @@ export default function CanvasserContests() {
                         {contest.icon || '🏆'}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="text-xl font-heading text-foreground">{contest.title}</h3>
                           <Badge variant="default" className="bg-green-500/20 text-green-600 border-green-500/30">Active</Badge>
+                          <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30">
+                            Tracking: {getMetricLabel(contest.metric_type)}
+                          </Badge>
                         </div>
                         {contest.description && (
                           <p className="text-muted-foreground mb-3">{contest.description}</p>
@@ -223,9 +226,6 @@ export default function CanvasserContests() {
                           )}
                         </div>
                         
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Metric: <strong>{getMetricLabel(contest.metric_type)}</strong>
-                        </div>
                         
                         {/* Progress Bar with Countdown */}
                         <div className="space-y-2">
