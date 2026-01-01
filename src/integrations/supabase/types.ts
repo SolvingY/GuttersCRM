@@ -19,6 +19,7 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           id: string
+          income: number | null
           leads_closed: number | null
           leads_set: number | null
           leads_with_damage: number | null
@@ -32,6 +33,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string
+          income?: number | null
           leads_closed?: number | null
           leads_set?: number | null
           leads_with_damage?: number | null
@@ -45,6 +47,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string
+          income?: number | null
           leads_closed?: number | null
           leads_set?: number | null
           leads_with_damage?: number | null
@@ -56,6 +59,44 @@ export type Database = {
         }
         Relationships: []
       }
+      contest_victories: {
+        Row: {
+          acknowledged: boolean | null
+          contest_id: string
+          created_at: string | null
+          id: string
+          place: number
+          points_awarded: number
+          user_id: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          contest_id: string
+          created_at?: string | null
+          id?: string
+          place: number
+          points_awarded?: number
+          user_id: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          contest_id?: string
+          created_at?: string | null
+          id?: string
+          place?: number
+          points_awarded?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_victories_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contests: {
         Row: {
           created_at: string | null
@@ -66,6 +107,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           metric_type: string
+          points_awarded: boolean | null
           prize_2nd_description: string | null
           prize_2nd_value: number | null
           prize_3rd_description: string | null
@@ -76,6 +118,10 @@ export type Database = {
           target_role: string | null
           title: string
           updated_at: string | null
+          winner_2nd_display_name: string | null
+          winner_2nd_user_id: string | null
+          winner_3rd_display_name: string | null
+          winner_3rd_user_id: string | null
           winner_display_name: string | null
           winner_user_id: string | null
           winner_value: number | null
@@ -89,6 +135,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           metric_type?: string
+          points_awarded?: boolean | null
           prize_2nd_description?: string | null
           prize_2nd_value?: number | null
           prize_3rd_description?: string | null
@@ -99,6 +146,10 @@ export type Database = {
           target_role?: string | null
           title: string
           updated_at?: string | null
+          winner_2nd_display_name?: string | null
+          winner_2nd_user_id?: string | null
+          winner_3rd_display_name?: string | null
+          winner_3rd_user_id?: string | null
           winner_display_name?: string | null
           winner_user_id?: string | null
           winner_value?: number | null
@@ -112,6 +163,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           metric_type?: string
+          points_awarded?: boolean | null
           prize_2nd_description?: string | null
           prize_2nd_value?: number | null
           prize_3rd_description?: string | null
@@ -122,6 +174,10 @@ export type Database = {
           target_role?: string | null
           title?: string
           updated_at?: string | null
+          winner_2nd_display_name?: string | null
+          winner_2nd_user_id?: string | null
+          winner_3rd_display_name?: string | null
+          winner_3rd_user_id?: string | null
           winner_display_name?: string | null
           winner_user_id?: string | null
           winner_value?: number | null
@@ -188,6 +244,36 @@ export type Database = {
           created_at?: string
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      leads_attribution: {
+        Row: {
+          canvasser_id: string
+          closed_at: string | null
+          created_at: string | null
+          deal_value: number | null
+          id: string
+          lead_status: string | null
+          sales_rep_id: string | null
+        }
+        Insert: {
+          canvasser_id: string
+          closed_at?: string | null
+          created_at?: string | null
+          deal_value?: number | null
+          id?: string
+          lead_status?: string | null
+          sales_rep_id?: string | null
+        }
+        Update: {
+          canvasser_id?: string
+          closed_at?: string | null
+          created_at?: string | null
+          deal_value?: number | null
+          id?: string
+          lead_status?: string | null
+          sales_rep_id?: string | null
         }
         Relationships: []
       }

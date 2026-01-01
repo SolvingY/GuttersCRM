@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface CanvasserMetrics {
@@ -12,6 +12,7 @@ interface CanvasserMetrics {
   leads_with_damage: number;
   shifts_worked: number;
   points: number;
+  income: number;
 }
 
 export default function CanvasserStats() {
@@ -59,6 +60,15 @@ export default function CanvasserStats() {
   const damageRate = metrics && metrics.leads_set > 0
     ? ((metrics.leads_with_damage / metrics.leads_set) * 100).toFixed(1)
     : "0.0";
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   return (
     <div className="space-y-6">
@@ -179,20 +189,39 @@ export default function CanvasserStats() {
         </Card>
       </div>
 
-      {/* Points Card */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-lg">Total Points</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-5xl font-bold text-primary">
-            {metrics?.points?.toLocaleString() ?? 0}
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Points earned from all activities
-          </p>
-        </CardContent>
-      </Card>
+      {/* Income and Points Row */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Income Card */}
+        <Card className="bg-gradient-to-r from-green-500/10 to-green-500/5 border-green-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg">Total Income</CardTitle>
+            <DollarSign className="h-5 w-5 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-green-600 dark:text-green-400">
+              {formatCurrency(metrics?.income ?? 0)}
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Earnings from all canvassing activities
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Points Card */}
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-lg">Total Points</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-primary">
+              {metrics?.points?.toLocaleString() ?? 0}
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Points earned from all activities
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

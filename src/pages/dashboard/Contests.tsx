@@ -68,6 +68,7 @@ export default function Contests() {
     end_date: undefined as Date | undefined,
     end_time: '17:00',
     metric_type: 'sales',
+    target_role: 'user',
     icon: '🏆',
   });
   const [countdown, setCountdown] = useState<Record<string, string>>({});
@@ -169,6 +170,7 @@ export default function Contests() {
       end_date: undefined,
       end_time: '17:00',
       metric_type: 'sales',
+      target_role: 'user',
       icon: '🏆',
     });
     setEditingContest(null);
@@ -226,6 +228,7 @@ export default function Contests() {
       start_date: startDateTime.toISOString(),
       end_date: endDateTime.toISOString(),
       metric_type: formData.metric_type,
+      target_role: formData.target_role,
       icon: formData.icon,
       is_active: true,
     };

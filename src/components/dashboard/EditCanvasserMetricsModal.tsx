@@ -22,6 +22,7 @@ interface CanvasserMetrics {
   leadsWithDamage: number;
   shiftsWorked: number;
   points: number;
+  income: number;
 }
 
 interface EditCanvasserMetricsModalProps {
@@ -40,6 +41,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
     leadsWithDamage: 0,
     shiftsWorked: 0,
     points: 0,
+    income: 0,
   });
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
         leadsWithDamage: user.leadsWithDamage || 0,
         shiftsWorked: user.shiftsWorked || 0,
         points: user.points || 0,
+        income: user.income || 0,
       });
     }
   }, [user]);
@@ -68,6 +71,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
           leads_with_damage: formData.leadsWithDamage,
           shifts_worked: formData.shiftsWorked,
           points: formData.points,
+          income: formData.income,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.metricId);
@@ -157,6 +161,21 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
                 onChange={(e) => setFormData({ ...formData, shiftsWorked: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter shifts worked"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="income" className="text-right">
+                Income ($)
+              </Label>
+              <Input
+                id="income"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.income}
+                onChange={(e) => setFormData({ ...formData, income: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter income"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

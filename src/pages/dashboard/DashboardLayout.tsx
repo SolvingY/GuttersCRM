@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { GoalSettingModal } from '@/components/dashboard/GoalSettingModal';
+import { VictoryNotification } from '@/components/dashboard/VictoryNotification';
 import ngrWatermark from '@/assets/ngr-watermark.png';
 
 export default function DashboardLayout() {
@@ -35,6 +36,7 @@ export default function DashboardLayout() {
         </main>
       </div>
       <GoalSettingModal />
+      <VictoryNotification />
     </div>
   );
 }
