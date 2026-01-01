@@ -103,7 +103,8 @@ export function useAuth() {
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    // Redirect to /auth so role-based routing can determine the correct portal
+    const redirectUrl = `${window.location.origin}/auth`;
 
     const { error } = await supabase.auth.signUp({
       email,

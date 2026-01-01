@@ -33,6 +33,7 @@ interface Invitation {
   preset_sales_rank?: string;
   preset_yearly_goal?: number;
   preset_display_name?: string;
+  preset_role?: 'user' | 'canvasser' | 'admin';
 }
 
 export default function InviteUsers() {
@@ -44,6 +45,7 @@ export default function InviteUsers() {
   const [displayName, setDisplayName] = useState('');
   const [salesRank, setSalesRank] = useState('SR1');
   const [yearlyGoal, setYearlyGoal] = useState('');
+  const [inviteRole, setInviteRole] = useState<'user' | 'canvasser'>('user');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,9 +119,10 @@ export default function InviteUsers() {
           email: email.trim().toLowerCase(),
           invite_code: inviteCode,
           invited_by: user.id,
-          preset_sales_rank: salesRank,
-          preset_yearly_goal: yearlyGoal ? parseFloat(yearlyGoal) : 0,
+          preset_sales_rank: inviteRole === 'user' ? salesRank : null,
+          preset_yearly_goal: inviteRole === 'user' && yearlyGoal ? parseFloat(yearlyGoal) : 0,
           preset_display_name: displayName.trim() || null,
+          preset_role: inviteRole,
         });
 
       if (error) {
@@ -137,6 +140,7 @@ export default function InviteUsers() {
       setDisplayName('');
       setSalesRank('SR1');
       setYearlyGoal('');
+      setInviteRole('user');
       fetchInvitations();
     } catch (error: any) {
       console.error('Error creating invitation:', error);
@@ -409,6 +413,20 @@ export default function InviteUsers() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="inviteRole" className="text-sm">User Type *</Label>
+                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'user' | 'canvasser')} disabled={isSubmitting}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">Sales Rep</SelectItem>
+                        <SelectItem value="canvasser">Canvasser</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="displayName" className="text-sm">Display Name (optional)</Label>
                     <Input
                       id="displayName"
@@ -419,37 +437,41 @@ export default function InviteUsers() {
                       disabled={isSubmitting}
                     />
                   </div>
+                  {inviteRole === 'user' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="salesRank" className="text-sm">Starting Rank</Label>
+                      <Select value={salesRank} onValueChange={setSalesRank} disabled={isSubmitting}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {RANK_OPTIONS.map((rank) => (
+                            <SelectItem key={rank} value={rank}>
+                              {rank}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="salesRank" className="text-sm">Starting Rank</Label>
-                    <Select value={salesRank} onValueChange={setSalesRank} disabled={isSubmitting}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select rank" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RANK_OPTIONS.map((rank) => (
-                          <SelectItem key={rank} value={rank}>
-                            {rank}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                {inviteRole === 'user' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="yearlyGoal" className="text-sm">Yearly Goal (optional)</Label>
+                      <Input
+                        id="yearlyGoal"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        placeholder="e.g., 500000"
+                        value={yearlyGoal}
+                        onChange={(e) => setYearlyGoal(e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="yearlyGoal" className="text-sm">Yearly Goal (optional)</Label>
-                    <Input
-                      id="yearlyGoal"
-                      type="number"
-                      min="0"
-                      step="1000"
-                      placeholder="e.g., 500000"
-                      value={yearlyGoal}
-                      onChange={(e) => setYearlyGoal(e.target.value)}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
+                )}
                 <Button type="submit" disabled={isSubmitting || !email.trim()} className="w-full sm:w-auto">
                   {isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -482,12 +504,21 @@ export default function InviteUsers() {
                   {invitations.map((invitation) => (
                     <div key={invitation.id} className="py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate text-sm">{invitation.email}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground truncate text-sm">{invitation.email}</p>
+                          <Badge variant="outline" className="text-xs">
+                            {invitation.preset_role === 'canvasser' ? 'Canvasser' : 'Sales Rep'}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           Code: <span className="font-mono">{invitation.invite_code}</span>
-                          {' • '}
-                          Rank: {invitation.preset_sales_rank || 'SR1'}
-                          {invitation.preset_yearly_goal ? ` • Goal: ${formatCurrency(invitation.preset_yearly_goal)}` : ''}
+                          {invitation.preset_role !== 'canvasser' && (
+                            <>
+                              {' • '}
+                              Rank: {invitation.preset_sales_rank || 'SR1'}
+                              {invitation.preset_yearly_goal ? ` • Goal: ${formatCurrency(invitation.preset_yearly_goal)}` : ''}
+                            </>
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Created {format(new Date(invitation.created_at), 'MMM d, yyyy')}
