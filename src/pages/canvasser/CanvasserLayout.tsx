@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { CanvasserSidebar } from "@/components/canvasser/CanvasserSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import ngrWatermark from "@/assets/ngr-watermark.png";
+import nextGenLogo from "@/assets/next-gen-logo.png";
 import { VictoryNotification } from "@/components/dashboard/VictoryNotification";
 import { CanvasserGoalModal } from "@/components/canvasser/CanvasserGoalModal";
 
@@ -24,7 +24,7 @@ export default function CanvasserLayout() {
             style={{ zIndex: 0 }}
           >
             <img 
-              src={ngrWatermark} 
+              src={nextGenLogo} 
               alt="" 
               className="w-64 h-64 md:w-96 md:h-96 object-contain opacity-[0.04]"
             />

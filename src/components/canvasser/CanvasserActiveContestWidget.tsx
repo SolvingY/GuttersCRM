@@ -255,12 +255,16 @@ export function CanvasserActiveContestWidget() {
 
   const formatMetricLabel = (metricType: string) => {
     switch (metricType) {
-      case 'leads_set': return 'leads set';
-      case 'leads_closed': return 'leads closed';
-      case 'leads_with_damage': return 'leads w/ damage';
-      case 'shifts_worked': return 'shifts';
+      case 'leads_set': return 'Leads Set';
+      case 'leads_closed': return 'Leads Closed';
+      case 'leads_with_damage': return 'Damage Leads';
+      case 'shifts_worked': return 'Shifts Worked';
       default: return metricType.replace('_', ' ');
     }
+  };
+
+  const formatMetricValue = (value: number, metricType: string) => {
+    return `${value} ${metricType === 'leads_set' ? 'leads set' : metricType === 'leads_closed' ? 'leads closed' : metricType === 'leads_with_damage' ? 'w/ damage' : 'shifts'}`;
   };
 
   const getContestPoints = (rank: number) => {
@@ -286,10 +290,13 @@ export function CanvasserActiveContestWidget() {
           
           return (
             <div key={contest.id} className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{contest.icon || '🏆'}</span>
                   <span className="font-medium text-foreground">{contest.title}</span>
+                  <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30">
+                    Tracking: {formatMetricLabel(contest.metric_type)}
+                  </Badge>
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />

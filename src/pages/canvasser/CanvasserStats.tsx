@@ -10,7 +10,7 @@ import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserAc
 import { CanvasserLeaderboardTable, CanvasserLeaderboardEntry } from "@/components/dashboard/CanvasserLeaderboardTable";
 import { WeeklyCanvasserLeaderboardTable, WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar
 } from 'recharts';
 interface CanvasserMetrics {
   display_name: string | null;
@@ -84,13 +84,14 @@ export default function CanvasserStats() {
       setWeeklyMetrics(weeklyData || []);
     }
 
-    // Fetch all weekly metrics (up to 52 weeks for 52-week chart)
-    const fiftyTwoWeeksAgo = format(subWeeks(new Date(), 52), 'yyyy-MM-dd');
+    // Fetch all weekly metrics from fiscal year start (Dec 15, 2025)
+    const fiscalStart = new Date(2025, 11, 15); // Dec 15, 2025
+    const fiscalStartStr = format(fiscalStart, 'yyyy-MM-dd');
     const { data: allWeeklyData, error: allWeeklyError } = await supabase
       .from('weekly_canvasser_metrics')
       .select('*')
       .eq('user_id', user.id)
-      .gte('week_start', fiftyTwoWeeksAgo)
+      .gte('week_start', fiscalStartStr)
       .order('week_start', { ascending: true });
 
     if (allWeeklyError) {
@@ -255,20 +256,38 @@ export default function CanvasserStats() {
     }).format(value);
   };
 
-  // Prepare 52-week progression data for leads closed
+  // Prepare 52-week fiscal year progression data for leads closed (bar chart)
   const get52WeekData = () => {
     const yearlyGoal = metrics?.yearly_goal || 0;
-    let cumulative = 0;
+    const fiscalStart = new Date(2025, 11, 15); // Dec 15, 2025
     const weeklyGoalPace = yearlyGoal / 52;
+    const weeks: { week: string; weekLabel: string; leadsClosed: number; goalPace: number; cumulativeGoal: number }[] = [];
     
-    return allWeeklyMetrics.map((w, index) => {
-      cumulative += Number(w.leads_closed) || 0;
-      return {
-        week: `W${index + 1}`,
-        weekLabel: format(new Date(w.week_start), 'MMM d'),
-        cumulativeLeadsClosed: cumulative,
-        goalPace: weeklyGoalPace * (index + 1),
-      };
+    // Generate all 52 weeks of the fiscal year
+    for (let i = 0; i < 52; i++) {
+      const weekStart = new Date(fiscalStart);
+      weekStart.setDate(weekStart.getDate() + (i * 7));
+      
+      // Find matching weekly metric data
+      const weeklyMetric = allWeeklyMetrics.find(w => {
+        const wStart = new Date(w.week_start);
+        return wStart >= weekStart && wStart < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      });
+      
+      weeks.push({
+        week: `W${i + 1}`,
+        weekLabel: format(weekStart, 'MMM d'),
+        leadsClosed: Number(weeklyMetric?.leads_closed) || 0,
+        goalPace: weeklyGoalPace,
+        cumulativeGoal: weeklyGoalPace * (i + 1),
+      });
+    }
+    
+    // Calculate cumulative leads closed
+    let cumulative = 0;
+    return weeks.map(w => {
+      cumulative += w.leadsClosed;
+      return { ...w, cumulativeLeadsClosed: cumulative };
     });
   };
 
@@ -319,13 +338,13 @@ export default function CanvasserStats() {
         </Card>
       )}
 
-      {/* 52-Week Progression Chart */}
-      {allWeeklyMetrics.length > 0 && metrics?.yearly_goal && metrics.yearly_goal > 0 && (
+      {/* 52-Week Fiscal Year Bar Chart */}
+      {metrics?.yearly_goal && metrics.yearly_goal > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              52-Week Progress Towards Goal
+              52-Week Progress (Fiscal Year Dec 15 - Dec 15)
             </CardTitle>
             <CardDescription>
               Track your leads closed progress week by week
@@ -334,13 +353,13 @@ export default function CanvasserStats() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={get52WeekData()}>
+                <ComposedChart data={get52WeekData()}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="week" 
                     stroke="hsl(var(--muted-foreground))" 
                     fontSize={10}
-                    interval="preserveStartEnd"
+                    interval={3}
                   />
                   <YAxis 
                     stroke="hsl(var(--muted-foreground))" 
@@ -354,7 +373,7 @@ export default function CanvasserStats() {
                     }}
                     formatter={(value: number, name: string) => [
                       value.toLocaleString(),
-                      name === 'cumulativeLeadsClosed' ? 'Leads Closed' : 'Goal Pace'
+                      name === 'leadsClosed' ? 'Weekly Leads Closed' : name === 'cumulativeLeadsClosed' ? 'Cumulative' : 'Goal Pace'
                     ]}
                     labelFormatter={(label, payload) => {
                       if (payload && payload[0]) {
@@ -364,24 +383,30 @@ export default function CanvasserStats() {
                     }}
                   />
                   <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="cumulativeLeadsClosed"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={3}
-                    dot={false}
-                    name="Leads Closed"
+                  <Bar
+                    dataKey="leadsClosed"
+                    fill="hsl(var(--primary))"
+                    name="Weekly Leads Closed"
+                    radius={[2, 2, 0, 0]}
                   />
                   <Line
                     type="monotone"
-                    dataKey="goalPace"
+                    dataKey="cumulativeLeadsClosed"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Cumulative"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cumulativeGoal"
                     stroke="hsl(var(--muted-foreground))"
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     dot={false}
                     name="Goal Pace"
                   />
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>

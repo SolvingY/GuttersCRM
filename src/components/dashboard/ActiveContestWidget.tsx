@@ -260,6 +260,16 @@ export function ActiveContestWidget() {
     return value.toLocaleString();
   };
 
+  const getMetricLabel = (metric: string) => {
+    switch (metric) {
+      case 'sales': return 'Total Sales';
+      case 'leads': return 'Leads Generated';
+      case 'closed_deals': return 'Deals Closed';
+      case 'points': return 'Points';
+      default: return metric.replace('_', ' ');
+    }
+  };
+
 
   const getContestPoints = (rank: number) => {
     return CONTEST_POINTS[rank as keyof typeof CONTEST_POINTS] || 0;
@@ -284,10 +294,13 @@ export function ActiveContestWidget() {
           
           return (
             <div key={contest.id} className="p-4 bg-muted/30 rounded-lg border border-border/50 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{contest.icon || '🏆'}</span>
                   <span className="font-medium text-foreground">{contest.title}</span>
+                  <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30">
+                    Tracking: {getMetricLabel(contest.metric_type)}
+                  </Badge>
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
