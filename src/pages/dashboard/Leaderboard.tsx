@@ -10,7 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { startOfWeek, endOfWeek, format, addWeeks, subWeeks } from 'date-fns';
+import { 
+  startOfWeek, 
+  endOfWeek, 
+  startOfMonth,
+  endOfMonth,
+  format, 
+  addWeeks, 
+  subWeeks,
+  addMonths,
+  subMonths
+} from 'date-fns';
 
 interface LeaderboardEntry {
   rank: number;
@@ -38,16 +48,27 @@ export default function Leaderboard() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyLeaderboardEntry[]>([]);
+  const [monthlyEntries, setMonthlyEntries] = useState<WeeklyLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [monthlyLoading, setMonthlyLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
 
   // Get selected week range
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 }); // Sunday
+  
+  // Get selected month range
+  const monthStart = startOfMonth(selectedMonthDate);
+  const monthEnd = endOfMonth(selectedMonthDate);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     setSelectedDate(direction === 'prev' ? subWeeks(selectedDate, 1) : addWeeks(selectedDate, 1));
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setSelectedMonthDate(direction === 'prev' ? subMonths(selectedMonthDate, 1) : addMonths(selectedMonthDate, 1));
   };
 
   useEffect(() => {
@@ -250,6 +271,91 @@ export default function Leaderboard() {
     fetchWeeklyLeaderboard();
   }, [selectedDate]);
 
+  // Fetch monthly leaderboard
+  useEffect(() => {
+    const fetchMonthlyLeaderboard = async () => {
+      setMonthlyLoading(true);
+
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['user', 'admin']);
+
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
+        setMonthlyLoading(false);
+        return;
+      }
+
+      const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
+
+      const monthStartStr = format(monthStart, 'yyyy-MM-dd');
+      const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
+
+      // Use week_end >= monthStart to catch weeks that overlap with the month
+      const { data: weeklyData, error: weeklyError } = await supabase
+        .from('weekly_user_metrics')
+        .select('user_id, sales, leads, closed_deals, points_earned')
+        .gte('week_end', monthStartStr)
+        .lte('week_start', monthEndStr);
+
+      if (weeklyError) {
+        console.error('Error fetching monthly leaderboard:', weeklyError);
+        setMonthlyLoading(false);
+        return;
+      }
+
+      if (!weeklyData || weeklyData.length === 0) {
+        setMonthlyEntries([]);
+        setMonthlyLoading(false);
+        return;
+      }
+
+      // Aggregate by user
+      const aggregated = new Map<string, { sales: number; leads: number; closedDeals: number; pointsEarned: number }>();
+      weeklyData.forEach(w => {
+        if (!eligibleUserIds.has(w.user_id)) return;
+        const existing = aggregated.get(w.user_id) || { sales: 0, leads: 0, closedDeals: 0, pointsEarned: 0 };
+        aggregated.set(w.user_id, {
+          sales: existing.sales + (Number(w.sales) || 0),
+          leads: existing.leads + (Number(w.leads) || 0),
+          closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0),
+          pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
+        });
+      });
+
+      const userIds = Array.from(aggregated.keys());
+      const { data: profilesData } = userIds.length > 0 
+        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+        : { data: [] };
+      const { data: metricsData } = userIds.length > 0
+        ? await supabase.from('user_metrics').select('user_id, display_name').in('user_id', userIds)
+        : { data: [] };
+
+      const profilesMap = new Map<string, string | null>(profilesData?.map(p => [p.id, p.full_name] as [string, string | null]) || []);
+      const displayNameMap = new Map<string, string | null>();
+      metricsData?.forEach(m => {
+        if (m.display_name && !displayNameMap.has(m.user_id)) {
+          displayNameMap.set(m.user_id, m.display_name);
+        }
+      });
+
+      const sorted = Array.from(aggregated.entries())
+        .map(([userId, data]) => ({
+          userId,
+          ...data,
+          name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
+        }))
+        .sort((a, b) => b.sales - a.sales)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
+      setMonthlyEntries(sorted);
+      setMonthlyLoading(false);
+    };
+
+    fetchMonthlyLeaderboard();
+  }, [selectedMonthDate]);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center sm:text-left">
@@ -258,9 +364,10 @@ export default function Leaderboard() {
       </div>
 
       <Tabs defaultValue="ytd" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="ytd">Year to Date</TabsTrigger>
-          <TabsTrigger value="weekly">This Week</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          <TabsTrigger value="weekly">Weekly</TabsTrigger>
         </TabsList>
         
         <TabsContent value="ytd" className="mt-4">
@@ -270,6 +377,43 @@ export default function Leaderboard() {
             </div>
           ) : (
             <LeaderboardTable entries={entries} currentUserId={user?.id} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="monthly" className="mt-4">
+          {/* Month Selector */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[200px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedMonthDate, 'MMMM yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedMonthDate}
+                  onSelect={(date) => date && setSelectedMonthDate(date)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {monthlyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            </div>
+          ) : (
+            <WeeklyLeaderboardTable entries={monthlyEntries} currentUserId={user?.id} />
           )}
         </TabsContent>
         

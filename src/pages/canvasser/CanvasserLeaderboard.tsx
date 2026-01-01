@@ -9,7 +9,17 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CanvasserLeaderboardTable } from "@/components/dashboard/CanvasserLeaderboardTable";
 import { WeeklyCanvasserLeaderboardTable } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
-import { startOfWeek, endOfWeek, format, addWeeks, subWeeks } from "date-fns";
+import { 
+  startOfWeek, 
+  endOfWeek, 
+  startOfMonth,
+  endOfMonth,
+  format, 
+  addWeeks, 
+  subWeeks,
+  addMonths,
+  subMonths
+} from "date-fns";
 
 interface CanvasserEntry {
   rank: number;
@@ -40,16 +50,27 @@ export default function CanvasserLeaderboard() {
   const { user } = useAuth();
   const [ytdEntries, setYtdEntries] = useState<CanvasserEntry[]>([]);
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyCanvasserEntry[]>([]);
+  const [monthlyEntries, setMonthlyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [monthlyLoading, setMonthlyLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
 
   // Get selected week range
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+  
+  // Get selected month range
+  const monthStart = startOfMonth(selectedMonthDate);
+  const monthEnd = endOfMonth(selectedMonthDate);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     setSelectedDate(direction === 'prev' ? subWeeks(selectedDate, 1) : addWeeks(selectedDate, 1));
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setSelectedMonthDate(direction === 'prev' ? subMonths(selectedMonthDate, 1) : addMonths(selectedMonthDate, 1));
   };
 
   // Fetch YTD leaderboard
@@ -189,6 +210,74 @@ export default function CanvasserLeaderboard() {
     fetchWeeklyLeaderboard();
   }, [selectedDate]);
 
+  // Fetch monthly leaderboard
+  useEffect(() => {
+    const fetchMonthlyLeaderboard = async () => {
+      setMonthlyLoading(true);
+
+      const monthStartStr = format(monthStart, 'yyyy-MM-dd');
+      const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
+
+      // Use week_end >= monthStart to catch weeks that overlap with the month
+      const { data: weeklyData, error } = await supabase
+        .from("weekly_canvasser_metrics")
+        .select("user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned")
+        .gte("week_end", monthStartStr)
+        .lte("week_start", monthEndStr);
+
+      if (error) {
+        console.error("Error fetching monthly leaderboard:", error);
+        setMonthlyLoading(false);
+        return;
+      }
+
+      if (!weeklyData || weeklyData.length === 0) {
+        setMonthlyEntries([]);
+        setMonthlyLoading(false);
+        return;
+      }
+
+      // Aggregate by user
+      const aggregated = new Map<string, any>();
+      weeklyData.forEach(w => {
+        const existing = aggregated.get(w.user_id) || { leadsSet: 0, leadsWithDamage: 0, leadsClosed: 0, shiftsWorked: 0, pointsEarned: 0 };
+        aggregated.set(w.user_id, {
+          leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
+          leadsWithDamage: existing.leadsWithDamage + (Number(w.leads_with_damage) || 0),
+          leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
+          shiftsWorked: existing.shiftsWorked + (Number(w.shifts_worked) || 0),
+          pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
+        });
+      });
+
+      const userIds = Array.from(aggregated.keys());
+      const { data: metricsData } = userIds.length > 0
+        ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
+        : { data: [] };
+
+      const displayNameMap = new Map<string, string | null>();
+      metricsData?.forEach(m => {
+        if (m.display_name && !displayNameMap.has(m.user_id)) {
+          displayNameMap.set(m.user_id, m.display_name);
+        }
+      });
+
+      const sorted = Array.from(aggregated.entries())
+        .map(([userId, data]) => ({
+          userId,
+          ...data,
+          name: displayNameMap.get(userId) || "Anonymous",
+        }))
+        .sort((a, b) => b.leadsClosed - a.leadsClosed)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
+      setMonthlyEntries(sorted);
+      setMonthlyLoading(false);
+    };
+
+    fetchMonthlyLeaderboard();
+  }, [selectedMonthDate]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -197,9 +286,10 @@ export default function CanvasserLeaderboard() {
       </div>
 
       <Tabs defaultValue="ytd" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="ytd">Year to Date</TabsTrigger>
-          <TabsTrigger value="weekly">This Week</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          <TabsTrigger value="weekly">Weekly</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ytd" className="mt-4">
@@ -209,6 +299,43 @@ export default function CanvasserLeaderboard() {
             </div>
           ) : (
             <CanvasserLeaderboardTable entries={ytdEntries} currentUserId={user?.id} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="monthly" className="mt-4">
+          {/* Month Selector */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[200px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedMonthDate, 'MMMM yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedMonthDate}
+                  onSelect={(date) => date && setSelectedMonthDate(date)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {monthlyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <WeeklyCanvasserLeaderboardTable entries={monthlyEntries} currentUserId={user?.id} />
           )}
         </TabsContent>
 
