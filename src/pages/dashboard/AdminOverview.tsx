@@ -213,7 +213,10 @@ export default function AdminOverview() {
         };
       });
       
-      const totals = users.reduce(
+      // Filter out canvassers from sales rep list
+      const salesReps = users.filter(user => user.role !== 'canvasser');
+      
+      const totals = salesReps.reduce(
         (acc, user) => ({
           totalSales: acc.totalSales + user.sales,
           totalPoints: acc.totalPoints + user.points,
@@ -225,7 +228,7 @@ export default function AdminOverview() {
       );
 
       setAggregates(totals);
-      setUserDetails(users.sort((a, b) => b.sales - a.sales));
+      setUserDetails(salesReps.sort((a, b) => b.sales - a.sales));
     }
 
     // Process canvasser data

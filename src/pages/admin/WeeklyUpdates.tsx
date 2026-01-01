@@ -17,6 +17,7 @@ interface UserMetric {
   leads: number;
   closed_deals: number;
   earnings_ytd: number;
+  points: number;
 }
 
 interface WeeklyEntry {
@@ -48,6 +49,11 @@ interface CanvasserWeeklyEntry {
   weeklyIncome: string;
 }
 
+// Calculate points: 10 points per $10,000 in revenue
+const calculatePoints = (revenue: number): number => {
+  return Math.floor(revenue / 10000) * 10;
+};
+
 export default function WeeklyUpdates() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -78,17 +84,27 @@ export default function WeeklyUpdates() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Fetch sales reps
+      // Fetch user roles to filter out canvassers
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      const canvasserUserIds = new Set(
+        rolesData?.filter(r => r.role === 'canvasser').map(r => r.user_id) || []
+      );
+
+      // Fetch sales reps (excluding canvassers)
       const { data: salesData, error: salesError } = await supabase
         .from('user_metrics')
-        .select('user_id, display_name, sales, leads, closed_deals, earnings_ytd')
+        .select('user_id, display_name, sales, leads, closed_deals, earnings_ytd, points')
         .order('display_name', { ascending: true });
 
       if (salesError) throw salesError;
 
       const uniqueUsers = new Map<string, UserMetric>();
       (salesData || []).forEach((item) => {
-        if (item.user_id && !uniqueUsers.has(item.user_id)) {
+        // Filter out canvassers
+        if (item.user_id && !uniqueUsers.has(item.user_id) && !canvasserUserIds.has(item.user_id)) {
           uniqueUsers.set(item.user_id, item as UserMetric);
         }
       });
@@ -170,6 +186,9 @@ export default function WeeklyUpdates() {
 
   const handleSaveAll = async () => {
     setSaving(true);
+    const { weekStart, weekEnd } = getWeekRange(selectedWeek);
+    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
 
     try {
       let successCount = 0;
@@ -185,6 +204,9 @@ export default function WeeklyUpdates() {
         if (weeklySales === 0 && weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0) {
           continue;
         }
+
+        // Calculate points for this week's sales: 10 points per $10,000
+        const weeklyPoints = calculatePoints(weeklySales);
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('user_metrics')
@@ -204,7 +226,9 @@ export default function WeeklyUpdates() {
         const newLeads = (Number(currentMetrics.leads) || 0) + weeklyLeads;
         const newClosedDeals = (Number(currentMetrics.closed_deals) || 0) + weeklyClosedDeals;
         const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
+        const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
 
+        // Update user_metrics with new totals including auto-calculated points
         const { error: updateError } = await supabase
           .from('user_metrics')
           .update({
@@ -212,6 +236,7 @@ export default function WeeklyUpdates() {
             leads: newLeads,
             closed_deals: newClosedDeals,
             earnings_ytd: newEarnings,
+            points: newPoints,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', entry.userId);
@@ -219,9 +244,32 @@ export default function WeeklyUpdates() {
         if (updateError) {
           console.error('Error updating metrics for user:', entry.userId, updateError);
           errorCount++;
-        } else {
-          successCount++;
+          continue;
         }
+
+        // Insert/update weekly record for contest tracking
+        const { error: weeklyError } = await supabase
+          .from('weekly_user_metrics')
+          .upsert({
+            user_id: entry.userId,
+            week_start: weekStartStr,
+            week_end: weekEndStr,
+            sales: weeklySales,
+            leads: weeklyLeads,
+            closed_deals: weeklyClosedDeals,
+            earnings: weeklyEarnings,
+            points_earned: weeklyPoints,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,week_start',
+          });
+
+        if (weeklyError) {
+          console.error('Error saving weekly metrics:', weeklyError);
+          // Don't count as error since main update succeeded
+        }
+
+        successCount++;
       }
 
       // Save Canvasser entries
@@ -271,15 +319,37 @@ export default function WeeklyUpdates() {
         if (updateError) {
           console.error('Error updating metrics for canvasser:', entry.userId, updateError);
           errorCount++;
-        } else {
-          successCount++;
+          continue;
         }
+
+        // Insert/update weekly record for contest tracking
+        const { error: weeklyError } = await supabase
+          .from('weekly_canvasser_metrics')
+          .upsert({
+            user_id: entry.userId,
+            week_start: weekStartStr,
+            week_end: weekEndStr,
+            leads_set: weeklyLeadsSet,
+            leads_closed: weeklyLeadsClosed,
+            leads_with_damage: weeklyLeadsWithDamage,
+            shifts_worked: weeklyShiftsWorked,
+            income: weeklyIncome,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,week_start',
+          });
+
+        if (weeklyError) {
+          console.error('Error saving weekly canvasser metrics:', weeklyError);
+        }
+
+        successCount++;
       }
 
       if (successCount > 0) {
         toast({
           title: 'Weekly Updates Saved',
-          description: `Successfully updated ${successCount} user(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+          description: `Successfully updated ${successCount} user(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}. Points auto-calculated for sales reps.`,
         });
 
         // Reset entries
@@ -375,7 +445,8 @@ export default function WeeklyUpdates() {
             Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
           </CardTitle>
           <CardDescription>
-            Enter the weekly numbers for each team member. These will be added to their yearly totals.
+            Enter the weekly numbers for each team member. These will be added to their yearly totals. 
+            <span className="font-medium text-accent"> Points are auto-calculated: 10 pts per $10k revenue.</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -563,6 +634,8 @@ export default function WeeklyUpdates() {
               <ul className="list-disc list-inside space-y-1">
                 <li>Enter the weekly numbers for each team member</li>
                 <li>Click "Save All" to add these numbers to their yearly totals</li>
+                <li><strong>Points are auto-calculated:</strong> 10 points per $10,000 in sales revenue</li>
+                <li>Weekly data is tracked separately for contest periods</li>
                 <li>The leaderboard and contests will update automatically</li>
                 <li>You can go back and update previous weeks if needed</li>
               </ul>

@@ -367,6 +367,93 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_canvasser_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          income: number | null
+          leads_closed: number | null
+          leads_set: number | null
+          leads_with_damage: number | null
+          points_earned: number | null
+          shifts_worked: number | null
+          updated_at: string
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          income?: number | null
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          points_earned?: number | null
+          shifts_worked?: number | null
+          updated_at?: string
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          income?: number | null
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          points_earned?: number | null
+          shifts_worked?: number | null
+          updated_at?: string
+          user_id?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      weekly_user_metrics: {
+        Row: {
+          closed_deals: number | null
+          created_at: string
+          earnings: number | null
+          id: string
+          leads: number | null
+          points_earned: number | null
+          sales: number | null
+          updated_at: string
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          closed_deals?: number | null
+          created_at?: string
+          earnings?: number | null
+          id?: string
+          leads?: number | null
+          points_earned?: number | null
+          sales?: number | null
+          updated_at?: string
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          closed_deals?: number | null
+          created_at?: string
+          earnings?: number | null
+          id?: string
+          leads?: number | null
+          points_earned?: number | null
+          sales?: number | null
+          updated_at?: string
+          user_id?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

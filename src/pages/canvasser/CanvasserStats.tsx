@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { format, subWeeks } from "date-fns";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -15,9 +16,21 @@ interface CanvasserMetrics {
   income: number;
 }
 
+interface WeeklyCanvasserMetric {
+  week_start: string;
+  week_end: string;
+  leads_set: number;
+  leads_closed: number;
+  leads_with_damage: number;
+  shifts_worked: number;
+  income: number;
+  points_earned: number;
+}
+
 export default function CanvasserStats() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<CanvasserMetrics | null>(null);
+  const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +42,7 @@ export default function CanvasserStats() {
   const fetchMetrics = async () => {
     if (!user) return;
 
+    // Fetch YTD metrics
     const { data, error } = await supabase
       .from("canvasser_metrics")
       .select("*")
@@ -42,6 +56,22 @@ export default function CanvasserStats() {
     } else {
       setMetrics(data);
     }
+
+    // Fetch weekly metrics (last 8 weeks)
+    const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
+    const { data: weeklyData, error: weeklyError } = await supabase
+      .from('weekly_canvasser_metrics')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('week_start', eightWeeksAgo)
+      .order('week_start', { ascending: false });
+
+    if (weeklyError) {
+      console.error('Error fetching weekly metrics:', weeklyError);
+    } else {
+      setWeeklyMetrics(weeklyData || []);
+    }
+
     setLoading(false);
   };
 
@@ -149,6 +179,42 @@ export default function CanvasserStats() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Weekly Updates Section */}
+      {weeklyMetrics.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Recent Weekly Updates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {weeklyMetrics.slice(0, 4).map((week) => (
+                <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      Week of {format(new Date(week.week_start), 'MMM d')} - {format(new Date(week.week_end), 'MMM d')}
+                    </p>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>{week.leads_set} leads set</span>
+                      <span>{week.leads_closed} closed</span>
+                      <span>{week.shifts_worked} shifts</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.income))}</p>
+                    {week.points_earned > 0 && (
+                      <p className="text-xs text-primary">+{Number(week.points_earned)} pts</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Performance Metrics */}
       <div className="grid gap-4 md:grid-cols-2">
