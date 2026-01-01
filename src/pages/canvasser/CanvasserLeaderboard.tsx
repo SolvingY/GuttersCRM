@@ -379,7 +379,7 @@ export default function CanvasserLeaderboard() {
       </Tabs>
 
       {/* Team Comments Section */}
-      <CommentsSection />
+      <CommentsSection thread="canvasser" />
     </div>
   );
 }

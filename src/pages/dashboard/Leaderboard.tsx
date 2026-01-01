@@ -455,7 +455,7 @@ export default function Leaderboard() {
         </TabsContent>
       </Tabs>
 
-      <CommentsSection />
+      <CommentsSection thread="sales" />
     </div>
   );
 }

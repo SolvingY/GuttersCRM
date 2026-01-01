@@ -39,8 +39,9 @@ export function AnnouncementsNotification() {
         return () => clearTimeout(timer);
       }
 
-      // Check if we already showed announcements this session
-      const announcementsShown = sessionStorage.getItem('announcementsShown');
+      // Check if we already showed announcements this session for THIS user
+      const announcementsShownKey = `announcementsShown:${user.id}`;
+      const announcementsShown = sessionStorage.getItem(announcementsShownKey);
       if (announcementsShown) {
         setLoading(false);
         return;
@@ -106,7 +107,10 @@ export function AnnouncementsNotification() {
       await markAsRead(announcement.id);
     }
     
-    sessionStorage.setItem('announcementsShown', 'true');
+    // Use user-scoped key
+    if (user) {
+      sessionStorage.setItem(`announcementsShown:${user.id}`, 'true');
+    }
     setShowDialog(false);
   };
 
