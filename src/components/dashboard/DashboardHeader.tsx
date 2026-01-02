@@ -30,9 +30,9 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         description: error.message,
         variant: 'destructive',
       });
-    } else {
-      navigate('/auth');
     }
+    // Always use hard redirect to ensure complete state reset across all portals
+    window.location.href = '/auth';
   };
 
   // Determine portal title based on current route
