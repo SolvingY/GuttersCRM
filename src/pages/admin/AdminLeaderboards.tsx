@@ -486,13 +486,13 @@ export default function AdminLeaderboards() {
 
     if (timeFrame === 'weekly') {
       return (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1 sm:gap-2 mb-4 w-full min-w-0">
           <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[200px]">
+              <Button variant="outline" className="min-w-0 flex-1 justify-start text-left">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
               </Button>
@@ -516,13 +516,13 @@ export default function AdminLeaderboards() {
 
     if (timeFrame === 'monthly') {
       return (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1 sm:gap-2 mb-4 w-full min-w-0">
           <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[200px]">
+              <Button variant="outline" className="min-w-0 flex-1 justify-start text-left">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(selectedDate, 'MMMM yyyy')}
               </Button>
