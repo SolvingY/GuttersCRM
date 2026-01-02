@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
-import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
 import { 
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar, Line 
 } from 'recharts';
@@ -24,6 +24,7 @@ interface UserMetric {
   yearly_goal: number;
   sales_rank: string;
   earnings_ytd: number;
+  self_generated_deals: number;
 }
 
 interface WeeklyMetric {
@@ -144,8 +145,11 @@ export default function MyStats() {
   // Calculate average job size and lead to close %
   const closedDeals = Number(latestMetric?.closed_deals) || 0;
   const leads = Number(latestMetric?.leads) || 0;
+  const selfGeneratedDeals = Number(latestMetric?.self_generated_deals) || 0;
   const averageJobSize = closedDeals > 0 ? currentSales / closedDeals : 0;
-  const leadToCloseRate = leads > 0 ? (closedDeals / leads) * 100 : 0;
+  // Lead to close % excludes self-generated deals
+  const dealsFromLeads = Math.max(0, closedDeals - selfGeneratedDeals);
+  const leadToCloseRate = leads > 0 ? (dealsFromLeads / leads) * 100 : 0;
 
   // Color coding functions
   const getLeadToCloseColor = (rate: number) => {
@@ -301,12 +305,27 @@ export default function MyStats() {
               />
               <CollapsibleContent>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Row 1: Total Sales & Avg Job Size */}
                     <StatsCard
                       title="Total Sales"
                       value={formatCurrency(currentSales)}
                       icon={DollarSign}
                       trend={previousMetric ? calculateTrend(Number(latestMetric?.sales), Number(previousMetric?.sales)) : undefined}
+                    />
+                    <StatsCard
+                      title="Avg Job Size"
+                      value={formatCurrency(averageJobSize)}
+                      icon={Calculator}
+                      valueClassName={getAvgJobSizeColor(averageJobSize)}
+                    />
+                    
+                    {/* Row 2: Points & YTD Earnings */}
+                    <StatsCard
+                      title="Points"
+                      value={Number(latestMetric?.points || 0).toLocaleString()}
+                      icon={Star}
+                      trend={previousMetric ? calculateTrend(Number(latestMetric?.points), Number(previousMetric?.points)) : undefined}
                     />
                     <StatsCard
                       title="YTD Earnings"
@@ -315,12 +334,8 @@ export default function MyStats() {
                       valueClassName="text-green-600 dark:text-green-400"
                       className="bg-gradient-to-r from-green-500/10 to-green-500/5 border-green-500/20"
                     />
-                    <StatsCard
-                      title="Points"
-                      value={Number(latestMetric?.points || 0).toLocaleString()}
-                      icon={Star}
-                      trend={previousMetric ? calculateTrend(Number(latestMetric?.points), Number(previousMetric?.points)) : undefined}
-                    />
+                    
+                    {/* Row 3: Closed Deals & Leads */}
                     <StatsCard
                       title="Closed Deals"
                       value={latestMetric?.closed_deals || 0}
@@ -333,17 +348,18 @@ export default function MyStats() {
                       icon={Users}
                       trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
                     />
-                    <StatsCard
-                      title="Avg Job Size"
-                      value={formatCurrency(averageJobSize)}
-                      icon={Calculator}
-                      valueClassName={getAvgJobSizeColor(averageJobSize)}
-                    />
+                    
+                    {/* Row 4: Lead to Close % & Self Generated Deals */}
                     <StatsCard
                       title="Lead to Close %"
                       value={`${leadToCloseRate.toFixed(1)}%`}
                       icon={Percent}
                       valueClassName={getLeadToCloseColor(leadToCloseRate)}
+                    />
+                    <StatsCard
+                      title="Self Generated Deals"
+                      value={selfGeneratedDeals}
+                      icon={UserCheck}
                     />
                   </div>
                 </CardContent>

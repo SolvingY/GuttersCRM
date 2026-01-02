@@ -387,6 +387,7 @@ export type Database = {
           points: number | null
           sales: number | null
           sales_rank: string | null
+          self_generated_deals: number | null
           updated_at: string
           user_id: string
           yearly_goal: number | null
@@ -402,6 +403,7 @@ export type Database = {
           points?: number | null
           sales?: number | null
           sales_rank?: string | null
+          self_generated_deals?: number | null
           updated_at?: string
           user_id: string
           yearly_goal?: number | null
@@ -417,6 +419,7 @@ export type Database = {
           points?: number | null
           sales?: number | null
           sales_rank?: string | null
+          self_generated_deals?: number | null
           updated_at?: string
           user_id?: string
           yearly_goal?: number | null
