@@ -258,10 +258,10 @@ export default function MyStats() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       <div>
-        <h2 className="text-2xl font-heading text-foreground">My Stats</h2>
-        <p className="text-muted-foreground">Track your personal performance metrics</p>
+        <h2 className="text-xl sm:text-2xl font-heading text-foreground">My Stats</h2>
+        <p className="text-sm text-muted-foreground">Track your personal performance metrics</p>
       </div>
 
       {metrics.length === 0 ? (

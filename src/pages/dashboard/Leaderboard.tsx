@@ -357,13 +357,13 @@ export default function Leaderboard() {
   }, [selectedMonthDate]);
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 min-w-0 w-full">
       <div className="text-center sm:text-left">
         <h2 className="text-xl sm:text-2xl font-heading text-foreground">Leaderboard</h2>
         <p className="text-sm text-muted-foreground">See how you rank against the team</p>
       </div>
 
-      <Tabs defaultValue="ytd" className="w-full">
+      <Tabs defaultValue="ytd" className="w-full min-w-0">
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="ytd">Year to Date</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>

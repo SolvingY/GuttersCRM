@@ -193,12 +193,12 @@ export default function CanvasserStats() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">
+        <h1 className="text-xl sm:text-3xl font-bold text-foreground">
           Welcome back{metrics?.display_name ? `, ${metrics.display_name}` : ""}!
         </h1>
-        <p className="text-muted-foreground mt-1">Track your canvassing performance</p>
+        <p className="text-sm text-muted-foreground mt-1">Track your canvassing performance</p>
       </div>
 
       {/* 1. Active Contests Widget */}
