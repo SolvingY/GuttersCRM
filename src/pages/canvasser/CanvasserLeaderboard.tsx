@@ -79,10 +79,10 @@ export default function CanvasserLeaderboard() {
     const fetchYtdLeaderboard = async () => {
       setLoading(true);
       
-      // Fetch canvasser metrics
+      // Fetch canvasser metrics from leaderboard view (bypasses RLS for all users visibility)
       const { data: metricsData, error } = await supabase
-        .from("canvasser_metrics")
-        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, yearly_goal, points")
+        .from("canvasser_metrics_leaderboard")
+        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, points")
         .order("leads_closed", { ascending: false });
 
       if (error) {
@@ -121,29 +121,23 @@ export default function CanvasserLeaderboard() {
 
       const sorted = Array.from(uniqueUsers.values())
         .sort((a, b) => {
-          // Sort by % of goal first, then by leads closed
-          const aPercent = a.yearly_goal > 0 ? (a.leads_closed || 0) / a.yearly_goal : 0;
-          const bPercent = b.yearly_goal > 0 ? (b.leads_closed || 0) / b.yearly_goal : 0;
-          if (bPercent !== aPercent) return bPercent - aPercent;
+          // Sort by leads closed (no yearly_goal in view)
           return (b.leads_closed || 0) - (a.leads_closed || 0);
         })
         .map((entry, index) => {
-          const yearlyGoal = entry.yearly_goal || 0;
           const leadsClosed = entry.leads_closed || 0;
-          const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
-          const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
           
           return {
             rank: index + 1,
             userId: entry.user_id,
             name: entry.display_name || "Anonymous",
-            yearlyGoal,
+            yearlyGoal: 0, // Not available in view
             leadsClosed,
             leadsSet: entry.leads_set || 0,
             leadsWithDamage: entry.leads_with_damage || 0,
             points: Number(entry.points) || 0,
-            amountUntilGoal,
-            percentOfGoal,
+            amountUntilGoal: 0,
+            percentOfGoal: 0,
             contestsWon: contestWins.get(entry.user_id) || 0,
           };
         });

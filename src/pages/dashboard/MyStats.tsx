@@ -3,16 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
-import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronRight, UserPlus } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronRight, UserPlus, Quote } from 'lucide-react';
 import { 
-  LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
-import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
+import { format, subWeeks } from 'date-fns';
+import { getRandomQuote } from '@/lib/motivationalQuotes';
 
 interface UserMetric {
   id: string;
@@ -37,7 +37,6 @@ interface WeeklyMetric {
   points_earned: number;
 }
 
-type TimeView = 'weekly' | 'monthly';
 
 export default function MyStats() {
   const { user } = useAuth();
@@ -45,7 +44,8 @@ export default function MyStats() {
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyMetric[]>([]);
   const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyMetric[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeView, setTimeView] = useState<TimeView>('weekly');
+  const [displayName, setDisplayName] = useState('');
+  const [quote] = useState(getRandomQuote());
   
   // Collapsible states
   const [contestsOpen, setContestsOpen] = useState(false);
@@ -53,7 +53,6 @@ export default function MyStats() {
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [fiscalOpen, setFiscalOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
-  const [performanceOpen, setPerformanceOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
 
   useEffect(() => {
@@ -71,6 +70,13 @@ export default function MyStats() {
         console.error('Error fetching metrics:', error);
       } else {
         setMetrics(data || []);
+        // Get display name from latest metric
+        if (data && data.length > 0) {
+          const latestWithName = data.find(m => m.display_name);
+          if (latestWithName) {
+            setDisplayName(latestWithName.display_name || '');
+          }
+        }
       }
 
       const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
@@ -163,77 +169,6 @@ export default function MyStats() {
     }).format(value);
   };
 
-  const getWeeklyData = () => {
-    const weeks: { [key: string]: { sales: number; points: number } } = {};
-    const now = new Date();
-    
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - (i * 7));
-      const weekKey = `Week ${8 - i}`;
-      weeks[weekKey] = { sales: 0, points: 0 };
-    }
-
-    metrics.forEach((m) => {
-      const metricDate = new Date(m.metric_date);
-      const weeksAgo = Math.floor((now.getTime() - metricDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksAgo >= 0 && weeksAgo < 8) {
-        const weekKey = `Week ${8 - weeksAgo}`;
-        if (weeks[weekKey]) {
-          weeks[weekKey].sales += Number(m.sales) || 0;
-          weeks[weekKey].points += Number(m.points) || 0;
-        }
-      }
-    });
-
-    return Object.entries(weeks).map(([week, data]) => ({
-      period: week,
-      sales: data.sales,
-      points: data.points,
-    }));
-  };
-
-  const getMonthlyData = () => {
-    const fiscalMonthOrder = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
-    
-    const fiscalMonths: { [key: string]: number } = {};
-    fiscalMonthOrder.forEach(month => {
-      fiscalMonths[month] = 0;
-    });
-
-    const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
-    const fiscalEnd = FISCAL_YEAR.CURRENT_YEAR_END;
-
-    allWeeklyMetrics.forEach((w) => {
-      const weekStartDate = new Date(w.week_start);
-      
-      if (weekStartDate >= fiscalStart && weekStartDate <= fiscalEnd) {
-        const monthIndex = weekStartDate.getMonth();
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthName = monthNames[monthIndex];
-        
-        if (fiscalMonths[monthName] !== undefined) {
-          fiscalMonths[monthName] += Number(w.sales) || 0;
-        }
-      }
-    });
-
-    let cumulative = 0;
-    const monthlyGoalPace = yearlyGoal / 12;
-    let goalCumulative = 0;
-    
-    return fiscalMonthOrder.map((month) => {
-      cumulative += fiscalMonths[month];
-      goalCumulative += monthlyGoalPace;
-      return {
-        period: month,
-        sales: fiscalMonths[month],
-        cumulative,
-        goalPace: goalCumulative,
-      };
-    });
-  };
-
   const get52WeekData = () => {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const weeklyGoalPace = yearlyGoal / 52;
@@ -264,8 +199,6 @@ export default function MyStats() {
     });
   };
 
-  const chartData = timeView === 'weekly' ? getWeeklyData() : getMonthlyData();
-
   const getGoalColor = () => {
     if (goalPercentage >= 75) return 'text-green-600';
     if (goalPercentage >= 50) return 'text-yellow-600';
@@ -293,11 +226,26 @@ export default function MyStats() {
 
   return (
     <div className="space-y-4">
+      {/* Motivational Quote Banner */}
+      <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
+        <CardContent className="py-4">
+          <div className="flex gap-3 items-start">
+            <Quote className="h-4 w-4 sm:h-5 sm:w-5 text-accent shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm italic text-foreground">"{quote.quote}"</p>
+              <p className="text-xs text-muted-foreground mt-1">— {quote.author}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div>
         <h2 className="text-2xl font-heading text-foreground">
           My Stats <span className="text-red-500 text-lg ml-2">The 6 Figure System</span>
         </h2>
-        <p className="text-muted-foreground">Track your personal performance metrics</p>
+        <p className="text-muted-foreground">
+          Welcome back{displayName ? `, ${displayName}` : ''}! Track your personal performance metrics
+        </p>
       </div>
 
       {metrics.length === 0 ? (
@@ -333,7 +281,7 @@ export default function MyStats() {
               </Card>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Row 1: Total Sales | Avg Job Size */}
                 <StatsCard
                   title="Total Sales"
@@ -512,164 +460,6 @@ export default function MyStats() {
               </CollapsibleContent>
             </Collapsible>
           )}
-
-          {/* 6. Sales Performance (Charts) */}
-          <Collapsible open={performanceOpen} onOpenChange={setPerformanceOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={performanceOpen} title="Sales Performance" icon={TrendingUp} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 space-y-4">
-              {/* Time View Toggle */}
-              <div className="flex gap-2">
-                <Button
-                  variant={timeView === 'weekly' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeView('weekly')}
-                >
-                  Weekly
-                </Button>
-                <Button
-                  variant={timeView === 'monthly' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeView('monthly')}
-                >
-                  Monthly
-                </Button>
-              </div>
-
-              {/* Weekly Bar Chart */}
-              {timeView === 'weekly' && chartData.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Weekly Sales Trend</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number) => [formatCurrency(value), 'Sales']}
-                          />
-                          <Bar
-                            dataKey="sales"
-                            fill="hsl(var(--accent))"
-                            radius={[4, 4, 0, 0]}
-                            name="Sales"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Monthly Line Chart with Goal Pace */}
-              {timeView === 'monthly' && chartData.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Monthly Sales vs Goal Pace</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="period" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number) => formatCurrency(value)}
-                          />
-                          <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulative"
-                            stroke="hsl(var(--accent))"
-                            strokeWidth={2}
-                            dot={{ fill: 'hsl(var(--accent))' }}
-                            name="Cumulative Sales"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="goalPace"
-                            stroke="hsl(var(--muted-foreground))"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                            name="Goal Pace"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Original Performance Trend */}
-              {metrics.length > 1 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Performance Trend</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={metrics.map((m) => ({
-                          date: new Date(m.metric_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                          sales: Number(m.sales),
-                          points: Number(m.points),
-                        }))}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                          />
-                          <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="sales"
-                            stroke="hsl(var(--accent))"
-                            strokeWidth={2}
-                            dot={{ fill: 'hsl(var(--accent))' }}
-                            name="Sales ($)"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="points"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={{ fill: 'hsl(var(--primary))' }}
-                            name="Points"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
 
           {/* 7. 52-Week Progress */}
           {yearlyGoal > 0 && (

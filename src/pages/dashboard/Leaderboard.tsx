@@ -88,10 +88,10 @@ export default function Leaderboard() {
       // Create a set of eligible user IDs
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
-      // Fetch metrics including display_name for test users
+      // Fetch metrics from the leaderboard view (bypasses RLS for all users visibility)
       const { data: metricsData, error: metricsError } = await supabase
-        .from('user_metrics')
-        .select('id, user_id, display_name, points, sales, closed_deals, yearly_goal, sales_rank, metric_date')
+        .from('user_metrics_leaderboard')
+        .select('id, user_id, display_name, points, sales, closed_deals, sales_rank, metric_date, self_generated_deals, leads')
         .order('metric_date', { ascending: false });
 
       if (metricsError) {
@@ -112,7 +112,6 @@ export default function Leaderboard() {
         points: number;
         sales: number;
         closedDeals: number;
-        yearlyGoal: number;
         salesRank: string;
         displayName: string | null;
       }>();
@@ -131,7 +130,6 @@ export default function Leaderboard() {
             points: Number(item.points) || 0,
             sales: Number(item.sales) || 0,
             closedDeals: Number(item.closed_deals) || 0,
-            yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
           });
@@ -167,7 +165,7 @@ export default function Leaderboard() {
           points: data.points,
           sales: data.sales,
           closedDeals: data.closedDeals,
-          yearlyGoal: data.yearlyGoal,
+          yearlyGoal: 0, // Not available in view
           salesRank: data.salesRank,
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
           contestsWon: contestWinsMap.get(userId) || 0,

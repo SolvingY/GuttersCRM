@@ -15,24 +15,24 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon: Icon, trend, className, valueClassName }: StatsCardProps) {
   return (
-    <div className={cn('bg-card border border-border rounded-lg p-6', className)}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className={cn('text-3xl font-heading mt-1', valueClassName || 'text-foreground')}>{value}</p>
+    <div className={cn('bg-card border border-border rounded-lg p-3 sm:p-6', className)}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">{title}</p>
+          <p className={cn('text-xl sm:text-3xl font-heading mt-1', valueClassName || 'text-foreground')}>{value}</p>
           {trend && (
             <p
               className={cn(
-                'text-sm mt-2',
+                'text-xs sm:text-sm mt-1 sm:mt-2',
                 trend.isPositive ? 'text-green-600' : 'text-destructive'
               )}
             >
-              {trend.isPositive ? '+' : ''}{trend.value}% from last period
+              {trend.isPositive ? '+' : ''}{trend.value}%
             </p>
           )}
         </div>
-        <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center">
-          <Icon className="h-6 w-6 text-accent" />
+        <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4 sm:h-6 sm:w-6 text-accent" />
         </div>
       </div>
     </div>
