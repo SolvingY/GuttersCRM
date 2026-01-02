@@ -548,14 +548,14 @@ export default function AdminLeaderboards() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">All Leaderboards</h1>
-        <p className="text-muted-foreground mt-1">View sales rep and canvasser performance across all time periods</p>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">All Leaderboards</h1>
+        <p className="text-sm text-muted-foreground mt-1">View sales rep and canvasser performance across all time periods</p>
       </div>
 
       {/* Time Frame Tabs */}
-      <Tabs value={timeFrame} onValueChange={(v) => setTimeFrame(v as 'weekly' | 'monthly' | 'yearly')}>
+      <Tabs value={timeFrame} onValueChange={(v) => setTimeFrame(v as 'weekly' | 'monthly' | 'yearly')} className="w-full min-w-0">
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="weekly">Weekly</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -566,7 +566,7 @@ export default function AdminLeaderboards() {
           {renderDateSelector()}
 
           {/* Sales Reps / Canvassers Tabs */}
-          <Tabs defaultValue="sales" className="w-full">
+          <Tabs defaultValue="sales" className="w-full min-w-0">
             <TabsList className="grid w-full max-w-xs grid-cols-2 mb-4">
               <TabsTrigger value="sales">Sales Reps</TabsTrigger>
               <TabsTrigger value="canvassers">Canvassers</TabsTrigger>

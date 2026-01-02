@@ -415,8 +415,8 @@ export default function WeeklyUpdates() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 min-w-0 w-full">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Weekly Updates</h1>
           <p className="text-sm text-muted-foreground">Enter weekly numbers for each team member</p>

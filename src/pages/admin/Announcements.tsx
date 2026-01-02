@@ -200,11 +200,11 @@ export default function Announcements() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 min-w-0 w-full">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-heading text-foreground">Announcements</h1>
-          <p className="text-muted-foreground">Post news and updates for all users</p>
+          <h1 className="text-xl sm:text-2xl font-heading text-foreground">Announcements</h1>
+          <p className="text-sm text-muted-foreground">Post news and updates for all users</p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={(open) => {

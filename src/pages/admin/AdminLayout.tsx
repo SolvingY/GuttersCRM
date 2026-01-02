@@ -60,7 +60,7 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
       {/* Header */}
       <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-3">
@@ -110,7 +110,7 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-w-0">
         {/* Mobile overlay */}
         {mobileMenuOpen && (
           <div 
@@ -223,7 +223,7 @@ export default function AdminLayout() {
         </aside>
 
         {/* Main content with watermark */}
-        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto relative">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
           {/* Watermark background */}
           <div 
             className="absolute inset-0 pointer-events-none flex items-center justify-center"
@@ -236,7 +236,7 @@ export default function AdminLayout() {
             />
           </div>
           
-          <div className="w-full max-w-7xl mx-auto relative z-10">
+          <div className="w-full max-w-7xl mx-auto relative z-10 min-w-0">
             <Outlet />
           </div>
         </main>
