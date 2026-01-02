@@ -95,6 +95,42 @@ export type Database = {
         }
         Relationships: []
       }
+      company_goals: {
+        Row: {
+          canvasser_leads_goal: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          fiscal_year_end: string
+          fiscal_year_start: string
+          id: string
+          sales_revenue_goal: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          canvasser_leads_goal?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          fiscal_year_end: string
+          fiscal_year_start: string
+          id?: string
+          sales_revenue_goal?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          canvasser_leads_goal?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          fiscal_year_end?: string
+          fiscal_year_start?: string
+          id?: string
+          sales_revenue_goal?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       contest_victories: {
         Row: {
           acknowledged: boolean | null
