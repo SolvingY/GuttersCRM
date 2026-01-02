@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,26 @@ export default function AdminLayout() {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Reset horizontal scroll position on route change to prevent "stuck right" issue
+  useEffect(() => {
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    if (mainRef.current) {
+      mainRef.current.scrollLeft = 0;
+    }
+  }, [location.pathname]);
+
+  const handleMobileClose = () => {
+    setMobileMenuOpen(false);
+    // Also reset scroll when closing mobile menu
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    if (mainRef.current) {
+      mainRef.current.scrollLeft = 0;
+    }
+  };
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -115,7 +135,7 @@ export default function AdminLayout() {
         {mobileMenuOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={handleMobileClose}
           />
         )}
 
@@ -184,7 +204,7 @@ export default function AdminLayout() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-accent-foreground/70 hover:text-accent-foreground hover:bg-accent-foreground/10"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={handleMobileClose}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -197,7 +217,7 @@ export default function AdminLayout() {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={handleMobileClose}
                   className={cn(
                     'flex items-center gap-3 px-3 py-3 rounded-md text-sm transition-colors',
                     isActive
@@ -223,7 +243,7 @@ export default function AdminLayout() {
         </aside>
 
         {/* Main content with watermark */}
-        <main className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
+        <main ref={mainRef} className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
           {/* Watermark background */}
           <div 
             className="absolute inset-0 pointer-events-none flex items-center justify-center"
