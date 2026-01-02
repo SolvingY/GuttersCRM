@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { GoalSettingModal } from '@/components/dashboard/GoalSettingModal';
@@ -11,6 +11,27 @@ import nextGenLogo from '@/assets/next-gen-logo.png';
 
 export default function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const location = useLocation();
+
+  // Reset horizontal scroll position on route change to prevent "stuck right" issue
+  useEffect(() => {
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    if (mainRef.current) {
+      mainRef.current.scrollLeft = 0;
+    }
+  }, [location.pathname]);
+
+  const handleMobileClose = () => {
+    setMobileMenuOpen(false);
+    // Also reset scroll when closing mobile menu
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    if (mainRef.current) {
+      mainRef.current.scrollLeft = 0;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
@@ -18,9 +39,9 @@ export default function DashboardLayout() {
       <div className="flex flex-1 min-w-0">
         <DashboardSidebar 
           mobileOpen={mobileMenuOpen} 
-          onMobileClose={() => setMobileMenuOpen(false)} 
+          onMobileClose={handleMobileClose} 
         />
-        <main className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
+        <main ref={mainRef} className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
           {/* Watermark background */}
           <div 
             className="absolute inset-0 pointer-events-none flex items-center justify-center"
