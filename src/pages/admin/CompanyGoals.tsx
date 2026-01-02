@@ -16,6 +16,8 @@ interface CompanyGoal {
   sales_revenue_goal: number;
   canvasser_leads_goal: number;
   description: string | null;
+  target_lead_to_close_ratio: number;
+  target_cost_per_lead: number;
 }
 
 interface CompanyProgress {
@@ -47,6 +49,8 @@ export default function CompanyGoals() {
   const [salesGoal, setSalesGoal] = useState('');
   const [leadsGoal, setLeadsGoal] = useState('');
   const [description, setDescription] = useState('');
+  const [targetLeadToCloseRatio, setTargetLeadToCloseRatio] = useState('');
+  const [targetCostPerLead, setTargetCostPerLead] = useState('');
 
   const fiscalStart = new Date(2025, 11, 15); // Dec 15, 2025
   const fiscalEnd = new Date(2026, 11, 15); // Dec 15, 2026
@@ -71,6 +75,8 @@ export default function CompanyGoals() {
         setSalesGoal(String(goalData.sales_revenue_goal || ''));
         setLeadsGoal(String(goalData.canvasser_leads_goal || ''));
         setDescription(goalData.description || '');
+        setTargetLeadToCloseRatio(String(goalData.target_lead_to_close_ratio || ''));
+        setTargetCostPerLead(String(goalData.target_cost_per_lead || ''));
       }
 
       // Fetch sales rep metrics
@@ -152,6 +158,8 @@ export default function CompanyGoals() {
         sales_revenue_goal: parseFloat(salesGoal) || 0,
         canvasser_leads_goal: parseInt(leadsGoal) || 0,
         description: description || null,
+        target_lead_to_close_ratio: parseFloat(targetLeadToCloseRatio) || 0,
+        target_cost_per_lead: parseFloat(targetCostPerLead) || 0,
       };
 
       if (goal?.id) {
@@ -263,6 +271,39 @@ export default function CompanyGoals() {
               </p>
             </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="targetLeadToCloseRatio">Target Lead-to-Close % Goal</Label>
+              <Input
+                id="targetLeadToCloseRatio"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                placeholder="e.g., 40"
+                value={targetLeadToCloseRatio}
+                onChange={(e) => setTargetLeadToCloseRatio(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Target close rate for sales team
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="targetCostPerLead">Target Cost per Lead ($)</Label>
+              <Input
+                id="targetCostPerLead"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="e.g., 150"
+                value={targetCostPerLead}
+                onChange={(e) => setTargetCostPerLead(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Target cost to acquire a closed lead
+              </p>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description (optional)</Label>
             <Input
@@ -364,9 +405,9 @@ export default function CompanyGoals() {
         </Card>
       </div>
 
-      {/* Additional Metrics Cards */}
+      {/* Additional Metrics Cards with Goal Tracking */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Sales Lead-to-Close Rate */}
+        {/* Sales Lead-to-Close Rate with Goal */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -374,23 +415,52 @@ export default function CompanyGoals() {
               Sales Lead-to-Close Rate
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {progress.totalSalesLeads > 0 
-                    ? ((progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100).toFixed(1)
-                    : '0.0'}%
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {progress.totalSalesClosedDeals} closed / {progress.totalSalesLeads} leads
-                </p>
-              </div>
-            </div>
+          <CardContent className="space-y-3">
+            {(() => {
+              const currentRate = progress.totalSalesLeads > 0 
+                ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 
+                : 0;
+              const targetRate = parseFloat(targetLeadToCloseRatio) || 0;
+              const variance = currentRate - targetRate;
+              const isOnTarget = targetRate === 0 || currentRate >= targetRate;
+              
+              return (
+                <>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-foreground">
+                        {currentRate.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {progress.totalSalesClosedDeals} closed / {progress.totalSalesLeads} leads
+                      </p>
+                    </div>
+                    {targetRate > 0 && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Goal</p>
+                        <p className="text-xl font-semibold text-foreground">{targetRate.toFixed(1)}%</p>
+                      </div>
+                    )}
+                  </div>
+                  {targetRate > 0 && (
+                    <div className={`rounded-lg p-3 ${isOnTarget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-medium ${isOnTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {isOnTarget ? '✓ On target' : '⚠ Below target'}
+                        </span>
+                        <span className={`text-sm font-semibold ${variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {variance >= 0 ? '+' : ''}{variance.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
 
-        {/* Canvasser Cost per Lead */}
+        {/* Canvasser Cost per Lead with Goal */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -398,19 +468,48 @@ export default function CompanyGoals() {
               Canvasser Cost per Lead
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {progress.totalLeadsClosed > 0 
-                    ? formatCurrency(progress.totalCanvasserIncome / progress.totalLeadsClosed)
-                    : 'N/A'}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} leads closed
-                </p>
-              </div>
-            </div>
+          <CardContent className="space-y-3">
+            {(() => {
+              const currentCost = progress.totalLeadsClosed > 0 
+                ? progress.totalCanvasserIncome / progress.totalLeadsClosed 
+                : 0;
+              const targetCost = parseFloat(targetCostPerLead) || 0;
+              const variance = targetCost - currentCost; // Positive = under budget (good)
+              const isOnTarget = targetCost === 0 || currentCost <= targetCost;
+              
+              return (
+                <>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-foreground">
+                        {progress.totalLeadsClosed > 0 ? formatCurrency(currentCost) : 'N/A'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} leads
+                      </p>
+                    </div>
+                    {targetCost > 0 && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Goal</p>
+                        <p className="text-xl font-semibold text-foreground">{formatCurrency(targetCost)}</p>
+                      </div>
+                    )}
+                  </div>
+                  {targetCost > 0 && progress.totalLeadsClosed > 0 && (
+                    <div className={`rounded-lg p-3 ${isOnTarget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-medium ${isOnTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {isOnTarget ? '✓ Under budget' : '⚠ Over budget'}
+                        </span>
+                        <span className={`text-sm font-semibold ${variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {variance >= 0 ? '-' : '+'}{formatCurrency(Math.abs(variance))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>

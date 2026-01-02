@@ -120,18 +120,23 @@ export function useAuth() {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    // Immediately clear local state to prevent stale UI
-    if (!error) {
-      setAuthState({
-        user: null,
-        session: null,
-        role: null,
-        sessionLoading: false,
-        roleLoading: false,
-      });
+    // Use scope: 'local' to clear local tokens even if server session is gone/expired
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    
+    // Always clear local state - if session was missing, user is still "signed out"
+    setAuthState({
+      user: null,
+      session: null,
+      role: null,
+      sessionLoading: false,
+      roleLoading: false,
+    });
+    
+    // Only return error if it's NOT a session_not_found error
+    if (error && !error.message?.includes('session')) {
+      return { error };
     }
-    return { error };
+    return { error: null };
   };
 
   const isAdmin = authState.role === 'admin';

@@ -4,7 +4,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ interface AggregateMetrics {
   totalLeads: number;
   totalClosedDeals: number;
   totalUsers: number;
+  totalSelfGeneratedLeads: number;
 }
 
 interface CanvasserAggregates {
@@ -73,6 +74,7 @@ export default function AdminOverview() {
     totalLeads: 0,
     totalClosedDeals: 0,
     totalUsers: 0,
+    totalSelfGeneratedLeads: 0,
   });
   const [canvasserAggregates, setCanvasserAggregates] = useState<CanvasserAggregates>({
     totalCanvassers: 0,
@@ -122,7 +124,7 @@ export default function AdminOverview() {
     // Fetch all sales rep metrics
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, sales, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date')
+      .select('id, user_id, display_name, sales, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads')
       .order('metric_date', { ascending: false });
 
     if (metricsError) {
@@ -151,7 +153,8 @@ export default function AdminOverview() {
         yearlyGoal: number; 
         salesRank: string; 
         displayName: string | null; 
-        earningsYtd: number; 
+        earningsYtd: number;
+        selfGeneratedLeads: number;
       }>();
       
       for (const item of metrics) {
@@ -168,6 +171,7 @@ export default function AdminOverview() {
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
             earningsYtd: Number(item.earnings_ytd) || 0,
+            selfGeneratedLeads: Number((item as any).self_generated_leads) || 0,
           });
         }
       }
@@ -217,6 +221,9 @@ export default function AdminOverview() {
       // Filter out canvassers from sales rep list
       const salesReps = users.filter(user => user.role !== 'canvasser');
       
+      // Calculate self-generated leads total from latestByUser
+      const totalSelfGeneratedLeads = Array.from(latestByUser.values()).reduce((sum, u) => sum + u.selfGeneratedLeads, 0);
+
       const totals = salesReps.reduce(
         (acc, user) => ({
           totalSales: acc.totalSales + user.sales,
@@ -224,8 +231,9 @@ export default function AdminOverview() {
           totalLeads: acc.totalLeads + user.leads,
           totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
           totalUsers: acc.totalUsers + 1,
+          totalSelfGeneratedLeads: acc.totalSelfGeneratedLeads,
         }),
-        { totalSales: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0 }
+        { totalSales: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0, totalSelfGeneratedLeads }
       );
 
       setAggregates(totals);
@@ -397,6 +405,46 @@ export default function AdminOverview() {
             />
           </div>
 
+          {/* Lead Source Comparison Card */}
+          <div className="bg-card border border-border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <GitCompare className="h-5 w-5 text-accent" />
+              <h3 className="font-heading font-semibold text-foreground">Lead Sources</h3>
+            </div>
+            {(() => {
+              const selfGenLeads = aggregates.totalSelfGeneratedLeads;
+              const canvasserLeads = canvasserAggregates.totalLeadsSet;
+              const totalLeadSources = selfGenLeads + canvasserLeads;
+              const selfGenPct = totalLeadSources > 0 ? (selfGenLeads / totalLeadSources) * 100 : 0;
+              const canvasserPct = totalLeadSources > 0 ? (canvasserLeads / totalLeadSources) * 100 : 0;
+              
+              return (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Self-Generated</span>
+                    <span className="font-semibold text-foreground">{selfGenLeads} ({selfGenPct.toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5">
+                    <div 
+                      className="bg-accent h-2.5 rounded-full" 
+                      style={{ width: `${selfGenPct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Canvasser-Generated</span>
+                    <span className="font-semibold text-foreground">{canvasserLeads} ({canvasserPct.toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5">
+                    <div 
+                      className="bg-primary h-2.5 rounded-full" 
+                      style={{ width: `${canvasserPct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {usersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -525,12 +573,17 @@ export default function AdminOverview() {
 
         {/* Canvassers Tab */}
         <TabsContent value="canvassers" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             <StatsCard title="Total Canvassers" value={canvasserAggregates.totalCanvassers} icon={UserCheck} />
             <StatsCard title="Leads Set" value={canvasserAggregates.totalLeadsSet} icon={Target} />
             <StatsCard title="Leads Closed" value={canvasserAggregates.totalLeadsClosed} icon={CheckCircle} />
             <StatsCard title="With Damage" value={canvasserAggregates.totalLeadsWithDamage} icon={AlertTriangle} />
             <StatsCard title="Shifts Worked" value={canvasserAggregates.totalShiftsWorked} icon={Clock} />
+            <StatsCard 
+              title="Lead Close %" 
+              value={`${canvasserAggregates.totalLeadsSet > 0 ? ((canvasserAggregates.totalLeadsClosed / canvasserAggregates.totalLeadsSet) * 100).toFixed(1) : '0.0'}%`} 
+              icon={Percent} 
+            />
           </div>
 
           {canvassersNeedingAttention.length > 0 && (

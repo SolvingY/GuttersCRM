@@ -236,6 +236,7 @@ export default function WeeklyUpdates() {
         const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
         const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
         const newSelfGeneratedDeals = (Number(currentMetrics.self_generated_deals) || 0) + weeklySelfGeneratedDeals;
+        const newSelfGeneratedLeads = (Number((currentMetrics as any).self_generated_leads) || 0) + weeklySelfGeneratedLeads;
 
         // Update user_metrics with new totals including auto-calculated points
         const { error: updateError } = await supabase
@@ -247,6 +248,7 @@ export default function WeeklyUpdates() {
             earnings_ytd: newEarnings,
             points: newPoints,
             self_generated_deals: newSelfGeneratedDeals,
+            self_generated_leads: newSelfGeneratedLeads,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', entry.userId);
