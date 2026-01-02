@@ -533,7 +533,93 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      canvasser_metrics_leaderboard: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          leads_closed: number | null
+          leads_set: number | null
+          leads_with_damage: number | null
+          metric_date: string | null
+          points: number | null
+          shifts_worked: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          metric_date?: string | null
+          points?: number | null
+          shifts_worked?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          metric_date?: string | null
+          points?: number | null
+          shifts_worked?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_metrics_leaderboard: {
+        Row: {
+          closed_deals: number | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          leads: number | null
+          metric_date: string | null
+          points: number | null
+          sales: number | null
+          sales_rank: string | null
+          self_generated_deals: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          closed_deals?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          leads?: number | null
+          metric_date?: string | null
+          points?: number | null
+          sales?: number | null
+          sales_rank?: string | null
+          self_generated_deals?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          closed_deals?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          leads?: number | null
+          metric_date?: string | null
+          points?: number | null
+          sales?: number | null
+          sales_rank?: string | null
+          self_generated_deals?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
