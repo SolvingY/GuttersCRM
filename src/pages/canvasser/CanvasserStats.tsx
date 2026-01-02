@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Calendar, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { format, subWeeks } from "date-fns";
+import { format, subWeeks, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
@@ -152,27 +152,27 @@ export default function CanvasserStats() {
   };
 
   // Prepare 52-week fiscal year progression data for leads closed (bar chart)
+  // Uses calendar-aligned weeks (Monday-Sunday) to match how weekly data is stored
   const get52WeekData = () => {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const now = new Date();
     const weeklyGoalPace = yearlyGoal / 52;
     const weeks: { week: string; weekLabel: string; leadsClosed: number | null; goalPace: number; cumulativeGoal: number }[] = [];
     
-    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-    const currentWeekNum = Math.ceil((now.getTime() - fiscalStart.getTime()) / msPerWeek);
+    // Get the Monday of the week containing fiscal year start
+    const firstWeekStart = startOfWeek(fiscalStart, { weekStartsOn: 1 });
     
     // Always show all 52 weeks
     for (let i = 0; i < 52; i++) {
-      const weekStart = new Date(fiscalStart);
-      weekStart.setDate(weekStart.getDate() + (i * 7));
+      const weekStart = addWeeks(firstWeekStart, i);
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
       
-      // Only include actual data for weeks that have passed
-      const isFutureWeek = i + 1 > currentWeekNum;
+      // Check if this week is in the future
+      const isFutureWeek = weekStart > now;
       
-      const weeklyMetric = allWeeklyMetrics.find(w => {
-        const wStart = new Date(w.week_start);
-        return wStart >= weekStart && wStart < new Date(weekStart.getTime() + msPerWeek);
-      });
+      // Match by comparing date strings to avoid timezone issues
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      const weeklyMetric = allWeeklyMetrics.find(w => w.week_start === weekStartStr);
       
       weeks.push({
         week: `W${i + 1}`,
