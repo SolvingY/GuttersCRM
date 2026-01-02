@@ -14,7 +14,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Target } from "lucide-react";
 
-export function CanvasserGoalModal() {
+interface CanvasserGoalModalProps {
+  onGoalSet?: () => void;
+}
+
+export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [yearlyGoal, setYearlyGoal] = useState("");
@@ -82,6 +86,7 @@ export function CanvasserGoalModal() {
         description: `Your yearly goal of ${goal} leads closed has been saved.`,
       });
       setOpen(false);
+      if (onGoalSet) onGoalSet();
     }
     setSaving(false);
   };
@@ -92,6 +97,7 @@ export function CanvasserGoalModal() {
       title: "Goal skipped",
       description: "You can set your goal later in Settings.",
     });
+    if (onGoalSet) onGoalSet();
   };
 
   if (loading) return null;

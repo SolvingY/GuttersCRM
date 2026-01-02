@@ -17,6 +17,7 @@ import InviteUsers from "./pages/dashboard/InviteUsers";
 import WeeklyUpdates from "./pages/admin/WeeklyUpdates";
 import AdminLeaderboards from "./pages/admin/AdminLeaderboards";
 import UserRoles from "./pages/admin/UserRoles";
+import Announcements from "./pages/admin/Announcements";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
 import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="invites" element={<InviteUsers />} />
             <Route path="users" element={<UserRoles />} />
             <Route path="weekly" element={<WeeklyUpdates />} />
+            <Route path="announcements" element={<Announcements />} />
             <Route path="contests" element={<Contests />} />
           </Route>
 
