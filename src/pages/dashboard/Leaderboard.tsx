@@ -106,6 +106,20 @@ export default function Leaderboard() {
         return;
       }
 
+      // Fetch yearly goals from user_metrics separately
+      const { data: goalsData } = await supabase
+        .from('user_metrics')
+        .select('user_id, yearly_goal')
+        .order('metric_date', { ascending: false });
+
+      // Create goals map (latest goal per user)
+      const goalsMap = new Map<string, number>();
+      goalsData?.forEach(g => {
+        if (g.user_id && !goalsMap.has(g.user_id)) {
+          goalsMap.set(g.user_id, Number(g.yearly_goal) || 0);
+        }
+      });
+
       // Get latest metric per user, filtering to only eligible users (sales reps/admins)
       const latestByUser = new Map<string, {
         metricId: string;
@@ -165,7 +179,7 @@ export default function Leaderboard() {
           points: data.points,
           sales: data.sales,
           closedDeals: data.closedDeals,
-          yearlyGoal: 0, // Not available in view
+          yearlyGoal: goalsMap.get(userId) || 0,
           salesRank: data.salesRank,
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
           contestsWon: contestWinsMap.get(userId) || 0,

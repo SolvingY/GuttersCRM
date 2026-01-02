@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
-import { format, subWeeks } from 'date-fns';
+import { format, subWeeks, isSameWeek } from 'date-fns';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
 
 interface UserMetric {
@@ -178,9 +178,10 @@ export default function MyStats() {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
       
+      // Use isSameWeek for accurate week matching
       const weeklyMetric = allWeeklyMetrics.find(w => {
         const wStart = new Date(w.week_start);
-        return wStart >= weekStart && wStart < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return isSameWeek(wStart, weekStart, { weekStartsOn: 1 });
       });
       
       weeks.push({
