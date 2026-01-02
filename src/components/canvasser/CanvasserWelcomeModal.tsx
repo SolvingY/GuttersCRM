@@ -40,12 +40,7 @@ export function CanvasserWelcomeModal() {
   useEffect(() => {
     if (!user) return;
 
-    // Check if user already saw modal this session
-    const sessionKey = `welcome_modal_shown_${user.id}`;
-    if (sessionStorage.getItem(sessionKey)) {
-      setLoading(false);
-      return;
-    }
+    // Show modal every login (removed session check)
 
     const fetchData = async () => {
       try {
