@@ -31,7 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, Edit2, Megaphone, Eye, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Megaphone, Eye, Loader2, Mail, Send } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Announcement {
@@ -53,6 +53,7 @@ export default function Announcements() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sendingDigest, setSendingDigest] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -351,6 +352,57 @@ export default function Announcements() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Weekly Digest Section */}
+      <Card className="border-accent/20 bg-accent/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-heading flex items-center gap-2">
+            <Mail className="h-5 w-5 text-accent" />
+            Weekly Email Digest
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Send a performance digest email to all team members with their current rankings, stats, and upcoming contest deadlines.
+          </p>
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={async () => {
+                setSendingDigest(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke('send-weekly-digest');
+                  if (error) throw error;
+                  toast({
+                    title: 'Digest sent!',
+                    description: `Successfully sent ${data.emailsSent} emails.`,
+                  });
+                } catch (error: any) {
+                  console.error('Error sending digest:', error);
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to send weekly digest.',
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setSendingDigest(false);
+                }
+              }}
+              disabled={sendingDigest}
+              className="gap-2"
+            >
+              {sendingDigest ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Send Digest Now
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Auto-sends every Monday at 8:00 AM
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
