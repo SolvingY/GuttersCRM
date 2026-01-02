@@ -14,6 +14,45 @@ export default function DashboardLayout() {
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
 
+  // DEV-only: Overflow finder to identify elements causing horizontal scroll
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    
+    const findOverflowingElements = () => {
+      const viewportWidth = window.innerWidth;
+      const overflowers: { el: Element; right: number; width: number; className: string }[] = [];
+      
+      document.querySelectorAll('*').forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.right > viewportWidth + 1 && rect.width > 0) {
+          overflowers.push({
+            el,
+            right: rect.right,
+            width: rect.width,
+            className: el.className?.toString?.() || '',
+          });
+        }
+      });
+      
+      if (overflowers.length > 0) {
+        console.warn('[Overflow Finder] Elements exceeding viewport width:', viewportWidth);
+        overflowers
+          .sort((a, b) => b.right - a.right)
+          .slice(0, 5)
+          .forEach((item, i) => {
+            console.warn(`  #${i + 1}: <${item.el.tagName.toLowerCase()}> class="${item.className.slice(0, 80)}" right=${item.right.toFixed(0)} width=${item.width.toFixed(0)}`);
+          });
+      }
+    };
+    
+    // Run after render
+    const timer = setTimeout(() => {
+      requestAnimationFrame(findOverflowingElements);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
   // Reset horizontal scroll position on route change to prevent "stuck right" issue
   useEffect(() => {
     const resetAllScrollLeft = () => {
