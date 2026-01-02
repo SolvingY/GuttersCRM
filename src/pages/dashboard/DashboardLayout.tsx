@@ -16,11 +16,23 @@ export default function DashboardLayout() {
 
   // Reset horizontal scroll position on route change to prevent "stuck right" issue
   useEffect(() => {
-    document.documentElement.scrollLeft = 0;
-    document.body.scrollLeft = 0;
-    if (mainRef.current) {
-      mainRef.current.scrollLeft = 0;
-    }
+    const resetAllScrollLeft = () => {
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      if (mainRef.current) {
+        mainRef.current.scrollLeft = 0;
+        // Also reset any nested horizontal scrollers
+        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+        scrollers.forEach((el) => {
+          (el as HTMLElement).scrollLeft = 0;
+        });
+      }
+    };
+    
+    // Reset immediately
+    resetAllScrollLeft();
+    // Reset again after a tick (for dynamically rendered content)
+    requestAnimationFrame(resetAllScrollLeft);
   }, [location.pathname]);
 
   const handleMobileClose = () => {
@@ -30,6 +42,11 @@ export default function DashboardLayout() {
     document.body.scrollLeft = 0;
     if (mainRef.current) {
       mainRef.current.scrollLeft = 0;
+      // Also reset any nested horizontal scrollers
+      const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+      scrollers.forEach((el) => {
+        (el as HTMLElement).scrollLeft = 0;
+      });
     }
   };
 
