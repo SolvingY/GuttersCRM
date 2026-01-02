@@ -4,7 +4,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -384,12 +384,17 @@ export default function AdminOverview() {
 
         {/* Sales Reps Tab */}
         <TabsContent value="sales" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             <StatsCard title="Total Users" value={aggregates.totalUsers} icon={UserCheck} />
             <StatsCard title="Total Sales" value={formatCurrency(aggregates.totalSales)} icon={DollarSign} />
             <StatsCard title="Total Points" value={aggregates.totalPoints.toLocaleString()} icon={Star} />
             <StatsCard title="Total Leads" value={aggregates.totalLeads} icon={Users} />
             <StatsCard title="Total Closed Deals" value={aggregates.totalClosedDeals} icon={Briefcase} />
+            <StatsCard 
+              title="Lead Close %" 
+              value={`${aggregates.totalLeads > 0 ? ((aggregates.totalClosedDeals / aggregates.totalLeads) * 100).toFixed(1) : '0.0'}%`} 
+              icon={Percent} 
+            />
           </div>
 
           {usersNeedingAttention.length > 0 && (

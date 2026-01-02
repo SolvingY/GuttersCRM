@@ -31,7 +31,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         variant: 'destructive',
       });
     } else {
-      navigate('/');
+      navigate('/auth');
     }
   };
 

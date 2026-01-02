@@ -121,6 +121,16 @@ export function useAuth() {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    // Immediately clear local state to prevent stale UI
+    if (!error) {
+      setAuthState({
+        user: null,
+        session: null,
+        role: null,
+        sessionLoading: false,
+        roleLoading: false,
+      });
+    }
     return { error };
   };
 
