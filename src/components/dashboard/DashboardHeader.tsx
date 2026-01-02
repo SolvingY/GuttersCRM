@@ -74,7 +74,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   };
 
   return (
-    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6 relative overflow-hidden">
+    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-2 sm:px-4 lg:px-6 relative overflow-hidden w-full max-w-full">
       {/* Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <img 
@@ -84,29 +84,29 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         />
       </div>
 
-      <div className="flex items-center gap-3 z-10">
+      <div className="flex items-center gap-2 sm:gap-3 z-10 min-w-0 flex-shrink">
         {/* Visible Logo */}
         <img 
           src={nextGenLogo} 
           alt="Next Generation Roofing" 
-          className="h-8 w-8 object-contain"
+          className="h-8 w-8 object-contain flex-shrink-0"
         />
         
         {/* Mobile hamburger menu */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 md:hidden text-foreground"
+          className="h-9 w-9 md:hidden text-foreground flex-shrink-0"
           onClick={onMenuClick}
         >
           <Menu className="h-5 w-5" />
           <span className="sr-only">Open menu</span>
         </Button>
-        <h1 className="text-base sm:text-lg font-heading text-foreground">{getPortalTitle()}</h1>
-        {user && getRoleBadge()}
+        <h1 className="text-sm sm:text-lg font-heading text-foreground truncate min-w-0">{getPortalTitle()}</h1>
+        <span className="hidden sm:inline-flex">{user && getRoleBadge()}</span>
         
         {/* The 6 Figure System Tagline */}
-        <span className="hidden md:inline-block text-sm font-bold text-primary ml-4 italic">
+        <span className="hidden lg:inline-block text-sm font-bold text-primary ml-4 italic">
           The 6 Figure System
         </span>
       </div>
