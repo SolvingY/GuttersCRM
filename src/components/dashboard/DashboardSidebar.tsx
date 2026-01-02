@@ -3,7 +3,6 @@ import { BarChart3, Trophy, Settings, ChevronLeft, ChevronRight, Gift, X } from 
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import nextGenLogo from '@/assets/next-gen-logo.png';
 
 const navItems = [
   { icon: BarChart3, label: 'My Stats', path: '/dashboard/stats' },
@@ -48,7 +47,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'bg-primary text-primary-foreground flex-col transition-all duration-300 hidden md:flex relative overflow-hidden',
+          'bg-primary text-primary-foreground flex-col transition-all duration-300 hidden md:flex',
           collapsed ? 'w-14' : 'w-56'
         )}
       >
@@ -86,21 +85,12 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
             );
           })}
         </nav>
-
-        {/* Watermark */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-          <img 
-            src={nextGenLogo} 
-            alt="" 
-            className="w-24 h-24 object-contain opacity-[0.08]"
-          />
-        </div>
       </aside>
 
       {/* Mobile slide-out sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full w-64 bg-primary text-primary-foreground flex flex-col z-50 md:hidden transition-transform duration-300 ease-out relative overflow-hidden',
+          'fixed top-0 left-0 h-full w-64 bg-primary text-primary-foreground flex flex-col z-50 md:hidden transition-transform duration-300 ease-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -137,15 +127,6 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
             );
           })}
         </nav>
-
-        {/* Watermark */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-          <img 
-            src={nextGenLogo} 
-            alt="" 
-            className="w-28 h-28 object-contain opacity-[0.08]"
-          />
-        </div>
       </aside>
     </>
   );

@@ -9,7 +9,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CanvasserLeaderboardTable } from "@/components/dashboard/CanvasserLeaderboardTable";
 import { WeeklyCanvasserLeaderboardTable } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
-import { CommentsSection } from "@/components/dashboard/CommentsSection";
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -280,13 +279,13 @@ export default function CanvasserLeaderboard() {
   }, [selectedMonthDate]);
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-3xl font-bold text-foreground">Leaderboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">See how you stack up against other canvassers</p>
+        <h1 className="text-3xl font-bold text-foreground">Leaderboard</h1>
+        <p className="text-muted-foreground mt-1">See how you stack up against other canvassers</p>
       </div>
 
-      <Tabs defaultValue="ytd" className="w-full min-w-0">
+      <Tabs defaultValue="ytd" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="ytd">Year to Date</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -305,13 +304,13 @@ export default function CanvasserLeaderboard() {
 
         <TabsContent value="monthly" className="mt-4">
           {/* Month Selector */}
-          <div className="flex items-center gap-1 sm:gap-2 mb-4 w-full min-w-0">
+          <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="min-w-0 flex-1 justify-start text-left">
+                <Button variant="outline" className="min-w-[200px]">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {format(selectedMonthDate, 'MMMM yyyy')}
                 </Button>
@@ -342,13 +341,13 @@ export default function CanvasserLeaderboard() {
 
         <TabsContent value="weekly" className="mt-4">
           {/* Week Selector */}
-          <div className="flex items-center gap-1 sm:gap-2 mb-4 w-full min-w-0">
+          <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="min-w-0 flex-1 justify-start text-left">
+                <Button variant="outline" className="min-w-[200px]">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
                 </Button>
@@ -377,9 +376,6 @@ export default function CanvasserLeaderboard() {
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Team Comments Section */}
-      <CommentsSection thread="canvasser" />
     </div>
   );
 }

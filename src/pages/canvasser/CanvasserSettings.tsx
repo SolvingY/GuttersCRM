@@ -75,10 +75,10 @@ export default function CanvasserSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl min-w-0 w-full">
+    <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-xl sm:text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your account preferences</p>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground mt-1">Manage your account preferences</p>
       </div>
 
       <Card>

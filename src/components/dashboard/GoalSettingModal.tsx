@@ -115,7 +115,7 @@ export function GoalSettingModal() {
               <Trophy className="h-6 w-6 text-accent" />
             </div>
           </div>
-          <DialogTitle className="text-xl">Welcome To The 6 Figure System</DialogTitle>
+          <DialogTitle className="text-xl">Welcome to the Team!</DialogTitle>
           <DialogDescription>
             Set your yearly sales goal to track your progress throughout the fiscal year.
           </DialogDescription>

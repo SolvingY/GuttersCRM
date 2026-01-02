@@ -48,10 +48,6 @@ export default function Auth() {
   // Role-based redirect after login with cross-portal protection
   useEffect(() => {
     if (!loading && user) {
-      // Clear session storage flags on fresh login to ensure notifications show
-      sessionStorage.removeItem('welcomeShown');
-      sessionStorage.removeItem(`announcementsShown:${user.id}`);
-      
       // Determine correct portal based on role
       let targetRoute = '/dashboard';
       if (isCanvasser) {

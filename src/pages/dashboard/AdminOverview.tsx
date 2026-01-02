@@ -370,13 +370,13 @@ export default function AdminOverview() {
   const canvassersNeedingAttention = canvasserDetails.filter(canvasserNeedsAttention);
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-xl sm:text-2xl font-heading text-foreground">Master Overview</h2>
-        <p className="text-sm text-muted-foreground">Manage all team members and their performance</p>
+        <h2 className="text-2xl font-heading text-foreground">Master Overview</h2>
+        <p className="text-muted-foreground">Manage all team members and their performance</p>
       </div>
 
-      <Tabs defaultValue="sales" className="w-full min-w-0">
+      <Tabs defaultValue="sales" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="sales">Sales Reps ({aggregates.totalUsers})</TabsTrigger>
           <TabsTrigger value="canvassers">Canvassers ({canvasserAggregates.totalCanvassers})</TabsTrigger>
@@ -408,15 +408,15 @@ export default function AdminOverview() {
 
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="p-4 border-b border-border">
-              <h3 className="text-base sm:text-lg font-heading text-foreground">Sales Rep Performance</h3>
+              <h3 className="text-lg font-heading text-foreground">Sales Rep Performance</h3>
             </div>
             {userDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No sales rep data available yet.</p>
               </div>
             ) : (
-              <div className="w-full overflow-x-auto">
-                <table className="w-full min-w-[900px]">
+              <div className="overflow-x-auto">
+                <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
@@ -544,15 +544,15 @@ export default function AdminOverview() {
 
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="p-4 border-b border-border">
-              <h3 className="text-base sm:text-lg font-heading text-foreground">Canvasser Performance</h3>
+              <h3 className="text-lg font-heading text-foreground">Canvasser Performance</h3>
             </div>
             {canvasserDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No canvasser data available yet.</p>
               </div>
             ) : (
-              <div className="w-full overflow-x-auto">
-                <table className="w-full min-w-[700px]">
+              <div className="overflow-x-auto">
+                <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>

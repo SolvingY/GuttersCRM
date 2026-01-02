@@ -163,16 +163,16 @@ export default function UserRoles() {
   }
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-xl sm:text-2xl font-heading text-foreground">User Roles</h2>
+        <h2 className="text-2xl font-heading text-foreground">User Roles</h2>
         <p className="text-sm text-muted-foreground">
           Manage user roles. Change between Sales Rep and Canvasser.
         </p>
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
-        <Table className="min-w-[600px]">
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>

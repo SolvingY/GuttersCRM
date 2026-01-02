@@ -486,13 +486,13 @@ export default function AdminLeaderboards() {
 
     if (timeFrame === 'weekly') {
       return (
-        <div className="flex items-center gap-1 sm:gap-2 mb-4 w-full min-w-0">
+        <div className="flex items-center gap-2 mb-4">
           <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-0 flex-1 justify-start text-left">
+              <Button variant="outline" className="min-w-[200px]">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
               </Button>
@@ -516,13 +516,13 @@ export default function AdminLeaderboards() {
 
     if (timeFrame === 'monthly') {
       return (
-        <div className="flex items-center gap-1 sm:gap-2 mb-4 w-full min-w-0">
+        <div className="flex items-center gap-2 mb-4">
           <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-0 flex-1 justify-start text-left">
+              <Button variant="outline" className="min-w-[200px]">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(selectedDate, 'MMMM yyyy')}
               </Button>
@@ -548,14 +548,14 @@ export default function AdminLeaderboards() {
   };
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">All Leaderboards</h1>
-        <p className="text-sm text-muted-foreground mt-1">View sales rep and canvasser performance across all time periods</p>
+        <h1 className="text-3xl font-bold text-foreground">All Leaderboards</h1>
+        <p className="text-muted-foreground mt-1">View sales rep and canvasser performance across all time periods</p>
       </div>
 
       {/* Time Frame Tabs */}
-      <Tabs value={timeFrame} onValueChange={(v) => setTimeFrame(v as 'weekly' | 'monthly' | 'yearly')} className="w-full min-w-0">
+      <Tabs value={timeFrame} onValueChange={(v) => setTimeFrame(v as 'weekly' | 'monthly' | 'yearly')}>
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="weekly">Weekly</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -566,7 +566,7 @@ export default function AdminLeaderboards() {
           {renderDateSelector()}
 
           {/* Sales Reps / Canvassers Tabs */}
-          <Tabs defaultValue="sales" className="w-full min-w-0">
+          <Tabs defaultValue="sales" className="w-full">
             <TabsList className="grid w-full max-w-xs grid-cols-2 mb-4">
               <TabsTrigger value="sales">Sales Reps</TabsTrigger>
               <TabsTrigger value="canvassers">Canvassers</TabsTrigger>

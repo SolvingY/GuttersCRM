@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import nextGenLogo from '@/assets/next-gen-logo.png';
 
 const navItems = [
   { icon: BarChart3, label: "My Stats", path: "/canvasser/stats" },
@@ -40,22 +38,22 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:flex flex-col bg-primary text-primary-foreground h-[calc(100vh-3.5rem)] sticky top-14 transition-all duration-300 relative overflow-hidden",
+          "hidden md:flex flex-col bg-primary text-primary-foreground h-[calc(100vh-3.5rem)] sticky top-14 transition-all duration-300",
           collapsed ? "w-16" : "w-56"
         )}
       >
-        <div className={cn("flex items-center justify-between p-3 border-b border-primary-foreground/10", collapsed && "justify-center")}>
-          {!collapsed && (
-            <h2 className="font-bold text-lg text-primary-foreground">Canvasser Portal</h2>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
+        {/* Collapse button */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-6 z-50 bg-accent text-accent-foreground rounded-full p-1 shadow-md hover:bg-accent/90 transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+
+        <div className={cn("p-4 border-b border-primary-foreground/10", collapsed && "px-2")}>
+          <h2 className={cn("font-bold text-lg text-primary-foreground", collapsed && "text-center text-sm")}>
+            {collapsed ? "CV" : "Canvasser Portal"}
+          </h2>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
@@ -78,21 +76,12 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
             </NavLink>
           ))}
         </nav>
-
-        {/* Watermark */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-          <img 
-            src={nextGenLogo} 
-            alt="" 
-            className="w-24 h-24 object-contain opacity-[0.08]"
-          />
-        </div>
       </aside>
 
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground transform transition-transform duration-300 ease-in-out md:hidden relative overflow-hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-primary text-primary-foreground transform transition-transform duration-300 ease-in-out md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -125,15 +114,6 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
             </NavLink>
           ))}
         </nav>
-
-        {/* Watermark */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-          <img 
-            src={nextGenLogo} 
-            alt="" 
-            className="w-28 h-28 object-contain opacity-[0.08]"
-          />
-        </div>
       </aside>
     </>
   );

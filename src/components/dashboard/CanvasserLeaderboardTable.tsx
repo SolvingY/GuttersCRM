@@ -49,9 +49,9 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden shadow-lg w-full max-w-full min-w-0">
-      <div className="overflow-x-auto w-full">
-        <table className="w-full min-w-[600px]">
+    <div className="bg-card border border-border rounded-lg overflow-hidden shadow-lg">
+      <div className="overflow-x-auto">
+        <table className="w-full">
           <thead className="bg-slate-800 text-white">
             <tr>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>

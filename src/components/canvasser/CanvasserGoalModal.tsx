@@ -102,7 +102,7 @@ export function CanvasserGoalModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            Welcome To The 6 Figure System
+            Set Your Yearly Goal
           </DialogTitle>
           <DialogDescription>
             Set a goal for leads closed this year. This will help track your progress on the leaderboard.

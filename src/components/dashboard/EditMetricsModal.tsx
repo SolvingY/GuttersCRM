@@ -32,7 +32,6 @@ interface UserMetrics {
   closedDeals: number;
   earningsYtd?: number;
   leads: number;
-  selfGeneratedDeals?: number;
 }
 
 interface EditMetricsModalProps {
@@ -53,7 +52,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     closedDeals: 0,
     earningsYtd: 0,
     leads: 0,
-    selfGeneratedDeals: 0,
   });
 
   useEffect(() => {
@@ -66,7 +64,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         closedDeals: user.closedDeals || 0,
         earningsYtd: user.earningsYtd || 0,
         leads: user.leads || 0,
-        selfGeneratedDeals: user.selfGeneratedDeals || 0,
       });
     }
   }, [user]);
@@ -88,7 +85,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           closed_deals: formData.closedDeals,
           earnings_ytd: formData.earningsYtd,
           leads: formData.leads,
-          self_generated_deals: formData.selfGeneratedDeals,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.metricId);
@@ -238,20 +234,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 onChange={(e) => setFormData({ ...formData, leads: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter leads count"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="selfGeneratedDeals" className="text-right text-sm">
-                Self Gen Deals
-              </Label>
-              <Input
-                id="selfGeneratedDeals"
-                type="number"
-                min="0"
-                value={formData.selfGeneratedDeals}
-                onChange={(e) => setFormData({ ...formData, selfGeneratedDeals: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter self-generated deals"
               />
             </div>
           </div>

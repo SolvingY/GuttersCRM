@@ -371,13 +371,13 @@ export default function InviteUsers() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 min-w-0 w-full">
+    <div className="space-y-4 sm:space-y-6">
       <div className="text-center sm:text-left">
         <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Manage Users</h1>
         <p className="text-sm text-muted-foreground">Invite or create new team members</p>
       </div>
 
-      <Tabs defaultValue="invite" className="w-full min-w-0">
+      <Tabs defaultValue="invite" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="invite" className="text-xs sm:text-sm">
             <Send className="h-4 w-4 mr-1 sm:mr-2" />

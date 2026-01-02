@@ -84,53 +84,18 @@
 @layer base {
   * {
     @apply border-border;
-    box-sizing: border-box;
   }
 
   html {
     scroll-behavior: smooth;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden !important;
   }
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden !important;
-  }
-
-  #root {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden !important;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-bold tracking-tight;
-  }
-
-  /* Media element guards to prevent overflow */
-  img, svg, video, canvas {
-    max-width: 100%;
-    height: auto;
-  }
-
-  table {
-    max-width: 100%;
-  }
-
-  /* Recharts overflow guards */
-  .recharts-wrapper,
-  .recharts-responsive-container {
-    max-width: 100% !important;
   }
 }
 

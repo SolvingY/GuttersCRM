@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { KeyRound, LogOut, Menu, Shield } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,8 +11,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import nextGenLogo from '@/assets/next-gen-logo.png';
-import { salesQuotes } from '@/lib/salesQuotes';
 
 interface DashboardHeaderProps {
   onMenuClick?: () => void;
@@ -25,16 +22,6 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const location = useLocation();
   const { toast } = useToast();
 
-  // Get a random quote per session
-  const [quote] = useState(() => {
-    const stored = sessionStorage.getItem('dailyQuote');
-    if (stored) return stored;
-    
-    const randomQuote = salesQuotes[Math.floor(Math.random() * salesQuotes.length)];
-    sessionStorage.setItem('dailyQuote', randomQuote);
-    return randomQuote;
-  });
-
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) {
@@ -44,9 +31,6 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         variant: 'destructive',
       });
     } else {
-      sessionStorage.removeItem('dailyQuote');
-      sessionStorage.removeItem('welcomeShown');
-      // Note: user-scoped announcementsShown:${userId} keys are cleared automatically on new user login
       navigate('/');
     }
   };
@@ -74,51 +58,23 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   };
 
   return (
-    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-2 sm:px-4 lg:px-6 relative overflow-hidden w-full max-w-full">
-      {/* Watermark */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <img 
-          src={nextGenLogo} 
-          alt="" 
-          className="w-24 h-24 object-contain opacity-[0.06]"
-        />
-      </div>
-
-      <div className="flex items-center gap-2 sm:gap-3 z-10 min-w-0 flex-shrink">
-        {/* Visible Logo */}
-        <img 
-          src={nextGenLogo} 
-          alt="Next Generation Roofing" 
-          className="h-8 w-8 object-contain flex-shrink-0"
-        />
-        
+    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
+      <div className="flex items-center gap-3">
         {/* Mobile hamburger menu */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 md:hidden text-foreground flex-shrink-0"
+          className="h-9 w-9 md:hidden text-foreground"
           onClick={onMenuClick}
         >
           <Menu className="h-5 w-5" />
           <span className="sr-only">Open menu</span>
         </Button>
-        <h1 className="text-sm sm:text-lg font-heading text-foreground truncate min-w-0">{getPortalTitle()}</h1>
-        <span className="hidden sm:inline-flex">{user && getRoleBadge()}</span>
-        
-        {/* The 6 Figure System Tagline */}
-        <span className="hidden lg:inline-block text-sm font-bold text-primary ml-4 italic">
-          The 6 Figure System
-        </span>
-      </div>
-
-      {/* Motivational Quote - Center */}
-      <div className="hidden md:flex flex-1 justify-center px-4 z-10">
-        <span className="text-xs text-muted-foreground italic truncate max-w-md text-center">
-          "{quote}"
-        </span>
+        <h1 className="text-base sm:text-lg font-heading text-foreground">{getPortalTitle()}</h1>
+        {user && getRoleBadge()}
       </div>
       
-      <div className="flex items-center z-10">
+      <div className="flex items-center">
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
