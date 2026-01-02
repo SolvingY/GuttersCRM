@@ -2,14 +2,16 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { format, subWeeks } from "date-fns";
+import { format, subWeeks, isSameWeek } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { 
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar
 } from 'recharts';
+import { StatsCard } from "@/components/dashboard/StatsCard";
+import { getRandomQuote } from "@/lib/motivationalQuotes";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -39,6 +41,7 @@ export default function CanvasserStats() {
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quote] = useState(getRandomQuote());
   
   // Collapsible states
   const [contestsOpen, setContestsOpen] = useState(false);
@@ -146,9 +149,10 @@ export default function CanvasserStats() {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
       
+      // Use isSameWeek for accurate week matching
       const weeklyMetric = allWeeklyMetrics.find(w => {
         const wStart = new Date(w.week_start);
-        return wStart >= weekStart && wStart < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return isSameWeek(wStart, weekStart, { weekStartsOn: 1 });
       });
       
       weeks.push({
@@ -191,8 +195,21 @@ export default function CanvasserStats() {
 
   return (
     <div className="space-y-4">
+      {/* Motivational Quote Banner */}
+      <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
+        <CardContent className="py-4">
+          <div className="flex gap-3 items-start">
+            <Quote className="h-4 w-4 sm:h-5 sm:w-5 text-accent shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm italic text-foreground">"{quote.quote}"</p>
+              <p className="text-xs text-muted-foreground mt-1">— {quote.author}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div>
-        <h1 className="text-3xl font-bold text-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
           My Stats <span className="text-red-500 text-lg ml-2">The 6 Figure System</span>
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -214,7 +231,7 @@ export default function CanvasserStats() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* 2. Key Metrics (Combined) */}
+      {/* 2. Key Metrics (Using StatsCard for consistency) */}
       <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
         <CollapsibleTrigger asChild>
           <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -225,101 +242,19 @@ export default function CanvasserStats() {
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Leads Set */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Leads Set</CardTitle>
-                <Target className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{metrics?.leads_set ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Total appointments scheduled</p>
-              </CardContent>
-            </Card>
-
-            {/* Leads Closed */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Leads Closed</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{metrics?.leads_closed ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Successful conversions</p>
-              </CardContent>
-            </Card>
-
-            {/* Leads with Damage */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Leads with Damage</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{metrics?.leads_with_damage ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Confirmed damage</p>
-              </CardContent>
-            </Card>
-
-            {/* Shifts Worked */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Shifts Worked</CardTitle>
-                <Clock className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{metrics?.shifts_worked ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Total shifts completed</p>
-              </CardContent>
-            </Card>
-
-            {/* Points */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Points</CardTitle>
-                <Star className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">{metrics?.points?.toLocaleString() ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Total points earned</p>
-              </CardContent>
-            </Card>
-
-            {/* YTD Income (Green) */}
-            <Card className="bg-gradient-to-r from-green-500/10 to-green-500/5 border-green-500/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">YTD Income</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-500">{formatCurrency(metrics?.income ?? 0)}</div>
-                <p className="text-xs text-muted-foreground mt-1">Year-to-date earnings</p>
-              </CardContent>
-            </Card>
-
-            {/* Conversion Rate */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
-                <Percent className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">{conversionRate}%</div>
-                <p className="text-xs text-muted-foreground mt-1">{metrics?.leads_closed ?? 0} / {metrics?.leads_set ?? 0} leads</p>
-              </CardContent>
-            </Card>
-
-            {/* Damage Rate */}
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Damage Rate</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-yellow-500">{damageRate}%</div>
-                <p className="text-xs text-muted-foreground mt-1">{metrics?.leads_with_damage ?? 0} / {metrics?.leads_set ?? 0} leads</p>
-              </CardContent>
-            </Card>
+            <StatsCard title="Leads Set" value={metrics?.leads_set ?? 0} icon={Target} />
+            <StatsCard title="Leads Closed" value={metrics?.leads_closed ?? 0} icon={CheckCircle} />
+            <StatsCard title="Leads with Damage" value={metrics?.leads_with_damage ?? 0} icon={AlertTriangle} />
+            <StatsCard title="Shifts Worked" value={metrics?.shifts_worked ?? 0} icon={Clock} />
+            <StatsCard title="Points" value={metrics?.points?.toLocaleString() ?? 0} icon={Star} />
+            <StatsCard 
+              title="YTD Income" 
+              value={formatCurrency(metrics?.income ?? 0)} 
+              icon={DollarSign}
+              valueClassName="text-green-500"
+            />
+            <StatsCard title="Conversion Rate" value={`${conversionRate}%`} icon={Percent} />
+            <StatsCard title="Damage Rate" value={`${damageRate}%`} icon={AlertTriangle} />
           </div>
         </CollapsibleContent>
       </Collapsible>

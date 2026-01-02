@@ -27,6 +27,8 @@ interface WeeklyEntry {
   weeklyLeads: string;
   weeklyClosedDeals: string;
   weeklyEarnings: string;
+  weeklySelfGeneratedLeads: string;
+  weeklySelfGeneratedDeals: string;
 }
 
 interface CanvasserMetric {
@@ -122,6 +124,8 @@ export default function WeeklyUpdates() {
           weeklyLeads: '',
           weeklyClosedDeals: '',
           weeklyEarnings: '',
+          weeklySelfGeneratedLeads: '',
+          weeklySelfGeneratedDeals: '',
         }))
       );
 
@@ -202,8 +206,10 @@ export default function WeeklyUpdates() {
         const weeklyLeads = parseInt(entry.weeklyLeads) || 0;
         const weeklyClosedDeals = parseInt(entry.weeklyClosedDeals) || 0;
         const weeklyEarnings = parseFloat(entry.weeklyEarnings) || 0;
+        const weeklySelfGeneratedLeads = parseInt(entry.weeklySelfGeneratedLeads) || 0;
+        const weeklySelfGeneratedDeals = parseInt(entry.weeklySelfGeneratedDeals) || 0;
 
-        if (weeklySales === 0 && weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0) {
+        if (weeklySales === 0 && weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && weeklySelfGeneratedLeads === 0 && weeklySelfGeneratedDeals === 0) {
           continue;
         }
 
@@ -229,6 +235,7 @@ export default function WeeklyUpdates() {
         const newClosedDeals = (Number(currentMetrics.closed_deals) || 0) + weeklyClosedDeals;
         const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
         const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
+        const newSelfGeneratedDeals = (Number(currentMetrics.self_generated_deals) || 0) + weeklySelfGeneratedDeals;
 
         // Update user_metrics with new totals including auto-calculated points
         const { error: updateError } = await supabase
@@ -239,6 +246,7 @@ export default function WeeklyUpdates() {
             closed_deals: newClosedDeals,
             earnings_ytd: newEarnings,
             points: newPoints,
+            self_generated_deals: newSelfGeneratedDeals,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', entry.userId);
@@ -362,6 +370,8 @@ export default function WeeklyUpdates() {
             weeklyLeads: '',
             weeklyClosedDeals: '',
             weeklyEarnings: '',
+            weeklySelfGeneratedLeads: '',
+            weeklySelfGeneratedDeals: '',
           }))
         );
         setCanvasserEntries((prev) =>
@@ -467,16 +477,18 @@ export default function WeeklyUpdates() {
               ) : (
                 <div className="space-y-4">
                   {/* Header row - hidden on mobile */}
-                  <div className="hidden md:grid md:grid-cols-5 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
+                  <div className="hidden md:grid md:grid-cols-7 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
                     <div>Team Member</div>
                     <div>Weekly Sales ($)</div>
                     <div>Weekly Leads</div>
                     <div>Closed Deals</div>
+                    <div>Self-Gen Leads</div>
+                    <div>Self-Gen Deals</div>
                     <div>Earnings ($)</div>
                   </div>
 
                   {weeklyEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 md:space-y-0 md:grid md:grid-cols-5 md:gap-4 md:items-center p-4 md:p-0 bg-muted/30 md:bg-transparent rounded-lg md:rounded-none">
+                    <div key={entry.userId} className="space-y-3 md:space-y-0 md:grid md:grid-cols-7 md:gap-4 md:items-center p-4 md:p-0 bg-muted/30 md:bg-transparent rounded-lg md:rounded-none">
                       <div className="font-medium text-foreground">
                         {entry.displayName}
                       </div>
@@ -513,6 +525,28 @@ export default function WeeklyUpdates() {
                             placeholder="0"
                             value={entry.weeklyClosedDeals}
                             onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground md:hidden">Self-Gen Leads</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={entry.weeklySelfGeneratedLeads}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedLeads', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground md:hidden">Self-Gen Deals</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={entry.weeklySelfGeneratedDeals}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedDeals', e.target.value)}
                             className="h-9"
                           />
                         </div>

@@ -91,6 +91,20 @@ export default function CanvasserLeaderboard() {
         return;
       }
 
+      // Fetch yearly goals from canvasser_metrics separately
+      const { data: goalsData } = await supabase
+        .from("canvasser_metrics")
+        .select("user_id, yearly_goal")
+        .order("metric_date", { ascending: false });
+
+      // Create goals map (latest goal per user)
+      const goalsMap = new Map<string, number>();
+      goalsData?.forEach(g => {
+        if (g.user_id && !goalsMap.has(g.user_id)) {
+          goalsMap.set(g.user_id, Number(g.yearly_goal) || 0);
+        }
+      });
+
       // Fetch contests won for canvassers
       const { data: contestsData } = await supabase
         .from("contests")
@@ -121,23 +135,25 @@ export default function CanvasserLeaderboard() {
 
       const sorted = Array.from(uniqueUsers.values())
         .sort((a, b) => {
-          // Sort by leads closed (no yearly_goal in view)
           return (b.leads_closed || 0) - (a.leads_closed || 0);
         })
         .map((entry, index) => {
           const leadsClosed = entry.leads_closed || 0;
+          const yearlyGoal = goalsMap.get(entry.user_id) || 0;
+          const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
+          const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
           
           return {
             rank: index + 1,
             userId: entry.user_id,
             name: entry.display_name || "Anonymous",
-            yearlyGoal: 0, // Not available in view
+            yearlyGoal,
             leadsClosed,
             leadsSet: entry.leads_set || 0,
             leadsWithDamage: entry.leads_with_damage || 0,
             points: Number(entry.points) || 0,
-            amountUntilGoal: 0,
-            percentOfGoal: 0,
+            amountUntilGoal,
+            percentOfGoal,
             contestsWon: contestWins.get(entry.user_id) || 0,
           };
         });

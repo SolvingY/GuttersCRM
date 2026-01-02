@@ -42,18 +42,19 @@ export function CanvasserSidebar({ mobileOpen = false, onMobileClose }: Canvasse
           collapsed ? "w-16" : "w-56"
         )}
       >
-        {/* Collapse button */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 z-50 bg-accent text-accent-foreground rounded-full p-1 shadow-md hover:bg-accent/90 transition-colors"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-
-        <div className={cn("p-4 border-b border-primary-foreground/10", collapsed && "px-2")}>
-          <h2 className={cn("font-bold text-lg text-primary-foreground", collapsed && "text-center text-sm")}>
-            {collapsed ? "CV" : "Canvasser Portal"}
-          </h2>
+        <div className="flex items-center justify-between p-3 border-b border-primary-foreground/10">
+          {!collapsed && (
+            <span className="text-sm font-heading uppercase tracking-wide">Canvasser Portal</span>
+          )}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={cn(
+              "h-8 w-8 flex items-center justify-center rounded-md text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors",
+              collapsed && "mx-auto"
+            )}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
