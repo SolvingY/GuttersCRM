@@ -88,10 +88,15 @@
 
   html {
     scroll-behavior: smooth;
+    @apply w-full overflow-x-hidden;
   }
 
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-background text-foreground font-body antialiased w-full overflow-x-hidden;
+  }
+
+  #root {
+    @apply w-full max-w-full overflow-x-hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -223,7 +223,7 @@ export default function AdminLayout() {
         </aside>
 
         {/* Main content with watermark */}
-        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
+        <main className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
           {/* Watermark background */}
           <div 
             className="absolute inset-0 pointer-events-none flex items-center justify-center"
