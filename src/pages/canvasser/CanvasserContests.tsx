@@ -166,7 +166,7 @@ export default function CanvasserContests() {
 
   return (
     <div 
-      className="min-h-screen relative"
+      className="min-h-screen relative min-w-0 w-full"
       style={{
         backgroundImage: `url(${contestBackground})`,
         backgroundSize: 'cover',
@@ -176,10 +176,10 @@ export default function CanvasserContests() {
     >
       <div className="absolute inset-0 bg-background/90" />
       
-      <div className="relative z-10 space-y-6 p-6">
+      <div className="relative z-10 space-y-6 p-3 sm:p-6 min-w-0">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Contests</h1>
-          <p className="text-muted-foreground mt-1">Compete for prizes and recognition</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Contests</h1>
+          <p className="text-sm text-muted-foreground mt-1">Compete for prizes and recognition</p>
         </div>
 
         {/* Active Contests with Podium Display */}
