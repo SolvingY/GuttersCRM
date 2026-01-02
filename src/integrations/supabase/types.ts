@@ -105,6 +105,8 @@ export type Database = {
           fiscal_year_start: string
           id: string
           sales_revenue_goal: number | null
+          target_cost_per_lead: number | null
+          target_lead_to_close_ratio: number | null
           updated_at: string | null
         }
         Insert: {
@@ -116,6 +118,8 @@ export type Database = {
           fiscal_year_start: string
           id?: string
           sales_revenue_goal?: number | null
+          target_cost_per_lead?: number | null
+          target_lead_to_close_ratio?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -127,6 +131,8 @@ export type Database = {
           fiscal_year_start?: string
           id?: string
           sales_revenue_goal?: number | null
+          target_cost_per_lead?: number | null
+          target_lead_to_close_ratio?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -424,6 +430,7 @@ export type Database = {
           sales: number | null
           sales_rank: string | null
           self_generated_deals: number | null
+          self_generated_leads: number | null
           updated_at: string
           user_id: string
           yearly_goal: number | null
@@ -440,6 +447,7 @@ export type Database = {
           sales?: number | null
           sales_rank?: string | null
           self_generated_deals?: number | null
+          self_generated_leads?: number | null
           updated_at?: string
           user_id: string
           yearly_goal?: number | null
@@ -456,6 +464,7 @@ export type Database = {
           sales?: number | null
           sales_rank?: string | null
           self_generated_deals?: number | null
+          self_generated_leads?: number | null
           updated_at?: string
           user_id?: string
           yearly_goal?: number | null
