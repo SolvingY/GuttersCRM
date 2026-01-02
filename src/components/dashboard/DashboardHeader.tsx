@@ -70,7 +70,10 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           <Menu className="h-5 w-5" />
           <span className="sr-only">Open menu</span>
         </Button>
-        <h1 className="text-base sm:text-lg font-heading text-foreground">{getPortalTitle()}</h1>
+        <div className="flex flex-col">
+          <h1 className="text-base sm:text-lg font-heading text-foreground leading-tight">{getPortalTitle()}</h1>
+          <span className="text-[10px] text-accent font-medium tracking-widest uppercase hidden sm:block">The 6 Figure System</span>
+        </div>
         {user && getRoleBadge()}
       </div>
       

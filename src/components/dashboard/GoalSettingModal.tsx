@@ -14,7 +14,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Target, Trophy } from 'lucide-react';
 
-export function GoalSettingModal() {
+interface GoalSettingModalProps {
+  onGoalSet?: () => void;
+}
+
+export function GoalSettingModal({ onGoalSet }: GoalSettingModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -84,6 +88,11 @@ export function GoalSettingModal() {
         description: `Your yearly goal of $${goal.toLocaleString()} has been saved.`,
       });
       setIsOpen(false);
+      
+      // Trigger the tour for first-time users
+      if (onGoalSet) {
+        onGoalSet();
+      }
     } catch (error: any) {
       console.error('Error setting goal:', error);
       toast({
@@ -102,6 +111,10 @@ export function GoalSettingModal() {
       title: 'Goal skipped',
       description: 'You can set your goal later in Settings.',
     });
+    // Still trigger tour even if skipped
+    if (onGoalSet) {
+      onGoalSet();
+    }
   };
 
   if (loading) return null;
@@ -115,7 +128,7 @@ export function GoalSettingModal() {
               <Trophy className="h-6 w-6 text-accent" />
             </div>
           </div>
-          <DialogTitle className="text-xl">Welcome to the Team!</DialogTitle>
+          <DialogTitle className="text-2xl font-heading">Welcome To The 6 Figure System</DialogTitle>
           <DialogDescription>
             Set your yearly sales goal to track your progress throughout the fiscal year.
           </DialogDescription>

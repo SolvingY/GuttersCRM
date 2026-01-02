@@ -16,7 +16,8 @@ import {
   LogOut,
   Trophy,
   UserCog,
-  BarChart3
+  BarChart3,
+  Megaphone
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ const adminNavItems = [
   { icon: UserCog, label: 'User Roles', path: '/admin/users' },
   { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
   { icon: Trophy, label: 'Contests', path: '/admin/contests' },
+  { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
 ];
 
 export default function AdminLayout() {
@@ -72,7 +74,10 @@ export default function AdminLayout() {
             <Menu className="h-5 w-5" />
             <span className="sr-only">Open menu</span>
           </Button>
-          <h1 className="text-base sm:text-lg font-heading text-foreground">Admin Portal</h1>
+          <div className="flex flex-col">
+            <h1 className="text-base sm:text-lg font-heading text-foreground leading-tight">Admin Portal</h1>
+            <span className="text-[10px] text-accent font-medium tracking-widest uppercase hidden sm:block">The 6 Figure System</span>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">

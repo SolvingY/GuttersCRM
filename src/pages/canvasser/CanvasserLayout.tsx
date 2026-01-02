@@ -5,9 +5,21 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import nextGenLogo from "@/assets/next-gen-logo.png";
 import { VictoryNotification } from "@/components/dashboard/VictoryNotification";
 import { CanvasserGoalModal } from "@/components/canvasser/CanvasserGoalModal";
+import { CanvasserWelcomeModal } from "@/components/canvasser/CanvasserWelcomeModal";
+import { GuidedTour } from "@/components/dashboard/GuidedTour";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CanvasserLayout() {
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  // Check if user has completed tour
+  const handleGoalSet = () => {
+    if (user && !localStorage.getItem(`tour_completed_${user.id}`)) {
+      setTimeout(() => setShowTour(true), 300);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -36,7 +48,9 @@ export default function CanvasserLayout() {
         </main>
       </div>
       <VictoryNotification />
-      <CanvasserGoalModal />
+      <CanvasserGoalModal onGoalSet={handleGoalSet} />
+      <CanvasserWelcomeModal />
+      <GuidedTour isOpen={showTour} onClose={() => setShowTour(false)} />
     </div>
   );
 }
