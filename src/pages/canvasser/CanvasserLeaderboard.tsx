@@ -280,13 +280,13 @@ export default function CanvasserLeaderboard() {
   }, [selectedMonthDate]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Leaderboard</h1>
-        <p className="text-muted-foreground mt-1">See how you stack up against other canvassers</p>
+        <h1 className="text-xl sm:text-3xl font-bold text-foreground">Leaderboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">See how you stack up against other canvassers</p>
       </div>
 
-      <Tabs defaultValue="ytd" className="w-full">
+      <Tabs defaultValue="ytd" className="w-full min-w-0">
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="ytd">Year to Date</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>

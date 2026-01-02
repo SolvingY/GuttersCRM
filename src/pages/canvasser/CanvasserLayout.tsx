@@ -13,14 +13,14 @@ export default function CanvasserLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
       <DashboardHeader onMenuClick={() => setMobileOpen(true)} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-w-0">
         <CanvasserSidebar 
           mobileOpen={mobileOpen} 
           onMobileClose={() => setMobileOpen(false)} 
         />
-        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto relative">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
           {/* Watermark background */}
           <div 
             className="absolute inset-0 pointer-events-none flex items-center justify-center"
@@ -33,7 +33,7 @@ export default function CanvasserLayout() {
             />
           </div>
           
-          <div className="w-full max-w-7xl mx-auto relative z-10">
+          <div className="w-full max-w-7xl mx-auto relative z-10 min-w-0">
             <Outlet />
           </div>
         </main>

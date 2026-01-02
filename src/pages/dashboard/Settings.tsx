@@ -175,10 +175,10 @@ export default function Settings() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl min-w-0 w-full">
       <div>
-        <h2 className="text-2xl font-heading text-foreground">Settings</h2>
-        <p className="text-muted-foreground">Manage your account settings</p>
+        <h2 className="text-xl sm:text-2xl font-heading text-foreground">Settings</h2>
+        <p className="text-sm text-muted-foreground">Manage your account settings</p>
       </div>
 
       <Card className="border-border">
