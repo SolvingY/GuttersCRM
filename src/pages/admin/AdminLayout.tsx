@@ -47,6 +47,104 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
 
+  // DEV-only: Enhanced Overflow/Shift Finder
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    
+    const runDiagnostics = (label: string) => {
+      const vw = window.innerWidth;
+      const sw = document.documentElement.scrollWidth;
+      const scrollStates = {
+        windowScrollX: window.scrollX,
+        docScrollLeft: document.documentElement.scrollLeft,
+        bodyScrollLeft: document.body.scrollLeft,
+        mainScrollLeft: mainRef.current?.scrollLeft ?? 0,
+      };
+      
+      // Find nested scrollers with scrollLeft > 0
+      const nestedScrollers: { el: Element; scrollLeft: number; className: string }[] = [];
+      if (mainRef.current) {
+        mainRef.current.querySelectorAll('*').forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          if (htmlEl.scrollLeft > 0) {
+            nestedScrollers.push({
+              el,
+              scrollLeft: htmlEl.scrollLeft,
+              className: el.className?.toString?.().slice(0, 60) || '',
+            });
+          }
+        });
+      }
+      
+      // Find right overflow & left offset elements
+      const rightOverflow: { el: Element; rect: DOMRect; className: string; styles: Record<string, string> }[] = [];
+      const leftOffset: { el: Element; rect: DOMRect; className: string; styles: Record<string, string> }[] = [];
+      
+      document.querySelectorAll('*').forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0) return;
+        const computed = window.getComputedStyle(el);
+        const styles = {
+          position: computed.position,
+          overflowX: computed.overflowX,
+          whiteSpace: computed.whiteSpace,
+          minWidth: computed.minWidth,
+          transform: computed.transform,
+        };
+        
+        if (rect.right > vw + 1) {
+          rightOverflow.push({ el, rect, className: el.className?.toString?.().slice(0, 60) || '', styles });
+        }
+        if (rect.left < -1) {
+          leftOffset.push({ el, rect, className: el.className?.toString?.().slice(0, 60) || '', styles });
+        }
+      });
+      
+      console.log(`[Overflow Finder ${label}] viewport=${vw}, scrollWidth=${sw}`);
+      console.log(`[Overflow Finder ${label}] scrollStates:`, scrollStates);
+      
+      if (nestedScrollers.length > 0) {
+        console.warn(`[Overflow Finder ${label}] Nested scrollers with scrollLeft>0:`, nestedScrollers.slice(0, 3));
+      }
+      
+      if (rightOverflow.length > 0) {
+        console.warn(`[Overflow Finder ${label}] Right overflow elements:`);
+        rightOverflow.sort((a, b) => b.rect.right - a.rect.right).slice(0, 3).forEach((item, i) => {
+          console.warn(`  #${i + 1}: <${item.el.tagName.toLowerCase()}> class="${item.className}" right=${item.rect.right.toFixed(0)} width=${item.rect.width.toFixed(0)}`, item.styles);
+          if (i === 0) (item.el as HTMLElement).style.outline = '3px solid red';
+        });
+      }
+      
+      if (leftOffset.length > 0) {
+        console.warn(`[Overflow Finder ${label}] Left offset elements:`);
+        leftOffset.sort((a, b) => a.rect.left - b.rect.left).slice(0, 3).forEach((item, i) => {
+          console.warn(`  #${i + 1}: <${item.el.tagName.toLowerCase()}> class="${item.className}" left=${item.rect.left.toFixed(0)}`, item.styles);
+          if (i === 0) (item.el as HTMLElement).style.outline = '3px solid orange';
+        });
+      }
+      
+      if (rightOverflow.length === 0 && leftOffset.length === 0 && nestedScrollers.length === 0 && 
+          scrollStates.windowScrollX === 0 && scrollStates.docScrollLeft === 0 && scrollStates.mainScrollLeft === 0) {
+        console.log(`[Overflow Finder ${label}] ✓ No issues detected.`);
+      }
+    };
+    
+    // Run at multiple intervals to catch late-mounting elements
+    runDiagnostics('t=0');
+    requestAnimationFrame(() => runDiagnostics('rAF'));
+    const t1 = setTimeout(() => runDiagnostics('t=250ms'), 250);
+    const t2 = setTimeout(() => runDiagnostics('t=1000ms'), 1000);
+    
+    const handleResize = () => runDiagnostics('resize');
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [location.pathname]);
+
   // Reset scroll position on route change (both vertical and horizontal)
   useEffect(() => {
     const resetAllScroll = () => {
