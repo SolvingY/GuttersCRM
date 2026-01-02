@@ -33,7 +33,7 @@ export default function DashboardLayout() {
             />
           </div>
           
-          <div className="w-full max-w-7xl mx-auto relative z-10 min-w-0">
+          <div className="w-full md:max-w-7xl md:mx-auto relative z-10 min-w-0">
             <Outlet />
           </div>
         </main>
