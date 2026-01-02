@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 import { format, subWeeks, startOfWeek, endOfWeek, addWeeks } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserMetric {
   id: string;
@@ -41,6 +42,7 @@ interface WeeklyMetric {
 
 export default function MyStats() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [metrics, setMetrics] = useState<UserMetric[]>([]);
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyMetric[]>([]);
   const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyMetric[]>([]);
@@ -492,72 +494,80 @@ export default function MyStats() {
                   isOpen={openSections.weeklyChart}
                 />
                 <CollapsibleContent>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={get52WeekData()}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis 
-                            dataKey="week" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={10}
-                            interval={7}
-                            angle={-45}
-                            textAnchor="end"
-                            height={50}
-                          />
-                          <YAxis 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={12}
-                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number, name: string) => {
-                              const labelMap: Record<string, string> = {
-                                'sales': 'Weekly Sales',
-                                'cumulativeSales': 'Cumulative Sales',
-                                'cumulativeGoal': 'Goal Pace'
-                              };
-                              return [formatCurrency(value), labelMap[name] || name];
-                            }}
-                            labelFormatter={(label, payload) => {
-                              if (payload && payload[0]) {
-                                return `Week of ${payload[0].payload.weekLabel}`;
-                              }
-                              return label;
-                            }}
-                          />
-                          <Legend />
-                          <Bar
-                            dataKey="sales"
-                            fill="hsl(var(--accent))"
-                            name="Weekly Sales"
-                            radius={[2, 2, 0, 0]}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulativeSales"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={false}
-                            name="Cumulative Sales"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulativeGoal"
-                            stroke="hsl(var(--muted-foreground))"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                            name="Goal Pace"
-                          />
-                        </ComposedChart>
-                      </ResponsiveContainer>
+                  <CardContent className="p-2 sm:p-6">
+                    {/* Overflow containment wrapper */}
+                    <div className="w-full min-w-0 overflow-hidden">
+                      <div className="h-72 sm:h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart 
+                            data={get52WeekData()}
+                            margin={{ left: 0, right: 8, top: 8, bottom: isMobile ? 8 : 32 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis 
+                              dataKey="week" 
+                              stroke="hsl(var(--muted-foreground))" 
+                              fontSize={isMobile ? 8 : 10}
+                              interval={isMobile ? 12 : 7}
+                              angle={isMobile ? 0 : -45}
+                              textAnchor={isMobile ? "middle" : "end"}
+                              height={isMobile ? 24 : 50}
+                              tickLine={!isMobile}
+                            />
+                            <YAxis 
+                              stroke="hsl(var(--muted-foreground))" 
+                              fontSize={isMobile ? 10 : 12}
+                              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                              width={isMobile ? 40 : 60}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px',
+                              }}
+                              formatter={(value: number, name: string) => {
+                                const labelMap: Record<string, string> = {
+                                  'sales': 'Weekly Sales',
+                                  'cumulativeSales': 'Cumulative Sales',
+                                  'cumulativeGoal': 'Goal Pace'
+                                };
+                                return [formatCurrency(value), labelMap[name] || name];
+                              }}
+                              labelFormatter={(label, payload) => {
+                                if (payload && payload[0]) {
+                                  return `Week of ${payload[0].payload.weekLabel}`;
+                                }
+                                return label;
+                              }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
+                            <Bar
+                              dataKey="sales"
+                              fill="hsl(var(--accent))"
+                              name="Weekly Sales"
+                              radius={[2, 2, 0, 0]}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="cumulativeSales"
+                              stroke="hsl(var(--primary))"
+                              strokeWidth={2}
+                              dot={false}
+                              name="Cumulative Sales"
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="cumulativeGoal"
+                              stroke="hsl(var(--muted-foreground))"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              dot={false}
+                              name="Goal Pace"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   </CardContent>
                 </CollapsibleContent>
