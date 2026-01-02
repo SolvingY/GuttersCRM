@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, Target, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CompanyGoal {
@@ -23,6 +23,9 @@ interface CompanyProgress {
   totalLeadsClosed: number;
   salesRepsCount: number;
   canvassersCount: number;
+  totalSalesLeads: number;
+  totalSalesClosedDeals: number;
+  totalCanvasserIncome: number;
 }
 
 export default function CompanyGoals() {
@@ -35,6 +38,9 @@ export default function CompanyGoals() {
     totalLeadsClosed: 0,
     salesRepsCount: 0,
     canvassersCount: 0,
+    totalSalesLeads: 0,
+    totalSalesClosedDeals: 0,
+    totalCanvasserIncome: 0,
   });
 
   // Form state
@@ -79,43 +85,56 @@ export default function CompanyGoals() {
       const { data: salesData } = salesRepIds.length > 0
         ? await supabase
             .from('user_metrics')
-            .select('user_id, sales')
+            .select('user_id, sales, leads, closed_deals')
             .in('user_id', salesRepIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
 
-      // Get latest sales per user
-      const salesByUser = new Map<string, number>();
+      // Get latest metrics per user
+      const salesByUser = new Map<string, { sales: number; leads: number; closedDeals: number }>();
       salesData?.forEach(s => {
         if (!salesByUser.has(s.user_id)) {
-          salesByUser.set(s.user_id, Number(s.sales) || 0);
+          salesByUser.set(s.user_id, {
+            sales: Number(s.sales) || 0,
+            leads: Number(s.leads) || 0,
+            closedDeals: Number(s.closed_deals) || 0,
+          });
         }
       });
-      const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s, 0);
+      const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.sales, 0);
+      const totalSalesLeads = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.leads, 0);
+      const totalSalesClosedDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.closedDeals, 0);
 
-      // Fetch total leads from canvassers
+      // Fetch total leads and income from canvassers
       const { data: canvasserData } = canvasserIds.length > 0
         ? await supabase
             .from('canvasser_metrics')
-            .select('user_id, leads_closed')
+            .select('user_id, leads_closed, income')
             .in('user_id', canvasserIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
 
-      // Get latest leads per user
-      const leadsByUser = new Map<string, number>();
+      // Get latest leads and income per user
+      const leadsByUser = new Map<string, { leadsClosed: number; income: number }>();
       canvasserData?.forEach(c => {
         if (!leadsByUser.has(c.user_id)) {
-          leadsByUser.set(c.user_id, Number(c.leads_closed) || 0);
+          leadsByUser.set(c.user_id, {
+            leadsClosed: Number(c.leads_closed) || 0,
+            income: Number(c.income) || 0,
+          });
         }
       });
-      const totalLeadsClosed = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l, 0);
+      const totalLeadsClosed = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.leadsClosed, 0);
+      const totalCanvasserIncome = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.income, 0);
 
       setProgress({
         totalSales,
         totalLeadsClosed,
         salesRepsCount: salesByUser.size,
         canvassersCount: leadsByUser.size,
+        totalSalesLeads,
+        totalSalesClosedDeals,
+        totalCanvasserIncome,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -345,7 +364,57 @@ export default function CompanyGoals() {
         </Card>
       </div>
 
-      {/* Info Card */}
+      {/* Additional Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Sales Lead-to-Close Rate */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Percent className="h-5 w-5 text-accent" />
+              Sales Lead-to-Close Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {progress.totalSalesLeads > 0 
+                    ? ((progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100).toFixed(1)
+                    : '0.0'}%
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {progress.totalSalesClosedDeals} closed / {progress.totalSalesLeads} leads
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Canvasser Cost per Lead */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calculator className="h-5 w-5 text-primary" />
+              Canvasser Cost per Lead
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {progress.totalLeadsClosed > 0 
+                    ? formatCurrency(progress.totalCanvasserIncome / progress.totalLeadsClosed)
+                    : 'N/A'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} leads closed
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="bg-accent/5 border-accent/20">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">

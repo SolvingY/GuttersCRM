@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { format, subWeeks, isSameWeek } from "date-fns";
+import { format, subWeeks } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { 
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar
@@ -149,11 +149,11 @@ export default function CanvasserStats() {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
       
-      // Use isSameWeek for accurate week matching
-      const weeklyMetric = allWeeklyMetrics.find(w => {
-        const wStart = new Date(w.week_start);
-        return isSameWeek(wStart, weekStart, { weekStartsOn: 1 });
-      });
+      // Format as yyyy-MM-dd string for comparison (avoids UTC/local timezone issues)
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      
+      // Compare week_start strings directly to avoid date parsing issues
+      const weeklyMetric = allWeeklyMetrics.find(w => w.week_start === weekStartStr);
       
       weeks.push({
         week: `W${i + 1}`,
