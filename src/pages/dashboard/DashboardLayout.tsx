@@ -16,32 +16,47 @@ export default function DashboardLayout() {
 
   // DEV-only: Overflow finder to identify elements causing horizontal scroll
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return;
+    if (!import.meta.env.DEV) return;
     
     const findOverflowingElements = () => {
       const viewportWidth = window.innerWidth;
-      const overflowers: { el: Element; right: number; width: number; className: string }[] = [];
+      const scrollWidth = document.documentElement.scrollWidth;
+      const overflowers: { el: Element; right: number; width: number; className: string; styles: Record<string, string> }[] = [];
       
       document.querySelectorAll('*').forEach((el) => {
         const rect = el.getBoundingClientRect();
         if (rect.right > viewportWidth + 1 && rect.width > 0) {
+          const computed = window.getComputedStyle(el);
           overflowers.push({
             el,
             right: rect.right,
             width: rect.width,
             className: el.className?.toString?.() || '',
+            styles: {
+              position: computed.position,
+              minWidth: computed.minWidth,
+              whiteSpace: computed.whiteSpace,
+              transform: computed.transform,
+            },
           });
         }
       });
       
+      console.log(`[Overflow Finder] viewport=${viewportWidth}, scrollWidth=${scrollWidth}`);
       if (overflowers.length > 0) {
-        console.warn('[Overflow Finder] Elements exceeding viewport width:', viewportWidth);
+        console.warn('[Overflow Finder] Elements exceeding viewport:');
         overflowers
           .sort((a, b) => b.right - a.right)
           .slice(0, 5)
           .forEach((item, i) => {
-            console.warn(`  #${i + 1}: <${item.el.tagName.toLowerCase()}> class="${item.className.slice(0, 80)}" right=${item.right.toFixed(0)} width=${item.width.toFixed(0)}`);
+            console.warn(`  #${i + 1}: <${item.el.tagName.toLowerCase()}> class="${item.className.slice(0, 80)}" right=${item.right.toFixed(0)} width=${item.width.toFixed(0)}`, item.styles);
+            // Highlight top offender with red outline
+            if (i === 0) {
+              (item.el as HTMLElement).style.outline = '2px solid red';
+            }
           });
+      } else {
+        console.log('[Overflow Finder] No overflowing elements found.');
       }
     };
     
@@ -53,15 +68,19 @@ export default function DashboardLayout() {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
-  // Reset horizontal scroll position on route change to prevent "stuck right" issue
+  // Reset scroll position on route change (both vertical and horizontal)
   useEffect(() => {
-    const resetAllScrollLeft = () => {
+    const resetAllScroll = () => {
+      // Reset window scroll
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
+      
+      // Reset main container
       if (mainRef.current) {
-        mainRef.current.scrollLeft = 0;
-        // Also reset any nested horizontal scrollers
-        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+        mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        // Reset any nested horizontal scrollers
+        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"], [data-radix-scroll-area-viewport]');
         scrollers.forEach((el) => {
           (el as HTMLElement).scrollLeft = 0;
         });
@@ -69,20 +88,24 @@ export default function DashboardLayout() {
     };
     
     // Reset immediately
-    resetAllScrollLeft();
-    // Reset again after a tick (for dynamically rendered content)
-    requestAnimationFrame(resetAllScrollLeft);
+    resetAllScroll();
+    // Reset after frame paint
+    requestAnimationFrame(resetAllScroll);
+    // Fallback for late-mounting content (like charts)
+    const timer = setTimeout(resetAllScroll, 100);
+    
+    return () => clearTimeout(timer);
   }, [location.pathname]);
 
   const handleMobileClose = () => {
     setMobileMenuOpen(false);
     // Also reset scroll when closing mobile menu
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     document.documentElement.scrollLeft = 0;
     document.body.scrollLeft = 0;
     if (mainRef.current) {
-      mainRef.current.scrollLeft = 0;
-      // Also reset any nested horizontal scrollers
-      const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+      mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"], [data-radix-scroll-area-viewport]');
       scrollers.forEach((el) => {
         (el as HTMLElement).scrollLeft = 0;
       });
