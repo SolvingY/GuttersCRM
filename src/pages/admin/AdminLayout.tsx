@@ -47,15 +47,19 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
 
-  // Reset horizontal scroll position on route change to prevent "stuck right" issue
+  // Reset scroll position on route change (both vertical and horizontal)
   useEffect(() => {
-    const resetAllScrollLeft = () => {
+    const resetAllScroll = () => {
+      // Reset window scroll
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
+      
+      // Reset main container
       if (mainRef.current) {
-        mainRef.current.scrollLeft = 0;
-        // Also reset any nested horizontal scrollers
-        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+        mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        // Reset any nested horizontal scrollers
+        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"], [data-radix-scroll-area-viewport]');
         scrollers.forEach((el) => {
           (el as HTMLElement).scrollLeft = 0;
         });
@@ -63,9 +67,13 @@ export default function AdminLayout() {
     };
     
     // Reset immediately
-    resetAllScrollLeft();
-    // Reset again after a tick (for dynamically rendered content)
-    requestAnimationFrame(resetAllScrollLeft);
+    resetAllScroll();
+    // Reset after frame paint
+    requestAnimationFrame(resetAllScroll);
+    // Fallback for late-mounting content
+    const timer = setTimeout(resetAllScroll, 100);
+    
+    return () => clearTimeout(timer);
   }, [location.pathname]);
 
   const handleMobileClose = () => {
@@ -99,36 +107,36 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
       {/* Header */}
-      <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center gap-3">
+      <header className="h-14 border-b border-border bg-background flex items-center justify-between px-2 sm:px-4 lg:px-6 w-full max-w-full overflow-hidden">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
           {/* Mobile hamburger menu */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 md:hidden text-foreground"
+            className="h-9 w-9 md:hidden text-foreground flex-shrink-0"
             onClick={() => setMobileMenuOpen(true)}
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Open menu</span>
           </Button>
-          <h1 className="text-base sm:text-lg font-heading text-foreground">Admin Portal</h1>
+          <h1 className="text-base sm:text-lg font-heading text-foreground truncate min-w-0">Admin Portal</h1>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate('/dashboard/stats')}
-            className="text-xs sm:text-sm"
+            className="text-xs sm:text-sm px-2 sm:px-3"
           >
-            <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Back to</span> Dashboard
+            <ArrowLeft className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Dashboard</span>
           </Button>
           
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0">
                   <KeyRound className="h-4 w-4" />
                   <span className="sr-only">Account menu</span>
                 </Button>

@@ -14,15 +14,19 @@ export default function CanvasserLayout() {
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
 
-  // Reset horizontal scroll position on route change to prevent "stuck right" issue
+  // Reset scroll position on route change (both vertical and horizontal)
   useEffect(() => {
-    const resetAllScrollLeft = () => {
+    const resetAllScroll = () => {
+      // Reset window scroll
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
+      
+      // Reset main container
       if (mainRef.current) {
-        mainRef.current.scrollLeft = 0;
-        // Also reset any nested horizontal scrollers
-        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+        mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        // Reset any nested horizontal scrollers
+        const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"], [data-radix-scroll-area-viewport]');
         scrollers.forEach((el) => {
           (el as HTMLElement).scrollLeft = 0;
         });
@@ -30,20 +34,24 @@ export default function CanvasserLayout() {
     };
     
     // Reset immediately
-    resetAllScrollLeft();
-    // Reset again after a tick (for dynamically rendered content)
-    requestAnimationFrame(resetAllScrollLeft);
+    resetAllScroll();
+    // Reset after frame paint
+    requestAnimationFrame(resetAllScroll);
+    // Fallback for late-mounting content
+    const timer = setTimeout(resetAllScroll, 100);
+    
+    return () => clearTimeout(timer);
   }, [location.pathname]);
 
   const handleMobileClose = () => {
     setMobileOpen(false);
     // Also reset scroll when closing mobile menu
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     document.documentElement.scrollLeft = 0;
     document.body.scrollLeft = 0;
     if (mainRef.current) {
-      mainRef.current.scrollLeft = 0;
-      // Also reset any nested horizontal scrollers
-      const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"]');
+      mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      const scrollers = mainRef.current.querySelectorAll('.overflow-x-auto, .overflow-x-scroll, [style*="overflow-x"], [data-radix-scroll-area-viewport]');
       scrollers.forEach((el) => {
         (el as HTMLElement).scrollLeft = 0;
       });
