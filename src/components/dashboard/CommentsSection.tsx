@@ -15,7 +15,11 @@ interface Comment {
   userName: string;
 }
 
-export function CommentsSection() {
+interface CommentsSectionProps {
+  thread?: 'sales' | 'canvasser';
+}
+
+export function CommentsSection({ thread = 'sales' }: CommentsSectionProps) {
   const { user, isAdmin } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -24,10 +28,11 @@ export function CommentsSection() {
   const { toast } = useToast();
 
   const fetchComments = async () => {
-    // Fetch comments
+    // Fetch comments filtered by thread
     const { data: commentsData, error: commentsError } = await supabase
       .from('leaderboard_comments')
       .select('id, user_id, content, created_at')
+      .eq('thread', thread)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -76,6 +81,7 @@ export function CommentsSection() {
     const { error } = await supabase.from('leaderboard_comments').insert({
       user_id: user.id,
       content: newComment.trim(),
+      thread,
     });
 
     if (error) {
