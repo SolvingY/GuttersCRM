@@ -88,11 +88,11 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         </nav>
 
         {/* Watermark */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none overflow-hidden">
           <img 
             src={nextGenLogo} 
             alt="" 
-            className="w-24 h-24 object-contain opacity-[0.08]"
+            className="w-24 h-24 max-w-full object-contain opacity-[0.08]"
           />
         </div>
       </aside>
@@ -139,11 +139,11 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         </nav>
 
         {/* Watermark */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none overflow-hidden">
           <img 
             src={nextGenLogo} 
             alt="" 
-            className="w-28 h-28 object-contain opacity-[0.08]"
+            className="w-28 h-28 max-w-full object-contain opacity-[0.08]"
           />
         </div>
       </aside>

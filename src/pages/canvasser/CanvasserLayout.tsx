@@ -167,13 +167,13 @@ export default function CanvasserLayout() {
         <main ref={mainRef} className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-x-hidden overflow-y-auto relative min-w-0">
           {/* Watermark background */}
           <div 
-            className="absolute inset-0 pointer-events-none flex items-center justify-center"
+            className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden"
             style={{ zIndex: 0 }}
           >
             <img 
               src={nextGenLogo} 
               alt="" 
-              className="w-64 h-64 md:w-96 md:h-96 object-contain opacity-[0.04]"
+              className="w-64 h-64 md:w-96 md:h-96 max-w-full max-h-full object-contain opacity-[0.04]"
             />
           </div>
           
