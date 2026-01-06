@@ -226,29 +226,65 @@ export default function PitManagement() {
           })
           .eq('id', wager.id);
 
-        // Create point transaction for winners
+        // For winners, update their wager_points and total points in metrics
         if (isWinner) {
-          // Get current user points
-          const { data: metricsData } = await supabase
+          // Try user_metrics first (sales reps)
+          const { data: userMetricsData } = await supabase
             .from('user_metrics')
-            .select('points')
+            .select('id, points, wager_points')
             .eq('user_id', wager.user_id)
             .order('metric_date', { ascending: false })
             .limit(1)
             .single();
 
-          const currentPoints = Number(metricsData?.points) || 0;
-          const newBalance = currentPoints + pointsWon;
+          if (userMetricsData) {
+            const newPoints = (Number(userMetricsData.points) || 0) + pointsWon;
+            const newWagerPoints = (Number(userMetricsData.wager_points) || 0) + pointsWon;
 
-          await supabase
-            .from('pit_point_transactions')
-            .insert({
-              user_id: wager.user_id,
-              wager_id: wager.id,
-              transaction_type: 'wager_won',
-              points_change: pointsWon,
-              balance_after: newBalance,
-            });
+            await supabase
+              .from('user_metrics')
+              .update({ points: newPoints, wager_points: newWagerPoints })
+              .eq('id', userMetricsData.id);
+
+            await supabase
+              .from('pit_point_transactions')
+              .insert({
+                user_id: wager.user_id,
+                wager_id: wager.id,
+                transaction_type: 'wager_won',
+                points_change: pointsWon,
+                balance_after: newPoints,
+              });
+          } else {
+            // Try canvasser_metrics
+            const { data: canvasserMetricsData } = await supabase
+              .from('canvasser_metrics')
+              .select('id, points, wager_points')
+              .eq('user_id', wager.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (canvasserMetricsData) {
+              const newPoints = (Number(canvasserMetricsData.points) || 0) + pointsWon;
+              const newWagerPoints = (Number(canvasserMetricsData.wager_points) || 0) + pointsWon;
+
+              await supabase
+                .from('canvasser_metrics')
+                .update({ points: newPoints, wager_points: newWagerPoints })
+                .eq('id', canvasserMetricsData.id);
+
+              await supabase
+                .from('pit_point_transactions')
+                .insert({
+                  user_id: wager.user_id,
+                  wager_id: wager.id,
+                  transaction_type: 'wager_won',
+                  points_change: pointsWon,
+                  balance_after: newPoints,
+                });
+            }
+          }
         }
       }
 

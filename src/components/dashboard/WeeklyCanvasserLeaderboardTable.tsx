@@ -12,6 +12,8 @@ export interface WeeklyCanvasserEntry {
   shiftsWorked: number;
   doorsKnocked: number;
   pointsEarned: number;
+  contestPoints?: number;
+  wagerPoints?: number;
 }
 
 interface WeeklyCanvasserLeaderboardTableProps {
@@ -104,6 +106,8 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                         leadsSet: entry.leadsSet,
                         leadsWithDamage: entry.leadsWithDamage,
                         leadsClosed: entry.leadsClosed,
+                        contestPoints: entry.contestPoints || 0,
+                        wagerPoints: entry.wagerPoints || 0,
                         totalPoints: entry.pointsEarned,
                       }}
                     >

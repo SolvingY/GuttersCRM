@@ -11,6 +11,8 @@ interface SalesRepBreakdown {
   type: 'salesRep';
   sales: number;
   closedDeals: number;
+  contestPoints?: number;
+  wagerPoints?: number;
   totalPoints: number;
 }
 
@@ -19,6 +21,8 @@ interface CanvasserBreakdown {
   leadsSet: number;
   leadsWithDamage: number;
   leadsClosed: number;
+  contestPoints?: number;
+  wagerPoints?: number;
   totalPoints: number;
 }
 
@@ -70,6 +74,25 @@ export function PointsBreakdownTooltip({ data, children, className }: PointsBrea
                     = {data.closedDeals * 10} pts
                   </span>
                 </div>
+                {(data.contestPoints !== undefined && data.contestPoints > 0) && (
+                  <div className="flex justify-between gap-4">
+                    <span>🏆 Contest Wins</span>
+                    <span className="font-medium text-amber-600">
+                      + {data.contestPoints} pts
+                    </span>
+                  </div>
+                )}
+                {(data.wagerPoints !== undefined && data.wagerPoints !== 0) && (
+                  <div className="flex justify-between gap-4">
+                    <span>🎲 Wager {data.wagerPoints >= 0 ? 'Wins' : 'Net'}</span>
+                    <span className={cn(
+                      "font-medium",
+                      data.wagerPoints >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                      {data.wagerPoints >= 0 ? '+' : ''}{data.wagerPoints} pts
+                    </span>
+                  </div>
+                )}
                 <div className="border-t border-border pt-1 mt-1 flex justify-between gap-4 font-semibold text-foreground">
                   <span>Total</span>
                   <span>{data.totalPoints} pts</span>
@@ -95,6 +118,25 @@ export function PointsBreakdownTooltip({ data, children, className }: PointsBrea
                     = {data.leadsSet} pts
                   </span>
                 </div>
+                {(data.contestPoints !== undefined && data.contestPoints > 0) && (
+                  <div className="flex justify-between gap-4">
+                    <span>🏆 Contest Wins</span>
+                    <span className="font-medium text-amber-600">
+                      + {data.contestPoints} pts
+                    </span>
+                  </div>
+                )}
+                {(data.wagerPoints !== undefined && data.wagerPoints !== 0) && (
+                  <div className="flex justify-between gap-4">
+                    <span>🎲 Wager {data.wagerPoints >= 0 ? 'Wins' : 'Net'}</span>
+                    <span className={cn(
+                      "font-medium",
+                      data.wagerPoints >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                      {data.wagerPoints >= 0 ? '+' : ''}{data.wagerPoints} pts
+                    </span>
+                  </div>
+                )}
                 <div className="border-t border-border pt-1 mt-1 flex justify-between gap-4 font-semibold text-foreground">
                   <span>Total</span>
                   <span>{data.totalPoints} pts</span>
