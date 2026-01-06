@@ -10,6 +10,7 @@ export interface WeeklyCanvasserEntry {
   leadsWithDamage: number;
   leadsClosed: number;
   shiftsWorked: number;
+  doorsKnocked: number;
   pointsEarned: number;
 }
 
@@ -44,6 +45,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
             <tr>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors Knocked</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Closed</th>
@@ -90,6 +92,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                       )}
                     </span>
                   </td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>

@@ -38,7 +38,8 @@ interface WeeklyLeaderboardEntry {
   rank: number;
   name: string;
   userId: string;
-  sales: number;
+  approvedRevenue: number;
+  collections: number;
   leads: number;
   closedDeals: number;
   pointsEarned: number;
@@ -220,7 +221,7 @@ export default function Leaderboard() {
 
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
-        .select('user_id, sales, leads, closed_deals, points_earned')
+        .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
         .eq('week_start', weekStartStr);
 
       if (weeklyError) {
@@ -260,17 +261,18 @@ export default function Leaderboard() {
         }
       });
 
-      // Convert to array and sort by weekly sales
+      // Convert to array and sort by weekly approved revenue
       const sorted = filteredWeekly
         .map(w => ({
           userId: w.user_id,
-          sales: Number(w.sales) || 0,
+          approvedRevenue: Number(w.approved_revenue) || 0,
+          collections: Number(w.collections) || 0,
           leads: Number(w.leads) || 0,
           closedDeals: Number(w.closed_deals) || 0,
           pointsEarned: Number(w.points_earned) || 0,
           name: displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User',
         }))
-        .sort((a, b) => b.sales - a.sales)
+        .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({
           ...entry,
           rank: index + 1,
@@ -307,7 +309,7 @@ export default function Leaderboard() {
       // Filter weeks where week_start falls within this month
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
-        .select('user_id, sales, leads, closed_deals, points_earned')
+        .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
         .gte('week_start', monthStartStr)
         .lte('week_start', monthEndStr);
 
@@ -324,12 +326,13 @@ export default function Leaderboard() {
       }
 
       // Aggregate by user
-      const aggregated = new Map<string, { sales: number; leads: number; closedDeals: number; pointsEarned: number }>();
+      const aggregated = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; pointsEarned: number }>();
       weeklyData.forEach(w => {
         if (!eligibleUserIds.has(w.user_id)) return;
-        const existing = aggregated.get(w.user_id) || { sales: 0, leads: 0, closedDeals: 0, pointsEarned: 0 };
+        const existing = aggregated.get(w.user_id) || { approvedRevenue: 0, collections: 0, leads: 0, closedDeals: 0, pointsEarned: 0 };
         aggregated.set(w.user_id, {
-          sales: existing.sales + (Number(w.sales) || 0),
+          approvedRevenue: existing.approvedRevenue + (Number(w.approved_revenue) || 0),
+          collections: existing.collections + (Number(w.collections) || 0),
           leads: existing.leads + (Number(w.leads) || 0),
           closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0),
           pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
@@ -358,7 +361,7 @@ export default function Leaderboard() {
           ...data,
           name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
         }))
-        .sort((a, b) => b.sales - a.sales)
+        .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
       setMonthlyEntries(sorted);

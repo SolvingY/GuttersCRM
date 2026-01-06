@@ -39,7 +39,8 @@ interface WeeklySalesEntry {
   rank: number;
   name: string;
   userId: string;
-  sales: number;
+  approvedRevenue: number;
+  collections: number;
   leads: number;
   closedDeals: number;
   pointsEarned: number;
@@ -67,6 +68,7 @@ interface WeeklyCanvasserEntry {
   leadsWithDamage: number;
   leadsClosed: number;
   shiftsWorked: number;
+  doorsKnocked: number;
   pointsEarned: number;
 }
 
@@ -192,7 +194,7 @@ export default function AdminLeaderboards() {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_user_metrics')
-          .select('user_id, sales, leads, closed_deals, points_earned')
+          .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
           .eq('week_start', weekStartStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -222,13 +224,14 @@ export default function AdminLeaderboards() {
         const sorted = filteredWeekly
           .map(w => ({
             userId: w.user_id,
-            sales: Number(w.sales) || 0,
+            approvedRevenue: Number(w.approved_revenue) || 0,
+            collections: Number(w.collections) || 0,
             leads: Number(w.leads) || 0,
             closedDeals: Number(w.closed_deals) || 0,
             pointsEarned: Number(w.points_earned) || 0,
             name: String(displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User'),
           }))
-          .sort((a, b) => b.sales - a.sales)
+          .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
         setSalesWeeklyEntries(sorted);
@@ -239,7 +242,7 @@ export default function AdminLeaderboards() {
 
         const { data: weeklyData } = await supabase
           .from('weekly_user_metrics')
-          .select('user_id, sales, leads, closed_deals, points_earned')
+          .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
           .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
@@ -250,12 +253,13 @@ export default function AdminLeaderboards() {
         }
 
         // Aggregate by user
-        const aggregated = new Map<string, { sales: number; leads: number; closedDeals: number; pointsEarned: number }>();
+        const aggregated = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; pointsEarned: number }>();
         weeklyData.forEach(w => {
           if (!eligibleUserIds.has(w.user_id)) return;
-          const existing = aggregated.get(w.user_id) || { sales: 0, leads: 0, closedDeals: 0, pointsEarned: 0 };
+          const existing = aggregated.get(w.user_id) || { approvedRevenue: 0, collections: 0, leads: 0, closedDeals: 0, pointsEarned: 0 };
           aggregated.set(w.user_id, {
-            sales: existing.sales + (Number(w.sales) || 0),
+            approvedRevenue: existing.approvedRevenue + (Number(w.approved_revenue) || 0),
+            collections: existing.collections + (Number(w.collections) || 0),
             leads: existing.leads + (Number(w.leads) || 0),
             closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0),
             pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
@@ -284,7 +288,7 @@ export default function AdminLeaderboards() {
             ...data,
             name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
           }))
-          .sort((a, b) => b.sales - a.sales)
+          .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
         setSalesWeeklyEntries(sorted);
@@ -386,7 +390,7 @@ export default function AdminLeaderboards() {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, doors_knocked, points_earned')
           .eq('week_start', weekStartStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -414,6 +418,7 @@ export default function AdminLeaderboards() {
             leadsWithDamage: Number(w.leads_with_damage) || 0,
             leadsClosed: Number(w.leads_closed) || 0,
             shiftsWorked: Number(w.shifts_worked) || 0,
+            doorsKnocked: Number(w.doors_knocked) || 0,
             pointsEarned: Number(w.points_earned) || 0,
             name: displayNameMap.get(w.user_id) || 'Anonymous',
           }))
@@ -427,7 +432,7 @@ export default function AdminLeaderboards() {
 
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, doors_knocked, points_earned')
           .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
@@ -439,12 +444,13 @@ export default function AdminLeaderboards() {
 
         const aggregated = new Map<string, any>();
         weeklyData.forEach(w => {
-          const existing = aggregated.get(w.user_id) || { leadsSet: 0, leadsWithDamage: 0, leadsClosed: 0, shiftsWorked: 0, pointsEarned: 0 };
+          const existing = aggregated.get(w.user_id) || { leadsSet: 0, leadsWithDamage: 0, leadsClosed: 0, shiftsWorked: 0, doorsKnocked: 0, pointsEarned: 0 };
           aggregated.set(w.user_id, {
             leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
             leadsWithDamage: existing.leadsWithDamage + (Number(w.leads_with_damage) || 0),
             leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
             shiftsWorked: existing.shiftsWorked + (Number(w.shifts_worked) || 0),
+            doorsKnocked: existing.doorsKnocked + (Number(w.doors_knocked) || 0),
             pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
           });
         });
