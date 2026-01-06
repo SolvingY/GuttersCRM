@@ -271,6 +271,120 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_canvasser_metric_entries: {
+        Row: {
+          created_at: string
+          doors_knocked_delta: number | null
+          entered_by: string | null
+          entry_date: string
+          id: string
+          income_delta: number | null
+          leads_closed_delta: number | null
+          leads_set_delta: number | null
+          leads_with_damage_delta: number | null
+          notes: string | null
+          points_earned: number | null
+          shifts_worked_delta: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doors_knocked_delta?: number | null
+          entered_by?: string | null
+          entry_date?: string
+          id?: string
+          income_delta?: number | null
+          leads_closed_delta?: number | null
+          leads_set_delta?: number | null
+          leads_with_damage_delta?: number | null
+          notes?: string | null
+          points_earned?: number | null
+          shifts_worked_delta?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doors_knocked_delta?: number | null
+          entered_by?: string | null
+          entry_date?: string
+          id?: string
+          income_delta?: number | null
+          leads_closed_delta?: number | null
+          leads_set_delta?: number | null
+          leads_with_damage_delta?: number | null
+          notes?: string | null
+          points_earned?: number | null
+          shifts_worked_delta?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_user_metric_entries: {
+        Row: {
+          approved_revenue_delta: number | null
+          canvass_deals_closed_delta: number | null
+          canvass_leads_delta: number | null
+          closed_deals_delta: number | null
+          collections_delta: number | null
+          created_at: string
+          earnings_delta: number | null
+          entered_by: string | null
+          entry_date: string
+          id: string
+          leads_delta: number | null
+          notes: string | null
+          points_earned: number | null
+          sales_delta: number | null
+          self_generated_deals_delta: number | null
+          self_generated_leads_delta: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_revenue_delta?: number | null
+          canvass_deals_closed_delta?: number | null
+          canvass_leads_delta?: number | null
+          closed_deals_delta?: number | null
+          collections_delta?: number | null
+          created_at?: string
+          earnings_delta?: number | null
+          entered_by?: string | null
+          entry_date?: string
+          id?: string
+          leads_delta?: number | null
+          notes?: string | null
+          points_earned?: number | null
+          sales_delta?: number | null
+          self_generated_deals_delta?: number | null
+          self_generated_leads_delta?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_revenue_delta?: number | null
+          canvass_deals_closed_delta?: number | null
+          canvass_leads_delta?: number | null
+          closed_deals_delta?: number | null
+          collections_delta?: number | null
+          created_at?: string
+          earnings_delta?: number | null
+          entered_by?: string | null
+          entry_date?: string
+          id?: string
+          leads_delta?: number | null
+          notes?: string | null
+          points_earned?: number | null
+          sales_delta?: number | null
+          self_generated_deals_delta?: number | null
+          self_generated_leads_delta?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           created_at: string
