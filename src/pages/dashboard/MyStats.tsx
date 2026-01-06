@@ -18,6 +18,7 @@ interface UserMetric {
   id: string;
   sales: number;
   approved_revenue: number;
+  collections: number;
   points: number;
   leads: number;
   closed_deals: number;
@@ -138,6 +139,7 @@ export default function MyStats() {
   const yearlyGoal = Number(latestMetric?.yearly_goal) || 0;
   // Use approved_revenue instead of sales
   const approvedRevenue = Number(latestMetric?.approved_revenue) || 0;
+  const collectionsYtd = Number(latestMetric?.collections) || 0;
   const earningsYtd = Number(latestMetric?.earnings_ytd) || 0;
   const goalPercentage = yearlyGoal > 0 ? (approvedRevenue / yearlyGoal) * 100 : 0;
   const amountRemaining = Math.max(0, yearlyGoal - approvedRevenue);
@@ -301,7 +303,7 @@ export default function MyStats() {
                   valueClassName={getAvgJobSizeColor(averageJobSize)}
                 />
                 
-                {/* Row 2: Points | YTD Earnings (Green) */}
+                {/* Row 2: Points | Collections YTD (Green) */}
                 <StatsCard
                   title="Points"
                   value={Number(latestMetric?.points || 0).toLocaleString()}
@@ -309,13 +311,26 @@ export default function MyStats() {
                   trend={previousMetric ? calculateTrend(Number(latestMetric?.points), Number(previousMetric?.points)) : undefined}
                 />
                 <StatsCard
-                  title="YTD Earnings"
-                  value={formatCurrency(earningsYtd)}
+                  title="Collections YTD"
+                  value={formatCurrency(collectionsYtd)}
                   icon={Wallet}
                   valueClassName="text-green-500"
                 />
                 
-                {/* Row 3: Closed Deals | Leads */}
+                {/* Row 3: YTD Earnings | Self Generated */}
+                <StatsCard
+                  title="YTD Earnings"
+                  value={formatCurrency(earningsYtd)}
+                  icon={DollarSign}
+                  valueClassName="text-accent"
+                />
+                <StatsCard
+                  title="Self Generated"
+                  value={selfGeneratedDeals.toLocaleString()}
+                  icon={UserPlus}
+                />
+                
+                {/* Row 4: Closed Deals | Leads */}
                 <StatsCard
                   title="Closed Deals"
                   value={latestMetric?.closed_deals || 0}
@@ -329,17 +344,12 @@ export default function MyStats() {
                   trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
                 />
                 
-                {/* Row 4: Lead to Close % | Self Generated */}
+                {/* Row 5: Lead to Close % */}
                 <StatsCard
                   title="Lead to Close %"
                   value={`${leadToCloseRate.toFixed(1)}%`}
                   icon={Percent}
                   valueClassName={getLeadToCloseColor(leadToCloseRate)}
-                />
-                <StatsCard
-                  title="Self Generated"
-                  value={selfGeneratedDeals.toLocaleString()}
-                  icon={UserPlus}
                 />
               </div>
             </CollapsibleContent>

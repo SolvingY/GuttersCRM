@@ -56,11 +56,12 @@ interface CanvasserWeeklyEntry {
   weeklyDoorsKnocked: string;
 }
 
-// Calculate points: 10 points per $10,000 in revenue + 10 points per closed deal
-const calculatePoints = (revenue: number, closedDeals: number): number => {
+// Calculate points: 10 points per $10,000 in revenue + 10 points per closed deal + 15 points per $10,000 collections
+const calculatePoints = (revenue: number, closedDeals: number, collections: number): number => {
   const revenuePoints = Math.floor(revenue / 10000) * 10;
   const closedDealPoints = closedDeals * 10;
-  return revenuePoints + closedDealPoints;
+  const collectionsPoints = Math.floor(collections / 10000) * 15;
+  return revenuePoints + closedDealPoints + collectionsPoints;
 };
 
 export default function WeeklyUpdates() {
@@ -229,8 +230,8 @@ export default function WeeklyUpdates() {
           continue;
         }
 
-        // Calculate points for this week: 10 points per $10,000 + 10 per closed deal
-        const weeklyPoints = calculatePoints(weeklySales, weeklyClosedDeals);
+        // Calculate points for this week: 10 points per $10,000 revenue + 10 per closed deal + 15 per $10,000 collections
+        const weeklyPoints = calculatePoints(weeklySales, weeklyClosedDeals, weeklyCollections);
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('user_metrics')
@@ -283,24 +284,40 @@ export default function WeeklyUpdates() {
           continue;
         }
 
-        // Insert/update weekly record for contest tracking
+        // Fetch existing weekly record to compound values
+        const { data: existingWeekly } = await supabase
+          .from('weekly_user_metrics')
+          .select('*')
+          .eq('user_id', entry.userId)
+          .eq('week_start', weekStartStr)
+          .maybeSingle();
+
+        // Compound weekly values (add to existing if record exists)
+        const compoundedWeekly = {
+          user_id: entry.userId,
+          week_start: weekStartStr,
+          week_end: weekEndStr,
+          sales: (Number(existingWeekly?.sales) || 0) + weeklySales,
+          leads: (Number(existingWeekly?.leads) || 0) + weeklyLeads,
+          closed_deals: (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
+          earnings: (Number(existingWeekly?.earnings) || 0) + weeklyEarnings,
+          canvass_leads: (Number(existingWeekly?.canvass_leads) || 0) + weeklyCanvassLeads,
+          canvass_deals_closed: (Number(existingWeekly?.canvass_deals_closed) || 0) + weeklyCanvassDealsClose,
+          collections: (Number(existingWeekly?.collections) || 0) + weeklyCollections,
+          approved_revenue: (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
+          // Recalculate points based on compounded totals
+          points_earned: calculatePoints(
+            (Number(existingWeekly?.sales) || 0) + weeklySales,
+            (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
+            (Number(existingWeekly?.collections) || 0) + weeklyCollections
+          ),
+          updated_at: new Date().toISOString(),
+        };
+
+        // Upsert with compounded values
         const { error: weeklyError } = await supabase
           .from('weekly_user_metrics')
-          .upsert({
-            user_id: entry.userId,
-            week_start: weekStartStr,
-            week_end: weekEndStr,
-            sales: weeklySales,
-            leads: weeklyLeads,
-            closed_deals: weeklyClosedDeals,
-            earnings: weeklyEarnings,
-            points_earned: weeklyPoints,
-            canvass_leads: weeklyCanvassLeads,
-            canvass_deals_closed: weeklyCanvassDealsClose,
-            collections: weeklyCollections,
-            approved_revenue: weeklyApprovedRevenue,
-            updated_at: new Date().toISOString(),
-          }, {
+          .upsert(compoundedWeekly, {
             onConflict: 'user_id,week_start',
           });
 
@@ -366,21 +383,39 @@ export default function WeeklyUpdates() {
           continue;
         }
 
-        // Insert/update weekly record for contest tracking
+        // Fetch existing weekly record to compound values
+        const { data: existingCanvasserWeekly } = await supabase
+          .from('weekly_canvasser_metrics')
+          .select('*')
+          .eq('user_id', entry.userId)
+          .eq('week_start', weekStartStr)
+          .maybeSingle();
+
+        // Calculate canvasser points: 10 per closed + 5 per damage + 1 per set
+        const compoundedLeadsClosed = (Number(existingCanvasserWeekly?.leads_closed) || 0) + weeklyLeadsClosed;
+        const compoundedLeadsWithDamage = (Number(existingCanvasserWeekly?.leads_with_damage) || 0) + weeklyLeadsWithDamage;
+        const compoundedLeadsSet = (Number(existingCanvasserWeekly?.leads_set) || 0) + weeklyLeadsSet;
+        const canvasserPoints = (compoundedLeadsClosed * 10) + (compoundedLeadsWithDamage * 5) + compoundedLeadsSet;
+
+        // Compound weekly values (add to existing if record exists)
+        const compoundedCanvasserWeekly = {
+          user_id: entry.userId,
+          week_start: weekStartStr,
+          week_end: weekEndStr,
+          leads_set: compoundedLeadsSet,
+          leads_closed: compoundedLeadsClosed,
+          leads_with_damage: compoundedLeadsWithDamage,
+          shifts_worked: (Number(existingCanvasserWeekly?.shifts_worked) || 0) + weeklyShiftsWorked,
+          income: (Number(existingCanvasserWeekly?.income) || 0) + weeklyIncome,
+          doors_knocked: (Number(existingCanvasserWeekly?.doors_knocked) || 0) + weeklyDoorsKnocked,
+          points_earned: canvasserPoints,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Upsert with compounded values
         const { error: weeklyError } = await supabase
           .from('weekly_canvasser_metrics')
-          .upsert({
-            user_id: entry.userId,
-            week_start: weekStartStr,
-            week_end: weekEndStr,
-            leads_set: weeklyLeadsSet,
-            leads_closed: weeklyLeadsClosed,
-            leads_with_damage: weeklyLeadsWithDamage,
-            shifts_worked: weeklyShiftsWorked,
-            income: weeklyIncome,
-            doors_knocked: weeklyDoorsKnocked,
-            updated_at: new Date().toISOString(),
-          }, {
+          .upsert(compoundedCanvasserWeekly, {
             onConflict: 'user_id,week_start',
           });
 

@@ -11,6 +11,7 @@ interface SalesRepBreakdown {
   type: 'salesRep';
   sales: number;
   closedDeals: number;
+  collections: number;
   contestPoints?: number;
   wagerPoints?: number;
   totalPoints: number;
@@ -72,6 +73,12 @@ export function PointsBreakdownTooltip({ data, children, className }: PointsBrea
                   <span>{data.closedDeals} closed × 10</span>
                   <span className="font-medium text-foreground">
                     = {data.closedDeals * 10} pts
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span>{formatCurrency(data.collections)} ÷ $10,000 × 15</span>
+                  <span className="font-medium text-foreground">
+                    = {Math.floor(data.collections / 10000) * 15} pts
                   </span>
                 </div>
                 {(data.contestPoints !== undefined && data.contestPoints > 0) && (
