@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Save, Calendar, TrendingUp, Users } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Loader2, Save, Calendar as CalendarIcon, TrendingUp, Users } from 'lucide-react';
+import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface UserMetric {
   user_id: string;
@@ -23,7 +25,6 @@ interface UserMetric {
 interface WeeklyEntry {
   userId: string;
   displayName: string;
-  weeklySales: string;
   weeklyLeads: string;
   weeklyClosedDeals: string;
   weeklyEarnings: string;
@@ -72,22 +73,12 @@ export default function WeeklyUpdates() {
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserMetric[]>([]);
   const [canvasserEntries, setCanvasserEntries] = useState<CanvasserWeeklyEntry[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string>('current');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState<string>('sales-reps');
 
-  const getWeekRange = (weekOption: string) => {
-    const now = new Date();
-    let weekStart: Date;
-    
-    if (weekOption === 'current') {
-      weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    } else if (weekOption === 'previous') {
-      weekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-    } else {
-      weekStart = startOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-    }
-    
-    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+  const getWeekRangeForDate = (date: Date) => {
+    const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
     return { weekStart, weekEnd };
   };
 
@@ -126,7 +117,6 @@ export default function WeeklyUpdates() {
         userList.map((user) => ({
           userId: user.user_id,
           displayName: user.display_name || 'Unknown',
-          weeklySales: '',
           weeklyLeads: '',
           weeklyClosedDeals: '',
           weeklyEarnings: '',
@@ -203,9 +193,10 @@ export default function WeeklyUpdates() {
 
   const handleSaveAll = async () => {
     setSaving(true);
-    const { weekStart, weekEnd } = getWeekRange(selectedWeek);
+    const { weekStart, weekEnd } = getWeekRangeForDate(selectedDate);
     const weekStartStr = format(weekStart, 'yyyy-MM-dd');
     const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+    const entryDateStr = format(selectedDate, 'yyyy-MM-dd');
 
     try {
       let successCount = 0;
@@ -213,7 +204,6 @@ export default function WeeklyUpdates() {
 
       // Save Sales Rep entries
       for (const entry of weeklyEntries) {
-        const weeklySales = parseFloat(entry.weeklySales) || 0;
         const weeklyLeads = parseInt(entry.weeklyLeads) || 0;
         const weeklyClosedDeals = parseInt(entry.weeklyClosedDeals) || 0;
         const weeklyEarnings = parseFloat(entry.weeklyEarnings) || 0;
@@ -224,14 +214,14 @@ export default function WeeklyUpdates() {
         const weeklyCollections = parseFloat(entry.weeklyCollections) || 0;
         const weeklyApprovedRevenue = parseFloat(entry.weeklyApprovedRevenue) || 0;
 
-        if (weeklySales === 0 && weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && 
+        if (weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && 
             weeklySelfGeneratedLeads === 0 && weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) {
           continue;
         }
 
-        // Calculate points for this week: 10 points per $10,000 revenue + 10 per closed deal + 15 per $10,000 collections
-        const weeklyPoints = calculatePoints(weeklySales, weeklyClosedDeals, weeklyCollections);
+        // Calculate points: 10 points per $10,000 approved revenue + 10 per closed deal + 15 per $10,000 collections
+        const weeklyPoints = calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections);
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('user_metrics')
@@ -247,7 +237,6 @@ export default function WeeklyUpdates() {
           continue;
         }
 
-        const newSales = (Number(currentMetrics.sales) || 0) + weeklySales;
         const newLeads = (Number(currentMetrics.leads) || 0) + weeklyLeads;
         const newClosedDeals = (Number(currentMetrics.closed_deals) || 0) + weeklyClosedDeals;
         const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
@@ -263,7 +252,6 @@ export default function WeeklyUpdates() {
         const { error: updateError } = await supabase
           .from('user_metrics')
           .update({
-            sales: newSales,
             leads: newLeads,
             closed_deals: newClosedDeals,
             earnings_ytd: newEarnings,
@@ -297,7 +285,6 @@ export default function WeeklyUpdates() {
           user_id: entry.userId,
           week_start: weekStartStr,
           week_end: weekEndStr,
-          sales: (Number(existingWeekly?.sales) || 0) + weeklySales,
           leads: (Number(existingWeekly?.leads) || 0) + weeklyLeads,
           closed_deals: (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
           earnings: (Number(existingWeekly?.earnings) || 0) + weeklyEarnings,
@@ -307,7 +294,7 @@ export default function WeeklyUpdates() {
           approved_revenue: (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
           // Recalculate points based on compounded totals
           points_earned: calculatePoints(
-            (Number(existingWeekly?.sales) || 0) + weeklySales,
+            (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
             (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
             (Number(existingWeekly?.collections) || 0) + weeklyCollections
           ),
@@ -436,7 +423,6 @@ export default function WeeklyUpdates() {
         setWeeklyEntries((prev) =>
           prev.map((entry) => ({
             ...entry,
-            weeklySales: '',
             weeklyLeads: '',
             weeklyClosedDeals: '',
             weeklyEarnings: '',
@@ -483,7 +469,7 @@ export default function WeeklyUpdates() {
     }
   };
 
-  const { weekStart, weekEnd } = getWeekRange(selectedWeek);
+  const { weekStart, weekEnd } = getWeekRangeForDate(selectedDate);
 
   if (loading) {
     return (
@@ -497,22 +483,34 @@ export default function WeeklyUpdates() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Weekly Updates</h1>
-          <p className="text-sm text-muted-foreground">Enter weekly numbers for each team member</p>
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Daily Updates</h1>
+          <p className="text-sm text-muted-foreground">Enter daily numbers for each team member</p>
         </div>
         
         <div className="flex items-center gap-3">
-          <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-            <SelectTrigger className="w-[180px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Select week" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current">Current Week</SelectItem>
-              <SelectItem value="previous">Previous Week</SelectItem>
-              <SelectItem value="twoWeeksAgo">2 Weeks Ago</SelectItem>
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[200px] justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
           
           <Button onClick={handleSaveAll} disabled={saving}>
             {saving ? (
@@ -529,10 +527,10 @@ export default function WeeklyUpdates() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <TrendingUp className="h-5 w-5 text-accent" />
-            Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+            Entry for {format(selectedDate, 'MMM d, yyyy')} (Week: {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d')})
           </CardTitle>
           <CardDescription>
-            Enter the weekly numbers for each team member. These will be added to their yearly totals. 
+            Enter the daily numbers for each team member. These will be added to their weekly and yearly totals. 
             <span className="font-medium text-accent"> Points are auto-calculated based on role.</span>
           </CardDescription>
         </CardHeader>
@@ -552,9 +550,9 @@ export default function WeeklyUpdates() {
               ) : (
                 <div className="space-y-4">
                   {/* Header row - hidden on mobile */}
-                  <div className="hidden lg:grid lg:grid-cols-11 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
+                  <div className="hidden lg:grid lg:grid-cols-10 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
                     <div>Team Member</div>
-                    <div>Sales ($)</div>
+                    <div>Approved Rev</div>
                     <div>Leads</div>
                     <div>Closed</div>
                     <div>Self-Gen Leads</div>
@@ -562,26 +560,25 @@ export default function WeeklyUpdates() {
                     <div>Canvass Leads</div>
                     <div>Canvass Closed</div>
                     <div>Collections</div>
-                    <div>Approved Rev</div>
                     <div>Earnings ($)</div>
                   </div>
 
                   {weeklyEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-11 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
+                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-10 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
                       <div className="font-medium text-foreground text-sm">
                         {entry.displayName}
                       </div>
                       
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 lg:contents">
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground lg:hidden">Sales ($)</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label>
                           <Input
                             type="number"
                             min="0"
                             step="0.01"
                             placeholder="0.00"
-                            value={entry.weeklySales}
-                            onChange={(e) => updateEntry(entry.userId, 'weeklySales', e.target.value)}
+                            value={entry.weeklyApprovedRevenue}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)}
                             className="h-8 text-sm"
                           />
                         </div>
@@ -660,18 +657,6 @@ export default function WeeklyUpdates() {
                             placeholder="0.00"
                             value={entry.weeklyCollections}
                             onChange={(e) => updateEntry(entry.userId, 'weeklyCollections', e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={entry.weeklyApprovedRevenue}
-                            onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)}
                             className="h-8 text-sm"
                           />
                         </div>
@@ -805,18 +790,18 @@ export default function WeeklyUpdates() {
             <div className="text-sm text-muted-foreground">
               <p className="font-medium text-foreground mb-1">How it works</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Enter the weekly numbers for each team member</li>
-                <li>Click "Save All" to add these numbers to their yearly totals</li>
+                <li>Select a date and enter the daily numbers for each team member</li>
+                <li>Click "Save All" to add these numbers to their weekly and yearly totals</li>
                 <li>
                   <strong>Points are auto-calculated:</strong>
                   <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
-                    <li><strong>Sales Reps:</strong> 10 points per $10,000 in sales revenue + 10 points per closed deal</li>
+                    <li><strong>Sales Reps:</strong> 10 points per $10,000 approved revenue + 10 points per closed deal + 15 points per $10,000 collections</li>
                     <li><strong>Canvassers:</strong> 10 pts per lead closed, 5 pts per lead with damage, 1 pt per lead set</li>
                   </ul>
                 </li>
                 <li>Weekly data is tracked separately for contest periods</li>
                 <li>The leaderboard and contests will update automatically</li>
-                <li>You can go back and update previous weeks if needed</li>
+                <li>You can go back and update any date if needed</li>
               </ul>
             </div>
           </div>
