@@ -209,6 +209,17 @@ export default function Leaderboard() {
         contestWinsMap.set(c.winner_user_id!, current + 1);
       });
 
+      // Fetch contest points from contest_victories
+      const { data: victoriesData } = await supabase
+        .from('contest_victories')
+        .select('user_id, points_awarded');
+
+      const contestPointsFromVictoriesMap = new Map<string, number>();
+      victoriesData?.forEach(v => {
+        const current = contestPointsFromVictoriesMap.get(v.user_id) || 0;
+        contestPointsFromVictoriesMap.set(v.user_id, current + v.points_awarded);
+      });
+
       // Convert to array and sort by approved revenue (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => {
@@ -223,7 +234,7 @@ export default function Leaderboard() {
             salesRank: data.salesRank,
             name: data.displayName || profilesMap.get(userId) || 'Unknown User',
             contestsWon: contestWinsMap.get(userId) || 0,
-            contestPoints: pointsBreakdown.contestPoints,
+            contestPoints: contestPointsFromVictoriesMap.get(userId) || pointsBreakdown.contestPoints,
             wagerPoints: pointsBreakdown.wagerPoints,
             collections: collectionsMap.get(userId) || 0,
           };
