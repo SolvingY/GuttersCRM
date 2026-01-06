@@ -30,6 +30,7 @@ interface SalesRepEntry {
   userId: string;
   sales: number;
   closedDeals: number;
+  collections: number;
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
@@ -113,7 +114,7 @@ export default function AdminLeaderboards() {
 
       const { data: metricsData } = await supabase
         .from('user_metrics')
-        .select('id, user_id, display_name, points, sales, closed_deals, yearly_goal, sales_rank, metric_date')
+        .select('id, user_id, display_name, points, sales, closed_deals, yearly_goal, sales_rank, metric_date, approved_revenue, collections')
         .order('metric_date', { ascending: false });
 
       if (!metricsData || metricsData.length === 0) {
@@ -122,6 +123,21 @@ export default function AdminLeaderboards() {
         return;
       }
 
+      // Also fetch collections from weekly_user_metrics to aggregate YTD
+      const currentYear = new Date().getFullYear();
+      const yearStart = `${currentYear}-01-01`;
+      const { data: weeklyData } = await supabase
+        .from('weekly_user_metrics')
+        .select('user_id, collections')
+        .gte('week_start', yearStart);
+
+      // Aggregate collections by user
+      const collectionsMap = new Map<string, number>();
+      weeklyData?.forEach(w => {
+        const current = collectionsMap.get(w.user_id) || 0;
+        collectionsMap.set(w.user_id, current + (Number(w.collections) || 0));
+      });
+
       const latestByUser = new Map<string, any>();
       for (const item of metricsData) {
         if (item.user_id && !eligibleUserIds.has(item.user_id)) continue;
@@ -129,10 +145,12 @@ export default function AdminLeaderboards() {
         if (!latestByUser.has(key)) {
           latestByUser.set(key, {
             points: Number(item.points) || 0,
-            sales: Number(item.sales) || 0,
+            sales: Number(item.approved_revenue) || Number(item.sales) || 0,
+            closedDeals: Number(item.closed_deals) || 0,
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
+            collections: Number(item.collections) || collectionsMap.get(item.user_id) || 0,
           });
         }
       }
@@ -163,6 +181,7 @@ export default function AdminLeaderboards() {
           closedDeals: data.closedDeals,
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
+          collections: data.collections,
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
           contestsWon: contestWinsMap.get(userId) || 0,
         }))
