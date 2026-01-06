@@ -35,6 +35,7 @@ interface UserDetail {
   realUserId: string | null;
   name: string;
   sales: number;
+  collections: number;
   points: number;
   leads: number;
   closedDeals: number;
@@ -125,7 +126,7 @@ export default function AdminOverview() {
     // Fetch all sales rep metrics
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, approved_revenue, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads')
+      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads')
       .order('metric_date', { ascending: false });
 
     if (metricsError) {
@@ -148,6 +149,7 @@ export default function AdminOverview() {
         metricId: string; 
         realUserId: string | null;
         approvedRevenue: number; 
+        collections: number;
         points: number; 
         leads: number; 
         closedDeals: number; 
@@ -165,6 +167,7 @@ export default function AdminOverview() {
             metricId: item.id,
             realUserId: item.user_id,
             approvedRevenue: Number(item.approved_revenue) || 0,
+            collections: Number(item.collections) || 0,
             points: Number(item.points) || 0,
             leads: item.leads || 0,
             closedDeals: item.closed_deals || 0,
@@ -206,6 +209,7 @@ export default function AdminOverview() {
           metricId: data.metricId,
           realUserId: data.realUserId,
           sales: data.approvedRevenue,
+          collections: data.collections,
           points: data.points,
           leads: data.leads,
           closedDeals: data.closedDeals,
