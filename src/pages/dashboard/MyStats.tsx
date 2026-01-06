@@ -17,6 +17,7 @@ import { getRandomQuote } from '@/lib/motivationalQuotes';
 interface UserMetric {
   id: string;
   sales: number;
+  approved_revenue: number;
   points: number;
   leads: number;
   closed_deals: number;
@@ -31,6 +32,7 @@ interface WeeklyMetric {
   week_start: string;
   week_end: string;
   sales: number;
+  approved_revenue: number;
   leads: number;
   closed_deals: number;
   earnings: number;
@@ -134,15 +136,17 @@ export default function MyStats() {
   };
 
   const yearlyGoal = Number(latestMetric?.yearly_goal) || 0;
-  const currentSales = Number(latestMetric?.sales) || 0;
+  // Use approved_revenue instead of sales
+  const approvedRevenue = Number(latestMetric?.approved_revenue) || 0;
   const earningsYtd = Number(latestMetric?.earnings_ytd) || 0;
-  const goalPercentage = yearlyGoal > 0 ? (currentSales / yearlyGoal) * 100 : 0;
-  const amountRemaining = Math.max(0, yearlyGoal - currentSales);
+  const goalPercentage = yearlyGoal > 0 ? (approvedRevenue / yearlyGoal) * 100 : 0;
+  const amountRemaining = Math.max(0, yearlyGoal - approvedRevenue);
 
   const closedDeals = Number(latestMetric?.closed_deals) || 0;
   const leads = Number(latestMetric?.leads) || 0;
   const selfGeneratedDeals = Number(latestMetric?.self_generated_deals) || 0;
-  const averageJobSize = closedDeals > 0 ? currentSales / closedDeals : 0;
+  // Calculate avg job size based on approved revenue
+  const averageJobSize = closedDeals > 0 ? approvedRevenue / closedDeals : 0;
   const leadToCloseRate = leads > 0 ? (closedDeals / leads) * 100 : 0;
 
   const getLeadToCloseColor = (rate: number) => {
@@ -172,7 +176,7 @@ export default function MyStats() {
   const get52WeekData = () => {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const weeklyGoalPace = yearlyGoal / 52;
-    const weeks: { week: string; weekLabel: string; sales: number; goalPace: number; cumulativeGoal: number }[] = [];
+    const weeks: { week: string; weekLabel: string; approvedRevenue: number; goalPace: number; cumulativeGoal: number }[] = [];
     
     for (let i = 0; i < 52; i++) {
       const weekStart = new Date(fiscalStart);
@@ -187,7 +191,7 @@ export default function MyStats() {
       weeks.push({
         week: `W${i + 1}`,
         weekLabel: format(weekStart, 'MMM d'),
-        sales: Number(weeklyMetric?.sales) || 0,
+        approvedRevenue: Number(weeklyMetric?.approved_revenue) || 0,
         goalPace: weeklyGoalPace,
         cumulativeGoal: weeklyGoalPace * (i + 1),
       });
@@ -195,8 +199,8 @@ export default function MyStats() {
     
     let cumulative = 0;
     return weeks.map(w => {
-      cumulative += w.sales;
-      return { ...w, cumulativeSales: cumulative };
+      cumulative += w.approvedRevenue;
+      return { ...w, cumulativeRevenue: cumulative };
     });
   };
 
@@ -283,12 +287,12 @@ export default function MyStats() {
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {/* Row 1: Total Sales | Avg Job Size */}
+                {/* Row 1: Approved Revenue | Avg Job Size */}
                 <StatsCard
-                  title="Total Sales"
-                  value={formatCurrency(currentSales)}
+                  title="Approved Revenue"
+                  value={formatCurrency(approvedRevenue)}
                   icon={DollarSign}
-                  trend={previousMetric ? calculateTrend(Number(latestMetric?.sales), Number(previousMetric?.sales)) : undefined}
+                  trend={previousMetric ? calculateTrend(Number(latestMetric?.approved_revenue), Number(previousMetric?.approved_revenue)) : undefined}
                 />
                 <StatsCard
                   title="Avg Job Size"
@@ -367,7 +371,7 @@ export default function MyStats() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.sales))}</p>
+                            <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.approved_revenue) || Number(week.sales))}</p>
                             <p className="text-xs text-accent">+{Number(week.points_earned)} pts</p>
                           </div>
                         </div>
@@ -430,8 +434,8 @@ export default function MyStats() {
                           <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Current Sales</p>
-                          <p className="text-2xl font-bold text-foreground">{formatCurrency(currentSales)}</p>
+                          <p className="text-sm text-muted-foreground">Approved Revenue</p>
+                          <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
                         </div>
                       </div>
                       
@@ -501,7 +505,7 @@ export default function MyStats() {
                             }}
                             formatter={(value: number, name: string) => [
                               formatCurrency(value),
-                              name === 'sales' ? 'Weekly Sales' : name === 'cumulativeSales' ? 'Cumulative' : 'Goal Pace'
+                              name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
                             ]}
                             labelFormatter={(label, payload) => {
                               if (payload && payload[0]) {
@@ -512,18 +516,18 @@ export default function MyStats() {
                           />
                           <Legend />
                           <Bar
-                            dataKey="sales"
+                            dataKey="approvedRevenue"
                             fill="hsl(var(--accent))"
-                            name="Weekly Sales"
+                            name="Weekly Revenue"
                             radius={[2, 2, 0, 0]}
                           />
                           <Line
                             type="monotone"
-                            dataKey="cumulativeSales"
+                            dataKey="cumulativeRevenue"
                             stroke="hsl(var(--primary))"
                             strokeWidth={2}
                             dot={false}
-                            name="Cumulative Sales"
+                            name="Cumulative Revenue"
                           />
                           <Line
                             type="monotone"

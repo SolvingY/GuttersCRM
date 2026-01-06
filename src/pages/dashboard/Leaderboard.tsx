@@ -27,13 +27,14 @@ interface LeaderboardEntry {
   name: string;
   points: number;
   userId: string;
-  sales: number;
+  sales: number; // Now represents approved_revenue
   closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
   contestPoints: number;
   wagerPoints: number;
+  collections: number;
 }
 
 interface WeeklyLeaderboardEntry {
@@ -97,11 +98,16 @@ export default function Leaderboard() {
         .select('id, user_id, display_name, points, sales, closed_deals, sales_rank, metric_date, self_generated_deals, leads')
         .order('metric_date', { ascending: false });
 
-      // Also fetch contest_points and wager_points from user_metrics
+      // Also fetch contest_points, wager_points, and approved_revenue from user_metrics
       const { data: pointsData } = await supabase
         .from('user_metrics')
-        .select('user_id, contest_points, wager_points')
+        .select('user_id, contest_points, wager_points, approved_revenue')
         .order('metric_date', { ascending: false });
+
+      // Fetch collections aggregated from weekly_user_metrics
+      const { data: collectionsData } = await supabase
+        .from('weekly_user_metrics')
+        .select('user_id, collections');
 
       if (metricsError) {
         console.error('Error fetching leaderboard:', metricsError);
@@ -116,13 +122,23 @@ export default function Leaderboard() {
       }
 
       // Create points breakdown map (latest per user)
-      const pointsBreakdownMap = new Map<string, { contestPoints: number; wagerPoints: number }>();
+      const pointsBreakdownMap = new Map<string, { contestPoints: number; wagerPoints: number; approvedRevenue: number }>();
       pointsData?.forEach(p => {
         if (p.user_id && !pointsBreakdownMap.has(p.user_id)) {
           pointsBreakdownMap.set(p.user_id, {
             contestPoints: Number(p.contest_points) || 0,
             wagerPoints: Number(p.wager_points) || 0,
+            approvedRevenue: Number(p.approved_revenue) || 0,
           });
+        }
+      });
+
+      // Aggregate collections per user from weekly data
+      const collectionsMap = new Map<string, number>();
+      collectionsData?.forEach(c => {
+        if (c.user_id) {
+          const current = collectionsMap.get(c.user_id) || 0;
+          collectionsMap.set(c.user_id, current + (Number(c.collections) || 0));
         }
       });
 
@@ -139,6 +155,7 @@ export default function Leaderboard() {
           goalsMap.set(g.user_id, Number(g.yearly_goal) || 0);
         }
       });
+
 
       // Get latest metric per user, filtering to only eligible users (sales reps/admins)
       const latestByUser = new Map<string, {
@@ -192,14 +209,15 @@ export default function Leaderboard() {
         contestWinsMap.set(c.winner_user_id!, current + 1);
       });
 
-      // Convert to array and sort by sales (YTD Revenue)
+      // Convert to array and sort by approved revenue (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => {
-          const pointsBreakdown = pointsBreakdownMap.get(userId) || { contestPoints: 0, wagerPoints: 0 };
+          const pointsBreakdown = pointsBreakdownMap.get(userId) || { contestPoints: 0, wagerPoints: 0, approvedRevenue: 0 };
+          const approvedRevenue = pointsBreakdown.approvedRevenue || data.sales;
           return {
             userId,
             points: data.points,
-            sales: data.sales,
+            sales: approvedRevenue, // Use approved_revenue for "sales" display
             closedDeals: data.closedDeals,
             yearlyGoal: goalsMap.get(userId) || 0,
             salesRank: data.salesRank,
@@ -207,6 +225,7 @@ export default function Leaderboard() {
             contestsWon: contestWinsMap.get(userId) || 0,
             contestPoints: pointsBreakdown.contestPoints,
             wagerPoints: pointsBreakdown.wagerPoints,
+            collections: collectionsMap.get(userId) || 0,
           };
         })
         .sort((a, b) => b.sales - a.sales)
