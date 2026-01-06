@@ -6,7 +6,8 @@ interface WeeklyLeaderboardEntry {
   rank: number;
   name: string;
   userId: string;
-  sales: number;
+  approvedRevenue: number;
+  collections: number;
   leads: number;
   closedDeals: number;
   pointsEarned: number;
@@ -22,8 +23,8 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(value);
   };
 
@@ -53,7 +54,8 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
             <tr>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">NGR Sales Rep</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Weekly Sales</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Approved Revenue</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Closed Deals</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points Earned</th>
@@ -100,7 +102,12 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className="font-bold">
-                      {formatCurrency(entry.sales)}
+                      {formatCurrency(entry.approvedRevenue)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="font-bold">
+                      {formatCurrency(entry.collections)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -117,7 +124,7 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
                     <PointsBreakdownTooltip
                       data={{
                         type: 'salesRep',
-                        sales: entry.sales,
+                        sales: entry.approvedRevenue,
                         closedDeals: entry.closedDeals,
                         totalPoints: entry.pointsEarned,
                       }}
