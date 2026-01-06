@@ -24,6 +24,7 @@ interface CanvasserMetrics {
   points: number;
   income: number;
   yearlyGoal: number;
+  doorsKnocked?: number;
 }
 
 interface EditCanvasserMetricsModalProps {
@@ -44,6 +45,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
     points: 0,
     income: 0,
     yearlyGoal: 0,
+    doorsKnocked: 0,
   });
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
         points: user.points || 0,
         income: user.income || 0,
         yearlyGoal: user.yearlyGoal || 0,
+        doorsKnocked: user.doorsKnocked || 0,
       });
     }
   }, [user]);
@@ -76,6 +79,7 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
           shifts_worked: formData.shiftsWorked,
           points: formData.points,
           income: formData.income,
+          doors_knocked: formData.doorsKnocked,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.metricId);
@@ -194,6 +198,20 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
                 onChange={(e) => setFormData({ ...formData, income: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter income"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="doorsKnocked" className="text-right">
+                Doors Knocked
+              </Label>
+              <Input
+                id="doorsKnocked"
+                type="number"
+                min="0"
+                value={formData.doorsKnocked}
+                onChange={(e) => setFormData({ ...formData, doorsKnocked: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter doors knocked"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

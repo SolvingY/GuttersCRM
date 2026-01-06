@@ -32,6 +32,10 @@ interface UserMetrics {
   closedDeals: number;
   earningsYtd?: number;
   leads: number;
+  collections?: number;
+  approvedRevenue?: number;
+  canvassLeads?: number;
+  canvassDealsClose?: number;
 }
 
 interface EditMetricsModalProps {
@@ -52,6 +56,10 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     closedDeals: 0,
     earningsYtd: 0,
     leads: 0,
+    collections: 0,
+    approvedRevenue: 0,
+    canvassLeads: 0,
+    canvassDealsClose: 0,
   });
 
   useEffect(() => {
@@ -64,6 +72,10 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         closedDeals: user.closedDeals || 0,
         earningsYtd: user.earningsYtd || 0,
         leads: user.leads || 0,
+        collections: user.collections || 0,
+        approvedRevenue: user.approvedRevenue || 0,
+        canvassLeads: user.canvassLeads || 0,
+        canvassDealsClose: user.canvassDealsClose || 0,
       });
     }
   }, [user]);
@@ -85,6 +97,10 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           closed_deals: formData.closedDeals,
           earnings_ytd: formData.earningsYtd,
           leads: formData.leads,
+          collections: formData.collections,
+          approved_revenue: formData.approvedRevenue,
+          canvass_leads: formData.canvassLeads,
+          canvass_deals_closed: formData.canvassDealsClose,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.metricId);
@@ -234,6 +250,64 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 onChange={(e) => setFormData({ ...formData, leads: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter leads count"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="collections" className="text-right">
+                Collections
+              </Label>
+              <Input
+                id="collections"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.collections}
+                onChange={(e) => setFormData({ ...formData, collections: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter collections amount"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="approvedRevenue" className="text-right">
+                Approved Rev
+              </Label>
+              <Input
+                id="approvedRevenue"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.approvedRevenue}
+                onChange={(e) => setFormData({ ...formData, approvedRevenue: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter approved revenue"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="canvassLeads" className="text-right">
+                Canvass Leads
+              </Label>
+              <Input
+                id="canvassLeads"
+                type="number"
+                min="0"
+                value={formData.canvassLeads}
+                onChange={(e) => setFormData({ ...formData, canvassLeads: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter canvass leads"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="canvassDealsClose" className="text-right">
+                Canvass Closed
+              </Label>
+              <Input
+                id="canvassDealsClose"
+                type="number"
+                min="0"
+                value={formData.canvassDealsClose}
+                onChange={(e) => setFormData({ ...formData, canvassDealsClose: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter canvass deals closed"
               />
             </div>
           </div>
