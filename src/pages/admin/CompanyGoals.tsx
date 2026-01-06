@@ -340,14 +340,14 @@ export default function CompanyGoals() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between items-end">
-              <div>
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Current</p>
-                <p className="text-3xl font-bold text-foreground">{formatCurrency(progress.totalSales)}</p>
+                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{formatCurrency(progress.totalSales)}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right min-w-0">
                 <p className="text-sm text-muted-foreground">Goal</p>
-                <p className="text-xl font-semibold text-foreground">{formatCurrency(salesGoalNum)}</p>
+                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{formatCurrency(salesGoalNum)}</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -379,14 +379,14 @@ export default function CompanyGoals() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between items-end">
-              <div>
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Current</p>
-                <p className="text-3xl font-bold text-foreground">{progress.totalLeadsClosed.toLocaleString()}</p>
+                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{progress.totalLeadsClosed.toLocaleString()}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right min-w-0">
                 <p className="text-sm text-muted-foreground">Goal</p>
-                <p className="text-xl font-semibold text-foreground">{leadsGoalNum.toLocaleString()}</p>
+                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{leadsGoalNum.toLocaleString()}</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -418,14 +418,14 @@ export default function CompanyGoals() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between items-end">
-              <div>
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Collected</p>
-                <p className="text-3xl font-bold text-foreground">{formatCurrency(progress.totalCollections)}</p>
+                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{formatCurrency(progress.totalCollections)}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right min-w-0">
                 <p className="text-sm text-muted-foreground">vs Sales</p>
-                <p className="text-xl font-semibold text-foreground">{formatCurrency(progress.totalSales)}</p>
+                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{formatCurrency(progress.totalSales)}</p>
               </div>
             </div>
             {(() => {

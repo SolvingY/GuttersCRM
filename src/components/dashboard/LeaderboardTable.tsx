@@ -171,6 +171,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                         type: 'salesRep',
                         sales: entry.sales,
                         closedDeals: entry.closedDeals || 0,
+                        collections: entry.collections || 0,
                         contestPoints: entry.contestPoints || 0,
                         wagerPoints: entry.wagerPoints || 0,
                         totalPoints: entry.points,

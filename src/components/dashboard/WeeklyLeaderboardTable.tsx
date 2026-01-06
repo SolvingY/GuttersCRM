@@ -128,6 +128,7 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
                         type: 'salesRep',
                         sales: entry.approvedRevenue,
                         closedDeals: entry.closedDeals,
+                        collections: entry.collections,
                         contestPoints: entry.contestPoints || 0,
                         wagerPoints: entry.wagerPoints || 0,
                         totalPoints: entry.pointsEarned,
