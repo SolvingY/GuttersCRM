@@ -12,6 +12,7 @@ interface LeaderboardEntry {
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
+  collections?: number;
 }
 
 interface LeaderboardTableProps {
@@ -81,6 +82,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Rank</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Indiv. Rep Goals</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
@@ -141,6 +143,11 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                   <td className="py-3 px-4 text-right">
                     <span className="font-bold">
                       {formatCurrency(entry.sales)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="font-medium">
+                      {formatCurrency(entry.collections || 0)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">

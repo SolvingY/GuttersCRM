@@ -210,7 +210,7 @@ export default function CanvasserStats() {
 
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-          My Stats <span className="text-red-500 text-lg ml-2">The 6 Figure System</span>
+          My Stats
         </h1>
         <p className="text-muted-foreground mt-1">
           Welcome back{metrics?.display_name ? `, ${metrics.display_name}` : ""}! Track your canvassing performance

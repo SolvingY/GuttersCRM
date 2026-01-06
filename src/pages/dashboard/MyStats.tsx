@@ -242,7 +242,7 @@ export default function MyStats() {
 
       <div>
         <h2 className="text-2xl font-heading text-foreground">
-          My Stats <span className="text-red-500 text-lg ml-2">The 6 Figure System</span>
+          My Stats
         </h2>
         <p className="text-muted-foreground">
           Welcome back{displayName ? `, ${displayName}` : ''}! Track your personal performance metrics

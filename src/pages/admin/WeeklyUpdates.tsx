@@ -29,6 +29,10 @@ interface WeeklyEntry {
   weeklyEarnings: string;
   weeklySelfGeneratedLeads: string;
   weeklySelfGeneratedDeals: string;
+  weeklyCanvassLeads: string;
+  weeklyCanvassDealsClose: string;
+  weeklyCollections: string;
+  weeklyApprovedRevenue: string;
 }
 
 interface CanvasserMetric {
@@ -49,6 +53,7 @@ interface CanvasserWeeklyEntry {
   weeklyLeadsWithDamage: string;
   weeklyShiftsWorked: string;
   weeklyIncome: string;
+  weeklyDoorsKnocked: string;
 }
 
 // Calculate points: 10 points per $10,000 in revenue + 10 points per closed deal
@@ -126,6 +131,10 @@ export default function WeeklyUpdates() {
           weeklyEarnings: '',
           weeklySelfGeneratedLeads: '',
           weeklySelfGeneratedDeals: '',
+          weeklyCanvassLeads: '',
+          weeklyCanvassDealsClose: '',
+          weeklyCollections: '',
+          weeklyApprovedRevenue: '',
         }))
       );
 
@@ -156,6 +165,7 @@ export default function WeeklyUpdates() {
           weeklyLeadsWithDamage: '',
           weeklyShiftsWorked: '',
           weeklyIncome: '',
+          weeklyDoorsKnocked: '',
         }))
       );
     } catch (error) {
@@ -208,8 +218,14 @@ export default function WeeklyUpdates() {
         const weeklyEarnings = parseFloat(entry.weeklyEarnings) || 0;
         const weeklySelfGeneratedLeads = parseInt(entry.weeklySelfGeneratedLeads) || 0;
         const weeklySelfGeneratedDeals = parseInt(entry.weeklySelfGeneratedDeals) || 0;
+        const weeklyCanvassLeads = parseInt(entry.weeklyCanvassLeads) || 0;
+        const weeklyCanvassDealsClose = parseInt(entry.weeklyCanvassDealsClose) || 0;
+        const weeklyCollections = parseFloat(entry.weeklyCollections) || 0;
+        const weeklyApprovedRevenue = parseFloat(entry.weeklyApprovedRevenue) || 0;
 
-        if (weeklySales === 0 && weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && weeklySelfGeneratedLeads === 0 && weeklySelfGeneratedDeals === 0) {
+        if (weeklySales === 0 && weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && 
+            weeklySelfGeneratedLeads === 0 && weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
+            weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) {
           continue;
         }
 
@@ -237,6 +253,10 @@ export default function WeeklyUpdates() {
         const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
         const newSelfGeneratedDeals = (Number(currentMetrics.self_generated_deals) || 0) + weeklySelfGeneratedDeals;
         const newSelfGeneratedLeads = (Number((currentMetrics as any).self_generated_leads) || 0) + weeklySelfGeneratedLeads;
+        const newCanvassLeads = (Number((currentMetrics as any).canvass_leads) || 0) + weeklyCanvassLeads;
+        const newCanvassDealsClose = (Number((currentMetrics as any).canvass_deals_closed) || 0) + weeklyCanvassDealsClose;
+        const newCollections = (Number((currentMetrics as any).collections) || 0) + weeklyCollections;
+        const newApprovedRevenue = (Number((currentMetrics as any).approved_revenue) || 0) + weeklyApprovedRevenue;
 
         // Update user_metrics with new totals including auto-calculated points
         const { error: updateError } = await supabase
@@ -249,6 +269,10 @@ export default function WeeklyUpdates() {
             points: newPoints,
             self_generated_deals: newSelfGeneratedDeals,
             self_generated_leads: newSelfGeneratedLeads,
+            canvass_leads: newCanvassLeads,
+            canvass_deals_closed: newCanvassDealsClose,
+            collections: newCollections,
+            approved_revenue: newApprovedRevenue,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', entry.userId);
@@ -271,6 +295,10 @@ export default function WeeklyUpdates() {
             closed_deals: weeklyClosedDeals,
             earnings: weeklyEarnings,
             points_earned: weeklyPoints,
+            canvass_leads: weeklyCanvassLeads,
+            canvass_deals_closed: weeklyCanvassDealsClose,
+            collections: weeklyCollections,
+            approved_revenue: weeklyApprovedRevenue,
             updated_at: new Date().toISOString(),
           }, {
             onConflict: 'user_id,week_start',
@@ -291,8 +319,10 @@ export default function WeeklyUpdates() {
         const weeklyLeadsWithDamage = parseInt(entry.weeklyLeadsWithDamage) || 0;
         const weeklyShiftsWorked = parseInt(entry.weeklyShiftsWorked) || 0;
         const weeklyIncome = parseFloat(entry.weeklyIncome) || 0;
+        const weeklyDoorsKnocked = parseInt(entry.weeklyDoorsKnocked) || 0;
 
-        if (weeklyLeadsSet === 0 && weeklyLeadsClosed === 0 && weeklyLeadsWithDamage === 0 && weeklyShiftsWorked === 0 && weeklyIncome === 0) {
+        if (weeklyLeadsSet === 0 && weeklyLeadsClosed === 0 && weeklyLeadsWithDamage === 0 && 
+            weeklyShiftsWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) {
           continue;
         }
 
@@ -315,6 +345,7 @@ export default function WeeklyUpdates() {
         const newLeadsWithDamage = (Number(currentMetrics.leads_with_damage) || 0) + weeklyLeadsWithDamage;
         const newShiftsWorked = (Number(currentMetrics.shifts_worked) || 0) + weeklyShiftsWorked;
         const newIncome = (Number(currentMetrics.income) || 0) + weeklyIncome;
+        const newDoorsKnocked = (Number((currentMetrics as any).doors_knocked) || 0) + weeklyDoorsKnocked;
 
         const { error: updateError } = await supabase
           .from('canvasser_metrics')
@@ -324,6 +355,7 @@ export default function WeeklyUpdates() {
             leads_with_damage: newLeadsWithDamage,
             shifts_worked: newShiftsWorked,
             income: newIncome,
+            doors_knocked: newDoorsKnocked,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', entry.userId);
@@ -346,6 +378,7 @@ export default function WeeklyUpdates() {
             leads_with_damage: weeklyLeadsWithDamage,
             shifts_worked: weeklyShiftsWorked,
             income: weeklyIncome,
+            doors_knocked: weeklyDoorsKnocked,
             updated_at: new Date().toISOString(),
           }, {
             onConflict: 'user_id,week_start',
@@ -374,6 +407,10 @@ export default function WeeklyUpdates() {
             weeklyEarnings: '',
             weeklySelfGeneratedLeads: '',
             weeklySelfGeneratedDeals: '',
+            weeklyCanvassLeads: '',
+            weeklyCanvassDealsClose: '',
+            weeklyCollections: '',
+            weeklyApprovedRevenue: '',
           }))
         );
         setCanvasserEntries((prev) =>
@@ -384,6 +421,7 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithDamage: '',
             weeklyShiftsWorked: '',
             weeklyIncome: '',
+            weeklyDoorsKnocked: '',
           }))
         );
       } else if (errorCount > 0) {
@@ -479,25 +517,29 @@ export default function WeeklyUpdates() {
               ) : (
                 <div className="space-y-4">
                   {/* Header row - hidden on mobile */}
-                  <div className="hidden md:grid md:grid-cols-7 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
+                  <div className="hidden lg:grid lg:grid-cols-11 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
                     <div>Team Member</div>
-                    <div>Weekly Sales ($)</div>
-                    <div>Weekly Leads</div>
-                    <div>Closed Deals</div>
+                    <div>Sales ($)</div>
+                    <div>Leads</div>
+                    <div>Closed</div>
                     <div>Self-Gen Leads</div>
-                    <div>Self-Gen Deals</div>
+                    <div>Self-Gen Contracts</div>
+                    <div>Canvass Leads</div>
+                    <div>Canvass Closed</div>
+                    <div>Collections</div>
+                    <div>Approved Rev</div>
                     <div>Earnings ($)</div>
                   </div>
 
                   {weeklyEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 md:space-y-0 md:grid md:grid-cols-7 md:gap-4 md:items-center p-4 md:p-0 bg-muted/30 md:bg-transparent rounded-lg md:rounded-none">
-                      <div className="font-medium text-foreground">
+                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-11 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
+                      <div className="font-medium text-foreground text-sm">
                         {entry.displayName}
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-3 md:contents">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 lg:contents">
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground md:hidden">Weekly Sales ($)</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Sales ($)</Label>
                           <Input
                             type="number"
                             min="0"
@@ -505,55 +547,101 @@ export default function WeeklyUpdates() {
                             placeholder="0.00"
                             value={entry.weeklySales}
                             onChange={(e) => updateEntry(entry.userId, 'weeklySales', e.target.value)}
-                            className="h-9"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground md:hidden">Weekly Leads</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Leads</Label>
                           <Input
                             type="number"
                             min="0"
                             placeholder="0"
                             value={entry.weeklyLeads}
                             onChange={(e) => updateEntry(entry.userId, 'weeklyLeads', e.target.value)}
-                            className="h-9"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground md:hidden">Closed Deals</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Closed</Label>
                           <Input
                             type="number"
                             min="0"
                             placeholder="0"
                             value={entry.weeklyClosedDeals}
                             onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)}
-                            className="h-9"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground md:hidden">Self-Gen Leads</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Leads</Label>
                           <Input
                             type="number"
                             min="0"
                             placeholder="0"
                             value={entry.weeklySelfGeneratedLeads}
                             onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedLeads', e.target.value)}
-                            className="h-9"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground md:hidden">Self-Gen Deals</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Contracts</Label>
                           <Input
                             type="number"
                             min="0"
                             placeholder="0"
                             value={entry.weeklySelfGeneratedDeals}
                             onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedDeals', e.target.value)}
-                            className="h-9"
+                            className="h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground md:hidden">Earnings ($)</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Canvass Leads</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={entry.weeklyCanvassLeads}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassLeads', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground lg:hidden">Canvass Closed</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={entry.weeklyCanvassDealsClose}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassDealsClose', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground lg:hidden">Collections</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={entry.weeklyCollections}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklyCollections', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={entry.weeklyApprovedRevenue}
+                            onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground lg:hidden">Earnings ($)</Label>
                           <Input
                             type="number"
                             min="0"
@@ -561,7 +649,7 @@ export default function WeeklyUpdates() {
                             placeholder="0.00"
                             value={entry.weeklyEarnings}
                             onChange={(e) => updateEntry(entry.userId, 'weeklyEarnings', e.target.value)}
-                            className="h-9"
+                            className="h-8 text-sm"
                           />
                         </div>
                       </div>
@@ -580,22 +668,23 @@ export default function WeeklyUpdates() {
               ) : (
                 <div className="space-y-4">
                   {/* Header row - hidden on mobile */}
-                  <div className="hidden md:grid md:grid-cols-6 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
+                  <div className="hidden md:grid md:grid-cols-7 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
                     <div>Team Member</div>
                     <div>Leads Set</div>
                     <div>Leads Closed</div>
                     <div>w/ Damage</div>
                     <div>Shifts</div>
+                    <div>Doors Knocked</div>
                     <div>Income ($)</div>
                   </div>
 
                   {canvasserEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 md:space-y-0 md:grid md:grid-cols-6 md:gap-4 md:items-center p-4 md:p-0 bg-muted/30 md:bg-transparent rounded-lg md:rounded-none">
+                    <div key={entry.userId} className="space-y-3 md:space-y-0 md:grid md:grid-cols-7 md:gap-4 md:items-center p-4 md:p-0 bg-muted/30 md:bg-transparent rounded-lg md:rounded-none">
                       <div className="font-medium text-foreground">
                         {entry.displayName}
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:contents">
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:contents">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground md:hidden">Leads Set</Label>
                           <Input
@@ -637,6 +726,17 @@ export default function WeeklyUpdates() {
                             placeholder="0"
                             value={entry.weeklyShiftsWorked}
                             onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyShiftsWorked', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground md:hidden">Doors Knocked</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={entry.weeklyDoorsKnocked}
+                            onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyDoorsKnocked', e.target.value)}
                             className="h-9"
                           />
                         </div>

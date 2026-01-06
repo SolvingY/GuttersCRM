@@ -14,6 +14,7 @@ export interface CanvasserLeaderboardEntry {
   amountUntilGoal: number;
   percentOfGoal: number;
   contestsWon: number;
+  doorsKnocked?: number;
 }
 
 interface CanvasserLeaderboardTableProps {
@@ -58,6 +59,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Yearly Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Closed</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors Knocked</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Until Goal</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
@@ -108,6 +110,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                     {hasGoal ? entry.yearlyGoal : '-'}
                   </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">
                     {hasGoal ? entry.amountUntilGoal : '-'}
                   </td>

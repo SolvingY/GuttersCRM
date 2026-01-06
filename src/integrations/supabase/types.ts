@@ -51,6 +51,7 @@ export type Database = {
         Row: {
           created_at: string | null
           display_name: string | null
+          doors_knocked: number | null
           id: string
           income: number | null
           leads_closed: number | null
@@ -66,6 +67,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           display_name?: string | null
+          doors_knocked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
@@ -81,6 +83,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           display_name?: string | null
+          doors_knocked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
@@ -361,6 +364,195 @@ export type Database = {
         }
         Relationships: []
       }
+      pit_point_transactions: {
+        Row: {
+          balance_after: number
+          created_at: string | null
+          id: string
+          points_change: number
+          transaction_type: string
+          user_id: string
+          wager_id: string | null
+        }
+        Insert: {
+          balance_after: number
+          created_at?: string | null
+          id?: string
+          points_change: number
+          transaction_type: string
+          user_id: string
+          wager_id?: string | null
+        }
+        Update: {
+          balance_after?: number
+          created_at?: string | null
+          id?: string
+          points_change?: number
+          transaction_type?: string
+          user_id?: string
+          wager_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pit_point_transactions_wager_id_fkey"
+            columns: ["wager_id"]
+            isOneToOne: false
+            referencedRelation: "pit_wagers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pit_wager_events: {
+        Row: {
+          contest_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          event_type: string
+          id: string
+          max_wager: number | null
+          min_wager: number | null
+          resolved_at: string | null
+          resolves_at: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          wagers_close_at: string
+        }
+        Insert: {
+          contest_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          max_wager?: number | null
+          min_wager?: number | null
+          resolved_at?: string | null
+          resolves_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          wagers_close_at: string
+        }
+        Update: {
+          contest_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          max_wager?: number | null
+          min_wager?: number | null
+          resolved_at?: string | null
+          resolves_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          wagers_close_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pit_wager_events_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pit_wager_options: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          is_winner: boolean | null
+          option_label: string
+          payout_multiplier: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          is_winner?: boolean | null
+          option_label: string
+          payout_multiplier?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          is_winner?: boolean | null
+          option_label?: string
+          payout_multiplier?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pit_wager_options_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "pit_wager_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pit_wagers: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          option_id: string
+          points_wagered: number
+          points_won: number | null
+          potential_payout: number
+          resolved_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          option_id: string
+          points_wagered: number
+          points_won?: number | null
+          potential_payout: number
+          resolved_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          option_id?: string
+          points_wagered?: number
+          points_won?: number | null
+          potential_payout?: number
+          resolved_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pit_wagers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "pit_wager_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pit_wagers_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "pit_wager_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -419,7 +611,11 @@ export type Database = {
       }
       user_metrics: {
         Row: {
+          approved_revenue: number | null
+          canvass_deals_closed: number | null
+          canvass_leads: number | null
           closed_deals: number | null
+          collections: number | null
           created_at: string
           display_name: string | null
           earnings_ytd: number | null
@@ -436,7 +632,11 @@ export type Database = {
           yearly_goal: number | null
         }
         Insert: {
+          approved_revenue?: number | null
+          canvass_deals_closed?: number | null
+          canvass_leads?: number | null
           closed_deals?: number | null
+          collections?: number | null
           created_at?: string
           display_name?: string | null
           earnings_ytd?: number | null
@@ -453,7 +653,11 @@ export type Database = {
           yearly_goal?: number | null
         }
         Update: {
+          approved_revenue?: number | null
+          canvass_deals_closed?: number | null
+          canvass_leads?: number | null
           closed_deals?: number | null
+          collections?: number | null
           created_at?: string
           display_name?: string | null
           earnings_ytd?: number | null
@@ -492,6 +696,7 @@ export type Database = {
       weekly_canvasser_metrics: {
         Row: {
           created_at: string
+          doors_knocked: number | null
           id: string
           income: number | null
           leads_closed: number | null
@@ -506,6 +711,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          doors_knocked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
@@ -520,6 +726,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          doors_knocked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
@@ -536,7 +743,11 @@ export type Database = {
       }
       weekly_user_metrics: {
         Row: {
+          approved_revenue: number | null
+          canvass_deals_closed: number | null
+          canvass_leads: number | null
           closed_deals: number | null
+          collections: number | null
           created_at: string
           earnings: number | null
           id: string
@@ -549,7 +760,11 @@ export type Database = {
           week_start: string
         }
         Insert: {
+          approved_revenue?: number | null
+          canvass_deals_closed?: number | null
+          canvass_leads?: number | null
           closed_deals?: number | null
+          collections?: number | null
           created_at?: string
           earnings?: number | null
           id?: string
@@ -562,7 +777,11 @@ export type Database = {
           week_start: string
         }
         Update: {
+          approved_revenue?: number | null
+          canvass_deals_closed?: number | null
+          canvass_leads?: number | null
           closed_deals?: number | null
+          collections?: number | null
           created_at?: string
           earnings?: number | null
           id?: string
