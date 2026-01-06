@@ -2,13 +2,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { DollarSign, Star, Users, Briefcase, Target, Pencil, TrendingUp } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, Target, Pencil, TrendingUp, Wallet } from 'lucide-react';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 
 interface UserStats {
   metricId: string;
   name: string;
   sales: number;
+  collections: number;
   points: number;
   leads: number;
   closedDeals: number;
@@ -71,7 +72,7 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <StatsCard
-              title="Total Sales"
+              title="Approved Revenue"
               value={formatCurrency(user.sales)}
               icon={DollarSign}
             />
@@ -86,6 +87,12 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
               icon={Star}
             />
             <StatsCard
+              title="Collections YTD"
+              value={formatCurrency(user.collections || 0)}
+              icon={Wallet}
+              valueClassName="text-green-500"
+            />
+            <StatsCard
               title="Leads"
               value={user.leads}
               icon={Users}
@@ -95,6 +102,10 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
               value={user.closedDeals}
               icon={Briefcase}
             />
+          </div>
+          
+          {/* Yearly Goal Card */}
+          <div className="grid grid-cols-1 gap-4">
             <StatsCard
               title="Yearly Goal"
               value={formatCurrency(user.yearlyGoal)}
