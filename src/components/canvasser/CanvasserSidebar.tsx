@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +7,7 @@ const navItems = [
   { icon: BarChart3, label: "My Stats", path: "/canvasser/stats" },
   { icon: Trophy, label: "Leaderboard", path: "/canvasser/leaderboard" },
   { icon: Award, label: "Contests", path: "/canvasser/contests" },
+  { icon: Flame, label: "The Pit", path: "/canvasser/pit" },
   { icon: Settings, label: "Settings", path: "/canvasser/settings" },
 ];
 

@@ -11,6 +11,7 @@ import MyStats from "./pages/dashboard/MyStats";
 import Leaderboard from "./pages/dashboard/Leaderboard";
 import Contests from "./pages/dashboard/Contests";
 import Settings from "./pages/dashboard/Settings";
+import ThePit from "./pages/dashboard/ThePit";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
@@ -19,11 +20,13 @@ import AdminLeaderboards from "./pages/admin/AdminLeaderboards";
 import UserRoles from "./pages/admin/UserRoles";
 import Announcements from "./pages/admin/Announcements";
 import CompanyGoals from "./pages/admin/CompanyGoals";
+import PitManagement from "./pages/admin/PitManagement";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
 import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
 import CanvasserContests from "./pages/canvasser/CanvasserContests";
 import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
+import CanvasserPit from "./pages/canvasser/CanvasserPit";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -51,6 +54,7 @@ const App = () => (
             <Route path="stats" element={<MyStats />} />
             <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="contests" element={<Contests />} />
+            <Route path="pit" element={<ThePit />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 
@@ -67,6 +71,7 @@ const App = () => (
             <Route path="stats" element={<CanvasserStats />} />
             <Route path="leaderboard" element={<CanvasserLeaderboard />} />
             <Route path="contests" element={<CanvasserContests />} />
+            <Route path="pit" element={<CanvasserPit />} />
             <Route path="settings" element={<CanvasserSettings />} />
           </Route>
 
@@ -88,6 +93,7 @@ const App = () => (
             <Route path="weekly" element={<WeeklyUpdates />} />
             <Route path="announcements" element={<Announcements />} />
             <Route path="contests" element={<Contests />} />
+            <Route path="pit" element={<PitManagement />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
