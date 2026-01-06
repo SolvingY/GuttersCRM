@@ -15,6 +15,7 @@ interface WagerEvent {
   id: string;
   title: string;
   description: string | null;
+  event_type: string;
   status: string;
   wagers_close_at: string;
   min_wager: number;
@@ -27,6 +28,7 @@ interface WagerOption {
   option_label: string;
   payout_multiplier: number;
   is_winner: boolean;
+  user_id: string | null;
 }
 
 interface UserWager {
@@ -226,6 +228,16 @@ export default function ThePit() {
     return formatDistanceToNow(close, { addSuffix: true });
   };
 
+  const getEventTypeLabel = (eventType: string) => {
+    const labels: Record<string, { label: string; color: string }> = {
+      custom: { label: 'Custom', color: 'bg-gray-500' },
+      weekly_top_sales: { label: 'Weekly Top Sales', color: 'bg-blue-500' },
+      weekly_top_canvasser: { label: 'Weekly Top Canvasser', color: 'bg-green-500' },
+      contest: { label: 'Contest Winner', color: 'bg-yellow-500' },
+    };
+    return labels[eventType] || labels.custom;
+  };
+
   const hasUserBetOnEvent = (eventId: string) => {
     return userWagers.some(w => w.event_id === eventId && w.status === 'pending');
   };
@@ -344,13 +356,21 @@ export default function ThePit() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="flex items-center gap-2">
+                          <CardTitle className="flex items-center gap-2 flex-wrap">
                             {event.title}
                             {userBet && <Badge className="bg-orange-500">You're In</Badge>}
                             {isClosed && <Badge variant="secondary">Closed</Badge>}
                           </CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={getEventTypeLabel(event.event_type).color}>
+                              {getEventTypeLabel(event.event_type).label}
+                            </Badge>
+                            {eventOptions.some(opt => opt.user_id) && (
+                              <Badge variant="outline" className="text-xs">User Tracking</Badge>
+                            )}
+                          </div>
                           {event.description && (
-                            <CardDescription className="mt-1">{event.description}</CardDescription>
+                            <CardDescription className="mt-2">{event.description}</CardDescription>
                           )}
                         </div>
                         <div className="text-right text-sm">

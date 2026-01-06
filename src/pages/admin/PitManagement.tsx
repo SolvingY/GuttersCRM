@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins, Wand2 } from 'lucide-react';
+import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins, Wand2, Pencil } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 
 interface WagerEvent {
@@ -61,10 +61,19 @@ export default function PitManagement() {
   const [wagers, setWagers] = useState<Map<string, Wager[]>>(new Map());
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<WagerEvent | null>(null);
   const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [autoDetecting, setAutoDetecting] = useState(false);
   const [userMetricsForResolve, setUserMetricsForResolve] = useState<Map<string, { name: string; metric: number }>>(new Map());
+  
+  // Edit event form state
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editEventType, setEditEventType] = useState('custom');
+  const [editWagersCloseAt, setEditWagersCloseAt] = useState('');
+  const [editMinWager, setEditMinWager] = useState('10');
+  const [editMaxWager, setEditMaxWager] = useState('500');
   
   // Create event form state
   const [newTitle, setNewTitle] = useState('');
@@ -604,6 +613,63 @@ export default function PitManagement() {
     setNewOptions(updated);
   };
 
+  const openEditDialog = (event: WagerEvent) => {
+    setSelectedEvent(event);
+    setEditTitle(event.title);
+    setEditDescription(event.description || '');
+    setEditEventType(event.event_type);
+    setEditWagersCloseAt(format(new Date(event.wagers_close_at), "yyyy-MM-dd'T'HH:mm"));
+    setEditMinWager(String(event.min_wager));
+    setEditMaxWager(String(event.max_wager));
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateEvent = async () => {
+    if (!selectedEvent) return;
+
+    try {
+      const { error } = await supabase
+        .from('pit_wager_events')
+        .update({
+          title: editTitle,
+          description: editDescription || null,
+          event_type: editEventType,
+          wagers_close_at: new Date(editWagersCloseAt).toISOString(),
+          min_wager: parseInt(editMinWager) || 10,
+          max_wager: parseInt(editMaxWager) || 500,
+        })
+        .eq('id', selectedEvent.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Event Updated',
+        description: 'The wager event has been updated successfully',
+      });
+
+      setEditDialogOpen(false);
+      setSelectedEvent(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating event:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update wager event',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getEventTypeLabel = (eventType: string) => {
+    const labels: Record<string, { label: string; color: string }> = {
+      custom: { label: 'Custom', color: 'bg-gray-500' },
+      weekly_top_sales: { label: 'Weekly Top Sales', color: 'bg-blue-500' },
+      weekly_top_canvasser: { label: 'Weekly Top Canvasser', color: 'bg-green-500' },
+      contest: { label: 'Contest Winner', color: 'bg-yellow-500' },
+    };
+    return labels[eventType] || labels.custom;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'open':
@@ -831,14 +897,30 @@ export default function PitManagement() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="flex items-center gap-2">
+                          <CardTitle className="flex items-center gap-2 flex-wrap">
                             {event.title}
                             {getStatusBadge(event.status)}
                           </CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={getEventTypeLabel(event.event_type).color}>
+                              {getEventTypeLabel(event.event_type).label}
+                            </Badge>
+                            {eventOptions.some(opt => opt.user_id) && (
+                              <Badge variant="outline" className="text-xs">User Tracking</Badge>
+                            )}
+                          </div>
                           {event.description && (
-                            <CardDescription className="mt-1">{event.description}</CardDescription>
+                            <CardDescription className="mt-2">{event.description}</CardDescription>
                           )}
                         </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => openEditDialog(event)}
+                          title="Edit event"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -1032,6 +1114,86 @@ export default function PitManagement() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Event Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Wager Event</DialogTitle>
+            <DialogDescription>
+              Update the event details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="editTitle">Event Title</Label>
+              <Input
+                id="editTitle"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDescription">Description (optional)</Label>
+              <Textarea
+                id="editDescription"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editEventType">Event Type (Judging Criteria)</Label>
+                <Select value={editEventType} onValueChange={setEditEventType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom</SelectItem>
+                    <SelectItem value="weekly_top_sales">Weekly Top Sales</SelectItem>
+                    <SelectItem value="weekly_top_canvasser">Weekly Top Canvasser</SelectItem>
+                    <SelectItem value="contest">Contest Winner</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editCloseAt">Wagers Close At</Label>
+                <Input
+                  id="editCloseAt"
+                  type="datetime-local"
+                  value={editWagersCloseAt}
+                  onChange={(e) => setEditWagersCloseAt(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editMinWager">Min Wager (pts)</Label>
+                <Input
+                  id="editMinWager"
+                  type="number"
+                  min="1"
+                  value={editMinWager}
+                  onChange={(e) => setEditMinWager(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editMaxWager">Max Wager (pts)</Label>
+                <Input
+                  id="editMaxWager"
+                  type="number"
+                  min="1"
+                  value={editMaxWager}
+                  onChange={(e) => setEditMaxWager(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={handleUpdateEvent} className="w-full">
+              Save Changes
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
