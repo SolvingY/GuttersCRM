@@ -12,6 +12,7 @@ import Leaderboard from "./pages/dashboard/Leaderboard";
 import Contests from "./pages/dashboard/Contests";
 import Settings from "./pages/dashboard/Settings";
 import ThePit from "./pages/dashboard/ThePit";
+import PointsHistory from "./pages/dashboard/PointsHistory";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
@@ -27,6 +28,7 @@ import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
 import CanvasserContests from "./pages/canvasser/CanvasserContests";
 import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
 import CanvasserPit from "./pages/canvasser/CanvasserPit";
+import CanvasserPointsHistory from "./pages/canvasser/CanvasserPointsHistory";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -55,6 +57,7 @@ const App = () => (
             <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="contests" element={<Contests />} />
             <Route path="pit" element={<ThePit />} />
+            <Route path="points-history" element={<PointsHistory />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 
@@ -72,6 +75,7 @@ const App = () => (
             <Route path="leaderboard" element={<CanvasserLeaderboard />} />
             <Route path="contests" element={<CanvasserContests />} />
             <Route path="pit" element={<CanvasserPit />} />
+            <Route path="points-history" element={<CanvasserPointsHistory />} />
             <Route path="settings" element={<CanvasserSettings />} />
           </Route>
 

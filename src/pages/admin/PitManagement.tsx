@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins } from 'lucide-react';
-import { format } from 'date-fns';
+import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins, Wand2 } from 'lucide-react';
+import { format, startOfWeek, endOfWeek } from 'date-fns';
 
 interface WagerEvent {
   id: string;
@@ -63,6 +63,8 @@ export default function PitManagement() {
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<WagerEvent | null>(null);
   const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
+  const [autoDetecting, setAutoDetecting] = useState(false);
+  const [userMetricsForResolve, setUserMetricsForResolve] = useState<Map<string, { name: string; metric: number }>>(new Map());
   
   // Create event form state
   const [newTitle, setNewTitle] = useState('');
@@ -484,6 +486,99 @@ export default function PitManagement() {
     }
   };
 
+  // Auto-detect winner based on user metrics
+  const handleAutoDetectWinner = async () => {
+    if (!selectedEvent) return;
+
+    const eventOptions = options.get(selectedEvent.id) || [];
+    const userOptions = eventOptions.filter(opt => opt.user_id);
+
+    if (userOptions.length === 0) {
+      toast({
+        title: 'Cannot Auto-Detect',
+        description: 'This event does not have user-based betting options.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAutoDetecting(true);
+    const metricsMap = new Map<string, { name: string; metric: number }>();
+
+    try {
+      // Determine what metric to compare based on event type
+      const eventType = selectedEvent.event_type;
+      const now = new Date();
+      const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+
+      for (const opt of userOptions) {
+        if (!opt.user_id) continue;
+
+        let metricValue = 0;
+
+        if (eventType === 'weekly_top_sales') {
+          // Fetch weekly approved revenue
+          const { data } = await supabase
+            .from('weekly_user_metrics')
+            .select('approved_revenue')
+            .eq('user_id', opt.user_id)
+            .eq('week_start', weekStart)
+            .single();
+          metricValue = Number(data?.approved_revenue) || 0;
+        } else if (eventType === 'weekly_top_canvasser') {
+          // Fetch weekly leads set
+          const { data } = await supabase
+            .from('weekly_canvasser_metrics')
+            .select('leads_set, leads_closed')
+            .eq('user_id', opt.user_id)
+            .eq('week_start', weekStart)
+            .single();
+          metricValue = (Number(data?.leads_closed) || 0) * 10 + (Number(data?.leads_set) || 0);
+        } else {
+          // Default: use total points from latest metrics
+          const { data: userMetrics } = await supabase
+            .from('user_metrics')
+            .select('points')
+            .eq('user_id', opt.user_id)
+            .order('metric_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (userMetrics) {
+            metricValue = Number(userMetrics.points) || 0;
+          } else {
+            // Try canvasser metrics
+            const { data: canvasserMetrics } = await supabase
+              .from('canvasser_metrics')
+              .select('points')
+              .eq('user_id', opt.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+            metricValue = Number(canvasserMetrics?.points) || 0;
+          }
+        }
+
+        metricsMap.set(opt.id, { name: opt.option_label, metric: metricValue });
+      }
+
+      setUserMetricsForResolve(metricsMap);
+      toast({
+        title: 'Metrics Loaded',
+        description: 'Review the metrics below and select the winner.',
+      });
+    } catch (error) {
+      console.error('Error auto-detecting winner:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch user metrics',
+        variant: 'destructive',
+      });
+    } finally {
+      setAutoDetecting(false);
+    }
+  };
+
   const resetCreateForm = () => {
     setNewTitle('');
     setNewDescription('');
@@ -872,8 +967,13 @@ export default function PitManagement() {
       </Tabs>
 
       {/* Resolve Dialog */}
-      <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
-        <DialogContent>
+      <Dialog open={resolveDialogOpen} onOpenChange={(open) => {
+        setResolveDialogOpen(open);
+        if (!open) {
+          setUserMetricsForResolve(new Map());
+        }
+      }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Resolve Event</DialogTitle>
             <DialogDescription>
@@ -883,19 +983,53 @@ export default function PitManagement() {
           {selectedEvent && (
             <div className="space-y-4 mt-4">
               <p className="font-medium">{selectedEvent.title}</p>
+              
+              {/* Auto-detect button for user-based events */}
+              {options.get(selectedEvent.id)?.some(opt => opt.user_id) && (
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={handleAutoDetectWinner}
+                  disabled={autoDetecting}
+                >
+                  {autoDetecting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4 mr-2" />
+                  )}
+                  Auto-Detect Winner (Fetch Metrics)
+                </Button>
+              )}
+
               <div className="space-y-2">
-                {options.get(selectedEvent.id)?.map((opt) => (
-                  <Button
-                    key={opt.id}
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => handleResolveEvent(opt.id)}
-                  >
-                    <Trophy className="h-4 w-4 mr-2 text-yellow-500" />
-                    {opt.option_label} ({opt.payout_multiplier}x)
-                  </Button>
-                ))}
+                {options.get(selectedEvent.id)?.map((opt) => {
+                  const metrics = userMetricsForResolve.get(opt.id);
+                  return (
+                    <Button
+                      key={opt.id}
+                      variant="outline"
+                      className="w-full justify-between"
+                      onClick={() => handleResolveEvent(opt.id)}
+                    >
+                      <div className="flex items-center">
+                        <Trophy className="h-4 w-4 mr-2 text-yellow-500" />
+                        {opt.option_label} ({opt.payout_multiplier}x)
+                      </div>
+                      {metrics && (
+                        <Badge variant="secondary" className="ml-2">
+                          {metrics.metric.toLocaleString()} pts
+                        </Badge>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
+
+              {userMetricsForResolve.size > 0 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Metrics shown above. Click the highest scorer to select as winner.
+                </p>
+              )}
             </div>
           )}
         </DialogContent>
