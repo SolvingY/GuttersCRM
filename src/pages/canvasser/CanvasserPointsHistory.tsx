@@ -38,11 +38,12 @@ export default function CanvasserPointsHistory() {
     const allTransactions: PointTransaction[] = [];
 
     try {
-      // 1. Fetch wager transactions from pit_point_transactions
+      // 1. Fetch wager transactions from pit_point_transactions (only resolved wagers - won/lost/refunded)
       const { data: wagerTransactions } = await supabase
         .from('pit_point_transactions')
         .select('id, transaction_type, points_change, balance_after, created_at, wager_id')
         .eq('user_id', user!.id)
+        .in('transaction_type', ['wager_won', 'wager_lost', 'wager_refunded'])
         .order('created_at', { ascending: false });
 
       // Enrich wager transactions with event info
@@ -178,12 +179,12 @@ export default function CanvasserPointsHistory() {
     }
   };
 
-  // Calculate summary stats
+  // Calculate summary stats - only count actual wins/losses (not placed wagers)
   const totalWagerGains = transactions
-    .filter(t => t.type === 'wager' && t.points_change > 0)
+    .filter(t => t.type === 'wager' && t.description === 'Wager Won')
     .reduce((sum, t) => sum + t.points_change, 0);
   const totalWagerLosses = transactions
-    .filter(t => t.type === 'wager' && t.points_change < 0)
+    .filter(t => t.type === 'wager' && t.description === 'Wager Lost')
     .reduce((sum, t) => sum + Math.abs(t.points_change), 0);
   const totalContestPoints = transactions
     .filter(t => t.type === 'contest')

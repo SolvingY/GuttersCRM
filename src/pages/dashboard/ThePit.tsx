@@ -185,15 +185,8 @@ export default function ThePit() {
 
       if (error) throw error;
 
-      // Create transaction record
-      await supabase
-        .from('pit_point_transactions')
-        .insert({
-          user_id: user!.id,
-          transaction_type: 'wager_placed',
-          points_change: -amount,
-          balance_after: userPoints - amount,
-        });
+      // Note: No transaction record created here - points are just "locked" in the wager
+      // Actual point changes only happen when wager is resolved (won/lost)
 
       toast({
         title: 'Wager Placed!',
