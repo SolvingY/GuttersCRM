@@ -483,7 +483,9 @@ export default function AdminOverview() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Role</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Sales</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Approved Revenue</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Collections</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Earnings</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
@@ -549,6 +551,8 @@ export default function AdminOverview() {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.sales)}</td>
+                          <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(user.collections)}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.earningsYtd)}</td>
                           <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
                           <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
                           <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
