@@ -32,6 +32,8 @@ interface LeaderboardEntry {
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
+  contestPoints: number;
+  wagerPoints: number;
 }
 
 interface WeeklyLeaderboardEntry {
@@ -95,6 +97,12 @@ export default function Leaderboard() {
         .select('id, user_id, display_name, points, sales, closed_deals, sales_rank, metric_date, self_generated_deals, leads')
         .order('metric_date', { ascending: false });
 
+      // Also fetch contest_points and wager_points from user_metrics
+      const { data: pointsData } = await supabase
+        .from('user_metrics')
+        .select('user_id, contest_points, wager_points')
+        .order('metric_date', { ascending: false });
+
       if (metricsError) {
         console.error('Error fetching leaderboard:', metricsError);
         setLoading(false);
@@ -106,6 +114,17 @@ export default function Leaderboard() {
         setLoading(false);
         return;
       }
+
+      // Create points breakdown map (latest per user)
+      const pointsBreakdownMap = new Map<string, { contestPoints: number; wagerPoints: number }>();
+      pointsData?.forEach(p => {
+        if (p.user_id && !pointsBreakdownMap.has(p.user_id)) {
+          pointsBreakdownMap.set(p.user_id, {
+            contestPoints: Number(p.contest_points) || 0,
+            wagerPoints: Number(p.wager_points) || 0,
+          });
+        }
+      });
 
       // Fetch yearly goals from user_metrics separately
       const { data: goalsData } = await supabase
@@ -175,16 +194,21 @@ export default function Leaderboard() {
 
       // Convert to array and sort by sales (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
-        .map(([userId, data]) => ({
-          userId,
-          points: data.points,
-          sales: data.sales,
-          closedDeals: data.closedDeals,
-          yearlyGoal: goalsMap.get(userId) || 0,
-          salesRank: data.salesRank,
-          name: data.displayName || profilesMap.get(userId) || 'Unknown User',
-          contestsWon: contestWinsMap.get(userId) || 0,
-        }))
+        .map(([userId, data]) => {
+          const pointsBreakdown = pointsBreakdownMap.get(userId) || { contestPoints: 0, wagerPoints: 0 };
+          return {
+            userId,
+            points: data.points,
+            sales: data.sales,
+            closedDeals: data.closedDeals,
+            yearlyGoal: goalsMap.get(userId) || 0,
+            salesRank: data.salesRank,
+            name: data.displayName || profilesMap.get(userId) || 'Unknown User',
+            contestsWon: contestWinsMap.get(userId) || 0,
+            contestPoints: pointsBreakdown.contestPoints,
+            wagerPoints: pointsBreakdown.wagerPoints,
+          };
+        })
         .sort((a, b) => b.sales - a.sales)
         .map((entry, index) => ({
           ...entry,

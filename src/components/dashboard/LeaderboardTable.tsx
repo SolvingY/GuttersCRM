@@ -13,6 +13,8 @@ interface LeaderboardEntry {
   salesRank: string;
   contestsWon: number;
   collections?: number;
+  contestPoints?: number;
+  wagerPoints?: number;
 }
 
 interface LeaderboardTableProps {
@@ -169,6 +171,8 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                         type: 'salesRep',
                         sales: entry.sales,
                         closedDeals: entry.closedDeals || 0,
+                        contestPoints: entry.contestPoints || 0,
+                        wagerPoints: entry.wagerPoints || 0,
                         totalPoints: entry.points,
                       }}
                     >

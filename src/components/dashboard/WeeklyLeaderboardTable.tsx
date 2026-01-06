@@ -11,6 +11,8 @@ interface WeeklyLeaderboardEntry {
   leads: number;
   closedDeals: number;
   pointsEarned: number;
+  contestPoints?: number;
+  wagerPoints?: number;
 }
 
 interface WeeklyLeaderboardTableProps {
@@ -126,6 +128,8 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
                         type: 'salesRep',
                         sales: entry.approvedRevenue,
                         closedDeals: entry.closedDeals,
+                        contestPoints: entry.contestPoints || 0,
+                        wagerPoints: entry.wagerPoints || 0,
                         totalPoints: entry.pointsEarned,
                       }}
                     >

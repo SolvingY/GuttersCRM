@@ -15,6 +15,8 @@ export interface CanvasserLeaderboardEntry {
   percentOfGoal: number;
   contestsWon: number;
   doorsKnocked?: number;
+  contestPoints?: number;
+  wagerPoints?: number;
 }
 
 interface CanvasserLeaderboardTableProps {
@@ -135,6 +137,8 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                         leadsSet: entry.leadsSet || 0,
                         leadsWithDamage: entry.leadsWithDamage || 0,
                         leadsClosed: entry.leadsClosed || 0,
+                        contestPoints: entry.contestPoints || 0,
+                        wagerPoints: entry.wagerPoints || 0,
                         totalPoints: entry.points || 0,
                       }}
                     >

@@ -49,6 +49,7 @@ export type Database = {
       }
       canvasser_metrics: {
         Row: {
+          contest_points: number | null
           created_at: string | null
           display_name: string | null
           doors_knocked: number | null
@@ -62,9 +63,11 @@ export type Database = {
           shifts_worked: number | null
           updated_at: string | null
           user_id: string
+          wager_points: number | null
           yearly_goal: number | null
         }
         Insert: {
+          contest_points?: number | null
           created_at?: string | null
           display_name?: string | null
           doors_knocked?: number | null
@@ -78,9 +81,11 @@ export type Database = {
           shifts_worked?: number | null
           updated_at?: string | null
           user_id: string
+          wager_points?: number | null
           yearly_goal?: number | null
         }
         Update: {
+          contest_points?: number | null
           created_at?: string | null
           display_name?: string | null
           doors_knocked?: number | null
@@ -94,6 +99,7 @@ export type Database = {
           shifts_worked?: number | null
           updated_at?: string | null
           user_id?: string
+          wager_points?: number | null
           yearly_goal?: number | null
         }
         Relationships: []
@@ -616,6 +622,7 @@ export type Database = {
           canvass_leads: number | null
           closed_deals: number | null
           collections: number | null
+          contest_points: number | null
           created_at: string
           display_name: string | null
           earnings_ytd: number | null
@@ -629,6 +636,7 @@ export type Database = {
           self_generated_leads: number | null
           updated_at: string
           user_id: string
+          wager_points: number | null
           yearly_goal: number | null
         }
         Insert: {
@@ -637,6 +645,7 @@ export type Database = {
           canvass_leads?: number | null
           closed_deals?: number | null
           collections?: number | null
+          contest_points?: number | null
           created_at?: string
           display_name?: string | null
           earnings_ytd?: number | null
@@ -650,6 +659,7 @@ export type Database = {
           self_generated_leads?: number | null
           updated_at?: string
           user_id: string
+          wager_points?: number | null
           yearly_goal?: number | null
         }
         Update: {
@@ -658,6 +668,7 @@ export type Database = {
           canvass_leads?: number | null
           closed_deals?: number | null
           collections?: number | null
+          contest_points?: number | null
           created_at?: string
           display_name?: string | null
           earnings_ytd?: number | null
@@ -671,6 +682,7 @@ export type Database = {
           self_generated_leads?: number | null
           updated_at?: string
           user_id?: string
+          wager_points?: number | null
           yearly_goal?: number | null
         }
         Relationships: []

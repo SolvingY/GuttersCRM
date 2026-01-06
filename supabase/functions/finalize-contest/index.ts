@@ -248,10 +248,10 @@ serve(async (req) => {
 
       // Update user's points in their metrics table
       if (isCanvasserContest) {
-        // Get current points
+        // Get current points and contest_points
         const { data: currentMetrics } = await supabase
           .from('canvasser_metrics')
-          .select('id, points')
+          .select('id, points, contest_points')
           .eq('user_id', winner.userId)
           .order('metric_date', { ascending: false })
           .limit(1)
@@ -259,16 +259,17 @@ serve(async (req) => {
 
         if (currentMetrics) {
           const newPoints = (Number(currentMetrics.points) || 0) + points;
+          const newContestPoints = (Number(currentMetrics.contest_points) || 0) + points;
           await supabase
             .from('canvasser_metrics')
-            .update({ points: newPoints })
+            .update({ points: newPoints, contest_points: newContestPoints })
             .eq('id', currentMetrics.id);
         }
       } else {
-        // Get current points for sales rep
+        // Get current points and contest_points for sales rep
         const { data: currentMetrics } = await supabase
           .from('user_metrics')
-          .select('id, points')
+          .select('id, points, contest_points')
           .eq('user_id', winner.userId)
           .order('metric_date', { ascending: false })
           .limit(1)
@@ -276,9 +277,10 @@ serve(async (req) => {
 
         if (currentMetrics) {
           const newPoints = (Number(currentMetrics.points) || 0) + points;
+          const newContestPoints = (Number(currentMetrics.contest_points) || 0) + points;
           await supabase
             .from('user_metrics')
-            .update({ points: newPoints })
+            .update({ points: newPoints, contest_points: newContestPoints })
             .eq('id', currentMetrics.id);
         }
       }

@@ -34,6 +34,8 @@ interface CanvasserEntry {
   amountUntilGoal: number;
   percentOfGoal: number;
   contestsWon: number;
+  contestPoints: number;
+  wagerPoints: number;
 }
 
 interface WeeklyCanvasserEntry {
@@ -86,6 +88,12 @@ export default function CanvasserLeaderboard() {
         .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, points")
         .order("leads_closed", { ascending: false });
 
+      // Also fetch contest_points and wager_points from canvasser_metrics
+      const { data: pointsData } = await supabase
+        .from("canvasser_metrics")
+        .select("user_id, contest_points, wager_points")
+        .order("metric_date", { ascending: false });
+
       if (error) {
         console.error("Error fetching leaderboard:", error);
         setLoading(false);
@@ -103,6 +111,17 @@ export default function CanvasserLeaderboard() {
       goalsData?.forEach(g => {
         if (g.user_id && !goalsMap.has(g.user_id)) {
           goalsMap.set(g.user_id, Number(g.yearly_goal) || 0);
+        }
+      });
+
+      // Create points breakdown map (latest per user)
+      const pointsBreakdownMap = new Map<string, { contestPoints: number; wagerPoints: number }>();
+      pointsData?.forEach(p => {
+        if (p.user_id && !pointsBreakdownMap.has(p.user_id)) {
+          pointsBreakdownMap.set(p.user_id, {
+            contestPoints: Number(p.contest_points) || 0,
+            wagerPoints: Number(p.wager_points) || 0,
+          });
         }
       });
 
@@ -143,6 +162,7 @@ export default function CanvasserLeaderboard() {
           const yearlyGoal = goalsMap.get(entry.user_id) || 0;
           const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
           const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
+          const pointsBreakdown = pointsBreakdownMap.get(entry.user_id) || { contestPoints: 0, wagerPoints: 0 };
           
           return {
             rank: index + 1,
@@ -156,6 +176,8 @@ export default function CanvasserLeaderboard() {
             amountUntilGoal,
             percentOfGoal,
             contestsWon: contestWins.get(entry.user_id) || 0,
+            contestPoints: pointsBreakdown.contestPoints,
+            wagerPoints: pointsBreakdown.wagerPoints,
           };
         });
 
