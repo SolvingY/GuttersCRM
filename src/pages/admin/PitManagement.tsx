@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -46,6 +47,12 @@ interface Wager {
   status: string;
 }
 
+interface AvailableUser {
+  id: string;
+  name: string;
+  role: 'salesRep' | 'canvasser';
+}
+
 export default function PitManagement() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -55,6 +62,7 @@ export default function PitManagement() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<WagerEvent | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   
   // Create event form state
   const [newTitle, setNewTitle] = useState('');
@@ -63,14 +71,63 @@ export default function PitManagement() {
   const [newWagersCloseAt, setNewWagersCloseAt] = useState('');
   const [newMinWager, setNewMinWager] = useState('10');
   const [newMaxWager, setNewMaxWager] = useState('500');
-  const [newOptions, setNewOptions] = useState<{ label: string; multiplier: string }[]>([
-    { label: '', multiplier: '2.0' },
-    { label: '', multiplier: '2.0' },
+  const [betOnUsers, setBetOnUsers] = useState(false);
+  const [newOptions, setNewOptions] = useState<{ label: string; multiplier: string; userId: string | null }[]>([
+    { label: '', multiplier: '2.0', userId: null },
+    { label: '', multiplier: '2.0', userId: null },
   ]);
 
   useEffect(() => {
     fetchData();
+    fetchAvailableUsers();
   }, []);
+
+  const fetchAvailableUsers = async () => {
+    try {
+      // Fetch sales reps from user_metrics
+      const { data: salesReps } = await supabase
+        .from('user_metrics')
+        .select('user_id, display_name')
+        .order('display_name');
+
+      // Fetch canvassers from canvasser_metrics
+      const { data: canvassers } = await supabase
+        .from('canvasser_metrics')
+        .select('user_id, display_name')
+        .order('display_name');
+
+      const users: AvailableUser[] = [];
+      const seenIds = new Set<string>();
+
+      // Add sales reps
+      salesReps?.forEach(sr => {
+        if (sr.user_id && !seenIds.has(sr.user_id)) {
+          seenIds.add(sr.user_id);
+          users.push({
+            id: sr.user_id,
+            name: sr.display_name || 'Unknown User',
+            role: 'salesRep',
+          });
+        }
+      });
+
+      // Add canvassers
+      canvassers?.forEach(c => {
+        if (c.user_id && !seenIds.has(c.user_id)) {
+          seenIds.add(c.user_id);
+          users.push({
+            id: c.user_id,
+            name: c.display_name || 'Unknown User',
+            role: 'canvasser',
+          });
+        }
+      });
+
+      setAvailableUsers(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -119,10 +176,16 @@ export default function PitManagement() {
   };
 
   const handleCreateEvent = async () => {
-    if (!newTitle || !newWagersCloseAt || newOptions.filter(o => o.label).length < 2) {
+    const validOptions = betOnUsers 
+      ? newOptions.filter(o => o.userId)
+      : newOptions.filter(o => o.label.trim());
+
+    if (!newTitle || !newWagersCloseAt || validOptions.length < 2) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in title, close time, and at least 2 options',
+        description: betOnUsers 
+          ? 'Please fill in title, close time, and select at least 2 users'
+          : 'Please fill in title, close time, and at least 2 options',
         variant: 'destructive',
       });
       return;
@@ -147,13 +210,15 @@ export default function PitManagement() {
       if (eventError) throw eventError;
 
       // Create the options
-      const validOptions = newOptions.filter(o => o.label.trim());
       const { error: optionsError } = await supabase
         .from('pit_wager_options')
         .insert(
           validOptions.map(opt => ({
             event_id: eventData.id,
-            option_label: opt.label,
+            option_label: betOnUsers 
+              ? availableUsers.find(u => u.id === opt.userId)?.name || 'Unknown User'
+              : opt.label,
+            user_id: betOnUsers ? opt.userId : null,
             payout_multiplier: parseFloat(opt.multiplier) || 2.0,
           }))
         );
@@ -285,6 +350,67 @@ export default function PitManagement() {
                 });
             }
           }
+        } else {
+          // LOSER: Deduct wagered points from their metrics
+          const pointsLost = wager.points_wagered;
+
+          // Try user_metrics first (sales reps)
+          const { data: userMetricsData } = await supabase
+            .from('user_metrics')
+            .select('id, points, wager_points')
+            .eq('user_id', wager.user_id)
+            .order('metric_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (userMetricsData) {
+            const newPoints = Math.max(0, (Number(userMetricsData.points) || 0) - pointsLost);
+            const newWagerPoints = (Number(userMetricsData.wager_points) || 0) - pointsLost;
+
+            await supabase
+              .from('user_metrics')
+              .update({ points: newPoints, wager_points: newWagerPoints })
+              .eq('id', userMetricsData.id);
+
+            await supabase
+              .from('pit_point_transactions')
+              .insert({
+                user_id: wager.user_id,
+                wager_id: wager.id,
+                transaction_type: 'wager_lost',
+                points_change: -pointsLost,
+                balance_after: newPoints,
+              });
+          } else {
+            // Try canvasser_metrics
+            const { data: canvasserMetricsData } = await supabase
+              .from('canvasser_metrics')
+              .select('id, points, wager_points')
+              .eq('user_id', wager.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (canvasserMetricsData) {
+              const newPoints = Math.max(0, (Number(canvasserMetricsData.points) || 0) - pointsLost);
+              const newWagerPoints = (Number(canvasserMetricsData.wager_points) || 0) - pointsLost;
+
+              await supabase
+                .from('canvasser_metrics')
+                .update({ points: newPoints, wager_points: newWagerPoints })
+                .eq('id', canvasserMetricsData.id);
+
+              await supabase
+                .from('pit_point_transactions')
+                .insert({
+                  user_id: wager.user_id,
+                  wager_id: wager.id,
+                  transaction_type: 'wager_lost',
+                  points_change: -pointsLost,
+                  balance_after: newPoints,
+                });
+            }
+          }
         }
       }
 
@@ -365,16 +491,21 @@ export default function PitManagement() {
     setNewWagersCloseAt('');
     setNewMinWager('10');
     setNewMaxWager('500');
-    setNewOptions([{ label: '', multiplier: '2.0' }, { label: '', multiplier: '2.0' }]);
+    setBetOnUsers(false);
+    setNewOptions([{ label: '', multiplier: '2.0', userId: null }, { label: '', multiplier: '2.0', userId: null }]);
   };
 
   const addOption = () => {
-    setNewOptions([...newOptions, { label: '', multiplier: '2.0' }]);
+    setNewOptions([...newOptions, { label: '', multiplier: '2.0', userId: null }]);
   };
 
-  const updateOption = (index: number, field: 'label' | 'multiplier', value: string) => {
+  const updateOption = (index: number, field: 'label' | 'multiplier' | 'userId', value: string | null) => {
     const updated = [...newOptions];
-    updated[index][field] = value;
+    if (field === 'userId') {
+      updated[index].userId = value;
+    } else {
+      updated[index][field] = value as string;
+    }
     setNewOptions(updated);
   };
 
@@ -510,14 +641,51 @@ export default function PitManagement() {
                     Add Option
                   </Button>
                 </div>
+                <div className="flex items-center gap-2 py-2">
+                  <Switch checked={betOnUsers} onCheckedChange={setBetOnUsers} />
+                  <Label className="cursor-pointer" onClick={() => setBetOnUsers(!betOnUsers)}>
+                    Bet on Team Members
+                  </Label>
+                </div>
                 {newOptions.map((opt, idx) => (
                   <div key={idx} className="grid grid-cols-3 gap-2">
-                    <Input
-                      placeholder={`Option ${idx + 1}`}
-                      value={opt.label}
-                      onChange={(e) => updateOption(idx, 'label', e.target.value)}
-                      className="col-span-2"
-                    />
+                    {betOnUsers ? (
+                      <Select 
+                        value={opt.userId || ''} 
+                        onValueChange={(val) => updateOption(idx, 'userId', val)}
+                      >
+                        <SelectTrigger className="col-span-2">
+                          <SelectValue placeholder="Select user..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectLabel>Sales Reps</SelectLabel>
+                            {availableUsers
+                              .filter(u => u.role === 'salesRep')
+                              .map(u => (
+                                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                              ))
+                            }
+                          </SelectGroup>
+                          <SelectGroup>
+                            <SelectLabel>Canvassers</SelectLabel>
+                            {availableUsers
+                              .filter(u => u.role === 'canvasser')
+                              .map(u => (
+                                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                              ))
+                            }
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        placeholder={`Option ${idx + 1}`}
+                        value={opt.label}
+                        onChange={(e) => updateOption(idx, 'label', e.target.value)}
+                        className="col-span-2"
+                      />
+                    )}
                     <Input
                       type="number"
                       step="0.1"
@@ -529,7 +697,10 @@ export default function PitManagement() {
                   </div>
                 ))}
                 <p className="text-xs text-muted-foreground">
-                  Multiplier determines payout (e.g., 2.0x = double your points)
+                  {betOnUsers 
+                    ? 'Select team members to bet on. The user_id will be stored for tracking.'
+                    : 'Multiplier determines payout (e.g., 2.0x = double your points)'
+                  }
                 </p>
               </div>
               <Button onClick={handleCreateEvent} className="w-full">
