@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 interface AggregateMetrics {
-  totalSales: number;
+  totalApprovedRevenue: number;
   totalPoints: number;
   totalLeads: number;
   totalClosedDeals: number;
@@ -69,7 +69,7 @@ const THRESHOLDS = {
 
 export default function AdminOverview() {
   const [aggregates, setAggregates] = useState<AggregateMetrics>({
-    totalSales: 0,
+    totalApprovedRevenue: 0,
     totalPoints: 0,
     totalLeads: 0,
     totalClosedDeals: 0,
@@ -124,7 +124,7 @@ export default function AdminOverview() {
     // Fetch all sales rep metrics
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, sales, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads')
+      .select('id, user_id, display_name, approved_revenue, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads')
       .order('metric_date', { ascending: false });
 
     if (metricsError) {
@@ -146,7 +146,7 @@ export default function AdminOverview() {
       const latestByUser = new Map<string, { 
         metricId: string; 
         realUserId: string | null;
-        sales: number; 
+        approvedRevenue: number; 
         points: number; 
         leads: number; 
         closedDeals: number; 
@@ -163,7 +163,7 @@ export default function AdminOverview() {
           latestByUser.set(key, {
             metricId: item.id,
             realUserId: item.user_id,
-            sales: Number(item.sales) || 0,
+            approvedRevenue: Number(item.approved_revenue) || 0,
             points: Number(item.points) || 0,
             leads: item.leads || 0,
             closedDeals: item.closed_deals || 0,
@@ -198,13 +198,13 @@ export default function AdminOverview() {
       });
 
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
-        const avgJobSize = data.closedDeals > 0 ? data.sales / data.closedDeals : 0;
+        const avgJobSize = data.closedDeals > 0 ? data.approvedRevenue / data.closedDeals : 0;
         const leadToClosePercent = data.leads > 0 ? (data.closedDeals / data.leads) * 100 : 0;
         
         return {
           metricId: data.metricId,
           realUserId: data.realUserId,
-          sales: data.sales,
+          sales: data.approvedRevenue,
           points: data.points,
           leads: data.leads,
           closedDeals: data.closedDeals,
@@ -226,15 +226,18 @@ export default function AdminOverview() {
 
       const totals = salesReps.reduce(
         (acc, user) => ({
-          totalSales: acc.totalSales + user.sales,
+          totalApprovedRevenue: acc.totalApprovedRevenue + user.sales,
           totalPoints: acc.totalPoints + user.points,
           totalLeads: acc.totalLeads + user.leads,
           totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
           totalUsers: acc.totalUsers + 1,
           totalSelfGeneratedLeads: acc.totalSelfGeneratedLeads,
         }),
-        { totalSales: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0, totalSelfGeneratedLeads }
+        { totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0, totalSelfGeneratedLeads }
       );
+
+      // Add the self-generated leads total
+      totals.totalSelfGeneratedLeads = totalSelfGeneratedLeads;
 
       setAggregates(totals);
       setUserDetails(salesReps.sort((a, b) => b.sales - a.sales));
@@ -394,7 +397,7 @@ export default function AdminOverview() {
         <TabsContent value="sales" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             <StatsCard title="Total Users" value={aggregates.totalUsers} icon={UserCheck} />
-            <StatsCard title="Total Sales" value={formatCurrency(aggregates.totalSales)} icon={DollarSign} />
+            <StatsCard title="Total Approved Revenue" value={formatCurrency(aggregates.totalApprovedRevenue)} icon={DollarSign} />
             <StatsCard title="Total Points" value={aggregates.totalPoints.toLocaleString()} icon={Star} />
             <StatsCard title="Total Leads" value={aggregates.totalLeads} icon={Users} />
             <StatsCard title="Total Closed Deals" value={aggregates.totalClosedDeals} icon={Briefcase} />
