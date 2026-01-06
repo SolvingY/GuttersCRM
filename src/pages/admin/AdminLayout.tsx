@@ -18,7 +18,8 @@ import {
   UserCog,
   BarChart3,
   Megaphone,
-  Target
+  Target,
+  Flame
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ const adminNavItems = [
   { icon: UserCog, label: 'User Roles', path: '/admin/users' },
   { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
   { icon: Trophy, label: 'Contests', path: '/admin/contests' },
+  { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
   { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
 ];
 
