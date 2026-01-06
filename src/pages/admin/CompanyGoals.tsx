@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator } from 'lucide-react';
+import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CompanyGoal {
@@ -22,6 +22,7 @@ interface CompanyGoal {
 
 interface CompanyProgress {
   totalSales: number;
+  totalCollections: number;
   totalLeadsClosed: number;
   salesRepsCount: number;
   canvassersCount: number;
@@ -37,6 +38,7 @@ export default function CompanyGoals() {
   const [goal, setGoal] = useState<CompanyGoal | null>(null);
   const [progress, setProgress] = useState<CompanyProgress>({
     totalSales: 0,
+    totalCollections: 0,
     totalLeadsClosed: 0,
     salesRepsCount: 0,
     canvassersCount: 0,
@@ -91,23 +93,25 @@ export default function CompanyGoals() {
       const { data: salesData } = salesRepIds.length > 0
         ? await supabase
             .from('user_metrics')
-            .select('user_id, sales, leads, closed_deals')
+            .select('user_id, sales, collections, leads, closed_deals')
             .in('user_id', salesRepIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
 
       // Get latest metrics per user
-      const salesByUser = new Map<string, { sales: number; leads: number; closedDeals: number }>();
+      const salesByUser = new Map<string, { sales: number; collections: number; leads: number; closedDeals: number }>();
       salesData?.forEach(s => {
         if (!salesByUser.has(s.user_id)) {
           salesByUser.set(s.user_id, {
             sales: Number(s.sales) || 0,
+            collections: Number(s.collections) || 0,
             leads: Number(s.leads) || 0,
             closedDeals: Number(s.closed_deals) || 0,
           });
         }
       });
       const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.sales, 0);
+      const totalCollections = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.collections, 0);
       const totalSalesLeads = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.leads, 0);
       const totalSalesClosedDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.closedDeals, 0);
 
@@ -135,6 +139,7 @@ export default function CompanyGoals() {
 
       setProgress({
         totalSales,
+        totalCollections,
         totalLeadsClosed,
         salesRepsCount: salesByUser.size,
         canvassersCount: leadsByUser.size,
@@ -325,7 +330,7 @@ export default function CompanyGoals() {
       </Card>
 
       {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Sales Progress */}
         <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
           <CardHeader className="pb-2">
@@ -401,6 +406,52 @@ export default function CompanyGoals() {
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Collections YTD */}
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Wallet className="h-5 w-5 text-green-500" />
+              Total Collections YTD
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-sm text-muted-foreground">Collected</p>
+                <p className="text-3xl font-bold text-foreground">{formatCurrency(progress.totalCollections)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">vs Sales</p>
+                <p className="text-xl font-semibold text-foreground">{formatCurrency(progress.totalSales)}</p>
+              </div>
+            </div>
+            {(() => {
+              const collectionRate = progress.totalSales > 0 
+                ? (progress.totalCollections / progress.totalSales) * 100 
+                : 0;
+              return (
+                <>
+                  <div className="space-y-2">
+                    <Progress value={Math.min(collectionRate, 100)} className="h-3" />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Collection Rate</span>
+                      <span className={collectionRate >= 80 ? 'text-green-500 font-semibold' : 'text-foreground font-semibold'}>
+                        {collectionRate.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {formatCurrency(Math.max(0, progress.totalSales - progress.totalCollections))}
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
