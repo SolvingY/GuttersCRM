@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, FileSpreadsheet, FileText } from 'lucide-react';
-import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary } from '@/lib/reportGenerator';
-import { format } from 'date-fns';
+import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download } from 'lucide-react';
+import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
+import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
+import { format, addMonths } from 'date-fns';
 
 interface CompanyGoal {
   id: string;
@@ -54,6 +55,9 @@ export default function CompanyGoals() {
   const [description, setDescription] = useState('');
   const [targetLeadToCloseRatio, setTargetLeadToCloseRatio] = useState('');
   const [targetCostPerLead, setTargetCostPerLead] = useState('');
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
+  const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
 
   const fiscalStart = new Date(2025, 11, 15); // Dec 15, 2025
   const fiscalEnd = new Date(2026, 11, 15); // Dec 15, 2026
@@ -126,17 +130,53 @@ export default function CompanyGoals() {
         : { data: [] };
 
       // Get latest leads and income per user
-      const leadsByUser = new Map<string, { leadsClosed: number; income: number }>();
+      const leadsByUser = new Map<string, { leadsClosed: number; income: number; leadsSet: number; leadsWithDamage: number; shiftsWorked: number; points: number; name: string; yearlyGoal: number }>();
       canvasserData?.forEach(c => {
         if (!leadsByUser.has(c.user_id)) {
           leadsByUser.set(c.user_id, {
             leadsClosed: Number(c.leads_closed) || 0,
             income: Number(c.income) || 0,
+            leadsSet: Number((c as any).leads_set) || 0,
+            leadsWithDamage: Number((c as any).leads_with_damage) || 0,
+            shiftsWorked: Number((c as any).shifts_worked) || 0,
+            points: Number((c as any).points) || 0,
+            name: (c as any).display_name || 'Unknown',
+            yearlyGoal: Number((c as any).yearly_goal) || 0,
           });
         }
       });
       const totalLeadsClosed = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.leadsClosed, 0);
       const totalCanvasserIncome = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.income, 0);
+
+      // Build salesReps array for exports
+      const salesRepsData: SalesRepData[] = Array.from(salesByUser.entries()).map(([_, s]) => ({
+        name: (s as any).name || 'Unknown',
+        salesRank: (s as any).salesRank || 'SR1',
+        approvedRevenue: s.sales,
+        collections: s.collections,
+        earningsYtd: (s as any).earningsYtd || 0,
+        points: (s as any).points || 0,
+        leads: s.leads,
+        closedDeals: s.closedDeals,
+        yearlyGoal: (s as any).yearlyGoal || 0,
+        avgJobSize: s.closedDeals > 0 ? s.sales / s.closedDeals : 0,
+        leadToClosePercent: s.leads > 0 ? (s.closedDeals / s.leads) * 100 : 0,
+      }));
+      setSalesReps(salesRepsData);
+
+      // Build canvassers array for exports
+      const canvassersData: CanvasserData[] = Array.from(leadsByUser.entries()).map(([_, c]) => ({
+        name: c.name,
+        leadsSet: c.leadsSet,
+        leadsClosed: c.leadsClosed,
+        leadsWithDamage: c.leadsWithDamage,
+        shiftsWorked: c.shiftsWorked,
+        points: c.points,
+        income: c.income,
+        conversionRate: c.leadsSet > 0 ? (c.leadsClosed / c.leadsSet) * 100 : 0,
+        yearlyGoal: c.yearlyGoal,
+      }));
+      setCanvassers(canvassersData);
 
       setProgress({
         totalSales,
@@ -153,6 +193,36 @@ export default function CompanyGoals() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Generate monthly progress data for the graph
+  const generateMonthlyProgress = (): MonthlyProgress[] => {
+    const salesGoalNum = parseFloat(salesGoal) || 0;
+    const leadsGoalNum = parseInt(leadsGoal) || 0;
+    const monthlyGoalRevenue = salesGoalNum / 12;
+    const monthlyGoalLeads = leadsGoalNum / 12;
+    
+    const now = new Date();
+    const months: MonthlyProgress[] = [];
+    
+    for (let i = 0; i < 12; i++) {
+      const monthDate = addMonths(fiscalStart, i);
+      const monthName = format(monthDate, 'MMM yyyy');
+      const isPast = monthDate <= now;
+      
+      const monthsElapsed = Math.max(1, Math.floor((now.getTime() - fiscalStart.getTime()) / (30 * 24 * 60 * 60 * 1000)));
+      const monthlyRevenue = isPast ? progress.totalSales / Math.min(monthsElapsed, i + 1) : 0;
+      const monthlyLeads = isPast ? Math.floor(progress.totalLeadsClosed / Math.min(monthsElapsed, i + 1)) : 0;
+      
+      months.push({
+        month: monthName,
+        revenue: isPast ? monthlyRevenue : 0,
+        leads: isPast ? monthlyLeads : 0,
+        revenueGoal: monthlyGoalRevenue * (i + 1),
+        leadsGoal: Math.floor(monthlyGoalLeads * (i + 1)),
+      });
+    }
+    return months;
   };
 
   const handleSave = async () => {
@@ -234,55 +304,62 @@ export default function CompanyGoals() {
             Set and track 12-month company-wide goals for sales and canvassing teams
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              const summary: CompanySummary = {
-                totalApprovedRevenue: progress.totalSales,
-                totalCollections: progress.totalCollections,
-                totalPoints: 0,
-                totalLeads: progress.totalSalesLeads,
-                totalClosedDeals: progress.totalSalesClosedDeals,
-                salesRepCount: progress.salesRepsCount,
-                canvasserCount: progress.canvassersCount,
-                companyLeadCloseRate: progress.totalSalesLeads > 0 ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 : 0,
-                salesRevenueGoal: parseFloat(salesGoal) || 0,
-                canvasserLeadsGoal: parseInt(leadsGoal) || 0,
-                totalLeadsClosed: progress.totalLeadsClosed,
-              };
-              exportToExcel([], [], summary);
-              toast({ title: 'Excel report downloaded' });
-            }}
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              const summary: CompanySummary = {
-                totalApprovedRevenue: progress.totalSales,
-                totalCollections: progress.totalCollections,
-                totalPoints: 0,
-                totalLeads: progress.totalSalesLeads,
-                totalClosedDeals: progress.totalSalesClosedDeals,
-                salesRepCount: progress.salesRepsCount,
-                canvasserCount: progress.canvassersCount,
-                companyLeadCloseRate: progress.totalSalesLeads > 0 ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 : 0,
-                salesRevenueGoal: parseFloat(salesGoal) || 0,
-                canvasserLeadsGoal: parseInt(leadsGoal) || 0,
-                totalLeadsClosed: progress.totalLeadsClosed,
-              };
-              exportToPDF([], [], summary);
-              toast({ title: 'PDF report downloaded' });
-            }}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setReportModalOpen(true)}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export Report
+        </Button>
       </div>
+
+      <ReportDateRangeModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onExport={(startDate, endDate, exportFormat) => {
+          const monthlyProgress = generateMonthlyProgress();
+          const actualCostPerLead = progress.totalLeadsClosed > 0 
+            ? progress.totalCanvasserIncome / progress.totalLeadsClosed 
+            : 0;
+          
+          const summary: CompanySummary = {
+            totalApprovedRevenue: progress.totalSales,
+            totalCollections: progress.totalCollections,
+            totalPoints: salesReps.reduce((sum, s) => sum + s.points, 0),
+            totalLeads: progress.totalSalesLeads,
+            totalClosedDeals: progress.totalSalesClosedDeals,
+            salesRepCount: progress.salesRepsCount,
+            canvasserCount: progress.canvassersCount,
+            companyLeadCloseRate: progress.totalSalesLeads > 0 ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 : 0,
+            totalLeadsSet: canvassers.reduce((sum, c) => sum + c.leadsSet, 0),
+            totalLeadsClosed: progress.totalLeadsClosed,
+            totalLeadsWithDamage: canvassers.reduce((sum, c) => sum + c.leadsWithDamage, 0),
+            totalShiftsWorked: canvassers.reduce((sum, c) => sum + c.shiftsWorked, 0),
+            totalCanvasserIncome: progress.totalCanvasserIncome,
+            // Company Goals
+            salesRevenueGoal: parseFloat(salesGoal) || 0,
+            canvasserLeadsGoal: parseInt(leadsGoal) || 0,
+            targetLeadToCloseRatio: parseFloat(targetLeadToCloseRatio) || 0,
+            targetCostPerLead: parseFloat(targetCostPerLead) || 0,
+            fiscalYearStart: format(fiscalStart, 'yyyy-MM-dd'),
+            fiscalYearEnd: format(fiscalEnd, 'yyyy-MM-dd'),
+            // Progress calculations
+            salesProgressPercent: salesGoalNum > 0 ? (progress.totalSales / salesGoalNum) * 100 : 0,
+            leadsProgressPercent: leadsGoalNum > 0 ? (progress.totalLeadsClosed / leadsGoalNum) * 100 : 0,
+            actualCostPerLead: actualCostPerLead,
+            // Monthly Progress for Graph
+            monthlyProgress: monthlyProgress,
+          };
+          
+          if (exportFormat === 'excel') {
+            exportToExcel(salesReps, canvassers, summary, { startDate, endDate });
+            toast({ title: 'Excel report downloaded' });
+          } else {
+            exportToPDF(salesReps, canvassers, summary, { startDate, endDate, includeGraph: true });
+            toast({ title: 'PDF report downloaded' });
+          }
+        }}
+      />
 
       {/* Goal Setting Card */}
       <Card>
