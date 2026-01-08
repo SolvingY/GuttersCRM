@@ -7,13 +7,14 @@ import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
 import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download } from 'lucide-react';
-import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary } from '@/lib/reportGenerator';
+import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { addMonths, format } from 'date-fns';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -97,6 +98,15 @@ export default function AdminOverview() {
   const [selectedCanvasser, setSelectedCanvasser] = useState<CanvasserDetail | null>(null);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [companyGoals, setCompanyGoals] = useState<{
+    salesRevenueGoal: number;
+    canvasserLeadsGoal: number;
+    targetLeadToCloseRatio: number;
+    targetCostPerLead: number;
+    fiscalYearStart: string;
+    fiscalYearEnd: string;
+  } | null>(null);
+  const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -126,6 +136,25 @@ export default function AdminOverview() {
   };
 
   const fetchAdminData = async () => {
+    // Fetch company goals
+    const { data: goalsData } = await supabase
+      .from('company_goals')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (goalsData) {
+      setCompanyGoals({
+        salesRevenueGoal: Number(goalsData.sales_revenue_goal) || 0,
+        canvasserLeadsGoal: Number(goalsData.canvasser_leads_goal) || 0,
+        targetLeadToCloseRatio: Number(goalsData.target_lead_to_close_ratio) || 0,
+        targetCostPerLead: Number(goalsData.target_cost_per_lead) || 0,
+        fiscalYearStart: goalsData.fiscal_year_start || '2025-12-15',
+        fiscalYearEnd: goalsData.fiscal_year_end || '2026-12-15',
+      });
+    }
+
     // Fetch all sales rep metrics
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
@@ -314,11 +343,46 @@ export default function AdminOverview() {
         { totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, totalShiftsWorked: 0 }
       );
 
+      const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
+      setTotalCanvasserIncome(totalIncome);
       setCanvasserAggregates(canvasserTotals);
       setCanvasserDetails(canvassers.sort((a, b) => b.leadsSet - a.leadsSet));
     }
 
     setLoading(false);
+  };
+
+  // Generate monthly progress data for the graph
+  const generateMonthlyProgress = (): MonthlyProgress[] => {
+    const fiscalStart = companyGoals?.fiscalYearStart 
+      ? new Date(companyGoals.fiscalYearStart) 
+      : new Date(2025, 11, 15);
+    
+    const monthlyGoalRevenue = (companyGoals?.salesRevenueGoal || 0) / 12;
+    const monthlyGoalLeads = (companyGoals?.canvasserLeadsGoal || 0) / 12;
+    
+    const now = new Date();
+    const months: MonthlyProgress[] = [];
+    
+    for (let i = 0; i < 12; i++) {
+      const monthDate = addMonths(fiscalStart, i);
+      const monthName = format(monthDate, 'MMM yyyy');
+      const isPast = monthDate <= now;
+      
+      // Distribute current totals proportionally for past months
+      const monthsElapsed = Math.max(1, Math.floor((now.getTime() - fiscalStart.getTime()) / (30 * 24 * 60 * 60 * 1000)));
+      const monthlyRevenue = isPast ? aggregates.totalApprovedRevenue / Math.min(monthsElapsed, i + 1) : 0;
+      const monthlyLeads = isPast ? Math.floor(canvasserAggregates.totalLeadsClosed / Math.min(monthsElapsed, i + 1)) : 0;
+      
+      months.push({
+        month: monthName,
+        revenue: isPast ? monthlyRevenue : 0,
+        leads: isPast ? monthlyLeads : 0,
+        revenueGoal: monthlyGoalRevenue * (i + 1),
+        leadsGoal: Math.floor(monthlyGoalLeads * (i + 1)),
+      });
+    }
+    return months;
   };
 
   useEffect(() => {
@@ -407,7 +471,7 @@ export default function AdminOverview() {
       <ReportDateRangeModal
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
-        onExport={(startDate, endDate, format) => {
+        onExport={(startDate, endDate, exportFormat) => {
           const salesRepsData: SalesRepData[] = userDetails.map(u => ({
             name: u.name,
             salesRank: u.salesRank,
@@ -432,6 +496,12 @@ export default function AdminOverview() {
             conversionRate: c.conversionRate,
             yearlyGoal: c.yearlyGoal,
           }));
+          
+          const monthlyProgress = generateMonthlyProgress();
+          const actualCostPerLead = canvasserAggregates.totalLeadsClosed > 0 
+            ? totalCanvasserIncome / canvasserAggregates.totalLeadsClosed 
+            : 0;
+          
           const summary: CompanySummary = {
             totalApprovedRevenue: aggregates.totalApprovedRevenue,
             totalCollections: userDetails.reduce((sum, u) => sum + u.collections, 0),
@@ -445,9 +515,25 @@ export default function AdminOverview() {
             totalLeadsClosed: canvasserAggregates.totalLeadsClosed,
             totalLeadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
             totalShiftsWorked: canvasserAggregates.totalShiftsWorked,
+            totalCanvasserIncome: totalCanvasserIncome,
+            // Company Goals
+            salesRevenueGoal: companyGoals?.salesRevenueGoal,
+            canvasserLeadsGoal: companyGoals?.canvasserLeadsGoal,
+            targetLeadToCloseRatio: companyGoals?.targetLeadToCloseRatio,
+            targetCostPerLead: companyGoals?.targetCostPerLead,
+            fiscalYearStart: companyGoals?.fiscalYearStart,
+            fiscalYearEnd: companyGoals?.fiscalYearEnd,
+            // Progress calculations
+            salesProgressPercent: companyGoals?.salesRevenueGoal 
+              ? (aggregates.totalApprovedRevenue / companyGoals.salesRevenueGoal) * 100 : 0,
+            leadsProgressPercent: companyGoals?.canvasserLeadsGoal 
+              ? (canvasserAggregates.totalLeadsClosed / companyGoals.canvasserLeadsGoal) * 100 : 0,
+            actualCostPerLead: actualCostPerLead,
+            // Monthly Progress for Graph
+            monthlyProgress: monthlyProgress,
           };
           
-          if (format === 'excel') {
+          if (exportFormat === 'excel') {
             exportToExcel(salesRepsData, canvassersData, summary, { startDate, endDate });
             toast.success('Excel report downloaded');
           } else {
