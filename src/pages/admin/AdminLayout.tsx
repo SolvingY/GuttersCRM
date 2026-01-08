@@ -40,6 +40,7 @@ const adminNavItems = [
   { icon: Trophy, label: 'Contests', path: '/admin/contests' },
   { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
   { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
+  { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
 ];
 
 export default function AdminLayout() {
