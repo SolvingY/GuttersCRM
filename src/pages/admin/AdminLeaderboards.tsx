@@ -28,7 +28,7 @@ interface SalesRepEntry {
   name: string;
   points: number;
   userId: string;
-  sales: number;
+  approvedRevenue: number;
   closedDeals: number;
   collections: number;
   yearlyGoal: number;
@@ -145,7 +145,7 @@ export default function AdminLeaderboards() {
         if (!latestByUser.has(key)) {
           latestByUser.set(key, {
             points: Number(item.points) || 0,
-            sales: Number(item.approved_revenue) || Number(item.sales) || 0,
+            approvedRevenue: Number(item.approved_revenue) || Number(item.sales) || 0,
             closedDeals: Number(item.closed_deals) || 0,
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
@@ -177,7 +177,7 @@ export default function AdminLeaderboards() {
         .map(([userId, data]) => ({
           userId,
           points: data.points,
-          sales: data.sales,
+          approvedRevenue: data.approvedRevenue,
           closedDeals: data.closedDeals,
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
@@ -185,7 +185,7 @@ export default function AdminLeaderboards() {
           name: data.displayName || profilesMap.get(userId) || 'Unknown User',
           contestsWon: contestWinsMap.get(userId) || 0,
         }))
-        .sort((a, b) => b.sales - a.sales)
+        .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
       setSalesYtdEntries(sorted);

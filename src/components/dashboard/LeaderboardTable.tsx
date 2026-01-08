@@ -7,7 +7,7 @@ interface LeaderboardEntry {
   name: string;
   points: number;
   userId: string;
-  sales: number;
+  approvedRevenue: number;
   closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
@@ -42,9 +42,9 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
     return formatCurrency(value);
   };
 
-  const calculatePercentage = (sales: number, goal: number) => {
+  const calculatePercentage = (revenue: number, goal: number) => {
     if (!goal || goal === 0) return 0;
-    return (sales / goal) * 100;
+    return (revenue / goal) * 100;
   };
 
   // Get row background color based on percentage of goal
@@ -92,9 +92,9 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry, index) => {
-              const percentage = calculatePercentage(entry.sales, entry.yearlyGoal);
-              const amountUntilGoal = Math.max(0, entry.yearlyGoal - entry.sales);
+          {entries.map((entry, index) => {
+              const percentage = calculatePercentage(entry.approvedRevenue, entry.yearlyGoal);
+              const amountUntilGoal = Math.max(0, entry.yearlyGoal - entry.approvedRevenue);
               const rowColor = getRowColor(percentage);
               const isCurrentUser = entry.userId === currentUserId;
               
@@ -144,7 +144,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className="font-bold">
-                      {formatCurrency(entry.sales)}
+                      {formatCurrency(entry.approvedRevenue)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -169,7 +169,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                     <PointsBreakdownTooltip
                       data={{
                         type: 'salesRep',
-                        sales: entry.sales,
+                        sales: entry.approvedRevenue,
                         closedDeals: entry.closedDeals || 0,
                         collections: entry.collections || 0,
                         contestPoints: entry.contestPoints || 0,

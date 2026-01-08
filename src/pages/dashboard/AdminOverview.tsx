@@ -37,7 +37,7 @@ interface UserDetail {
   metricId: string;
   realUserId: string | null;
   name: string;
-  sales: number;
+  approvedRevenue: number;
   collections: number;
   points: number;
   leads: number;
@@ -240,7 +240,7 @@ export default function AdminOverview() {
         return {
           metricId: data.metricId,
           realUserId: data.realUserId,
-          sales: data.approvedRevenue,
+          approvedRevenue: data.approvedRevenue,
           collections: data.collections,
           points: data.points,
           leads: data.leads,
@@ -263,7 +263,7 @@ export default function AdminOverview() {
 
       const totals = salesReps.reduce(
         (acc, user) => ({
-          totalApprovedRevenue: acc.totalApprovedRevenue + user.sales,
+          totalApprovedRevenue: acc.totalApprovedRevenue + user.approvedRevenue,
           totalPoints: acc.totalPoints + user.points,
           totalLeads: acc.totalLeads + user.leads,
           totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
@@ -277,7 +277,7 @@ export default function AdminOverview() {
       totals.totalSelfGeneratedLeads = totalSelfGeneratedLeads;
 
       setAggregates(totals);
-      setUserDetails(salesReps.sort((a, b) => b.sales - a.sales));
+      setUserDetails(salesReps.sort((a, b) => b.approvedRevenue - a.approvedRevenue));
     }
 
     // Process canvasser data
@@ -472,10 +472,10 @@ export default function AdminOverview() {
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         onExport={(startDate, endDate, exportFormat) => {
-          const salesRepsData: SalesRepData[] = userDetails.map(u => ({
+        const salesRepsData: SalesRepData[] = userDetails.map(u => ({
             name: u.name,
             salesRank: u.salesRank,
-            approvedRevenue: u.sales,
+            approvedRevenue: u.approvedRevenue,
             collections: u.collections,
             earningsYtd: u.earningsYtd,
             points: u.points,
@@ -701,7 +701,7 @@ export default function AdminOverview() {
                               {user.salesRank}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.sales)}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.approvedRevenue)}</td>
                           <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(user.collections)}</td>
                           <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.earningsYtd)}</td>
                           <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
