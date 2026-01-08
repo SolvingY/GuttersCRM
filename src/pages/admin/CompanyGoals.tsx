@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet } from 'lucide-react';
+import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary } from '@/lib/reportGenerator';
 import { format } from 'date-fns';
 
 interface CompanyGoal {
@@ -226,11 +227,61 @@ export default function CompanyGoals() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Company Goals</h1>
-        <p className="text-sm text-muted-foreground">
-          Set and track 12-month company-wide goals for sales and canvassing teams
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Company Goals</h1>
+          <p className="text-sm text-muted-foreground">
+            Set and track 12-month company-wide goals for sales and canvassing teams
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              const summary: CompanySummary = {
+                totalApprovedRevenue: progress.totalSales,
+                totalCollections: progress.totalCollections,
+                totalPoints: 0,
+                totalLeads: progress.totalSalesLeads,
+                totalClosedDeals: progress.totalSalesClosedDeals,
+                salesRepCount: progress.salesRepsCount,
+                canvasserCount: progress.canvassersCount,
+                companyLeadCloseRate: progress.totalSalesLeads > 0 ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 : 0,
+                salesRevenueGoal: parseFloat(salesGoal) || 0,
+                canvasserLeadsGoal: parseInt(leadsGoal) || 0,
+                totalLeadsClosed: progress.totalLeadsClosed,
+              };
+              exportToExcel([], [], summary);
+              toast({ title: 'Excel report downloaded' });
+            }}
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Export Excel
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              const summary: CompanySummary = {
+                totalApprovedRevenue: progress.totalSales,
+                totalCollections: progress.totalCollections,
+                totalPoints: 0,
+                totalLeads: progress.totalSalesLeads,
+                totalClosedDeals: progress.totalSalesClosedDeals,
+                salesRepCount: progress.salesRepsCount,
+                canvasserCount: progress.canvassersCount,
+                companyLeadCloseRate: progress.totalSalesLeads > 0 ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 : 0,
+                salesRevenueGoal: parseFloat(salesGoal) || 0,
+                canvasserLeadsGoal: parseInt(leadsGoal) || 0,
+                totalLeadsClosed: progress.totalLeadsClosed,
+              };
+              exportToPDF([], [], summary);
+              toast({ title: 'PDF report downloaded' });
+            }}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {/* Goal Setting Card */}
