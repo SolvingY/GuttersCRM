@@ -8,7 +8,7 @@ import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from
 interface UserStats {
   metricId: string;
   name: string;
-  sales: number;
+  approvedRevenue: number;
   collections: number;
   points: number;
   leads: number;
@@ -38,7 +38,7 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
   };
 
   const goalProgress = user.yearlyGoal > 0 
-    ? Math.min((user.sales / user.yearlyGoal) * 100, 100) 
+    ? Math.min((user.approvedRevenue / user.yearlyGoal) * 100, 100) 
     : 0;
 
   const fiscalProgress = getFiscalYearProgress();
@@ -73,7 +73,7 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <StatsCard
               title="Approved Revenue"
-              value={formatCurrency(user.sales)}
+              value={formatCurrency(user.approvedRevenue)}
               icon={DollarSign}
             />
             <StatsCard
@@ -123,8 +123,8 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
             </div>
             <Progress value={goalProgress} className="h-3" />
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{formatCurrency(user.sales)} of {formatCurrency(user.yearlyGoal)}</span>
-              <span>{formatCurrency(user.yearlyGoal - user.sales)} remaining</span>
+              <span>{formatCurrency(user.approvedRevenue)} of {formatCurrency(user.yearlyGoal)}</span>
+              <span>{formatCurrency(user.yearlyGoal - user.approvedRevenue)} remaining</span>
             </div>
           </div>
 
@@ -152,7 +152,7 @@ export function UserStatsModal({ open, onOpenChange, user, onEdit }: UserStatsMo
               with {fiscalProgress.toFixed(1)}% of the fiscal year completed.
               {goalProgress >= fiscalProgress 
                 ? ' They are on track to meet their goal!' 
-                : ` They need to increase sales by ${formatCurrency((user.yearlyGoal * (fiscalProgress / 100)) - user.sales)} to get back on track.`}
+                : ` They need to increase revenue by ${formatCurrency((user.yearlyGoal * (fiscalProgress / 100)) - user.approvedRevenue)} to get back on track.`}
             </p>
           </div>
         </div>

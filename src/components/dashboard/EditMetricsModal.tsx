@@ -25,7 +25,7 @@ import { RANK_OPTIONS } from '@/lib/constants';
 interface UserMetrics {
   metricId: string;
   name: string;
-  sales: number;
+  approvedRevenue: number;
   points: number;
   yearlyGoal: number;
   salesRank: string;
@@ -33,7 +33,6 @@ interface UserMetrics {
   earningsYtd?: number;
   leads: number;
   collections?: number;
-  approvedRevenue?: number;
   canvassLeads?: number;
   canvassDealsClose?: number;
 }
@@ -49,7 +48,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    sales: 0,
+    approvedRevenue: 0,
     points: 0,
     yearlyGoal: 0,
     salesRank: 'SR1',
@@ -57,7 +56,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     earningsYtd: 0,
     leads: 0,
     collections: 0,
-    approvedRevenue: 0,
     canvassLeads: 0,
     canvassDealsClose: 0,
   });
@@ -65,7 +63,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
   useEffect(() => {
     if (user) {
       setFormData({
-        sales: user.sales || 0,
+        approvedRevenue: user.approvedRevenue || 0,
         points: user.points || 0,
         yearlyGoal: user.yearlyGoal || 0,
         salesRank: user.salesRank || 'SR1',
@@ -73,7 +71,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         earningsYtd: user.earningsYtd || 0,
         leads: user.leads || 0,
         collections: user.collections || 0,
-        approvedRevenue: user.approvedRevenue || 0,
         canvassLeads: user.canvassLeads || 0,
         canvassDealsClose: user.canvassDealsClose || 0,
       });
@@ -90,7 +87,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
       const { error } = await supabase
         .from('user_metrics')
         .update({
-          sales: formData.sales,
+          approved_revenue: formData.approvedRevenue,
           points: formData.points,
           yearly_goal: formData.yearlyGoal,
           sales_rank: formData.salesRank,
@@ -98,7 +95,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           earnings_ytd: formData.earningsYtd,
           leads: formData.leads,
           collections: formData.collections,
-          approved_revenue: formData.approvedRevenue,
           canvass_leads: formData.canvassLeads,
           canvass_deals_closed: formData.canvassDealsClose,
           updated_at: new Date().toISOString(),
@@ -146,18 +142,18 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="sales" className="text-right">
-                Sales
+              <Label htmlFor="approvedRevenue" className="text-right">
+                Approved Revenue
               </Label>
               <Input
-                id="sales"
+                id="approvedRevenue"
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.sales}
-                onChange={(e) => setFormData({ ...formData, sales: parseFloat(e.target.value) || 0 })}
+                value={formData.approvedRevenue}
+                onChange={(e) => setFormData({ ...formData, approvedRevenue: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
-                placeholder="Enter sales amount"
+                placeholder="Enter approved revenue"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -265,21 +261,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 onChange={(e) => setFormData({ ...formData, collections: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter collections amount"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="approvedRevenue" className="text-right">
-                Approved Rev
-              </Label>
-              <Input
-                id="approvedRevenue"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.approvedRevenue}
-                onChange={(e) => setFormData({ ...formData, approvedRevenue: parseFloat(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter approved revenue"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

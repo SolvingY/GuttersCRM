@@ -27,7 +27,7 @@ interface LeaderboardEntry {
   name: string;
   points: number;
   userId: string;
-  sales: number; // Now represents approved_revenue
+  approvedRevenue: number;
   closedDeals: number;
   yearlyGoal: number;
   salesRank: string;
@@ -228,7 +228,7 @@ export default function Leaderboard() {
           return {
             userId,
             points: data.points,
-            sales: approvedRevenue, // Use approved_revenue for "sales" display
+            approvedRevenue: approvedRevenue,
             closedDeals: data.closedDeals,
             yearlyGoal: goalsMap.get(userId) || 0,
             salesRank: data.salesRank,
@@ -239,7 +239,7 @@ export default function Leaderboard() {
             collections: collectionsMap.get(userId) || 0,
           };
         })
-        .sort((a, b) => b.sales - a.sales)
+        .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({
           ...entry,
           rank: index + 1,

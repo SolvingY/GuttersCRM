@@ -98,24 +98,29 @@ export default function CompanyGoals() {
       const { data: salesData } = salesRepIds.length > 0
         ? await supabase
             .from('user_metrics')
-            .select('user_id, sales, collections, leads, closed_deals')
+            .select('user_id, approved_revenue, collections, leads, closed_deals, display_name, sales_rank, earnings_ytd, points, yearly_goal')
             .in('user_id', salesRepIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
 
       // Get latest metrics per user
-      const salesByUser = new Map<string, { sales: number; collections: number; leads: number; closedDeals: number }>();
+      const salesByUser = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; name: string; salesRank: string; earningsYtd: number; points: number; yearlyGoal: number }>();
       salesData?.forEach(s => {
         if (!salesByUser.has(s.user_id)) {
           salesByUser.set(s.user_id, {
-            sales: Number(s.sales) || 0,
+            approvedRevenue: Number(s.approved_revenue) || 0,
             collections: Number(s.collections) || 0,
             leads: Number(s.leads) || 0,
             closedDeals: Number(s.closed_deals) || 0,
+            name: s.display_name || 'Unknown',
+            salesRank: s.sales_rank || 'SR1',
+            earningsYtd: Number(s.earnings_ytd) || 0,
+            points: Number(s.points) || 0,
+            yearlyGoal: Number(s.yearly_goal) || 0,
           });
         }
       });
-      const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.sales, 0);
+      const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.approvedRevenue, 0);
       const totalCollections = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.collections, 0);
       const totalSalesLeads = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.leads, 0);
       const totalSalesClosedDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.closedDeals, 0);
@@ -150,16 +155,16 @@ export default function CompanyGoals() {
 
       // Build salesReps array for exports
       const salesRepsData: SalesRepData[] = Array.from(salesByUser.entries()).map(([_, s]) => ({
-        name: (s as any).name || 'Unknown',
-        salesRank: (s as any).salesRank || 'SR1',
-        approvedRevenue: s.sales,
+        name: s.name,
+        salesRank: s.salesRank,
+        approvedRevenue: s.approvedRevenue,
         collections: s.collections,
-        earningsYtd: (s as any).earningsYtd || 0,
-        points: (s as any).points || 0,
+        earningsYtd: s.earningsYtd,
+        points: s.points,
         leads: s.leads,
         closedDeals: s.closedDeals,
-        yearlyGoal: (s as any).yearlyGoal || 0,
-        avgJobSize: s.closedDeals > 0 ? s.sales / s.closedDeals : 0,
+        yearlyGoal: s.yearlyGoal,
+        avgJobSize: s.closedDeals > 0 ? s.approvedRevenue / s.closedDeals : 0,
         leadToClosePercent: s.leads > 0 ? (s.closedDeals / s.leads) * 100 : 0,
       }));
       setSalesReps(salesRepsData);
