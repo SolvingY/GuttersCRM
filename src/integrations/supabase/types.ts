@@ -700,6 +700,30 @@ export type Database = {
         }
         Relationships: []
       }
+      report_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: Json | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value?: Json | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: Json | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       user_announcement_reads: {
         Row: {
           announcement_id: string | null
