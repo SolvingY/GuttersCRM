@@ -22,6 +22,7 @@ import UserRoles from "./pages/admin/UserRoles";
 import Announcements from "./pages/admin/Announcements";
 import CompanyGoals from "./pages/admin/CompanyGoals";
 import PitManagement from "./pages/admin/PitManagement";
+import ReportSettings from "./pages/admin/ReportSettings";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
 import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
@@ -98,6 +99,7 @@ const App = () => (
             <Route path="announcements" element={<Announcements />} />
             <Route path="contests" element={<Contests />} />
             <Route path="pit" element={<PitManagement />} />
+            <Route path="reports" element={<ReportSettings />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
