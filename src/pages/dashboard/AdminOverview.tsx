@@ -5,7 +5,8 @@ import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, FileSpreadsheet, FileText } from 'lucide-react';
+import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +96,7 @@ export default function AdminOverview() {
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [selectedCanvasser, setSelectedCanvasser] = useState<CanvasserDetail | null>(null);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -393,103 +395,67 @@ export default function AdminOverview() {
           <h2 className="text-2xl font-heading text-foreground">Master Overview</h2>
           <p className="text-muted-foreground">Manage all team members and their performance</p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              const salesRepsData: SalesRepData[] = userDetails.map(u => ({
-                name: u.name,
-                salesRank: u.salesRank,
-                approvedRevenue: u.sales,
-                collections: u.collections,
-                earningsYtd: u.earningsYtd,
-                points: u.points,
-                leads: u.leads,
-                closedDeals: u.closedDeals,
-                yearlyGoal: u.yearlyGoal,
-                avgJobSize: u.avgJobSize,
-                leadToClosePercent: u.leadToClosePercent,
-              }));
-              const canvassersData: CanvasserData[] = canvasserDetails.map(c => ({
-                name: c.name,
-                leadsSet: c.leadsSet,
-                leadsClosed: c.leadsClosed,
-                leadsWithDamage: c.leadsWithDamage,
-                shiftsWorked: c.shiftsWorked,
-                points: c.points,
-                income: c.income,
-                conversionRate: c.conversionRate,
-              }));
-              const summary: CompanySummary = {
-                totalApprovedRevenue: aggregates.totalApprovedRevenue,
-                totalCollections: userDetails.reduce((sum, u) => sum + u.collections, 0),
-                totalPoints: aggregates.totalPoints,
-                totalLeads: aggregates.totalLeads,
-                totalClosedDeals: aggregates.totalClosedDeals,
-                salesRepCount: aggregates.totalUsers,
-                canvasserCount: canvasserAggregates.totalCanvassers,
-                companyLeadCloseRate: aggregates.totalLeads > 0 ? (aggregates.totalClosedDeals / aggregates.totalLeads) * 100 : 0,
-                totalLeadsSet: canvasserAggregates.totalLeadsSet,
-                totalLeadsClosed: canvasserAggregates.totalLeadsClosed,
-                totalLeadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-                totalShiftsWorked: canvasserAggregates.totalShiftsWorked,
-              };
-              exportToExcel(salesRepsData, canvassersData, summary);
-              toast.success('Excel report downloaded');
-            }}
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              const salesRepsData: SalesRepData[] = userDetails.map(u => ({
-                name: u.name,
-                salesRank: u.salesRank,
-                approvedRevenue: u.sales,
-                collections: u.collections,
-                earningsYtd: u.earningsYtd,
-                points: u.points,
-                leads: u.leads,
-                closedDeals: u.closedDeals,
-                yearlyGoal: u.yearlyGoal,
-                avgJobSize: u.avgJobSize,
-                leadToClosePercent: u.leadToClosePercent,
-              }));
-              const canvassersData: CanvasserData[] = canvasserDetails.map(c => ({
-                name: c.name,
-                leadsSet: c.leadsSet,
-                leadsClosed: c.leadsClosed,
-                leadsWithDamage: c.leadsWithDamage,
-                shiftsWorked: c.shiftsWorked,
-                points: c.points,
-                income: c.income,
-                conversionRate: c.conversionRate,
-              }));
-              const summary: CompanySummary = {
-                totalApprovedRevenue: aggregates.totalApprovedRevenue,
-                totalCollections: userDetails.reduce((sum, u) => sum + u.collections, 0),
-                totalPoints: aggregates.totalPoints,
-                totalLeads: aggregates.totalLeads,
-                totalClosedDeals: aggregates.totalClosedDeals,
-                salesRepCount: aggregates.totalUsers,
-                canvasserCount: canvasserAggregates.totalCanvassers,
-                companyLeadCloseRate: aggregates.totalLeads > 0 ? (aggregates.totalClosedDeals / aggregates.totalLeads) * 100 : 0,
-                totalLeadsSet: canvasserAggregates.totalLeadsSet,
-                totalLeadsClosed: canvasserAggregates.totalLeadsClosed,
-                totalLeadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-                totalShiftsWorked: canvasserAggregates.totalShiftsWorked,
-              };
-              exportToPDF(salesRepsData, canvassersData, summary);
-              toast.success('PDF report downloaded');
-            }}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setReportModalOpen(true)}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export Report
+        </Button>
       </div>
+
+      <ReportDateRangeModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onExport={(startDate, endDate, format) => {
+          const salesRepsData: SalesRepData[] = userDetails.map(u => ({
+            name: u.name,
+            salesRank: u.salesRank,
+            approvedRevenue: u.sales,
+            collections: u.collections,
+            earningsYtd: u.earningsYtd,
+            points: u.points,
+            leads: u.leads,
+            closedDeals: u.closedDeals,
+            yearlyGoal: u.yearlyGoal,
+            avgJobSize: u.avgJobSize,
+            leadToClosePercent: u.leadToClosePercent,
+          }));
+          const canvassersData: CanvasserData[] = canvasserDetails.map(c => ({
+            name: c.name,
+            leadsSet: c.leadsSet,
+            leadsClosed: c.leadsClosed,
+            leadsWithDamage: c.leadsWithDamage,
+            shiftsWorked: c.shiftsWorked,
+            points: c.points,
+            income: c.income,
+            conversionRate: c.conversionRate,
+            yearlyGoal: c.yearlyGoal,
+          }));
+          const summary: CompanySummary = {
+            totalApprovedRevenue: aggregates.totalApprovedRevenue,
+            totalCollections: userDetails.reduce((sum, u) => sum + u.collections, 0),
+            totalPoints: aggregates.totalPoints,
+            totalLeads: aggregates.totalLeads,
+            totalClosedDeals: aggregates.totalClosedDeals,
+            salesRepCount: aggregates.totalUsers,
+            canvasserCount: canvasserAggregates.totalCanvassers,
+            companyLeadCloseRate: aggregates.totalLeads > 0 ? (aggregates.totalClosedDeals / aggregates.totalLeads) * 100 : 0,
+            totalLeadsSet: canvasserAggregates.totalLeadsSet,
+            totalLeadsClosed: canvasserAggregates.totalLeadsClosed,
+            totalLeadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+            totalShiftsWorked: canvasserAggregates.totalShiftsWorked,
+          };
+          
+          if (format === 'excel') {
+            exportToExcel(salesRepsData, canvassersData, summary, { startDate, endDate });
+            toast.success('Excel report downloaded');
+          } else {
+            exportToPDF(salesRepsData, canvassersData, summary, { startDate, endDate, includeGraph: true });
+            toast.success('PDF report downloaded');
+          }
+        }}
+      />
 
       <Tabs defaultValue="sales" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
