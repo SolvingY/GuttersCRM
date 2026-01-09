@@ -554,11 +554,11 @@ export default function WeeklyUpdates() {
                     <div>Team Member</div>
                     <div>Approved Rev</div>
                     <div>Leads</div>
-                    <div>Closed</div>
+                    <div>Total Contracts</div>
                     <div>Self-Gen Leads</div>
                     <div>Self-Gen Contracts</div>
                     <div>Canvass Leads</div>
-                    <div>Canvass Closed</div>
+                    <div>Canvass Contracts</div>
                     <div>Collections</div>
                     <div>Earnings ($)</div>
                   </div>
@@ -594,7 +594,7 @@ export default function WeeklyUpdates() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground lg:hidden">Closed</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Total Contracts</Label>
                           <Input
                             type="number"
                             min="0"
@@ -638,7 +638,7 @@ export default function WeeklyUpdates() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground lg:hidden">Canvass Closed</Label>
+                          <Label className="text-xs text-muted-foreground lg:hidden">Canvass Contracts</Label>
                           <Input
                             type="number"
                             min="0"
