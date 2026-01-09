@@ -95,13 +95,13 @@ export default function Leaderboard() {
       // Fetch metrics from the leaderboard view (bypasses RLS for all users visibility)
       const { data: metricsData, error: metricsError } = await supabase
         .from('user_metrics_leaderboard')
-        .select('id, user_id, display_name, points, sales, closed_deals, sales_rank, metric_date, self_generated_deals, leads')
+        .select('id, user_id, display_name, points, sales, closed_deals, sales_rank, metric_date, self_generated_deals')
         .order('metric_date', { ascending: false });
 
-      // Also fetch contest_points, wager_points, and approved_revenue from user_metrics
-      const { data: pointsData } = await supabase
+      // Also fetch canvass deals, canvass leads, self-gen leads, and approved_revenue from user_metrics for calculation
+      const { data: extendedMetricsData } = await supabase
         .from('user_metrics')
-        .select('user_id, contest_points, wager_points, approved_revenue')
+        .select('user_id, canvass_deals_closed, canvass_leads, self_generated_leads, contest_points, wager_points, approved_revenue')
         .order('metric_date', { ascending: false });
 
       // Fetch collections aggregated from weekly_user_metrics
@@ -121,14 +121,24 @@ export default function Leaderboard() {
         return;
       }
 
-      // Create points breakdown map (latest per user)
-      const pointsBreakdownMap = new Map<string, { contestPoints: number; wagerPoints: number; approvedRevenue: number }>();
-      pointsData?.forEach(p => {
-        if (p.user_id && !pointsBreakdownMap.has(p.user_id)) {
-          pointsBreakdownMap.set(p.user_id, {
+      // Create extended metrics map (latest per user) - includes points breakdown and canvass data
+      const extendedMetricsMap = new Map<string, { 
+        contestPoints: number; 
+        wagerPoints: number; 
+        approvedRevenue: number;
+        canvassDealsClose: number; 
+        canvassLeads: number;
+        selfGeneratedLeads: number;
+      }>();
+      extendedMetricsData?.forEach(p => {
+        if (p.user_id && !extendedMetricsMap.has(p.user_id)) {
+          extendedMetricsMap.set(p.user_id, {
             contestPoints: Number(p.contest_points) || 0,
             wagerPoints: Number(p.wager_points) || 0,
             approvedRevenue: Number(p.approved_revenue) || 0,
+            canvassDealsClose: Number(p.canvass_deals_closed) || 0,
+            canvassLeads: Number(p.canvass_leads) || 0,
+            selfGeneratedLeads: Number(p.self_generated_leads) || 0,
           });
         }
       });
@@ -162,9 +172,9 @@ export default function Leaderboard() {
         metricId: string;
         points: number;
         sales: number;
-        closedDeals: number;
         salesRank: string;
         displayName: string | null;
+        selfGeneratedDeals: number;
       }>();
       
       for (const item of metricsData) {
@@ -180,9 +190,9 @@ export default function Leaderboard() {
             metricId: item.id,
             points: Number(item.points) || 0,
             sales: Number(item.sales) || 0,
-            closedDeals: Number(item.closed_deals) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
+            selfGeneratedDeals: Number(item.self_generated_deals) || 0,
           });
         }
       }
@@ -223,19 +233,30 @@ export default function Leaderboard() {
       // Convert to array and sort by approved revenue (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => {
-          const pointsBreakdown = pointsBreakdownMap.get(userId) || { contestPoints: 0, wagerPoints: 0, approvedRevenue: 0 };
-          const approvedRevenue = pointsBreakdown.approvedRevenue || data.sales;
+          const extendedMetrics = extendedMetricsMap.get(userId) || { 
+            contestPoints: 0, 
+            wagerPoints: 0, 
+            approvedRevenue: 0,
+            canvassDealsClose: 0,
+            canvassLeads: 0,
+            selfGeneratedLeads: 0,
+          };
+          const approvedRevenue = extendedMetrics.approvedRevenue || data.sales;
+          
+          // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
+          const calculatedClosedDeals = data.selfGeneratedDeals + extendedMetrics.canvassDealsClose;
+          
           return {
             userId,
             points: data.points,
             approvedRevenue: approvedRevenue,
-            closedDeals: data.closedDeals,
+            closedDeals: calculatedClosedDeals,
             yearlyGoal: goalsMap.get(userId) || 0,
             salesRank: data.salesRank,
             name: data.displayName || profilesMap.get(userId) || 'Unknown User',
             contestsWon: contestWinsMap.get(userId) || 0,
-            contestPoints: contestPointsFromVictoriesMap.get(userId) || pointsBreakdown.contestPoints,
-            wagerPoints: pointsBreakdown.wagerPoints,
+            contestPoints: contestPointsFromVictoriesMap.get(userId) || extendedMetrics.contestPoints,
+            wagerPoints: extendedMetrics.wagerPoints,
             collections: collectionsMap.get(userId) || 0,
           };
         })

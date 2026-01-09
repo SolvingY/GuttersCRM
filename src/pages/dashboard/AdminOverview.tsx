@@ -158,7 +158,7 @@ export default function AdminOverview() {
     // Fetch all sales rep metrics
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads')
+      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed')
       .order('metric_date', { ascending: false });
 
     if (metricsError) {
@@ -183,13 +183,14 @@ export default function AdminOverview() {
         approvedRevenue: number; 
         collections: number;
         points: number; 
-        leads: number; 
-        closedDeals: number; 
         yearlyGoal: number; 
         salesRank: string; 
         displayName: string | null; 
         earningsYtd: number;
         selfGeneratedLeads: number;
+        canvassLeads: number;
+        selfGeneratedDeals: number;
+        canvassDealsClose: number;
       }>();
       
       for (const item of metrics) {
@@ -201,13 +202,14 @@ export default function AdminOverview() {
             approvedRevenue: Number(item.approved_revenue) || 0,
             collections: Number(item.collections) || 0,
             points: Number(item.points) || 0,
-            leads: item.leads || 0,
-            closedDeals: item.closed_deals || 0,
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
             earningsYtd: Number(item.earnings_ytd) || 0,
-            selfGeneratedLeads: Number((item as any).self_generated_leads) || 0,
+            selfGeneratedLeads: Number(item.self_generated_leads) || 0,
+            canvassLeads: Number(item.canvass_leads) || 0,
+            selfGeneratedDeals: Number(item.self_generated_deals) || 0,
+            canvassDealsClose: Number(item.canvass_deals_closed) || 0,
           });
         }
       }
@@ -234,8 +236,13 @@ export default function AdminOverview() {
       });
 
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
-        const avgJobSize = data.closedDeals > 0 ? data.approvedRevenue / data.closedDeals : 0;
-        const leadToClosePercent = data.leads > 0 ? (data.closedDeals / data.leads) * 100 : 0;
+        // Calculate Total Leads = Self-Gen Leads + Canvass Leads
+        const calculatedLeads = data.selfGeneratedLeads + data.canvassLeads;
+        // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
+        const calculatedClosedDeals = data.selfGeneratedDeals + data.canvassDealsClose;
+        
+        const avgJobSize = calculatedClosedDeals > 0 ? data.approvedRevenue / calculatedClosedDeals : 0;
+        const leadToClosePercent = calculatedLeads > 0 ? (calculatedClosedDeals / calculatedLeads) * 100 : 0;
         
         return {
           metricId: data.metricId,
@@ -243,8 +250,8 @@ export default function AdminOverview() {
           approvedRevenue: data.approvedRevenue,
           collections: data.collections,
           points: data.points,
-          leads: data.leads,
-          closedDeals: data.closedDeals,
+          leads: calculatedLeads,
+          closedDeals: calculatedClosedDeals,
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
           earningsYtd: data.earningsYtd,
