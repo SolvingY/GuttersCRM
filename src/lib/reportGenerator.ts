@@ -171,7 +171,7 @@ export function exportToExcel(
     ['Total Collections', formatCurrency(companySummary.totalCollections)],
     ['Total Points', companySummary.totalPoints.toLocaleString()],
     ['Total Leads', companySummary.totalLeads],
-    ['Total Closed Deals', companySummary.totalClosedDeals],
+    ['Total Contracts', companySummary.totalClosedDeals],
     ['Lead-to-Close Rate', `${companySummary.companyLeadCloseRate.toFixed(1)}%`],
     [],
     ['CANVASSER TEAM SUMMARY'],
@@ -193,8 +193,8 @@ export function exportToExcel(
   if (salesReps.length > 0) {
     const salesHeaders = [
       'Name', 'Rank', 'Approved Revenue', 'Collections', 'YTD Earnings', 
-      'Points', 'Leads', 'Closed Deals', 'Avg Job Size', 'Close %', 'Yearly Goal',
-      'Self-Gen Leads', 'Self-Gen Deals', 'Canvass Leads', 'Canvass Deals', 'Contest Pts', 'Wager Pts'
+      'Points', 'Leads', 'Total Contracts', 'Avg Job Size', 'Close %', 'Yearly Goal',
+      'Self-Gen Leads', 'Self-Gen Contracts', 'Canvass Leads', 'Canvass Contracts', 'Contest Pts', 'Wager Pts'
     ];
     const salesData = salesReps.map(rep => [
       rep.name,
@@ -422,7 +422,7 @@ export function exportToPDF(
   const summaryTableData = [
     [`${companySummary.salesRepCount} Sales Reps`, `${companySummary.canvasserCount} Canvassers`],
     [formatCurrency(companySummary.totalApprovedRevenue) + ' Revenue', `${companySummary.totalLeadsSet || 0} Leads Set`],
-    [`${companySummary.totalClosedDeals} Closed Deals`, `${companySummary.totalLeadsClosed || 0} Leads Closed`],
+    [`${companySummary.totalClosedDeals} Total Contracts`, `${companySummary.totalLeadsClosed || 0} Leads Closed`],
     [`${companySummary.companyLeadCloseRate.toFixed(1)}% Close Rate`, `${companySummary.totalLeadsWithDamage || 0} w/ Damage`],
     [formatCurrency(companySummary.totalCollections) + ' Collections', `${companySummary.totalShiftsWorked || 0} Shifts Worked`],
   ];
@@ -447,7 +447,7 @@ export function exportToPDF(
       
       autoTable(doc, {
         startY: 24,
-        head: [['Name', 'Rank', 'Revenue', 'Collections', 'Points', 'Leads', 'Closed', 'Close %', 'Avg Job']],
+        head: [['Name', 'Rank', 'Revenue', 'Collections', 'Points', 'Leads', 'Contracts', 'Close %', 'Avg Job']],
         body: salesReps.map(rep => [
           rep.name,
           rep.salesRank,
@@ -469,7 +469,7 @@ export function exportToPDF(
 
       autoTable(doc, {
         startY: salesStartY + 4,
-        head: [['Name', 'Rank', 'Revenue', 'Collections', 'Points', 'Leads', 'Closed', 'Close %', 'Avg Job']],
+        head: [['Name', 'Rank', 'Revenue', 'Collections', 'Points', 'Leads', 'Contracts', 'Close %', 'Avg Job']],
         body: salesReps.map(rep => [
           rep.name,
           rep.salesRank,

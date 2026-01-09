@@ -70,7 +70,7 @@ export function PointsBreakdownTooltip({ data, children, className }: PointsBrea
                   </span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span>{data.closedDeals} closed × 10</span>
+                  <span>{data.closedDeals} contracts × 10</span>
                   <span className="font-medium text-foreground">
                     = {data.closedDeals * 10} pts
                   </span>

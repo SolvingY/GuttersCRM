@@ -222,7 +222,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="closedDeals" className="text-right">
-                Closed Deals
+                Total Contracts
               </Label>
               <Input
                 id="closedDeals"
@@ -231,7 +231,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 value={formData.closedDeals}
                 onChange={(e) => setFormData({ ...formData, closedDeals: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
-                placeholder="Enter closed deals"
+                placeholder="Enter total contracts"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -279,7 +279,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="canvassDealsClose" className="text-right">
-                Canvass Closed
+                Canvass Contracts
               </Label>
               <Input
                 id="canvassDealsClose"
@@ -288,7 +288,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 value={formData.canvassDealsClose}
                 onChange={(e) => setFormData({ ...formData, canvassDealsClose: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
-                placeholder="Enter canvass deals closed"
+                placeholder="Enter canvass contracts"
               />
             </div>
           </div>
