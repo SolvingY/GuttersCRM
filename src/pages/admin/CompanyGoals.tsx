@@ -98,32 +98,48 @@ export default function CompanyGoals() {
       const { data: salesData } = salesRepIds.length > 0
         ? await supabase
             .from('user_metrics')
-            .select('user_id, approved_revenue, collections, leads, closed_deals, display_name, sales_rank, earnings_ytd, points, yearly_goal')
+            .select('user_id, approved_revenue, collections, leads, closed_deals, display_name, sales_rank, earnings_ytd, points, yearly_goal, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed')
             .in('user_id', salesRepIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
 
       // Get latest metrics per user
-      const salesByUser = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; name: string; salesRank: string; earningsYtd: number; points: number; yearlyGoal: number }>();
+      const salesByUser = new Map<string, { 
+        approvedRevenue: number; 
+        collections: number; 
+        name: string; 
+        salesRank: string; 
+        earningsYtd: number; 
+        points: number; 
+        yearlyGoal: number;
+        selfGeneratedLeads: number;
+        canvassLeads: number;
+        selfGeneratedDeals: number;
+        canvassDealsClose: number;
+      }>();
       salesData?.forEach(s => {
         if (!salesByUser.has(s.user_id)) {
           salesByUser.set(s.user_id, {
             approvedRevenue: Number(s.approved_revenue) || 0,
             collections: Number(s.collections) || 0,
-            leads: Number(s.leads) || 0,
-            closedDeals: Number(s.closed_deals) || 0,
             name: s.display_name || 'Unknown',
             salesRank: s.sales_rank || 'SR1',
             earningsYtd: Number(s.earnings_ytd) || 0,
             points: Number(s.points) || 0,
             yearlyGoal: Number(s.yearly_goal) || 0,
+            selfGeneratedLeads: Number(s.self_generated_leads) || 0,
+            canvassLeads: Number(s.canvass_leads) || 0,
+            selfGeneratedDeals: Number(s.self_generated_deals) || 0,
+            canvassDealsClose: Number(s.canvass_deals_closed) || 0,
           });
         }
       });
       const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.approvedRevenue, 0);
       const totalCollections = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.collections, 0);
-      const totalSalesLeads = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.leads, 0);
-      const totalSalesClosedDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.closedDeals, 0);
+      // Calculate Total Leads = Self-Gen Leads + Canvass Leads
+      const totalSalesLeads = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.selfGeneratedLeads + s.canvassLeads, 0);
+      // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
+      const totalSalesClosedDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.selfGeneratedDeals + s.canvassDealsClose, 0);
 
       // Fetch total leads and income from canvassers
       const { data: canvasserData } = canvasserIds.length > 0
@@ -154,19 +170,25 @@ export default function CompanyGoals() {
       const totalCanvasserIncome = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.income, 0);
 
       // Build salesReps array for exports
-      const salesRepsData: SalesRepData[] = Array.from(salesByUser.entries()).map(([_, s]) => ({
-        name: s.name,
-        salesRank: s.salesRank,
-        approvedRevenue: s.approvedRevenue,
-        collections: s.collections,
-        earningsYtd: s.earningsYtd,
-        points: s.points,
-        leads: s.leads,
-        closedDeals: s.closedDeals,
-        yearlyGoal: s.yearlyGoal,
-        avgJobSize: s.closedDeals > 0 ? s.approvedRevenue / s.closedDeals : 0,
-        leadToClosePercent: s.leads > 0 ? (s.closedDeals / s.leads) * 100 : 0,
-      }));
+      const salesRepsData: SalesRepData[] = Array.from(salesByUser.entries()).map(([_, s]) => {
+        // Calculate totals from sub-components
+        const calculatedLeads = s.selfGeneratedLeads + s.canvassLeads;
+        const calculatedClosedDeals = s.selfGeneratedDeals + s.canvassDealsClose;
+        
+        return {
+          name: s.name,
+          salesRank: s.salesRank,
+          approvedRevenue: s.approvedRevenue,
+          collections: s.collections,
+          earningsYtd: s.earningsYtd,
+          points: s.points,
+          leads: calculatedLeads,
+          closedDeals: calculatedClosedDeals,
+          yearlyGoal: s.yearlyGoal,
+          avgJobSize: calculatedClosedDeals > 0 ? s.approvedRevenue / calculatedClosedDeals : 0,
+          leadToClosePercent: calculatedLeads > 0 ? (calculatedClosedDeals / calculatedLeads) * 100 : 0,
+        };
+      });
       setSalesReps(salesRepsData);
 
       // Build canvassers array for exports
