@@ -3,9 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
-import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronRight, UserPlus, Quote } from 'lucide-react';
+import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronRight, UserPlus, Quote, HelpCircle } from 'lucide-react';
 import { 
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend 
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -13,6 +13,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 import { format, subWeeks } from 'date-fns';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface UserMetric {
   id: string;
@@ -347,13 +349,32 @@ export default function MyStats() {
                   trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
                 />
                 
-                {/* Row 5: Lead to Close % */}
-                <StatsCard
-                  title="Lead to Close %"
-                  value={`${leadToCloseRate.toFixed(1)}%`}
-                  icon={Percent}
-                  valueClassName={getLeadToCloseColor(leadToCloseRate)}
-                />
+                {/* Row 5: Lead to Close % with Tooltip */}
+                <Card className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-muted">
+                        <Percent className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-muted-foreground">Lead to Close %</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="cursor-help">
+                              <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p>Lead-to-Close measures Canvass Contracts Closed divided by Canvass Leads Assigned</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                    <span className={cn("text-xl font-bold", getLeadToCloseColor(leadToCloseRate))}>
+                      {leadToCloseRate.toFixed(1)}%
+                    </span>
+                  </div>
+                </Card>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -510,7 +531,7 @@ export default function MyStats() {
                             fontSize={12}
                             tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                           />
-                          <Tooltip
+                          <RechartsTooltip
                             contentStyle={{
                               backgroundColor: 'hsl(var(--card))',
                               border: '1px solid hsl(var(--border))',

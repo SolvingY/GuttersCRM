@@ -11,7 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins, Wand2, Pencil } from 'lucide-react';
+import { Loader2, Plus, Flame, Trophy, Clock, CheckCircle, XCircle, Users, Coins, Wand2, Pencil, Eye, RotateCcw, Undo2 } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 
 interface WagerEvent {
@@ -62,7 +64,9 @@ export default function PitManagement() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [wagerDetailsDialogOpen, setWagerDetailsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<WagerEvent | null>(null);
+  const [selectedEventWagers, setSelectedEventWagers] = useState<{ userId: string; userName: string; optionLabel: string; pointsWagered: number; potentialPayout: number; status: string; pointsWon: number }[]>([]);
   const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [autoDetecting, setAutoDetecting] = useState(false);
   const [userMetricsForResolve, setUserMetricsForResolve] = useState<Map<string, { name: string; metric: number }>>(new Map());
@@ -492,6 +496,278 @@ export default function PitManagement() {
     } catch (error) {
       console.error('Error cancelling event:', error);
       toast({ title: 'Error', description: 'Failed to cancel event', variant: 'destructive' });
+    }
+  };
+
+  // Open wager details dialog for past events
+  const openWagerDetailsDialog = async (event: WagerEvent) => {
+    setSelectedEvent(event);
+    const eventWagers = wagers.get(event.id) || [];
+    const eventOptions = options.get(event.id) || [];
+
+    // Fetch user names for the wagers
+    const enrichedWagers: typeof selectedEventWagers = [];
+    for (const wager of eventWagers) {
+      // Get user name from metrics
+      let userName = 'Unknown User';
+      const { data: userMetrics } = await supabase
+        .from('user_metrics')
+        .select('display_name')
+        .eq('user_id', wager.user_id)
+        .limit(1)
+        .single();
+      
+      if (userMetrics?.display_name) {
+        userName = userMetrics.display_name;
+      } else {
+        const { data: canvasserMetrics } = await supabase
+          .from('canvasser_metrics')
+          .select('display_name')
+          .eq('user_id', wager.user_id)
+          .limit(1)
+          .single();
+        if (canvasserMetrics?.display_name) {
+          userName = canvasserMetrics.display_name;
+        }
+      }
+
+      const option = eventOptions.find(o => o.id === wager.option_id);
+      enrichedWagers.push({
+        userId: wager.user_id,
+        userName,
+        optionLabel: option?.option_label || 'Unknown',
+        pointsWagered: wager.points_wagered,
+        potentialPayout: wager.potential_payout,
+        status: wager.status,
+        pointsWon: (wager as any).points_won || 0,
+      });
+    }
+
+    setSelectedEventWagers(enrichedWagers);
+    setWagerDetailsDialogOpen(true);
+  };
+
+  // Cancel and refund a resolved event
+  const handleCancelResolvedEvent = async (eventId: string) => {
+    try {
+      const eventWagers = wagers.get(eventId) || [];
+
+      // Reverse all point transactions
+      for (const wager of eventWagers) {
+        if (wager.status === 'won') {
+          // Winner - remove the won points
+          const { data: userMetricsData } = await supabase
+            .from('user_metrics')
+            .select('id, points, wager_points')
+            .eq('user_id', wager.user_id)
+            .order('metric_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (userMetricsData) {
+            const pointsWon = (wager as any).points_won || 0;
+            const newPoints = Math.max(0, (Number(userMetricsData.points) || 0) - pointsWon);
+            const newWagerPoints = (Number(userMetricsData.wager_points) || 0) - pointsWon;
+
+            await supabase
+              .from('user_metrics')
+              .update({ points: newPoints, wager_points: newWagerPoints })
+              .eq('id', userMetricsData.id);
+          } else {
+            const { data: canvasserMetricsData } = await supabase
+              .from('canvasser_metrics')
+              .select('id, points, wager_points')
+              .eq('user_id', wager.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (canvasserMetricsData) {
+              const pointsWon = (wager as any).points_won || 0;
+              const newPoints = Math.max(0, (Number(canvasserMetricsData.points) || 0) - pointsWon);
+              const newWagerPoints = (Number(canvasserMetricsData.wager_points) || 0) - pointsWon;
+
+              await supabase
+                .from('canvasser_metrics')
+                .update({ points: newPoints, wager_points: newWagerPoints })
+                .eq('id', canvasserMetricsData.id);
+            }
+          }
+        } else if (wager.status === 'lost') {
+          // Loser - restore their wagered points
+          const { data: userMetricsData } = await supabase
+            .from('user_metrics')
+            .select('id, points, wager_points')
+            .eq('user_id', wager.user_id)
+            .order('metric_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (userMetricsData) {
+            const newPoints = (Number(userMetricsData.points) || 0) + wager.points_wagered;
+            const newWagerPoints = (Number(userMetricsData.wager_points) || 0) + wager.points_wagered;
+
+            await supabase
+              .from('user_metrics')
+              .update({ points: newPoints, wager_points: newWagerPoints })
+              .eq('id', userMetricsData.id);
+          } else {
+            const { data: canvasserMetricsData } = await supabase
+              .from('canvasser_metrics')
+              .select('id, points, wager_points')
+              .eq('user_id', wager.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (canvasserMetricsData) {
+              const newPoints = (Number(canvasserMetricsData.points) || 0) + wager.points_wagered;
+              const newWagerPoints = (Number(canvasserMetricsData.wager_points) || 0) + wager.points_wagered;
+
+              await supabase
+                .from('canvasser_metrics')
+                .update({ points: newPoints, wager_points: newWagerPoints })
+                .eq('id', canvasserMetricsData.id);
+            }
+          }
+        }
+
+        // Mark wager as refunded
+        await supabase
+          .from('pit_wagers')
+          .update({ status: 'refunded', resolved_at: new Date().toISOString() })
+          .eq('id', wager.id);
+      }
+
+      // Reset winning option
+      await supabase
+        .from('pit_wager_options')
+        .update({ is_winner: false })
+        .eq('event_id', eventId);
+
+      // Update event status
+      await supabase
+        .from('pit_wager_events')
+        .update({ status: 'cancelled', resolved_at: new Date().toISOString() })
+        .eq('id', eventId);
+
+      toast({ title: 'Event Cancelled', description: 'All wagers have been refunded and points reversed.' });
+      fetchData();
+    } catch (error) {
+      console.error('Error cancelling resolved event:', error);
+      toast({ title: 'Error', description: 'Failed to cancel event', variant: 'destructive' });
+    }
+  };
+
+  // Reset a resolved event back to open/locked
+  const handleResetEvent = async (eventId: string) => {
+    try {
+      const eventWagers = wagers.get(eventId) || [];
+
+      // Reverse all point transactions
+      for (const wager of eventWagers) {
+        if (wager.status === 'won') {
+          // Winner - remove the won points
+          const { data: userMetricsData } = await supabase
+            .from('user_metrics')
+            .select('id, points, wager_points')
+            .eq('user_id', wager.user_id)
+            .order('metric_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (userMetricsData) {
+            const pointsWon = (wager as any).points_won || 0;
+            const newPoints = Math.max(0, (Number(userMetricsData.points) || 0) - pointsWon);
+            const newWagerPoints = (Number(userMetricsData.wager_points) || 0) - pointsWon;
+
+            await supabase
+              .from('user_metrics')
+              .update({ points: newPoints, wager_points: newWagerPoints })
+              .eq('id', userMetricsData.id);
+          } else {
+            const { data: canvasserMetricsData } = await supabase
+              .from('canvasser_metrics')
+              .select('id, points, wager_points')
+              .eq('user_id', wager.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (canvasserMetricsData) {
+              const pointsWon = (wager as any).points_won || 0;
+              const newPoints = Math.max(0, (Number(canvasserMetricsData.points) || 0) - pointsWon);
+              const newWagerPoints = (Number(canvasserMetricsData.wager_points) || 0) - pointsWon;
+
+              await supabase
+                .from('canvasser_metrics')
+                .update({ points: newPoints, wager_points: newWagerPoints })
+                .eq('id', canvasserMetricsData.id);
+            }
+          }
+        } else if (wager.status === 'lost') {
+          // Loser - restore their wagered points
+          const { data: userMetricsData } = await supabase
+            .from('user_metrics')
+            .select('id, points, wager_points')
+            .eq('user_id', wager.user_id)
+            .order('metric_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (userMetricsData) {
+            const newPoints = (Number(userMetricsData.points) || 0) + wager.points_wagered;
+            const newWagerPoints = (Number(userMetricsData.wager_points) || 0) + wager.points_wagered;
+
+            await supabase
+              .from('user_metrics')
+              .update({ points: newPoints, wager_points: newWagerPoints })
+              .eq('id', userMetricsData.id);
+          } else {
+            const { data: canvasserMetricsData } = await supabase
+              .from('canvasser_metrics')
+              .select('id, points, wager_points')
+              .eq('user_id', wager.user_id)
+              .order('metric_date', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (canvasserMetricsData) {
+              const newPoints = (Number(canvasserMetricsData.points) || 0) + wager.points_wagered;
+              const newWagerPoints = (Number(canvasserMetricsData.wager_points) || 0) + wager.points_wagered;
+
+              await supabase
+                .from('canvasser_metrics')
+                .update({ points: newPoints, wager_points: newWagerPoints })
+                .eq('id', canvasserMetricsData.id);
+            }
+          }
+        }
+
+        // Reset wager to pending
+        await supabase
+          .from('pit_wagers')
+          .update({ status: 'pending', points_won: 0, resolved_at: null })
+          .eq('id', wager.id);
+      }
+
+      // Reset winning option
+      await supabase
+        .from('pit_wager_options')
+        .update({ is_winner: false })
+        .eq('event_id', eventId);
+
+      // Update event status back to locked
+      await supabase
+        .from('pit_wager_events')
+        .update({ status: 'locked', resolved_at: null })
+        .eq('id', eventId);
+
+      toast({ title: 'Event Reset', description: 'Event has been reset and is ready to be resolved again.' });
+      fetchData();
+    } catch (error) {
+      console.error('Error resetting event:', error);
+      toast({ title: 'Error', description: 'Failed to reset event', variant: 'destructive' });
     }
   };
 
@@ -1014,7 +1290,7 @@ export default function PitManagement() {
                 const eventOptions = options.get(event.id) || [];
                 const winner = eventOptions.find(o => o.is_winner);
                 return (
-                  <Card key={event.id} className="opacity-75">
+                  <Card key={event.id} className="opacity-90 hover:opacity-100 transition-opacity">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div>
@@ -1032,11 +1308,41 @@ export default function PitManagement() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex gap-4 text-sm text-muted-foreground">
+                      <div className="flex gap-4 text-sm text-muted-foreground mb-4">
                         <span>{stats.count} wagers</span>
                         <span>{stats.totalWagered.toLocaleString()} pts wagered</span>
                         {event.resolved_at && (
                           <span>Resolved {format(new Date(event.resolved_at), 'MMM d, yyyy')}</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openWagerDetailsDialog(event)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Wagers
+                        </Button>
+                        {event.status === 'resolved' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResetEvent(event.id)}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              Reset
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleCancelResolvedEvent(event.id)}
+                            >
+                              <Undo2 className="h-4 w-4 mr-1" />
+                              Cancel & Refund
+                            </Button>
+                          </>
                         )}
                       </div>
                     </CardContent>
@@ -1194,6 +1500,55 @@ export default function PitManagement() {
               Save Changes
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Wager Details Dialog */}
+      <Dialog open={wagerDetailsDialogOpen} onOpenChange={setWagerDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Wager Details</DialogTitle>
+            <DialogDescription>
+              {selectedEvent?.title} - All wagers placed on this event
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[50vh]">
+            {selectedEventWagers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No wagers placed on this event</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Pick</TableHead>
+                    <TableHead className="text-right">Wagered</TableHead>
+                    <TableHead className="text-right">Potential</TableHead>
+                    <TableHead className="text-center">Result</TableHead>
+                    <TableHead className="text-right">Won</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedEventWagers.map((wager, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">{wager.userName}</TableCell>
+                      <TableCell>{wager.optionLabel}</TableCell>
+                      <TableCell className="text-right">{wager.pointsWagered} pts</TableCell>
+                      <TableCell className="text-right">{wager.potentialPayout} pts</TableCell>
+                      <TableCell className="text-center">
+                        {wager.status === 'won' && <Badge className="bg-green-500">Won</Badge>}
+                        {wager.status === 'lost' && <Badge variant="destructive">Lost</Badge>}
+                        {wager.status === 'pending' && <Badge variant="secondary">Pending</Badge>}
+                        {wager.status === 'refunded' && <Badge variant="outline">Refunded</Badge>}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-green-500">
+                        {wager.status === 'won' ? `+${wager.pointsWon}` : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

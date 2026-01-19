@@ -149,6 +149,16 @@ export default function CanvasserPit() {
   const handlePlaceWager = async () => {
     if (!selectedOption || !selectedEvent || !wagerAmount) return;
 
+    // Prevent self-betting
+    if (selectedOption.user_id === user?.id) {
+      toast({
+        title: 'Invalid Wager',
+        description: 'You cannot place a wager on yourself',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const amount = parseInt(wagerAmount);
     if (amount < selectedEvent.min_wager || amount > selectedEvent.max_wager) {
       toast({
@@ -379,18 +389,24 @@ export default function CanvasserPit() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {eventOptions.map((opt) => (
-                          <Button
-                            key={opt.id}
-                            variant={userBet ? 'secondary' : 'outline'}
-                            className="h-auto py-3 flex-col"
-                            disabled={isClosed || userBet}
-                            onClick={() => openWagerDialog(event, opt)}
-                          >
-                            <span className="font-medium">{opt.option_label}</span>
-                            <span className="text-xs text-muted-foreground">{opt.payout_multiplier}x payout</span>
-                          </Button>
-                        ))}
+                        {eventOptions.map((opt) => {
+                          const isSelfBet = opt.user_id === user?.id;
+                          return (
+                            <Button
+                              key={opt.id}
+                              variant={userBet ? 'secondary' : 'outline'}
+                              className="h-auto py-3 flex-col"
+                              disabled={isClosed || userBet || isSelfBet}
+                              onClick={() => openWagerDialog(event, opt)}
+                              title={isSelfBet ? "You cannot bet on yourself" : undefined}
+                            >
+                              <span className="font-medium">{opt.option_label}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {isSelfBet ? "Can't bet on yourself" : `${opt.payout_multiplier}x payout`}
+                              </span>
+                            </Button>
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>

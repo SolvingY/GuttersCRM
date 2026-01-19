@@ -6,7 +6,7 @@ import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserM
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -650,7 +651,19 @@ export default function AdminOverview() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Avg Job</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Close %</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="flex items-center gap-1 justify-end cursor-help">
+                              Close %
+                              <HelpCircle className="h-3 w-3" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p>Lead-to-Close measures Canvass Contracts Closed divided by Canvass Leads Assigned</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>

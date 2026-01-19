@@ -11,6 +11,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -51,6 +61,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingWeekly, setIsResettingWeekly] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [formData, setFormData] = useState({
     approvedRevenue: 0,
     points: 0,
@@ -359,7 +370,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 type="button" 
                 variant="destructive" 
                 size="sm"
-                onClick={handleResetWeeklyMetrics}
+                onClick={() => setShowResetConfirm(true)}
                 disabled={isResettingWeekly}
                 className="w-full sm:w-auto"
               >
@@ -379,6 +390,30 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Reset Weekly Confirmation Dialog */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Weekly Metrics?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will set all weekly metrics to zero for <span className="font-semibold">{user?.name}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowResetConfirm(false);
+                handleResetWeeklyMetrics();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, Reset Weekly Metrics
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
