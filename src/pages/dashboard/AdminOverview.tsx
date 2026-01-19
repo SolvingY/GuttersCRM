@@ -160,21 +160,23 @@ export default function AdminOverview() {
       });
     }
 
-    // Fetch all sales rep metrics
+    // Fetch all sales rep metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed')
-      .order('metric_date', { ascending: false });
+      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, updated_at, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed')
+      .order('metric_date', { ascending: false })
+      .order('updated_at', { ascending: false });
 
     if (metricsError) {
       console.error('Error fetching admin metrics:', metricsError);
     }
 
-    // Fetch canvasser metrics
+    // Fetch canvasser metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: canvasserMetrics, error: canvasserError } = await supabase
       .from('canvasser_metrics')
-      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points, income, yearly_goal, metric_date')
-      .order('metric_date', { ascending: false });
+      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points, income, yearly_goal, metric_date, updated_at')
+      .order('metric_date', { ascending: false })
+      .order('updated_at', { ascending: false });
 
     if (canvasserError) {
       console.error('Error fetching canvasser metrics:', canvasserError);
