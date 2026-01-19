@@ -58,6 +58,7 @@ export default function Leaderboard() {
   const [monthlyLoading, setMonthlyLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Get selected week range
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
@@ -74,6 +75,29 @@ export default function Leaderboard() {
   const navigateMonth = (direction: 'prev' | 'next') => {
     setSelectedMonthDate(direction === 'prev' ? subMonths(selectedMonthDate, 1) : addMonths(selectedMonthDate, 1));
   };
+
+  // Subscribe to realtime changes on user_metrics to auto-refresh when data changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('leaderboard-metrics-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_metrics',
+        },
+        () => {
+          // Trigger a refresh when user_metrics changes
+          setRefreshKey(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -99,11 +123,12 @@ export default function Leaderboard() {
         .order('metric_date', { ascending: false });
 
       // Also fetch canvass deals, canvass leads, self-gen leads, and approved_revenue from user_metrics for calculation
+      // Order by metric_date and updated_at for deterministic "latest" selection
       const { data: extendedMetricsData } = await supabase
         .from('user_metrics')
-        .select('user_id, canvass_deals_closed, canvass_leads, self_generated_leads, contest_points, wager_points, approved_revenue')
-        .order('metric_date', { ascending: false });
-
+        .select('user_id, canvass_deals_closed, canvass_leads, self_generated_leads, contest_points, wager_points, approved_revenue, metric_date, updated_at')
+        .order('metric_date', { ascending: false })
+        .order('updated_at', { ascending: false });
       // Fetch collections aggregated from weekly_user_metrics
       const { data: collectionsData } = await supabase
         .from('weekly_user_metrics')
@@ -153,11 +178,12 @@ export default function Leaderboard() {
       });
 
       // Fetch yearly goals from user_metrics separately
+      // Order by metric_date and updated_at for deterministic "latest" selection
       const { data: goalsData } = await supabase
         .from('user_metrics')
-        .select('user_id, yearly_goal')
-        .order('metric_date', { ascending: false });
-
+        .select('user_id, yearly_goal, metric_date, updated_at')
+        .order('metric_date', { ascending: false })
+        .order('updated_at', { ascending: false });
       // Create goals map (latest goal per user)
       const goalsMap = new Map<string, number>();
       goalsData?.forEach(g => {
@@ -271,7 +297,7 @@ export default function Leaderboard() {
     };
 
     fetchLeaderboard();
-  }, []);
+  }, [refreshKey]);
 
   useEffect(() => {
     const fetchWeeklyLeaderboard = async () => {
