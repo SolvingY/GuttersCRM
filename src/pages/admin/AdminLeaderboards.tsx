@@ -275,6 +275,14 @@ export default function AdminLeaderboards() {
             pointsEarned: Number(w.points_earned) || 0,
             name: String(displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User'),
           }))
+          // Filter out users with zero metrics for weekly
+          .filter(entry => 
+            entry.approvedRevenue > 0 || 
+            entry.collections > 0 || 
+            entry.leads > 0 || 
+            entry.closedDeals > 0 || 
+            entry.pointsEarned > 0
+          )
           .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
@@ -332,6 +340,14 @@ export default function AdminLeaderboards() {
             ...data,
             name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
           }))
+          // Filter out users with zero metrics for monthly
+          .filter(entry => 
+            entry.approvedRevenue > 0 || 
+            entry.collections > 0 || 
+            entry.leads > 0 || 
+            entry.closedDeals > 0 || 
+            entry.pointsEarned > 0
+          )
           .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
@@ -466,6 +482,14 @@ export default function AdminLeaderboards() {
             pointsEarned: Number(w.points_earned) || 0,
             name: displayNameMap.get(w.user_id) || 'Anonymous',
           }))
+          // Filter out canvassers with zero metrics for weekly
+          .filter(entry => 
+            entry.leadsSet > 0 || 
+            entry.leadsClosed > 0 || 
+            entry.leadsWithDamage > 0 || 
+            entry.doorsKnocked > 0 || 
+            entry.pointsEarned > 0
+          )
           .sort((a, b) => b.leadsClosed - a.leadsClosed)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
@@ -517,6 +541,14 @@ export default function AdminLeaderboards() {
             ...data,
             name: displayNameMap.get(userId) || 'Anonymous',
           }))
+          // Filter out canvassers with zero metrics for monthly
+          .filter(entry => 
+            entry.leadsSet > 0 || 
+            entry.leadsClosed > 0 || 
+            entry.leadsWithDamage > 0 || 
+            entry.doorsKnocked > 0 || 
+            entry.pointsEarned > 0
+          )
           .sort((a, b) => b.leadsClosed - a.leadsClosed)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 

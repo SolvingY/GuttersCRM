@@ -35,7 +35,6 @@ interface UserMetrics {
   leads: number;
   collections?: number;
   // Sub-component values for direct editing
-  selfGeneratedLeads: number;
   selfGeneratedDeals: number;
   canvassLeads: number;
   canvassDealsClose: number;
@@ -59,7 +58,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     salesRank: 'SR1',
     earningsYtd: 0,
     collections: 0,
-    selfGeneratedLeads: 0,
     selfGeneratedDeals: 0,
     canvassLeads: 0,
     canvassDealsClose: 0,
@@ -74,7 +72,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         salesRank: user.salesRank || 'SR1',
         earningsYtd: user.earningsYtd || 0,
         collections: user.collections || 0,
-        selfGeneratedLeads: user.selfGeneratedLeads || 0,
         selfGeneratedDeals: user.selfGeneratedDeals || 0,
         canvassLeads: user.canvassLeads || 0,
         canvassDealsClose: user.canvassDealsClose || 0,
@@ -88,8 +85,8 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
 
     setIsSubmitting(true);
     try {
-      // Calculate totals from sub-components
-      const calculatedLeads = formData.selfGeneratedLeads + formData.canvassLeads;
+      // Total leads now = canvass leads only (self-gen leads removed)
+      const calculatedLeads = formData.canvassLeads;
       const calculatedClosedDeals = formData.selfGeneratedDeals + formData.canvassDealsClose;
       
       // Update with sub-component values AND calculated totals
@@ -102,7 +99,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           sales_rank: formData.salesRank,
           earnings_ytd: formData.earningsYtd,
           collections: formData.collections,
-          self_generated_leads: formData.selfGeneratedLeads,
           self_generated_deals: formData.selfGeneratedDeals,
           canvass_leads: formData.canvassLeads,
           canvass_deals_closed: formData.canvassDealsClose,
@@ -190,7 +186,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Metrics</DialogTitle>
           <DialogDescription>
@@ -297,21 +293,7 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
 
               {/* Leads Section */}
               <div className="border-t border-border pt-4 mt-2">
-                <p className="text-sm font-medium text-muted-foreground mb-3">Leads Breakdown</p>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="selfGeneratedLeads" className="text-right">
-                  Self-Gen Leads
-                </Label>
-                <Input
-                  id="selfGeneratedLeads"
-                  type="number"
-                  min="0"
-                  value={formData.selfGeneratedLeads}
-                  onChange={(e) => setFormData({ ...formData, selfGeneratedLeads: parseInt(e.target.value) || 0 })}
-                  className="col-span-3"
-                  placeholder="Enter self-generated leads"
-                />
+                <p className="text-sm font-medium text-muted-foreground mb-3">Canvass Leads (Assigned)</p>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="canvassLeads" className="text-right">
@@ -324,17 +306,8 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                   value={formData.canvassLeads}
                   onChange={(e) => setFormData({ ...formData, canvassLeads: parseInt(e.target.value) || 0 })}
                   className="col-span-3"
-                  placeholder="Enter canvass leads"
+                  placeholder="Enter canvass leads assigned"
                 />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
-                <Label className="text-right text-muted-foreground">
-                  Total Leads
-                </Label>
-                <div className="col-span-3 font-semibold">
-                  {formData.selfGeneratedLeads + formData.canvassLeads}
-                  <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
-                </div>
               </div>
 
               {/* Contracts Section */}
@@ -381,24 +354,25 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
             </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-4 border-t border-border">
-            <div className="flex w-full justify-between items-center">
+            <div className="flex flex-col-reverse sm:flex-row w-full gap-2 sm:justify-between sm:items-center">
               <Button 
                 type="button" 
                 variant="destructive" 
                 size="sm"
                 onClick={handleResetWeeklyMetrics}
                 disabled={isResettingWeekly}
+                className="w-full sm:w-auto"
               >
                 {isResettingWeekly && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Reset Weekly Metrics
+                Reset Weekly
               </Button>
-              <div className="flex gap-2">
+              <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
+                  Save
                 </Button>
               </div>
             </div>

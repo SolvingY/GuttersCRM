@@ -375,6 +375,14 @@ export default function Leaderboard() {
           pointsEarned: Number(w.points_earned) || 0,
           name: displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User',
         }))
+        // Filter out users with zero metrics for weekly
+        .filter(entry => 
+          entry.approvedRevenue > 0 || 
+          entry.collections > 0 || 
+          entry.leads > 0 || 
+          entry.closedDeals > 0 || 
+          entry.pointsEarned > 0
+        )
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({
           ...entry,
@@ -464,6 +472,14 @@ export default function Leaderboard() {
           ...data,
           name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
         }))
+        // Filter out users with zero metrics for monthly
+        .filter(entry => 
+          entry.approvedRevenue > 0 || 
+          entry.collections > 0 || 
+          entry.leads > 0 || 
+          entry.closedDeals > 0 || 
+          entry.pointsEarned > 0
+        )
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 

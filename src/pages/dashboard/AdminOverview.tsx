@@ -22,7 +22,6 @@ interface AggregateMetrics {
   totalLeads: number;
   totalClosedDeals: number;
   totalUsers: number;
-  totalSelfGeneratedLeads: number;
 }
 
 interface CanvasserAggregates {
@@ -49,7 +48,6 @@ interface UserDetail {
   leadToClosePercent: number;
   role: 'admin' | 'user' | 'canvasser';
   // Sub-component values for editing
-  selfGeneratedLeads: number;
   selfGeneratedDeals: number;
   canvassLeads: number;
   canvassDealsClose: number;
@@ -84,7 +82,6 @@ export default function AdminOverview() {
     totalLeads: 0,
     totalClosedDeals: 0,
     totalUsers: 0,
-    totalSelfGeneratedLeads: 0,
   });
   const [canvasserAggregates, setCanvasserAggregates] = useState<CanvasserAggregates>({
     totalCanvassers: 0,
@@ -194,7 +191,6 @@ export default function AdminOverview() {
         salesRank: string; 
         displayName: string | null; 
         earningsYtd: number;
-        selfGeneratedLeads: number;
         canvassLeads: number;
         selfGeneratedDeals: number;
         canvassDealsClose: number;
@@ -213,7 +209,6 @@ export default function AdminOverview() {
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
             earningsYtd: Number(item.earnings_ytd) || 0,
-            selfGeneratedLeads: Number(item.self_generated_leads) || 0,
             canvassLeads: Number(item.canvass_leads) || 0,
             selfGeneratedDeals: Number(item.self_generated_deals) || 0,
             canvassDealsClose: Number(item.canvass_deals_closed) || 0,
@@ -243,13 +238,14 @@ export default function AdminOverview() {
       });
 
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
-        // Calculate Total Leads = Self-Gen Leads + Canvass Leads
-        const calculatedLeads = data.selfGeneratedLeads + data.canvassLeads;
+        // Total Leads = Canvass Leads only (self-gen leads removed)
+        const calculatedLeads = data.canvassLeads;
         // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
         const calculatedClosedDeals = data.selfGeneratedDeals + data.canvassDealsClose;
         
         const avgJobSize = calculatedClosedDeals > 0 ? data.approvedRevenue / calculatedClosedDeals : 0;
-        const leadToClosePercent = calculatedLeads > 0 ? (calculatedClosedDeals / calculatedLeads) * 100 : 0;
+        // Lead-to-Close = Canvass Deals Closed / Canvass Leads Assigned
+        const leadToClosePercent = data.canvassLeads > 0 ? (data.canvassDealsClose / data.canvassLeads) * 100 : 0;
         
         return {
           metricId: data.metricId,
@@ -267,7 +263,6 @@ export default function AdminOverview() {
           leadToClosePercent,
           role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
           // Pass sub-component values for editing
-          selfGeneratedLeads: data.selfGeneratedLeads,
           selfGeneratedDeals: data.selfGeneratedDeals,
           canvassLeads: data.canvassLeads,
           canvassDealsClose: data.canvassDealsClose,
@@ -276,9 +271,6 @@ export default function AdminOverview() {
       
       // Filter out canvassers from sales rep list
       const salesReps = users.filter(user => user.role !== 'canvasser');
-      
-      // Calculate self-generated leads total from latestByUser
-      const totalSelfGeneratedLeads = Array.from(latestByUser.values()).reduce((sum, u) => sum + u.selfGeneratedLeads, 0);
 
       const totals = salesReps.reduce(
         (acc, user) => ({
@@ -287,13 +279,9 @@ export default function AdminOverview() {
           totalLeads: acc.totalLeads + user.leads,
           totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
           totalUsers: acc.totalUsers + 1,
-          totalSelfGeneratedLeads: acc.totalSelfGeneratedLeads,
         }),
-        { totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0, totalSelfGeneratedLeads }
+        { totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0 }
       );
-
-      // Add the self-generated leads total
-      totals.totalSelfGeneratedLeads = totalSelfGeneratedLeads;
 
       setAggregates(totals);
       setUserDetails(salesReps.sort((a, b) => b.approvedRevenue - a.approvedRevenue));
@@ -583,24 +571,25 @@ export default function AdminOverview() {
             />
           </div>
 
-          {/* Lead Source Comparison Card */}
+          {/* Contract Source Comparison Card */}
           <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
               <GitCompare className="h-5 w-5 text-accent" />
-              <h3 className="font-heading font-semibold text-foreground">Lead Sources</h3>
+              <h3 className="font-heading font-semibold text-foreground">Contract Sources</h3>
             </div>
             {(() => {
-              const selfGenLeads = aggregates.totalSelfGeneratedLeads;
-              const canvasserLeads = canvasserAggregates.totalLeadsSet;
-              const totalLeadSources = selfGenLeads + canvasserLeads;
-              const selfGenPct = totalLeadSources > 0 ? (selfGenLeads / totalLeadSources) * 100 : 0;
-              const canvasserPct = totalLeadSources > 0 ? (canvasserLeads / totalLeadSources) * 100 : 0;
+              // Calculate self-gen vs canvass contracts for yearly comparison
+              const totalSelfGenContracts = userDetails.reduce((sum, u) => sum + u.selfGeneratedDeals, 0);
+              const totalCanvassContracts = userDetails.reduce((sum, u) => sum + u.canvassDealsClose, 0);
+              const totalContracts = totalSelfGenContracts + totalCanvassContracts;
+              const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
+              const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
               
               return (
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Self-Generated</span>
-                    <span className="font-semibold text-foreground">{selfGenLeads} ({selfGenPct.toFixed(1)}%)</span>
+                    <span className="text-sm text-muted-foreground">Self-Generated Contracts</span>
+                    <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div 
@@ -609,13 +598,13 @@ export default function AdminOverview() {
                     />
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Canvasser-Generated</span>
-                    <span className="font-semibold text-foreground">{canvasserLeads} ({canvasserPct.toFixed(1)}%)</span>
+                    <span className="text-sm text-muted-foreground">Canvass Contracts</span>
+                    <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div 
                       className="bg-primary h-2.5 rounded-full" 
-                      style={{ width: `${canvasserPct}%` }}
+                      style={{ width: `${canvassPct}%` }}
                     />
                   </div>
                 </div>

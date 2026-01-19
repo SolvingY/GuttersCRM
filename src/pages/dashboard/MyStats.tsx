@@ -149,7 +149,10 @@ export default function MyStats() {
   const selfGeneratedDeals = Number(latestMetric?.self_generated_deals) || 0;
   // Calculate avg job size based on approved revenue
   const averageJobSize = closedDeals > 0 ? approvedRevenue / closedDeals : 0;
-  const leadToCloseRate = leads > 0 ? (closedDeals / leads) * 100 : 0;
+  // Lead-to-Close = Canvass Deals Closed / Canvass Leads Assigned
+  const canvassLeads = Number((latestMetric as any)?.canvass_leads) || 0;
+  const canvassDealsClose = Number((latestMetric as any)?.canvass_deals_closed) || 0;
+  const leadToCloseRate = canvassLeads > 0 ? (canvassDealsClose / canvassLeads) * 100 : 0;
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= 60) return 'text-green-500';
