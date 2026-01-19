@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { ChevronRight, ChevronLeft, X, Target, Trophy, TrendingUp, Users, Settings, Flame, Coins } from 'lucide-react';
+import { ChevronRight, ChevronLeft, X, Target, Trophy, TrendingUp, Users, Settings, Flame, Coins, DoorOpen } from 'lucide-react';
 
 interface TourStep {
   title: string;
@@ -13,13 +13,13 @@ interface TourStep {
 const tourSteps: TourStep[] = [
   {
     title: 'Your Stats Dashboard',
-    description: 'Track your sales, earnings, and closed deals in real-time. These stats update as your admin logs your weekly progress.',
+    description: 'Track your leads set, leads closed, and doors knocked in real-time. These stats update as your admin logs your daily progress.',
     icon: TrendingUp,
   },
   {
-    title: 'Goal Progress',
-    description: 'See how close you are to hitting your yearly goal with the visual progress tracker. Every sale gets you closer!',
-    icon: Target,
+    title: 'Lead Tracking',
+    description: 'See your leads set, leads with damage, and leads closed. Each lead type earns you different points!',
+    icon: DoorOpen,
   },
   {
     title: 'Active Contests',
@@ -28,17 +28,17 @@ const tourSteps: TourStep[] = [
   },
   {
     title: 'The Pit - Wagering System',
-    description: 'Bet your earned points on team performance predictions! Place wagers on who will lead in sales this week. Win big or lose your wagered points when results are in.',
+    description: 'Bet your earned points on team performance predictions! Place wagers on who will set the most leads this week. Win big or lose your wagered points when results are in.',
     icon: Flame,
   },
   {
     title: 'How Points Work',
-    description: 'Sales Reps earn 10 pts per $10K revenue, 10 pts per contract, and 15 pts per $10K collected. Contest winners get bonus points (100/50/25 for 1st/2nd/3rd). Use your points to wager in The Pit!',
+    description: 'Canvassers earn 10 pts per closed lead, 5 pts per lead with damage, and 1 pt per lead set. Contest winners get bonus points (100/50/25 for 1st/2nd/3rd). Use your points to wager in The Pit!',
     icon: Coins,
   },
   {
     title: 'Leaderboard',
-    description: 'See where you rank against your teammates. Climb to the top and show everyone who the real closer is!',
+    description: 'See where you rank against other canvassers. Climb to the top and prove you\'re the best door knocker!',
     icon: Users,
   },
   {
@@ -48,12 +48,12 @@ const tourSteps: TourStep[] = [
   },
 ];
 
-interface GuidedTourProps {
+interface CanvasserGuidedTourProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function GuidedTour({ isOpen, onClose }: GuidedTourProps) {
+export function CanvasserGuidedTour({ isOpen, onClose }: CanvasserGuidedTourProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -73,7 +73,7 @@ export function GuidedTour({ isOpen, onClose }: GuidedTourProps) {
   const handleNext = () => {
     if (isLastStep) {
       // Mark tour as completed
-      localStorage.setItem(`tour_completed_${user.id}`, 'true');
+      localStorage.setItem(`canvasser_tour_completed_${user.id}`, 'true');
       onClose();
     } else {
       setCurrentStep(prev => prev + 1);
@@ -87,7 +87,7 @@ export function GuidedTour({ isOpen, onClose }: GuidedTourProps) {
   };
 
   const handleSkip = () => {
-    localStorage.setItem(`tour_completed_${user.id}`, 'true');
+    localStorage.setItem(`canvasser_tour_completed_${user.id}`, 'true');
     onClose();
   };
 
@@ -115,9 +115,9 @@ export function GuidedTour({ isOpen, onClose }: GuidedTourProps) {
               key={index}
               className={`h-2 rounded-full transition-all ${
                 index === currentStep
-                  ? 'w-6 bg-accent'
+                  ? 'w-6 bg-primary'
                   : index < currentStep
-                  ? 'w-2 bg-accent/50'
+                  ? 'w-2 bg-primary/50'
                   : 'w-2 bg-muted'
               }`}
             />
@@ -127,8 +127,8 @@ export function GuidedTour({ isOpen, onClose }: GuidedTourProps) {
         {/* Content */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="p-4 bg-accent/10 rounded-full">
-              <Icon className="h-10 w-10 text-accent" />
+            <div className="p-4 bg-primary/10 rounded-full">
+              <Icon className="h-10 w-10 text-primary" />
             </div>
           </div>
           
