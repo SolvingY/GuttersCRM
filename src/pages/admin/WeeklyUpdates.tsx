@@ -28,7 +28,6 @@ interface WeeklyEntry {
   weeklyLeads: string;
   weeklyClosedDeals: string;
   weeklyEarnings: string;
-  weeklySelfGeneratedLeads: string;
   weeklySelfGeneratedDeals: string;
   weeklyCanvassLeads: string;
   weeklyCanvassDealsClose: string;
@@ -120,7 +119,6 @@ export default function WeeklyUpdates() {
           weeklyLeads: '',
           weeklyClosedDeals: '',
           weeklyEarnings: '',
-          weeklySelfGeneratedLeads: '',
           weeklySelfGeneratedDeals: '',
           weeklyCanvassLeads: '',
           weeklyCanvassDealsClose: '',
@@ -207,7 +205,6 @@ export default function WeeklyUpdates() {
         const weeklyLeads = parseInt(entry.weeklyLeads) || 0;
         const weeklyClosedDeals = parseInt(entry.weeklyClosedDeals) || 0;
         const weeklyEarnings = parseFloat(entry.weeklyEarnings) || 0;
-        const weeklySelfGeneratedLeads = parseInt(entry.weeklySelfGeneratedLeads) || 0;
         const weeklySelfGeneratedDeals = parseInt(entry.weeklySelfGeneratedDeals) || 0;
         const weeklyCanvassLeads = parseInt(entry.weeklyCanvassLeads) || 0;
         const weeklyCanvassDealsClose = parseInt(entry.weeklyCanvassDealsClose) || 0;
@@ -215,7 +212,7 @@ export default function WeeklyUpdates() {
         const weeklyApprovedRevenue = parseFloat(entry.weeklyApprovedRevenue) || 0;
 
         if (weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && 
-            weeklySelfGeneratedLeads === 0 && weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
+            weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) {
           continue;
         }
@@ -242,7 +239,6 @@ export default function WeeklyUpdates() {
         const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
         const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
         const newSelfGeneratedDeals = (Number(currentMetrics.self_generated_deals) || 0) + weeklySelfGeneratedDeals;
-        const newSelfGeneratedLeads = (Number((currentMetrics as any).self_generated_leads) || 0) + weeklySelfGeneratedLeads;
         const newCanvassLeads = (Number((currentMetrics as any).canvass_leads) || 0) + weeklyCanvassLeads;
         const newCanvassDealsClose = (Number((currentMetrics as any).canvass_deals_closed) || 0) + weeklyCanvassDealsClose;
         const newCollections = (Number((currentMetrics as any).collections) || 0) + weeklyCollections;
@@ -257,7 +253,6 @@ export default function WeeklyUpdates() {
             earnings_ytd: newEarnings,
             points: newPoints,
             self_generated_deals: newSelfGeneratedDeals,
-            self_generated_leads: newSelfGeneratedLeads,
             canvass_leads: newCanvassLeads,
             canvass_deals_closed: newCanvassDealsClose,
             collections: newCollections,
@@ -426,7 +421,6 @@ export default function WeeklyUpdates() {
             weeklyLeads: '',
             weeklyClosedDeals: '',
             weeklyEarnings: '',
-            weeklySelfGeneratedLeads: '',
             weeklySelfGeneratedDeals: '',
             weeklyCanvassLeads: '',
             weeklyCanvassDealsClose: '',
@@ -550,12 +544,11 @@ export default function WeeklyUpdates() {
               ) : (
                 <div className="space-y-4">
                   {/* Header row - hidden on mobile */}
-                  <div className="hidden lg:grid lg:grid-cols-10 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
+                  <div className="hidden lg:grid lg:grid-cols-9 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
                     <div>Team Member</div>
                     <div>Approved Rev</div>
                     <div>Leads</div>
                     <div>Total Contracts</div>
-                    <div>Self-Gen Leads</div>
                     <div>Self-Gen Contracts</div>
                     <div>Canvass Leads</div>
                     <div>Canvass Contracts</div>
@@ -564,12 +557,12 @@ export default function WeeklyUpdates() {
                   </div>
 
                   {weeklyEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-10 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
+                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-9 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
                       <div className="font-medium text-foreground text-sm">
                         {entry.displayName}
                       </div>
                       
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 lg:contents">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 lg:contents">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label>
                           <Input
@@ -601,17 +594,6 @@ export default function WeeklyUpdates() {
                             placeholder="0"
                             value={entry.weeklyClosedDeals}
                             onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Leads</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={entry.weeklySelfGeneratedLeads}
-                            onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedLeads', e.target.value)}
                             className="h-8 text-sm"
                           />
                         </div>
