@@ -48,6 +48,11 @@ interface UserDetail {
   avgJobSize: number;
   leadToClosePercent: number;
   role: 'admin' | 'user' | 'canvasser';
+  // Sub-component values for editing
+  selfGeneratedLeads: number;
+  selfGeneratedDeals: number;
+  canvassLeads: number;
+  canvassDealsClose: number;
 }
 
 interface CanvasserDetail {
@@ -259,6 +264,11 @@ export default function AdminOverview() {
           avgJobSize,
           leadToClosePercent,
           role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
+          // Pass sub-component values for editing
+          selfGeneratedLeads: data.selfGeneratedLeads,
+          selfGeneratedDeals: data.selfGeneratedDeals,
+          canvassLeads: data.canvassLeads,
+          canvassDealsClose: data.canvassDealsClose,
         };
       });
       

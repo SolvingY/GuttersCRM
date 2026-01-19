@@ -33,8 +33,11 @@ interface UserMetrics {
   earningsYtd?: number;
   leads: number;
   collections?: number;
-  canvassLeads?: number;
-  canvassDealsClose?: number;
+  // Sub-component values for direct editing
+  selfGeneratedLeads: number;
+  selfGeneratedDeals: number;
+  canvassLeads: number;
+  canvassDealsClose: number;
 }
 
 interface EditMetricsModalProps {
@@ -52,10 +55,10 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
     points: 0,
     yearlyGoal: 0,
     salesRank: 'SR1',
-    closedDeals: 0,
     earningsYtd: 0,
-    leads: 0,
     collections: 0,
+    selfGeneratedLeads: 0,
+    selfGeneratedDeals: 0,
     canvassLeads: 0,
     canvassDealsClose: 0,
   });
@@ -67,10 +70,10 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
         points: user.points || 0,
         yearlyGoal: user.yearlyGoal || 0,
         salesRank: user.salesRank || 'SR1',
-        closedDeals: user.closedDeals || 0,
         earningsYtd: user.earningsYtd || 0,
-        leads: user.leads || 0,
         collections: user.collections || 0,
+        selfGeneratedLeads: user.selfGeneratedLeads || 0,
+        selfGeneratedDeals: user.selfGeneratedDeals || 0,
         canvassLeads: user.canvassLeads || 0,
         canvassDealsClose: user.canvassDealsClose || 0,
       });
@@ -83,7 +86,11 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
 
     setIsSubmitting(true);
     try {
-      // userId is now the metric ID, update directly
+      // Calculate totals from sub-components
+      const calculatedLeads = formData.selfGeneratedLeads + formData.canvassLeads;
+      const calculatedClosedDeals = formData.selfGeneratedDeals + formData.canvassDealsClose;
+      
+      // Update with sub-component values AND calculated totals
       const { error } = await supabase
         .from('user_metrics')
         .update({
@@ -91,12 +98,15 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
           points: formData.points,
           yearly_goal: formData.yearlyGoal,
           sales_rank: formData.salesRank,
-          closed_deals: formData.closedDeals,
           earnings_ytd: formData.earningsYtd,
-          leads: formData.leads,
           collections: formData.collections,
+          self_generated_leads: formData.selfGeneratedLeads,
+          self_generated_deals: formData.selfGeneratedDeals,
           canvass_leads: formData.canvassLeads,
           canvass_deals_closed: formData.canvassDealsClose,
+          // Also update the totals for consistency
+          leads: calculatedLeads,
+          closed_deals: calculatedClosedDeals,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.metricId);
@@ -221,34 +231,6 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="closedDeals" className="text-right">
-                Total Contracts
-              </Label>
-              <Input
-                id="closedDeals"
-                type="number"
-                min="0"
-                value={formData.closedDeals}
-                onChange={(e) => setFormData({ ...formData, closedDeals: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter total contracts"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="leads" className="text-right">
-                Leads
-              </Label>
-              <Input
-                id="leads"
-                type="number"
-                min="0"
-                value={formData.leads}
-                onChange={(e) => setFormData({ ...formData, leads: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter leads count"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="collections" className="text-right">
                 Collections
               </Label>
@@ -261,6 +243,25 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 onChange={(e) => setFormData({ ...formData, collections: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
                 placeholder="Enter collections amount"
+              />
+            </div>
+
+            {/* Leads Section */}
+            <div className="border-t border-border pt-4 mt-2">
+              <p className="text-sm font-medium text-muted-foreground mb-3">Leads Breakdown</p>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="selfGeneratedLeads" className="text-right">
+                Self-Gen Leads
+              </Label>
+              <Input
+                id="selfGeneratedLeads"
+                type="number"
+                min="0"
+                value={formData.selfGeneratedLeads}
+                onChange={(e) => setFormData({ ...formData, selfGeneratedLeads: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter self-generated leads"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -277,6 +278,34 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 placeholder="Enter canvass leads"
               />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+              <Label className="text-right text-muted-foreground">
+                Total Leads
+              </Label>
+              <div className="col-span-3 font-semibold">
+                {formData.selfGeneratedLeads + formData.canvassLeads}
+                <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
+              </div>
+            </div>
+
+            {/* Contracts Section */}
+            <div className="border-t border-border pt-4 mt-2">
+              <p className="text-sm font-medium text-muted-foreground mb-3">Contracts Breakdown</p>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="selfGeneratedDeals" className="text-right">
+                Self-Gen Contracts
+              </Label>
+              <Input
+                id="selfGeneratedDeals"
+                type="number"
+                min="0"
+                value={formData.selfGeneratedDeals}
+                onChange={(e) => setFormData({ ...formData, selfGeneratedDeals: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter self-generated contracts"
+              />
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="canvassDealsClose" className="text-right">
                 Canvass Contracts
@@ -290,6 +319,15 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                 className="col-span-3"
                 placeholder="Enter canvass contracts"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+              <Label className="text-right text-muted-foreground">
+                Total Contracts
+              </Label>
+              <div className="col-span-3 font-semibold">
+                {formData.selfGeneratedDeals + formData.canvassDealsClose}
+                <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
+              </div>
             </div>
           </div>
           <DialogFooter>
