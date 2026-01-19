@@ -991,6 +991,7 @@ export type Database = {
       }
       user_metrics_leaderboard: {
         Row: {
+          approved_revenue: number | null
           closed_deals: number | null
           created_at: string | null
           display_name: string | null
@@ -998,13 +999,13 @@ export type Database = {
           leads: number | null
           metric_date: string | null
           points: number | null
-          sales: number | null
           sales_rank: string | null
           self_generated_deals: number | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          approved_revenue?: number | null
           closed_deals?: number | null
           created_at?: string | null
           display_name?: string | null
@@ -1012,13 +1013,13 @@ export type Database = {
           leads?: number | null
           metric_date?: string | null
           points?: number | null
-          sales?: number | null
           sales_rank?: string | null
           self_generated_deals?: number | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          approved_revenue?: number | null
           closed_deals?: number | null
           created_at?: string | null
           display_name?: string | null
@@ -1026,7 +1027,6 @@ export type Database = {
           leads?: number | null
           metric_date?: string | null
           points?: number | null
-          sales?: number | null
           sales_rank?: string | null
           self_generated_deals?: number | null
           updated_at?: string | null
