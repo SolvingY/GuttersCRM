@@ -119,7 +119,7 @@ export default function Leaderboard() {
       // Fetch metrics from the leaderboard view (bypasses RLS for all users visibility)
       const { data: metricsData, error: metricsError } = await supabase
         .from('user_metrics_leaderboard')
-        .select('id, user_id, display_name, points, sales, closed_deals, sales_rank, metric_date, self_generated_deals')
+        .select('id, user_id, display_name, points, approved_revenue, closed_deals, sales_rank, metric_date, self_generated_deals')
         .order('metric_date', { ascending: false });
 
       // Also fetch canvass deals, canvass leads, self-gen leads, and approved_revenue from user_metrics for calculation
@@ -197,7 +197,7 @@ export default function Leaderboard() {
       const latestByUser = new Map<string, {
         metricId: string;
         points: number;
-        sales: number;
+        approvedRevenue: number;
         salesRank: string;
         displayName: string | null;
         selfGeneratedDeals: number;
@@ -215,7 +215,7 @@ export default function Leaderboard() {
           latestByUser.set(key, {
             metricId: item.id,
             points: Number(item.points) || 0,
-            sales: Number(item.sales) || 0,
+            approvedRevenue: Number(item.approved_revenue) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,
             selfGeneratedDeals: Number(item.self_generated_deals) || 0,
@@ -267,7 +267,9 @@ export default function Leaderboard() {
             canvassLeads: 0,
             selfGeneratedLeads: 0,
           };
-          const approvedRevenue = extendedMetrics.approvedRevenue || data.sales;
+          // Use approvedRevenue from the view (which now has correct value)
+          // Fall back to extended metrics if available, then to the view data
+          const approvedRevenue = data.approvedRevenue || extendedMetrics.approvedRevenue;
           
           // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
           const calculatedClosedDeals = data.selfGeneratedDeals + extendedMetrics.canvassDealsClose;

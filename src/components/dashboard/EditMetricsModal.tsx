@@ -24,6 +24,7 @@ import { RANK_OPTIONS } from '@/lib/constants';
 
 interface UserMetrics {
   metricId: string;
+  realUserId: string;
   name: string;
   approvedRevenue: number;
   points: number;
@@ -50,6 +51,7 @@ interface EditMetricsModalProps {
 export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMetricsModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingWeekly, setIsResettingWeekly] = useState(false);
   const [formData, setFormData] = useState({
     approvedRevenue: 0,
     points: 0,
@@ -128,6 +130,52 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResetWeeklyMetrics = async () => {
+    if (!user?.realUserId) {
+      toast({
+        title: 'Error',
+        description: 'Cannot reset weekly metrics: user ID not found',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsResettingWeekly(true);
+    try {
+      const { error } = await supabase
+        .from('weekly_user_metrics')
+        .update({
+          approved_revenue: 0,
+          collections: 0,
+          leads: 0,
+          closed_deals: 0,
+          points_earned: 0,
+          sales: 0,
+          earnings: 0,
+          canvass_leads: 0,
+          canvass_deals_closed: 0,
+        })
+        .eq('user_id', user.realUserId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `All weekly metrics reset for ${user.name}`,
+      });
+      onSuccess();
+    } catch (error: any) {
+      console.error('Error resetting weekly metrics:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reset weekly metrics',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResettingWeekly(false);
     }
   };
 
@@ -333,13 +381,27 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
             </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
+            <div className="flex w-full justify-between items-center">
+              <Button 
+                type="button" 
+                variant="destructive" 
+                size="sm"
+                onClick={handleResetWeeklyMetrics}
+                disabled={isResettingWeekly}
+              >
+                {isResettingWeekly && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Reset Weekly Metrics
+              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

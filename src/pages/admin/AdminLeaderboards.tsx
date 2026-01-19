@@ -76,6 +76,7 @@ interface WeeklyCanvasserEntry {
 export default function AdminLeaderboards() {
   const [timeFrame, setTimeFrame] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [refreshKey, setRefreshKey] = useState(0);
   
   // Sales rep states
   const [salesYtdEntries, setSalesYtdEntries] = useState<SalesRepEntry[]>([]);
@@ -86,6 +87,29 @@ export default function AdminLeaderboards() {
   const [canvasserYtdEntries, setCanvasserYtdEntries] = useState<CanvasserEntry[]>([]);
   const [canvasserWeeklyEntries, setCanvasserWeeklyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [canvasserLoading, setCanvasserLoading] = useState(true);
+
+  // Subscribe to realtime changes on user_metrics and weekly_user_metrics
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-leaderboard-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_metrics' }, () => {
+        setRefreshKey(prev => prev + 1);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_user_metrics' }, () => {
+        setRefreshKey(prev => prev + 1);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'canvasser_metrics' }, () => {
+        setRefreshKey(prev => prev + 1);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_canvasser_metrics' }, () => {
+        setRefreshKey(prev => prev + 1);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
@@ -114,8 +138,9 @@ export default function AdminLeaderboards() {
 
       const { data: metricsData } = await supabase
         .from('user_metrics')
-        .select('id, user_id, display_name, points, sales, closed_deals, yearly_goal, sales_rank, metric_date, approved_revenue, collections')
-        .order('metric_date', { ascending: false });
+        .select('id, user_id, display_name, points, closed_deals, yearly_goal, sales_rank, metric_date, approved_revenue, collections, updated_at')
+        .order('metric_date', { ascending: false })
+        .order('updated_at', { ascending: false });
 
       if (!metricsData || metricsData.length === 0) {
         setSalesYtdEntries([]);
@@ -145,7 +170,7 @@ export default function AdminLeaderboards() {
         if (!latestByUser.has(key)) {
           latestByUser.set(key, {
             points: Number(item.points) || 0,
-            approvedRevenue: Number(item.approved_revenue) || Number(item.sales) || 0,
+            approvedRevenue: Number(item.approved_revenue) || 0,
             closedDeals: Number(item.closed_deals) || 0,
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
@@ -195,7 +220,7 @@ export default function AdminLeaderboards() {
     if (timeFrame === 'yearly') {
       fetchSalesYtd();
     }
-  }, [timeFrame]);
+  }, [timeFrame, refreshKey]);
 
   // Fetch weekly/monthly sales rep leaderboard
   useEffect(() => {
@@ -319,7 +344,7 @@ export default function AdminLeaderboards() {
     if (timeFrame === 'weekly' || timeFrame === 'monthly') {
       fetchSalesWeekly();
     }
-  }, [timeFrame, selectedDate]);
+  }, [timeFrame, selectedDate, refreshKey]);
 
   // Fetch YTD canvasser leaderboard
   useEffect(() => {
@@ -398,7 +423,7 @@ export default function AdminLeaderboards() {
     if (timeFrame === 'yearly') {
       fetchCanvasserYtd();
     }
-  }, [timeFrame]);
+  }, [timeFrame, refreshKey]);
 
   // Fetch weekly/monthly canvasser leaderboard
   useEffect(() => {
@@ -504,7 +529,7 @@ export default function AdminLeaderboards() {
     if (timeFrame === 'weekly' || timeFrame === 'monthly') {
       fetchCanvasserWeekly();
     }
-  }, [timeFrame, selectedDate]);
+  }, [timeFrame, selectedDate, refreshKey]);
 
   const renderDateSelector = () => {
     if (timeFrame === 'yearly') return null;
