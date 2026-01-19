@@ -142,195 +142,197 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Metrics</DialogTitle>
           <DialogDescription>
             Update metrics for {user?.name || 'user'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="approvedRevenue" className="text-right">
-                Approved Revenue
-              </Label>
-              <Input
-                id="approvedRevenue"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.approvedRevenue}
-                onChange={(e) => setFormData({ ...formData, approvedRevenue: parseFloat(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter approved revenue"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="earningsYtd" className="text-right">
-                YTD Earnings
-              </Label>
-              <Input
-                id="earningsYtd"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.earningsYtd}
-                onChange={(e) => setFormData({ ...formData, earningsYtd: parseFloat(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter YTD earnings"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="points" className="text-right">
-                Points
-              </Label>
-              <Input
-                id="points"
-                type="number"
-                min="0"
-                value={formData.points}
-                onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter points"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="yearlyGoal" className="text-right">
-                Yearly Goal
-              </Label>
-              <Input
-                id="yearlyGoal"
-                type="number"
-                step="1000"
-                min="0"
-                value={formData.yearlyGoal}
-                onChange={(e) => setFormData({ ...formData, yearlyGoal: parseFloat(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter yearly goal"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="salesRank" className="text-right">
-                Rank
-              </Label>
-              <Select
-                value={formData.salesRank}
-                onValueChange={(value) => setFormData({ ...formData, salesRank: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select rank" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RANK_OPTIONS.map((rank) => (
-                    <SelectItem key={rank} value={rank}>
-                      {rank}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="collections" className="text-right">
-                Collections
-              </Label>
-              <Input
-                id="collections"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.collections}
-                onChange={(e) => setFormData({ ...formData, collections: parseFloat(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter collections amount"
-              />
-            </div>
-
-            {/* Leads Section */}
-            <div className="border-t border-border pt-4 mt-2">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Leads Breakdown</p>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="selfGeneratedLeads" className="text-right">
-                Self-Gen Leads
-              </Label>
-              <Input
-                id="selfGeneratedLeads"
-                type="number"
-                min="0"
-                value={formData.selfGeneratedLeads}
-                onChange={(e) => setFormData({ ...formData, selfGeneratedLeads: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter self-generated leads"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="canvassLeads" className="text-right">
-                Canvass Leads
-              </Label>
-              <Input
-                id="canvassLeads"
-                type="number"
-                min="0"
-                value={formData.canvassLeads}
-                onChange={(e) => setFormData({ ...formData, canvassLeads: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter canvass leads"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
-              <Label className="text-right text-muted-foreground">
-                Total Leads
-              </Label>
-              <div className="col-span-3 font-semibold">
-                {formData.selfGeneratedLeads + formData.canvassLeads}
-                <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto py-4 pr-2">
+            <div className="grid gap-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="approvedRevenue" className="text-right">
+                  Approved Revenue
+                </Label>
+                <Input
+                  id="approvedRevenue"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.approvedRevenue}
+                  onChange={(e) => setFormData({ ...formData, approvedRevenue: parseFloat(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter approved revenue"
+                />
               </div>
-            </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="earningsYtd" className="text-right">
+                  YTD Earnings
+                </Label>
+                <Input
+                  id="earningsYtd"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.earningsYtd}
+                  onChange={(e) => setFormData({ ...formData, earningsYtd: parseFloat(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter YTD earnings"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="points" className="text-right">
+                  Points
+                </Label>
+                <Input
+                  id="points"
+                  type="number"
+                  min="0"
+                  value={formData.points}
+                  onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter points"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="yearlyGoal" className="text-right">
+                  Yearly Goal
+                </Label>
+                <Input
+                  id="yearlyGoal"
+                  type="number"
+                  step="1000"
+                  min="0"
+                  value={formData.yearlyGoal}
+                  onChange={(e) => setFormData({ ...formData, yearlyGoal: parseFloat(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter yearly goal"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="salesRank" className="text-right">
+                  Rank
+                </Label>
+                <Select
+                  value={formData.salesRank}
+                  onValueChange={(value) => setFormData({ ...formData, salesRank: value })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select rank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RANK_OPTIONS.map((rank) => (
+                      <SelectItem key={rank} value={rank}>
+                        {rank}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="collections" className="text-right">
+                  Collections
+                </Label>
+                <Input
+                  id="collections"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.collections}
+                  onChange={(e) => setFormData({ ...formData, collections: parseFloat(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter collections amount"
+                />
+              </div>
 
-            {/* Contracts Section */}
-            <div className="border-t border-border pt-4 mt-2">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Contracts Breakdown</p>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="selfGeneratedDeals" className="text-right">
-                Self-Gen Contracts
-              </Label>
-              <Input
-                id="selfGeneratedDeals"
-                type="number"
-                min="0"
-                value={formData.selfGeneratedDeals}
-                onChange={(e) => setFormData({ ...formData, selfGeneratedDeals: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter self-generated contracts"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="canvassDealsClose" className="text-right">
-                Canvass Contracts
-              </Label>
-              <Input
-                id="canvassDealsClose"
-                type="number"
-                min="0"
-                value={formData.canvassDealsClose}
-                onChange={(e) => setFormData({ ...formData, canvassDealsClose: parseInt(e.target.value) || 0 })}
-                className="col-span-3"
-                placeholder="Enter canvass contracts"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
-              <Label className="text-right text-muted-foreground">
-                Total Contracts
-              </Label>
-              <div className="col-span-3 font-semibold">
-                {formData.selfGeneratedDeals + formData.canvassDealsClose}
-                <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
+              {/* Leads Section */}
+              <div className="border-t border-border pt-4 mt-2">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Leads Breakdown</p>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="selfGeneratedLeads" className="text-right">
+                  Self-Gen Leads
+                </Label>
+                <Input
+                  id="selfGeneratedLeads"
+                  type="number"
+                  min="0"
+                  value={formData.selfGeneratedLeads}
+                  onChange={(e) => setFormData({ ...formData, selfGeneratedLeads: parseInt(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter self-generated leads"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="canvassLeads" className="text-right">
+                  Canvass Leads
+                </Label>
+                <Input
+                  id="canvassLeads"
+                  type="number"
+                  min="0"
+                  value={formData.canvassLeads}
+                  onChange={(e) => setFormData({ ...formData, canvassLeads: parseInt(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter canvass leads"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                <Label className="text-right text-muted-foreground">
+                  Total Leads
+                </Label>
+                <div className="col-span-3 font-semibold">
+                  {formData.selfGeneratedLeads + formData.canvassLeads}
+                  <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
+                </div>
+              </div>
+
+              {/* Contracts Section */}
+              <div className="border-t border-border pt-4 mt-2">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Contracts Breakdown</p>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="selfGeneratedDeals" className="text-right">
+                  Self-Gen Contracts
+                </Label>
+                <Input
+                  id="selfGeneratedDeals"
+                  type="number"
+                  min="0"
+                  value={formData.selfGeneratedDeals}
+                  onChange={(e) => setFormData({ ...formData, selfGeneratedDeals: parseInt(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter self-generated contracts"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="canvassDealsClose" className="text-right">
+                  Canvass Contracts
+                </Label>
+                <Input
+                  id="canvassDealsClose"
+                  type="number"
+                  min="0"
+                  value={formData.canvassDealsClose}
+                  onChange={(e) => setFormData({ ...formData, canvassDealsClose: parseInt(e.target.value) || 0 })}
+                  className="col-span-3"
+                  placeholder="Enter canvass contracts"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                <Label className="text-right text-muted-foreground">
+                  Total Contracts
+                </Label>
+                <div className="col-span-3 font-semibold">
+                  {formData.selfGeneratedDeals + formData.canvassDealsClose}
+                  <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
+                </div>
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
