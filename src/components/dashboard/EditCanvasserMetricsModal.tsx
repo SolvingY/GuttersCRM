@@ -20,7 +20,10 @@ interface CanvasserMetrics {
   leadsSet: number;
   leadsClosed: number;
   leadsWithDamage: number;
-  shiftsWorked: number;
+  leadsWithoutDamage: number;
+  conversationsHad: number;
+  notInterested: number;
+  hoursWorked: number;
   points: number;
   income: number;
   yearlyGoal: number;
@@ -41,7 +44,10 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
     leadsSet: 0,
     leadsClosed: 0,
     leadsWithDamage: 0,
-    shiftsWorked: 0,
+    leadsWithoutDamage: 0,
+    conversationsHad: 0,
+    notInterested: 0,
+    hoursWorked: 0,
     points: 0,
     income: 0,
     yearlyGoal: 0,
@@ -54,7 +60,10 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
         leadsSet: user.leadsSet || 0,
         leadsClosed: user.leadsClosed || 0,
         leadsWithDamage: user.leadsWithDamage || 0,
-        shiftsWorked: user.shiftsWorked || 0,
+        leadsWithoutDamage: user.leadsWithoutDamage || 0,
+        conversationsHad: user.conversationsHad || 0,
+        notInterested: user.notInterested || 0,
+        hoursWorked: user.hoursWorked || 0,
         points: user.points || 0,
         income: user.income || 0,
         yearlyGoal: user.yearlyGoal || 0,
@@ -76,7 +85,10 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
           leads_set: formData.leadsSet,
           leads_closed: formData.leadsClosed,
           leads_with_damage: formData.leadsWithDamage,
-          shifts_worked: formData.shiftsWorked,
+          leads_without_damage: formData.leadsWithoutDamage,
+          conversations_had: formData.conversationsHad,
+          not_interested: formData.notInterested,
+          hours_worked: formData.hoursWorked,
           points: formData.points,
           income: formData.income,
           doors_knocked: formData.doorsKnocked,
@@ -172,17 +184,60 @@ export function EditCanvasserMetricsModal({ open, onOpenChange, user, onSuccess 
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="shiftsWorked" className="text-right">
-                Shifts Worked
+              <Label htmlFor="leadsWithoutDamage" className="text-right">
+                w/o Damage
               </Label>
               <Input
-                id="shiftsWorked"
+                id="leadsWithoutDamage"
                 type="number"
                 min="0"
-                value={formData.shiftsWorked}
-                onChange={(e) => setFormData({ ...formData, shiftsWorked: parseInt(e.target.value) || 0 })}
+                value={formData.leadsWithoutDamage}
+                onChange={(e) => setFormData({ ...formData, leadsWithoutDamage: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
-                placeholder="Enter shifts worked"
+                placeholder="Enter leads without damage"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="conversationsHad" className="text-right">
+                Convos Had
+              </Label>
+              <Input
+                id="conversationsHad"
+                type="number"
+                min="0"
+                value={formData.conversationsHad}
+                onChange={(e) => setFormData({ ...formData, conversationsHad: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter conversations had"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="notInterested" className="text-right">
+                Not Interested
+              </Label>
+              <Input
+                id="notInterested"
+                type="number"
+                min="0"
+                value={formData.notInterested}
+                onChange={(e) => setFormData({ ...formData, notInterested: parseInt(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter not interested count"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="hoursWorked" className="text-right">
+                Hours Worked
+              </Label>
+              <Input
+                id="hoursWorked"
+                type="number"
+                min="0"
+                step="0.5"
+                value={formData.hoursWorked}
+                onChange={(e) => setFormData({ ...formData, hoursWorked: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+                placeholder="Enter hours worked"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

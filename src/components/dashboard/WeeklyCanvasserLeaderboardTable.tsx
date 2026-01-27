@@ -9,7 +9,7 @@ export interface WeeklyCanvasserEntry {
   leadsSet: number;
   leadsWithDamage: number;
   leadsClosed: number;
-  shiftsWorked: number;
+  hoursWorked: number;
   doorsKnocked: number;
   pointsEarned: number;
   contestPoints?: number;
@@ -51,7 +51,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Closed</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Shifts Worked</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours Worked</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points Earned</th>
             </tr>
           </thead>
@@ -98,7 +98,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.shiftsWorked}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.hoursWorked}</td>
                   <td className="py-3 px-4 text-right">
                     <PointsBreakdownTooltip
                       data={{
