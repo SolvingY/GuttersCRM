@@ -67,7 +67,10 @@ interface WeeklyCanvasserEntry {
   userId: string;
   leadsSet: number;
   leadsWithDamage: number;
+  leadsWithoutDamage: number;
   leadsClosed: number;
+  conversationsHad: number;
+  notInterested: number;
   hoursWorked: number;
   doorsKnocked: number;
   pointsEarned: number;
@@ -450,7 +453,7 @@ export default function AdminLeaderboards() {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, doors_knocked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned')
           .eq('week_start', weekStartStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -476,8 +479,11 @@ export default function AdminLeaderboards() {
             userId: w.user_id,
             leadsSet: Number(w.leads_set) || 0,
             leadsWithDamage: Number(w.leads_with_damage) || 0,
+            leadsWithoutDamage: Number(w.leads_without_damage) || 0,
             leadsClosed: Number(w.leads_closed) || 0,
-            hoursWorked: Number((w as any).hours_worked) || 0,
+            conversationsHad: Number(w.conversations_had) || 0,
+            notInterested: Number(w.not_interested) || 0,
+            hoursWorked: Number(w.hours_worked) || 0,
             doorsKnocked: Number(w.doors_knocked) || 0,
             pointsEarned: Number(w.points_earned) || 0,
             name: displayNameMap.get(w.user_id) || 'Anonymous',
@@ -500,7 +506,7 @@ export default function AdminLeaderboards() {
 
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_closed, shifts_worked, doors_knocked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned')
           .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
@@ -512,12 +518,18 @@ export default function AdminLeaderboards() {
 
         const aggregated = new Map<string, any>();
         weeklyData.forEach(w => {
-          const existing = aggregated.get(w.user_id) || { leadsSet: 0, leadsWithDamage: 0, leadsClosed: 0, shiftsWorked: 0, doorsKnocked: 0, pointsEarned: 0 };
+          const existing = aggregated.get(w.user_id) || { 
+            leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
+            conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
+          };
           aggregated.set(w.user_id, {
             leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
             leadsWithDamage: existing.leadsWithDamage + (Number(w.leads_with_damage) || 0),
+            leadsWithoutDamage: existing.leadsWithoutDamage + (Number(w.leads_without_damage) || 0),
             leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
-            shiftsWorked: existing.shiftsWorked + (Number(w.shifts_worked) || 0),
+            conversationsHad: existing.conversationsHad + (Number(w.conversations_had) || 0),
+            notInterested: existing.notInterested + (Number(w.not_interested) || 0),
+            hoursWorked: existing.hoursWorked + (Number(w.hours_worked) || 0),
             doorsKnocked: existing.doorsKnocked + (Number(w.doors_knocked) || 0),
             pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
           });
@@ -538,7 +550,15 @@ export default function AdminLeaderboards() {
         const sorted = Array.from(aggregated.entries())
           .map(([userId, data]) => ({
             userId,
-            ...data,
+            leadsSet: data.leadsSet,
+            leadsWithDamage: data.leadsWithDamage,
+            leadsWithoutDamage: data.leadsWithoutDamage,
+            leadsClosed: data.leadsClosed,
+            conversationsHad: data.conversationsHad,
+            notInterested: data.notInterested,
+            hoursWorked: data.hoursWorked,
+            doorsKnocked: data.doorsKnocked,
+            pointsEarned: data.pointsEarned,
             name: displayNameMap.get(userId) || 'Anonymous',
           }))
           // Filter out canvassers with zero metrics for monthly

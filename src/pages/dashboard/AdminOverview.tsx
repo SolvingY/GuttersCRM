@@ -6,7 +6,7 @@ import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserM
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -30,6 +31,10 @@ interface CanvasserAggregates {
   totalLeadsSet: number;
   totalLeadsClosed: number;
   totalLeadsWithDamage: number;
+  totalLeadsWithoutDamage: number;
+  totalConversationsHad: number;
+  totalNotInterested: number;
+  totalDoorsKnocked: number;
   totalHoursWorked: number;
 }
 
@@ -65,6 +70,7 @@ interface CanvasserDetail {
   conversationsHad: number;
   notInterested: number;
   hoursWorked: number;
+  doorsKnocked: number;
   points: number;
   income: number;
   yearlyGoal: number;
@@ -92,6 +98,10 @@ export default function AdminOverview() {
     totalLeadsSet: 0,
     totalLeadsClosed: 0,
     totalLeadsWithDamage: 0,
+    totalLeadsWithoutDamage: 0,
+    totalConversationsHad: 0,
+    totalNotInterested: 0,
+    totalDoorsKnocked: 0,
     totalHoursWorked: 0,
   });
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
@@ -175,7 +185,7 @@ export default function AdminOverview() {
     // Fetch canvasser metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: canvasserMetrics, error: canvasserError } = await supabase
       .from('canvasser_metrics')
-      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, points, income, yearly_goal, metric_date, updated_at')
+      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, doors_knocked, points, income, yearly_goal, metric_date, updated_at')
       .order('metric_date', { ascending: false })
       .order('updated_at', { ascending: false });
 
@@ -304,6 +314,7 @@ export default function AdminOverview() {
         conversationsHad: number;
         notInterested: number;
         hoursWorked: number;
+        doorsKnocked: number;
         points: number;
         income: number;
         yearlyGoal: number;
@@ -319,10 +330,11 @@ export default function AdminOverview() {
             leadsSet: item.leads_set || 0,
             leadsClosed: item.leads_closed || 0,
             leadsWithDamage: item.leads_with_damage || 0,
-            leadsWithoutDamage: Number((item as any).leads_without_damage) || 0,
-            conversationsHad: Number((item as any).conversations_had) || 0,
-            notInterested: Number((item as any).not_interested) || 0,
-            hoursWorked: Number((item as any).hours_worked) || 0,
+            leadsWithoutDamage: Number(item.leads_without_damage) || 0,
+            conversationsHad: Number(item.conversations_had) || 0,
+            notInterested: Number(item.not_interested) || 0,
+            hoursWorked: Number(item.hours_worked) || 0,
+            doorsKnocked: Number(item.doors_knocked) || 0,
             points: Number(item.points) || 0,
             income: Number(item.income) || 0,
             yearlyGoal: item.yearly_goal || 0,
@@ -344,6 +356,7 @@ export default function AdminOverview() {
           conversationsHad: data.conversationsHad,
           notInterested: data.notInterested,
           hoursWorked: data.hoursWorked,
+          doorsKnocked: data.doorsKnocked,
           points: data.points,
           income: data.income,
           yearlyGoal: data.yearlyGoal,
@@ -358,9 +371,17 @@ export default function AdminOverview() {
           totalLeadsSet: acc.totalLeadsSet + c.leadsSet,
           totalLeadsClosed: acc.totalLeadsClosed + c.leadsClosed,
           totalLeadsWithDamage: acc.totalLeadsWithDamage + c.leadsWithDamage,
+          totalLeadsWithoutDamage: acc.totalLeadsWithoutDamage + c.leadsWithoutDamage,
+          totalConversationsHad: acc.totalConversationsHad + c.conversationsHad,
+          totalNotInterested: acc.totalNotInterested + c.notInterested,
+          totalDoorsKnocked: acc.totalDoorsKnocked + c.doorsKnocked,
           totalHoursWorked: acc.totalHoursWorked + c.hoursWorked,
         }),
-        { totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, totalHoursWorked: 0 }
+        { 
+          totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, 
+          totalLeadsWithoutDamage: 0, totalConversationsHad: 0, totalNotInterested: 0, 
+          totalDoorsKnocked: 0, totalHoursWorked: 0 
+        }
       );
 
       const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
@@ -781,6 +802,19 @@ export default function AdminOverview() {
               icon={Percent} 
             />
           </div>
+
+          {/* Conversion Funnel */}
+          <CanvasserConversionFunnel 
+            title="Team Conversion Funnel (YTD)"
+            data={{
+              doorsKnocked: canvasserAggregates.totalDoorsKnocked,
+              conversationsHad: canvasserAggregates.totalConversationsHad,
+              leadsSet: canvasserAggregates.totalLeadsSet,
+              leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+              leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
+              leadsClosed: canvasserAggregates.totalLeadsClosed,
+            }} 
+          />
 
           {canvassersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">

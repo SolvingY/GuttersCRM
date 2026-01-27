@@ -8,7 +8,10 @@ export interface WeeklyCanvasserEntry {
   userId: string;
   leadsSet: number;
   leadsWithDamage: number;
+  leadsWithoutDamage: number;
   leadsClosed: number;
+  conversationsHad: number;
+  notInterested: number;
   hoursWorked: number;
   doorsKnocked: number;
   pointsEarned: number;
@@ -47,12 +50,15 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
             <tr>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors Knocked</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Convos</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Not Int.</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads w/ Damage</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Closed</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours Worked</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points Earned</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Closed</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
             </tr>
           </thead>
           <tbody>
@@ -95,8 +101,11 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.conversationsHad || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.notInterested || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.hoursWorked}</td>
                   <td className="py-3 px-4 text-right">
