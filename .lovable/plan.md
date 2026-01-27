@@ -1,335 +1,226 @@
 
 
-## Plan: Add User Archiving, Permanent Deletion, and Canvasser Ranks
+## Plan: Fix Canvasser Goals, Leaderboard Display, and Remove Hours
 
 ### Overview
 
-This plan adds three major features to the User Roles section of the admin dashboard:
+This plan addresses four key issues:
 
-1. **Archive Users** - Remove users from active dashboard views while keeping their metrics in calculations. Archived users are also prevented from logging in.
-2. **Permanently Delete Users** - Completely remove users from the system including auth account and all associated data.
-3. **Canvasser Ranks** - Add C1, C2, C3 ranking system for canvassers, similar to how SR1-SR6 works for sales reps.
+1. **Expand Canvasser Goals** - Change from a single "Yearly Goal (Leads Closed)" to three separate goals: Contracts (Leads Closed), Leads Set, and Income
+2. **Fix Canvasser Leaderboard Visibility** - Canvassers can only see their own data on the leaderboard due to RLS policies - need to add a policy allowing all authenticated users to view canvasser metrics for leaderboard purposes
+3. **Standardize Leaderboard Stats** - Make Yearly, Monthly, and Weekly leaderboards display the same statistics
+4. **Remove Hours from Leaderboard** - Hours should only be visible to admins and the individual user, not on public leaderboards
 
 ---
 
 ### Part 1: Database Schema Changes
 
-#### 1.1 Add Archive Status to Profiles Table
+#### 1.1 Add New Goal Columns to canvasser_metrics
 
 ```sql
--- Add is_archived column to profiles table
-ALTER TABLE public.profiles
-ADD COLUMN is_archived boolean DEFAULT false,
-ADD COLUMN archived_at timestamp with time zone DEFAULT null,
-ADD COLUMN archived_by uuid DEFAULT null;
-```
-
-#### 1.2 Add Canvasser Rank to Canvasser Metrics Table
-
-```sql
--- Add canvasser_rank column to canvasser_metrics table
+-- Add leads_set_goal and income_goal columns
 ALTER TABLE public.canvasser_metrics
-ADD COLUMN canvasser_rank text DEFAULT 'C1';
+ADD COLUMN IF NOT EXISTS leads_set_goal integer DEFAULT 0,
+ADD COLUMN IF NOT EXISTS income_goal numeric DEFAULT 0;
 
--- Add canvasser_rank to weekly_canvasser_metrics for historical tracking
-ALTER TABLE public.weekly_canvasser_metrics
-ADD COLUMN canvasser_rank text DEFAULT 'C1';
+-- Rename yearly_goal to contracts_goal for clarity (or keep as yearly_goal representing contracts)
+-- We'll keep yearly_goal as the "contracts/leads closed" goal for backward compatibility
+```
+
+#### 1.2 Add RLS Policy for Leaderboard Visibility
+
+The core issue: The `canvasser_metrics` table only has these SELECT policies:
+- "Admins can view all canvasser metrics" - `has_role(auth.uid(), 'admin')`
+- "Canvassers can view their own metrics" - `user_id = auth.uid()`
+
+This means canvassers cannot see other canvassers' data for the leaderboard!
+
+**Solution**: Add a new RLS policy similar to what exists on `user_metrics`:
+
+```sql
+-- Add policy allowing authenticated users to view all canvasser metrics for leaderboard
+CREATE POLICY "Authenticated users can view all canvasser metrics for leaderboard"
+ON public.canvasser_metrics
+FOR SELECT
+TO authenticated
+USING (true);
 ```
 
 ---
 
-### Part 2: Update Constants File
+### Part 2: Update Goal Modal and Settings
 
-#### File: `src/lib/constants.ts`
+#### 2.1 Update CanvasserGoalModal - `src/components/canvasser/CanvasserGoalModal.tsx`
 
-Add canvasser rank options:
+**Current**: Single input for "Yearly Leads Closed Goal"
 
-```typescript
-// Sales Rank Options (existing)
-export const RANK_OPTIONS = ['SR1', 'SR2', 'SR3', 'SR4', 'SR5', 'SR6', 'Y?', 'CEO', 'GM'];
-
-// Canvasser Rank Options (new)
-export const CANVASSER_RANK_OPTIONS = ['C1', 'C2', 'C3'];
-```
-
----
-
-### Part 3: Create/Update Edge Functions
-
-#### 3.1 Create New Edge Function: `admin-manage-user`
-
-**File: `supabase/functions/admin-manage-user/index.ts`**
-
-A new edge function to handle archiving, unarchiving, and permanent deletion:
-
-**Actions supported:**
-- `archive` - Sets `is_archived = true`, `archived_at`, `archived_by` and bans the user from logging in using Supabase's `ban_duration` feature
-- `unarchive` - Sets `is_archived = false` and lifts the login ban
-- `delete` - Permanently removes the user from:
-  - `auth.users` (via `auth.admin.deleteUser()`)
-  - All associated data is cascade-deleted due to foreign keys
-
-**Security:**
-- Requires admin role (verified server-side)
-- Cannot archive/delete admins
-- Uses service role key for auth admin operations
-
-```typescript
-// Pseudocode structure:
-1. Verify caller is admin
-2. Parse action (archive/unarchive/delete) and targetUserId
-3. For archive:
-   - Update profiles.is_archived = true
-   - Use auth.admin.updateUserById() with ban_duration: '876000h' (100 years)
-4. For unarchive:
-   - Update profiles.is_archived = false  
-   - Use auth.admin.updateUserById() with ban_duration: 'none'
-5. For delete:
-   - Call auth.admin.deleteUser() - cascade deletes all related data
-```
-
-#### 3.2 Update Existing Edge Function: `admin-set-user-role`
-
-**File: `supabase/functions/admin-set-user-role/index.ts`**
-
-Add support for updating canvasser rank when role is canvasser:
-
-```typescript
-// Add new parameter: canvasserRank
-const { targetUserId, newRole, canvasserRank } = await req.json();
-
-// When updating canvasser metrics, also update the rank
-if (newRole === 'canvasser' && canvasserRank) {
-  await adminClient.from('canvasser_metrics')
-    .update({ canvasser_rank: canvasserRank })
-    .eq('user_id', targetUserId);
-}
-```
-
----
-
-### Part 4: Update User Roles Page
-
-#### File: `src/pages/admin/UserRoles.tsx`
-
-Complete redesign of the User Roles management page:
-
-**New UI Structure:**
-```
-+--------------------------------------------------+
-|  User Roles Management                            |
-|  Manage user roles, ranks, and account status     |
-+--------------------------------------------------+
-|  [Active Users] [Archived Users]                  |  <- Tab toggle
-+--------------------------------------------------+
-| Name | Role | Rank | Status | Actions            |
-|------|------|------|--------|-------------------|
-| John | Sales Rep | SR3 | Active | [Edit] [Archive] [Delete] |
-| Jane | Canvasser | C2  | Active | [Edit] [Archive] [Delete] |
-| Admin| Admin     | -   | Active | [Copy ID]                 |
-+--------------------------------------------------+
-```
-
-**Features:**
-
-1. **Tabs**: Toggle between Active and Archived users
-2. **Role Column**: Show current role with badge styling
-3. **Rank Column**: 
-   - For Sales Reps: Show SR1-SR6, Y?, CEO, GM
-   - For Canvassers: Show C1, C2, C3
-4. **Actions Column**:
-   - **Edit Button** - Opens modal to change role and rank
-   - **Archive Button** - Confirmation dialog then archives (hidden for admins)
-   - **Delete Button** - Confirmation dialog with warning then permanently deletes (hidden for admins)
-   - **Unarchive Button** - Only shown in Archived tab
-
-**New Interface:**
-```typescript
-interface UserWithRole {
-  id: string;
-  fullName: string | null;
-  role: 'admin' | 'user' | 'canvasser';
-  rank: string | null; // SR1-SR6 or C1-C3
-  isArchived: boolean;
-  archivedAt: string | null;
-}
-```
-
-**New State:**
-```typescript
-const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
-const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
-const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-const [targetUser, setTargetUser] = useState<UserWithRole | null>(null);
-```
-
-**Data Fetching Updates:**
-```typescript
-// Fetch profiles with archive status
-const { data: profilesData } = await supabase
-  .from('profiles')
-  .select('id, full_name, is_archived, archived_at');
-
-// Fetch user_metrics for sales rep ranks
-const { data: userMetricsData } = await supabase
-  .from('user_metrics')
-  .select('user_id, sales_rank');
-
-// Fetch canvasser_metrics for canvasser ranks
-const { data: canvasserMetricsData } = await supabase
-  .from('canvasser_metrics')
-  .select('user_id, canvasser_rank');
-```
-
----
-
-### Part 5: Create Edit User Modal Component
-
-#### New File: `src/components/admin/EditUserRoleModal.tsx`
-
-A modal for editing user role and rank:
-
-**Features:**
-- Role dropdown (Sales Rep / Canvasser) - cannot change for admins
-- Rank dropdown (conditional based on role):
-  - If Sales Rep: SR1-SR6, Y?, CEO, GM
-  - If Canvasser: C1, C2, C3
-- Save button calls the updated `admin-set-user-role` edge function
-
-**Props:**
-```typescript
-interface EditUserRoleModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  user: UserWithRole | null;
-  onSuccess: () => void;
-}
-```
-
----
-
-### Part 6: Update Dashboard Queries to Filter Archived Users
-
-Several components need to filter out archived users from active views:
-
-#### 6.1 Admin Overview - `src/pages/dashboard/AdminOverview.tsx`
+**New**: Three inputs:
+- **Contracts Goal** (Leads Closed) - current yearly_goal
+- **Leads Set Goal** - new leads_set_goal column
+- **Income Goal** - new income_goal column
 
 **Changes:**
-- Join profiles table to check `is_archived`
-- Filter out archived users from display
-- Keep archived user metrics in aggregate calculations (their historical data counts)
+1. Add state for all three goals: `contractsGoal`, `leadsSetGoal`, `incomeGoal`
+2. Check if any goals are unset (all three = 0) to trigger modal
+3. Update form to have three input fields with labels
+4. Update save logic to update all three goal columns
 
+#### 2.2 Update CanvasserSettings - `src/pages/canvasser/CanvasserSettings.tsx`
+
+**Current**: Single "Yearly Goal (Leads Closed)" field
+
+**New**: Three goal fields:
+- Contracts Goal (Leads Closed)
+- Leads Set Goal
+- Income Goal
+
+**Changes:**
+1. Add state for new goals: `leadsSetGoal`, `incomeGoal`
+2. Update `fetchSettings()` to select new columns
+3. Add input fields for each goal type
+4. Update `handleSave()` to save all three goals
+
+---
+
+### Part 3: Fix Canvasser Leaderboard Data
+
+#### 3.1 Update CanvasserLeaderboard - `src/pages/canvasser/CanvasserLeaderboard.tsx`
+
+**Issues to Fix:**
+
+1. **Visibility Problem**: The view `canvasser_metrics_leaderboard` uses `security_invoker=on` which respects RLS. Once we add the new RLS policy, this will work correctly.
+
+2. **Standardize Stats Across All Timeframes**: Currently:
+   - **YTD Tab** shows: Place, Canvasser, Yearly Goal, YTD Closed, Doors Knocked, Until Goal, % of Goal, Points, Contests Won
+   - **Weekly/Monthly Tab** shows: Place, Canvasser, Doors, Convos, Not Int., Leads Set, w/ Damage, w/o Damage, Closed, Hours, Points
+
+**New Standardized Columns** (remove Hours from all):
+| Place | Canvasser | Doors | Leads Set | w/ Damage | w/o Damage | Closed | Points |
+
+3. **Filter Out Archived/Deleted Users**: Join with profiles table to filter `is_archived = false`
+
+**Changes to YTD fetch:**
 ```typescript
-// Fetch active user IDs
+// After adding RLS policy, fetch will work for all canvassers
+// Filter archived users by joining profiles
 const { data: activeProfiles } = await supabase
   .from('profiles')
   .select('id')
   .eq('is_archived', false);
-
+  
 const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
 
-// In display: filter to only show active users
-const displayUsers = userDetails.filter(u => 
-  u.realUserId && activeUserIds.has(u.realUserId)
-);
+// Then filter results
+const filteredEntries = sorted.filter(entry => activeUserIds.has(entry.userId));
 ```
 
-**Note:** Aggregate totals should still include archived user data for accurate historical reporting.
-
-#### 6.2 Weekly Updates - `src/pages/admin/WeeklyUpdates.tsx`
-
-- Only show active users in the data entry forms
-- Archived users should not appear in the weekly update form
-
-#### 6.3 Leaderboards - `src/pages/admin/AdminLeaderboards.tsx` and others
-
-- Filter archived users from leaderboard displays
-- Their historical weekly data remains in the database
+**Changes to Weekly/Monthly fetch:**
+- Already filtering by weekly_canvasser_metrics
+- Add filtering for archived users
+- Remove `hoursWorked` from the entry objects and display
 
 ---
 
-### Part 7: Update Canvasser Components for Rank Display
+### Part 4: Update Leaderboard Table Components
 
-#### 7.1 Canvasser Stats - `src/pages/canvasser/CanvasserStats.tsx`
+#### 4.1 Update CanvasserLeaderboardTable - `src/components/dashboard/CanvasserLeaderboardTable.tsx`
 
-Add rank display in the header/stats area.
+**Current columns**: Place, Canvasser, Yearly Goal, YTD Closed, Doors Knocked, Until Goal, % of Goal, Points, Contests Won
 
-#### 7.2 Edit Canvasser Metrics Modal - `src/components/dashboard/EditCanvasserMetricsModal.tsx`
+**New columns** (matching weekly/monthly style, without hours):
+| Place | Canvasser | Doors | Leads Set | w/ Damage | w/o Damage | Closed | Points |
 
-Add rank selection dropdown using `CANVASSER_RANK_OPTIONS`.
+**Note**: Goal tracking (Yearly Goal, Until Goal, % of Goal) can remain on YTD table since it's meaningful there.
 
-#### 7.3 Canvasser Leaderboard - `src/pages/canvasser/CanvasserLeaderboard.tsx`
+**Changes:**
+1. Keep goal-related columns for YTD view (they make sense there)
+2. Add Leads Set column
+3. Add w/ Damage and w/o Damage columns
+4. Remove Contests Won from display (can stay in tooltip)
 
-Add rank column to leaderboard table.
+#### 4.2 Update WeeklyCanvasserLeaderboardTable - `src/components/dashboard/WeeklyCanvasserLeaderboardTable.tsx`
 
-#### 7.4 Weekly Canvasser Leaderboard Table - `src/components/dashboard/WeeklyCanvasserLeaderboardTable.tsx`
+**Current columns**: Place, Canvasser, Doors, Convos, Not Int., Leads Set, w/ Damage, w/o Damage, Closed, **Hours**, Points
 
-Add rank column display.
+**New columns** (remove Hours):
+| Place | Canvasser | Doors | Convos | Not Int. | Leads Set | w/ Damage | w/o Damage | Closed | Points |
 
----
+**Changes:**
+1. Remove `hoursWorked` from interface (or keep for admin use)
+2. Remove Hours column from table header (line 61)
+3. Remove Hours cell from table body (line 116)
 
-### Part 8: Update Invite System for Canvasser Ranks
+#### 4.3 Consider Prop for Admin-Only Hours Display
 
-#### 8.1 Invitations Table Migration
+Since admins should still see hours:
 
-```sql
--- Add preset_canvasser_rank to invitations table
-ALTER TABLE public.invitations
-ADD COLUMN preset_canvasser_rank text DEFAULT 'C1';
+```typescript
+interface WeeklyCanvasserLeaderboardTableProps {
+  entries: WeeklyCanvasserEntry[];
+  currentUserId?: string;
+  showHours?: boolean;  // NEW: Only true for admin views
+}
 ```
 
-#### 8.2 Update Invite Users Page - `src/pages/dashboard/InviteUsers.tsx`
-
-When creating a canvasser invite, allow setting initial rank (C1, C2, C3).
-
-#### 8.3 Update handle_new_user Trigger
-
-Modify the database trigger to set `canvasser_rank` from invitation presets when creating canvasser metrics.
+Then conditionally render Hours column only when `showHours={true}`.
 
 ---
 
-### Summary of Changes
+### Part 5: Update Admin Leaderboards
+
+#### 5.1 Update AdminLeaderboards - `src/pages/admin/AdminLeaderboards.tsx`
+
+**Changes:**
+1. Filter archived users from all leaderboard displays
+2. Keep Hours column visible for admins (pass `showHours={true}` to table component)
+3. Ensure data fetching includes all new metrics
+
+---
+
+### Part 6: Update Canvasser Stats Page
+
+#### 6.1 Update CanvasserStats - `src/pages/canvasser/CanvasserStats.tsx`
+
+**Changes:**
+1. Fetch new goal columns: `leads_set_goal`, `income_goal`
+2. Display all three goals in the UI with progress indicators
+3. Show goal progress for each category (Contracts, Leads Set, Income)
+
+---
+
+### Summary of Files to Create/Modify
 
 | File/Resource | Action | Description |
 |---------------|--------|-------------|
-| `profiles` table | Migrate | Add `is_archived`, `archived_at`, `archived_by` columns |
-| `canvasser_metrics` table | Migrate | Add `canvasser_rank` column |
-| `weekly_canvasser_metrics` table | Migrate | Add `canvasser_rank` column |
-| `invitations` table | Migrate | Add `preset_canvasser_rank` column |
-| `src/lib/constants.ts` | Modify | Add `CANVASSER_RANK_OPTIONS` |
-| `supabase/functions/admin-manage-user/index.ts` | Create | New function for archive/unarchive/delete |
-| `supabase/functions/admin-set-user-role/index.ts` | Modify | Add canvasser rank support |
-| `src/pages/admin/UserRoles.tsx` | Modify | Complete redesign with tabs, archive/delete actions |
-| `src/components/admin/EditUserRoleModal.tsx` | Create | New modal for editing role and rank |
-| `src/pages/dashboard/AdminOverview.tsx` | Modify | Filter archived users from display |
-| `src/pages/admin/WeeklyUpdates.tsx` | Modify | Filter archived users from forms |
-| `src/pages/admin/AdminLeaderboards.tsx` | Modify | Filter archived users from leaderboards |
-| `src/pages/canvasser/CanvasserStats.tsx` | Modify | Display canvasser rank |
-| `src/components/dashboard/EditCanvasserMetricsModal.tsx` | Modify | Add rank selection |
-| `src/components/dashboard/WeeklyCanvasserLeaderboardTable.tsx` | Modify | Add rank column |
-| `src/pages/dashboard/InviteUsers.tsx` | Modify | Add canvasser rank preset option |
+| Database Migration | Create | Add `leads_set_goal`, `income_goal` columns and new RLS policy |
+| `src/components/canvasser/CanvasserGoalModal.tsx` | Modify | Update to three goal inputs |
+| `src/pages/canvasser/CanvasserSettings.tsx` | Modify | Add three goal input fields |
+| `src/pages/canvasser/CanvasserLeaderboard.tsx` | Modify | Filter archived users, remove hours from display |
+| `src/components/dashboard/CanvasserLeaderboardTable.tsx` | Modify | Add missing columns (leads set, damage stats) |
+| `src/components/dashboard/WeeklyCanvasserLeaderboardTable.tsx` | Modify | Remove Hours column for canvasser view, add `showHours` prop |
+| `src/pages/admin/AdminLeaderboards.tsx` | Modify | Pass `showHours={true}` to canvasser tables |
+| `src/pages/canvasser/CanvasserStats.tsx` | Modify | Display all three goal types with progress |
 
 ---
 
 ### Technical Implementation Details
 
-**Archive Behavior:**
-- Archived users cannot log in (Supabase `ban_duration` set to 100 years)
-- Their historical data remains in all metrics tables
-- Aggregate calculations (totals, goals) include their contributions
-- They are hidden from active user lists and data entry forms
-- Admins can view archived users in a separate tab and unarchive them
+**RLS Fix:**
+The key fix is adding the RLS policy to allow authenticated users to see all canvasser metrics. Currently, the `canvasser_metrics_leaderboard` view respects RLS (`security_invoker=on`), and canvassers can only see their own row, which breaks the leaderboard.
 
-**Delete Behavior:**
-- Removes user from `auth.users` completely
-- All related data cascade-deletes due to foreign key constraints
-- This action is irreversible - confirmation dialog emphasizes this
-- Admins cannot be deleted (protection in edge function and UI)
+**Hours Visibility:**
+- Hours will be tracked in the database and displayed to admins
+- The `showHours` prop on the table component controls column visibility
+- Canvasser portal leaderboards will pass `showHours={false}` (or omit)
+- Admin leaderboards will pass `showHours={true}`
 
-**Canvasser Rank System:**
-- C1, C2, C3 hierarchy mirrors SR1-SR6 for sales reps
-- Rank is stored in `canvasser_metrics` table
-- Can be set during invite creation or edited later by admin
-- Displayed on leaderboards and stats pages
+**Goal Structure:**
+- **Contracts Goal** (yearly_goal) - Number of leads closed target
+- **Leads Set Goal** (leads_set_goal) - Number of leads set target
+- **Income Goal** (income_goal) - Dollar amount income target
+
+**Archived User Filtering:**
+- All leaderboard queries will join/filter against profiles table
+- Only users with `is_archived = false` will be displayed
+- This prevents showing "old deleted stats" on leaderboards
 
