@@ -1,187 +1,189 @@
 
 
-## Plan: Add Certification Badges and Instagram Gallery Section
+## Plan: Add New Canvasser Metrics and Update Cost Per Lead Calculation
 
 ### Overview
-This plan adds certification badges under the logo on the homepage hero section and creates a new Instagram Gallery section with manually managed posts that you can update periodically.
+
+This plan adds three new canvasser metrics (**Conversations Had**, **Not Interested**, **Without Damage**), renames **Shifts** to **Hours Worked**, and updates the **Cost Per Lead** calculation to use the formula: **Total Income for combined Canvassers / Leads Closed**.
 
 ---
 
-### Part 1: Add Certification Badges to Hero Section
+### Part 1: Database Schema Changes
 
-#### Files to Create/Modify
+**Migration Required** - Add 3 new columns to canvasser tables:
 
-**1. Copy uploaded badge images to project assets**
+```sql
+-- Add new columns to canvasser_metrics
+ALTER TABLE public.canvasser_metrics
+ADD COLUMN conversations_had integer DEFAULT 0,
+ADD COLUMN not_interested integer DEFAULT 0,
+ADD COLUMN leads_without_damage integer DEFAULT 0,
+ADD COLUMN hours_worked numeric DEFAULT 0;
 
-Copy the 3 certification badge images to `src/assets/`:
-- `user-uploads://8e6afa40ca54f627df7698cf9a122ef6eeebd18c-602e3757d9ced200045a579b.png` to `src/assets/badge-bbb.png`
-- `user-uploads://Certified_Plus.png` to `src/assets/badge-gaf.png`
-- `user-uploads://IICRC-Logo-web.png` to `src/assets/badge-iicrc.png`
+-- Add new columns to weekly_canvasser_metrics
+ALTER TABLE public.weekly_canvasser_metrics
+ADD COLUMN conversations_had integer DEFAULT 0,
+ADD COLUMN not_interested integer DEFAULT 0,
+ADD COLUMN leads_without_damage integer DEFAULT 0,
+ADD COLUMN hours_worked numeric DEFAULT 0;
 
-**2. Modify `src/components/Hero.tsx`**
+-- Add new columns to daily_canvasser_metric_entries
+ALTER TABLE public.daily_canvasser_metric_entries
+ADD COLUMN conversations_had_delta integer DEFAULT 0,
+ADD COLUMN not_interested_delta integer DEFAULT 0,
+ADD COLUMN leads_without_damage_delta integer DEFAULT 0,
+ADD COLUMN hours_worked_delta numeric DEFAULT 0;
+```
 
-Add a certification badges row directly under the hero logo:
+**Note:** The existing `shifts_worked` column will remain for backwards compatibility but we'll stop using it in favor of `hours_worked`.
 
+---
+
+### Part 2: Files to Modify
+
+#### 2.1 Admin Daily Updates - `src/pages/admin/WeeklyUpdates.tsx`
+
+**Changes:**
+1. Update `CanvasserMetric` interface (line 38-46) to add new fields
+2. Update `CanvasserWeeklyEntry` interface (line 48-57) to add:
+   - `weeklyConversationsHad`
+   - `weeklyNotInterested`
+   - `weeklyLeadsWithoutDamage`
+   - `weeklyHoursWorked`
+3. Update `fetchUsers()` to select new columns
+4. Update `handleSaveAll()` to save new fields to all three tables
+5. Update the Canvasser input form (lines 664-761) to:
+   - Add input fields for new metrics
+   - Rename "Shifts" label to "Hours Worked"
+   - Add "Conversations Had", "Not Interested", "Without Damage" input fields
+
+**Header row changes (line 673-681):**
+```
+| Team Member | Leads Set | Leads Closed | w/ Damage | w/o Damage | Convos | Not Int. | Hours | Doors | Income |
+```
+
+---
+
+#### 2.2 Canvasser Stats Page - `src/pages/canvasser/CanvasserStats.tsx`
+
+**Changes:**
+1. Update `CanvasserMetrics` interface (lines 16-25) to add new fields
+2. Update `WeeklyCanvasserMetric` interface (lines 27-36) to add new fields  
+3. Update Key Metrics section (lines 244-258) to:
+   - Rename "Shifts Worked" to "Hours Worked"
+   - Add new StatsCard components for: Conversations Had, Not Interested, Without Damage
+4. Update Recent Weekly Updates display (lines 288-291) to show hours instead of shifts
+
+---
+
+#### 2.3 Canvasser Leaderboard - `src/pages/canvasser/CanvasserLeaderboard.tsx`
+
+**Changes:**
+1. Update `WeeklyCanvasserEntry` interface (lines 41-51) to:
+   - Rename `shiftsWorked` to `hoursWorked`
+   - Add new metric fields
+2. Update data fetching and display to use new field names
+
+---
+
+#### 2.4 Weekly Canvasser Leaderboard Table - `src/components/dashboard/WeeklyCanvasserLeaderboardTable.tsx`
+
+**Changes:**
+1. Update `WeeklyCanvasserEntry` interface to rename `shiftsWorked` to `hoursWorked`
+2. Update table header (line 54) from "Shifts Worked" to "Hours Worked"
+3. Update table cell (line 101) to use `hoursWorked`
+
+---
+
+#### 2.5 Edit Canvasser Metrics Modal - `src/components/dashboard/EditCanvasserMetricsModal.tsx`
+
+**Changes:**
+1. Update `CanvasserMetrics` interface (lines 17-28) to add new fields
+2. Update form state (lines 40-49) to include new fields
+3. Rename "Shifts Worked" label to "Hours Worked" (line 176)
+4. Add input fields for: Conversations Had, Not Interested, Without Damage
+5. Update database update call to include new fields
+
+---
+
+#### 2.6 Admin Overview - `src/pages/dashboard/AdminOverview.tsx`
+
+**Changes:**
+1. Update `CanvasserAggregates` interface (lines 28-34) to:
+   - Rename `totalShiftsWorked` to `totalHoursWorked`
+   - Add totals for new metrics
+2. Update `CanvasserDetail` interface (lines 57-70) to add new fields and rename shift field
+3. Update Cost Per Lead calculation (line 509):
+
+**Current calculation:**
 ```typescript
-import bbbBadge from "@/assets/badge-bbb.png";
-import gafBadge from "@/assets/badge-gaf.png";
-import iicrcBadge from "@/assets/badge-iicrc.png";
-
-// Inside the Hero component, after the logo div:
-<div className="flex justify-center items-center gap-4 sm:gap-6 mt-4 lg:mt-2">
-  <img 
-    src={bbbBadge} 
-    alt="BBB Accredited Business" 
-    className="h-12 sm:h-14 md:h-16 w-auto object-contain bg-white/90 rounded-lg p-2"
-  />
-  <img 
-    src={gafBadge} 
-    alt="GAF Certified Plus Residential Roofing Contractor" 
-    className="h-12 sm:h-14 md:h-16 w-auto object-contain"
-  />
-  <img 
-    src={iicrcBadge} 
-    alt="IICRC Certified" 
-    className="h-10 sm:h-12 md:h-14 w-auto object-contain bg-white rounded-lg p-1"
-  />
-</div>
+const actualCostPerLead = canvasserAggregates.totalLeadsClosed > 0 
+  ? totalCanvasserIncome / canvasserAggregates.totalLeadsClosed 
+  : 0;
 ```
 
-**Design Notes:**
-- Badges will appear in a horizontal row centered under the logo
-- Responsive sizing: smaller on mobile, larger on desktop
-- White/light backgrounds added to badges that need contrast against the dark hero overlay
-- Proper alt text for accessibility and SEO
+**Already correct!** The calculation uses Total Canvasser Income / Total Leads Closed.
+
+4. Update any displays showing "Shifts" to "Hours"
 
 ---
 
-### Part 2: Create Instagram Gallery Section
+#### 2.7 Company Goals Page - `src/pages/admin/CompanyGoals.tsx`
 
-#### Files to Create
-
-**1. Create `src/components/InstagramGallery.tsx`**
-
-A new component for displaying manually managed Instagram posts:
-
-```text
-Structure:
-+-------------------------------------------+
-|         Follow Us On Instagram            |
-|            @nextgenroofingok              |
-+-------------------------------------------+
-|  [Post 1]  [Post 2]  [Post 3]  [Post 4]   |
-|   Image     Image     Image     Image     |
-|   Hover     Hover     Hover     Hover     |
-|   Effect    Effect    Effect    Effect    |
-+-------------------------------------------+
-|       [Follow Us on Instagram]            |
-+-------------------------------------------+
-```
-
-**Features:**
-- Grid layout showing 4-6 recent Instagram posts (configurable)
-- Each post displays the image with hover overlay
-- Clicking a post opens the Instagram post in a new tab
-- Responsive: 2 columns on mobile, 4 columns on desktop
-- Instagram icon and branding
-- "Follow Us" CTA button linking to your Instagram profile
-
-**Configuration Array (easy to update):**
-```typescript
-const instagramPosts = [
-  {
-    id: '1',
-    imageUrl: '/instagram/post1.jpg', // You'll add images to public/instagram/
-    permalink: 'https://instagram.com/p/POSTID1',
-    caption: 'Check out this beautiful roof installation...'
-  },
-  // ... more posts
-];
-```
-
-**2. Add to `src/pages/Index.tsx`**
-
-Import and add the InstagramGallery component after the Testimonials section:
-
-```typescript
-import { InstagramGallery } from "@/components/InstagramGallery";
-
-// In the return statement, add before ContactSection:
-<section id="instagram">
-  <InstagramGallery />
-</section>
-```
+**Changes:**
+- Verify Cost Per Lead calculation uses correct formula (already correct based on search results)
 
 ---
 
-### Part 3: Project Structure for Instagram Images
+#### 2.8 Report Generator - `src/lib/reportGenerator.ts`
 
-**Create directory structure:**
-```text
-public/
-  instagram/
-    post1.jpg
-    post2.jpg
-    post3.jpg
-    post4.jpg
-    post5.jpg
-    post6.jpg
-```
-
-You can update these images anytime by replacing the files in the `public/instagram/` folder or by uploading new images through chat.
+**Changes:**
+- Update any canvasser metrics references to use new field names
+- Ensure Cost Per Lead in reports uses correct formula
 
 ---
 
-### Technical Details
+### Part 3: Summary of New Metrics
 
-**Instagram Gallery Component Features:**
-- Section background using the `section-alt` color for visual separation
-- Instagram brand gradient accent on hover
-- Lazy loading for images (better performance)
-- Smooth hover animations with scale effect
-- Caption preview on hover
-- Responsive grid: 2 cols (mobile) / 3 cols (tablet) / 4 or 6 cols (desktop)
-
-**Styling Approach:**
-- Uses existing Tailwind classes and design system
-- Consistent with site's Oswald heading font
-- Matches the professional roofing company aesthetic
-- Dark mode compatible (inherits from theme)
+| Old Field | New Field | Description |
+|-----------|-----------|-------------|
+| `shifts_worked` | `hours_worked` | Renamed from Shifts to Hours Worked (now numeric for partial hours) |
+| - | `conversations_had` | NEW: Number of conversations had while canvassing |
+| - | `not_interested` | NEW: Number of "not interested" responses |
+| - | `leads_with_damage` | EXISTING: Leads that have damage |
+| - | `leads_without_damage` | NEW: Leads that don't have damage |
 
 ---
 
-### Implementation Steps
+### Part 4: Cost Per Lead Calculation
 
-1. Copy badge images to `src/assets/`
-2. Update `Hero.tsx` to display certification badges
-3. Create `InstagramGallery.tsx` component
-4. Create placeholder images in `public/instagram/`
-5. Update `Index.tsx` to include the Instagram section
-6. Provide instructions for updating Instagram content
+**Formula:** Total Income for Combined Canvassers / Total Leads Closed
 
----
+**Where it's calculated:**
+- `src/pages/dashboard/AdminOverview.tsx` (line 509) - **Already correct**
+- `src/pages/admin/CompanyGoals.tsx` (line 348) - **Already correct**
+- `src/lib/reportGenerator.ts` - Used in exports - **Already correct**
 
-### How to Update Instagram Posts (After Implementation)
-
-When you want to update the Instagram gallery:
-1. Take screenshots of your latest Instagram posts (or download the images)
-2. Upload the new images through chat
-3. Ask me to replace the old posts with the new ones
-4. Update the permalink URLs to point to the actual Instagram posts
-
-Alternatively, you can edit the `instagramPosts` array in `InstagramGallery.tsx` directly if you have access to the code editor.
+The current implementation already uses this formula. No changes needed to the calculation logic.
 
 ---
 
-### Files Changed Summary
+### Part 5: Implementation Order
 
-| File | Action |
-|------|--------|
-| `src/assets/badge-bbb.png` | Create (copy from upload) |
-| `src/assets/badge-gaf.png` | Create (copy from upload) |
-| `src/assets/badge-iicrc.png` | Create (copy from upload) |
-| `src/components/Hero.tsx` | Modify (add badges) |
-| `src/components/InstagramGallery.tsx` | Create (new component) |
-| `src/pages/Index.tsx` | Modify (add Instagram section) |
-| `public/instagram/` | Create directory with placeholder images |
+1. **Database Migration** - Add new columns to all three canvasser tables
+2. **Type Updates** - Update TypeScript interfaces across all files
+3. **Admin WeeklyUpdates** - Add new input fields for data entry
+4. **EditCanvasserMetricsModal** - Add new fields to direct edit modal
+5. **CanvasserStats** - Display new metrics to canvassers
+6. **Leaderboard Components** - Update displays with new field names
+7. **AdminOverview** - Update aggregate displays
+
+---
+
+### Technical Notes
+
+- The `hours_worked` field will be `numeric` type to support partial hours (e.g., 7.5 hours)
+- Existing `shifts_worked` data will be preserved but the UI will use the new `hours_worked` field
+- All interfaces need updating for TypeScript type safety
+- The weekly/daily aggregation logic in `handleSaveAll()` will include all new fields
 
