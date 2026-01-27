@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote, Users } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote, Users, GitCompare } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format, subWeeks } from "date-fns";
@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { getRandomQuote } from "@/lib/motivationalQuotes";
+import { CanvasserConversionFunnel } from "@/components/canvasser/CanvasserConversionFunnel";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -22,6 +23,7 @@ interface CanvasserMetrics {
   conversations_had: number;
   not_interested: number;
   hours_worked: number;
+  doors_knocked: number;
   points: number;
   income: number;
   yearly_goal: number;
@@ -52,6 +54,7 @@ export default function CanvasserStats() {
   // Collapsible states
   const [contestsOpen, setContestsOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  const [funnelOpen, setFunnelOpen] = useState(false);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [fiscalOpen, setFiscalOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
@@ -268,7 +271,30 @@ export default function CanvasserStats() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* 3. Recent Weekly Updates */}
+      {/* 3. Conversion Funnel */}
+      <Collapsible open={funnelOpen} onOpenChange={setFunnelOpen}>
+        <CollapsibleTrigger asChild>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader className="py-4">
+              <CollapsibleHeader isOpen={funnelOpen} title="Conversion Funnel" icon={GitCompare} />
+            </CardHeader>
+          </Card>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <CanvasserConversionFunnel 
+            data={{
+              doorsKnocked: metrics?.doors_knocked || 0,
+              conversationsHad: metrics?.conversations_had || 0,
+              leadsSet: metrics?.leads_set || 0,
+              leadsWithDamage: metrics?.leads_with_damage || 0,
+              leadsWithoutDamage: metrics?.leads_without_damage || 0,
+              leadsClosed: metrics?.leads_closed || 0,
+            }} 
+          />
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* 4. Recent Weekly Updates */}
       {weeklyMetrics.length > 0 && (
         <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
           <CollapsibleTrigger asChild>
