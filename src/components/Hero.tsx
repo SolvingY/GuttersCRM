@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Star, Phone } from "lucide-react";
 import heroImage from "@/assets/hero-split-building.jpg";
 import heroLogo from "@/assets/hero-logo-new.png";
+import bbbBadge from "@/assets/badge-bbb.png";
+import gafBadge from "@/assets/badge-gaf.png";
+import iicrcBadge from "@/assets/badge-iicrc.png";
 
 export function Hero() {
   return (
@@ -27,6 +30,25 @@ export function Hero() {
                 src={heroLogo} 
                 alt="Next Generation Roofing - Veteran Founded & Operated since 2020" 
                 className="w-60 sm:w-80 md:w-96 lg:w-[22rem] xl:w-[26rem] h-auto [filter:drop-shadow(0_0_40px_rgba(255,255,255,1))_drop-shadow(0_0_80px_rgba(255,255,255,0.9))_drop-shadow(0_20px_40px_rgba(255,255,255,0.8))_drop-shadow(0_30px_60px_rgba(255,255,255,0.6))]"
+              />
+            </div>
+            
+            {/* Certification Badges */}
+            <div className="flex justify-center items-center gap-3 sm:gap-4 md:gap-6 mt-3 lg:mt-1">
+              <img 
+                src={bbbBadge} 
+                alt="BBB Accredited Business" 
+                className="h-10 sm:h-12 md:h-14 w-auto object-contain bg-white/90 rounded-lg p-1.5 sm:p-2"
+              />
+              <img 
+                src={gafBadge} 
+                alt="GAF Certified Plus Residential Roofing Contractor" 
+                className="h-10 sm:h-12 md:h-14 w-auto object-contain"
+              />
+              <img 
+                src={iicrcBadge} 
+                alt="IICRC Certified" 
+                className="h-8 sm:h-10 md:h-12 w-auto object-contain bg-white rounded-lg p-1"
               />
             </div>
             
