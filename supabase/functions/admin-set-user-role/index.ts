@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { targetUserId, newRole } = await req.json();
+    const { targetUserId, newRole, salesRank, canvasserRank } = await req.json();
     
     if (!targetUserId || !newRole) {
       return new Response(
@@ -69,6 +69,24 @@ Deno.serve(async (req) => {
     if (!["user", "canvasser"].includes(newRole)) {
       return new Response(
         JSON.stringify({ error: "Invalid role. Must be 'user' or 'canvasser'" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate ranks if provided
+    const validSalesRanks = ['SR1', 'SR2', 'SR3', 'SR4', 'SR5', 'SR6', 'Y?', 'CEO', 'GM'];
+    const validCanvasserRanks = ['C1', 'C2', 'C3'];
+    
+    if (salesRank && !validSalesRanks.includes(salesRank)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid sales rank" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (canvasserRank && !validCanvasserRanks.includes(canvasserRank)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid canvasser rank" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -116,12 +134,23 @@ Deno.serve(async (req) => {
             user_id: targetUserId,
             display_name: displayName,
             metric_date: new Date().toISOString().split("T")[0],
+            canvasser_rank: canvasserRank || 'C1',
           });
 
         if (insertError) {
           console.error("Failed to create canvasser metrics:", insertError);
         } else {
           console.log("Created canvasser metrics for user:", targetUserId);
+        }
+      } else if (canvasserRank) {
+        // Update the rank if metrics exist and rank provided
+        const { error: updateError } = await supabaseAdmin
+          .from("canvasser_metrics")
+          .update({ canvasser_rank: canvasserRank })
+          .eq("user_id", targetUserId);
+        
+        if (updateError) {
+          console.error("Failed to update canvasser rank:", updateError);
         }
       }
     } else if (newRole === "user") {
@@ -138,7 +167,7 @@ Deno.serve(async (req) => {
           .insert({
             user_id: targetUserId,
             display_name: displayName,
-            sales_rank: "SR1",
+            sales_rank: salesRank || "SR1",
             yearly_goal: 0,
             metric_date: new Date().toISOString().split("T")[0],
           });
@@ -147,6 +176,16 @@ Deno.serve(async (req) => {
           console.error("Failed to create user metrics:", insertError);
         } else {
           console.log("Created user metrics for user:", targetUserId);
+        }
+      } else if (salesRank) {
+        // Update the rank if metrics exist and rank provided
+        const { error: updateError } = await supabaseAdmin
+          .from("user_metrics")
+          .update({ sales_rank: salesRank })
+          .eq("user_id", targetUserId);
+        
+        if (updateError) {
+          console.error("Failed to update sales rank:", updateError);
         }
       }
     }

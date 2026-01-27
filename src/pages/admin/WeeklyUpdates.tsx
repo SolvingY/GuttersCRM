@@ -100,7 +100,16 @@ export default function WeeklyUpdates() {
         rolesData?.filter(r => r.role === 'canvasser').map(r => r.user_id) || []
       );
 
-      // Fetch sales reps (excluding canvassers)
+      // Fetch profiles to check archived status
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, is_archived');
+
+      const archivedUserIds = new Set(
+        profilesData?.filter(p => p.is_archived).map(p => p.id) || []
+      );
+
+      // Fetch sales reps (excluding canvassers and archived users)
       const { data: salesData, error: salesError } = await supabase
         .from('user_metrics')
         .select('user_id, display_name, sales, leads, closed_deals, earnings_ytd, points')
@@ -110,8 +119,8 @@ export default function WeeklyUpdates() {
 
       const uniqueUsers = new Map<string, UserMetric>();
       (salesData || []).forEach((item) => {
-        // Filter out canvassers
-        if (item.user_id && !uniqueUsers.has(item.user_id) && !canvasserUserIds.has(item.user_id)) {
+        // Filter out canvassers and archived users
+        if (item.user_id && !uniqueUsers.has(item.user_id) && !canvasserUserIds.has(item.user_id) && !archivedUserIds.has(item.user_id)) {
           uniqueUsers.set(item.user_id, item as UserMetric);
         }
       });
@@ -144,7 +153,8 @@ export default function WeeklyUpdates() {
 
       const uniqueCanvassers = new Map<string, CanvasserMetric>();
       (canvasserData || []).forEach((item) => {
-        if (item.user_id && !uniqueCanvassers.has(item.user_id)) {
+        // Filter out archived canvassers
+        if (item.user_id && !uniqueCanvassers.has(item.user_id) && !archivedUserIds.has(item.user_id)) {
           uniqueCanvassers.set(item.user_id, item as CanvasserMetric);
         }
       });

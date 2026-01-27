@@ -49,6 +49,7 @@ export type Database = {
       }
       canvasser_metrics: {
         Row: {
+          canvasser_rank: string | null
           contest_points: number | null
           conversations_had: number | null
           created_at: string | null
@@ -71,6 +72,7 @@ export type Database = {
           yearly_goal: number | null
         }
         Insert: {
+          canvasser_rank?: string | null
           contest_points?: number | null
           conversations_had?: number | null
           created_at?: string | null
@@ -93,6 +95,7 @@ export type Database = {
           yearly_goal?: number | null
         }
         Update: {
+          canvasser_rank?: string | null
           contest_points?: number | null
           conversations_had?: number | null
           created_at?: string | null
@@ -418,6 +421,7 @@ export type Database = {
           invite_code: string
           invited_by: string | null
           is_used: boolean
+          preset_canvasser_rank: string | null
           preset_display_name: string | null
           preset_role: Database["public"]["Enums"]["app_role"]
           preset_sales_rank: string | null
@@ -432,6 +436,7 @@ export type Database = {
           invite_code: string
           invited_by?: string | null
           is_used?: boolean
+          preset_canvasser_rank?: string | null
           preset_display_name?: string | null
           preset_role?: Database["public"]["Enums"]["app_role"]
           preset_sales_rank?: string | null
@@ -446,6 +451,7 @@ export type Database = {
           invite_code?: string
           invited_by?: string | null
           is_used?: boolean
+          preset_canvasser_rank?: string | null
           preset_display_name?: string | null
           preset_role?: Database["public"]["Enums"]["app_role"]
           preset_sales_rank?: string | null
@@ -699,26 +705,35 @@ export type Database = {
       }
       profiles: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
+          is_archived: boolean | null
           tour_completed: boolean | null
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id: string
+          is_archived?: boolean | null
           tour_completed?: boolean | null
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
+          is_archived?: boolean | null
           tour_completed?: boolean | null
           updated_at?: string
         }
@@ -869,6 +884,7 @@ export type Database = {
       }
       weekly_canvasser_metrics: {
         Row: {
+          canvasser_rank: string | null
           conversations_had: number | null
           created_at: string
           doors_knocked: number | null
@@ -888,6 +904,7 @@ export type Database = {
           week_start: string
         }
         Insert: {
+          canvasser_rank?: string | null
           conversations_had?: number | null
           created_at?: string
           doors_knocked?: number | null
@@ -907,6 +924,7 @@ export type Database = {
           week_start: string
         }
         Update: {
+          canvasser_rank?: string | null
           conversations_had?: number | null
           created_at?: string
           doors_knocked?: number | null

@@ -6,6 +6,7 @@ export interface WeeklyCanvasserEntry {
   rank: number;
   name: string;
   userId: string;
+  canvasserRank?: string;
   leadsSet: number;
   leadsWithDamage: number;
   leadsWithoutDamage: number;
@@ -93,12 +94,17 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="font-semibold">
-                      {entry.name}
-                      {isCurrentUser && (
-                        <span className="ml-2 text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full">(You)</span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold">
+                        {entry.name}
+                        {isCurrentUser && (
+                          <span className="ml-2 text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full">(You)</span>
+                        )}
+                      </span>
+                      {entry.canvasserRank && (
+                        <span className="text-xs opacity-70">{entry.canvasserRank}</span>
                       )}
-                    </span>
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.conversationsHad || 0}</td>

@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Copy, Trash2, Send, CheckCircle, Clock, XCircle, Mail, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
-import { RANK_OPTIONS } from '@/lib/constants';
+import { RANK_OPTIONS, CANVASSER_RANK_OPTIONS } from '@/lib/constants';
 
 // Production URL for invite links
 const PRODUCTION_URL = 'https://oknextgen.com';
@@ -44,6 +44,7 @@ export default function InviteUsers() {
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [salesRank, setSalesRank] = useState('SR1');
+  const [canvasserRank, setCanvasserRank] = useState('C1');
   const [yearlyGoal, setYearlyGoal] = useState('');
   const [inviteRole, setInviteRole] = useState<'user' | 'canvasser'>('user');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -120,6 +121,7 @@ export default function InviteUsers() {
           invite_code: inviteCode,
           invited_by: user.id,
           preset_sales_rank: inviteRole === 'user' ? salesRank : null,
+          preset_canvasser_rank: inviteRole === 'canvasser' ? canvasserRank : null,
           preset_yearly_goal: inviteRole === 'user' && yearlyGoal ? parseFloat(yearlyGoal) : 0,
           preset_display_name: displayName.trim() || null,
           preset_role: inviteRole,
@@ -139,6 +141,7 @@ export default function InviteUsers() {
       setEmail('');
       setDisplayName('');
       setSalesRank('SR1');
+      setCanvasserRank('C1');
       setYearlyGoal('');
       setInviteRole('user');
       fetchInvitations();
@@ -446,6 +449,23 @@ export default function InviteUsers() {
                         </SelectTrigger>
                         <SelectContent>
                           {RANK_OPTIONS.map((rank) => (
+                            <SelectItem key={rank} value={rank}>
+                              {rank}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {inviteRole === 'canvasser' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="canvasserRank" className="text-sm">Starting Rank</Label>
+                      <Select value={canvasserRank} onValueChange={setCanvasserRank} disabled={isSubmitting}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CANVASSER_RANK_OPTIONS.map((rank) => (
                             <SelectItem key={rank} value={rank}>
                               {rank}
                             </SelectItem>
