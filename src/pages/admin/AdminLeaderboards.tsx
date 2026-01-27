@@ -451,6 +451,14 @@ export default function AdminLeaderboards() {
       setCanvasserLoading(true);
 
       if (timeFrame === 'weekly') {
+        // Fetch active profiles to filter archived users
+        const { data: activeProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_archived', false);
+        
+        const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
@@ -463,7 +471,10 @@ export default function AdminLeaderboards() {
           return;
         }
 
-        const userIds = weeklyData.map(w => w.user_id);
+        // Filter for active users only
+        const filteredWeeklyData = weeklyData.filter(w => activeUserIds.has(w.user_id));
+
+        const userIds = filteredWeeklyData.map(w => w.user_id);
         const { data: metricsData } = userIds.length > 0
           ? await supabase.from('canvasser_metrics').select('user_id, display_name, canvasser_rank').in('user_id', userIds)
           : { data: [] };
@@ -479,7 +490,7 @@ export default function AdminLeaderboards() {
           }
         });
 
-        const sorted = weeklyData
+        const sorted = filteredWeeklyData
           .map(w => ({
             userId: w.user_id,
             leadsSet: Number(w.leads_set) || 0,
@@ -507,6 +518,14 @@ export default function AdminLeaderboards() {
 
         setCanvasserWeeklyEntries(sorted);
       } else if (timeFrame === 'monthly') {
+        // Fetch active profiles to filter archived users
+        const { data: activeProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_archived', false);
+        
+        const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+
         const monthStartStr = format(monthStart, 'yyyy-MM-dd');
         const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
@@ -522,8 +541,11 @@ export default function AdminLeaderboards() {
           return;
         }
 
+        // Aggregate by user - only for active users
         const aggregated = new Map<string, any>();
         weeklyData.forEach(w => {
+          if (!activeUserIds.has(w.user_id)) return; // Skip archived users
+          
           const existing = aggregated.get(w.user_id) || { 
             leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
             conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
