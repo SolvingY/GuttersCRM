@@ -151,7 +151,7 @@ export default function CompanyGoals() {
         : { data: [] };
 
       // Get latest leads and income per user
-      const leadsByUser = new Map<string, { leadsClosed: number; income: number; leadsSet: number; leadsWithDamage: number; shiftsWorked: number; points: number; name: string; yearlyGoal: number }>();
+      const leadsByUser = new Map<string, { leadsClosed: number; income: number; leadsSet: number; leadsWithDamage: number; hoursWorked: number; points: number; name: string; yearlyGoal: number }>();
       canvasserData?.forEach(c => {
         if (!leadsByUser.has(c.user_id)) {
           leadsByUser.set(c.user_id, {
@@ -159,7 +159,7 @@ export default function CompanyGoals() {
             income: Number(c.income) || 0,
             leadsSet: Number((c as any).leads_set) || 0,
             leadsWithDamage: Number((c as any).leads_with_damage) || 0,
-            shiftsWorked: Number((c as any).shifts_worked) || 0,
+            hoursWorked: Number((c as any).hours_worked) || 0,
             points: Number((c as any).points) || 0,
             name: (c as any).display_name || 'Unknown',
             yearlyGoal: Number((c as any).yearly_goal) || 0,
@@ -197,7 +197,7 @@ export default function CompanyGoals() {
         leadsSet: c.leadsSet,
         leadsClosed: c.leadsClosed,
         leadsWithDamage: c.leadsWithDamage,
-        shiftsWorked: c.shiftsWorked,
+        hoursWorked: c.hoursWorked || 0,
         points: c.points,
         income: c.income,
         conversionRate: c.leadsSet > 0 ? (c.leadsClosed / c.leadsSet) * 100 : 0,
@@ -361,7 +361,7 @@ export default function CompanyGoals() {
             totalLeadsSet: canvassers.reduce((sum, c) => sum + c.leadsSet, 0),
             totalLeadsClosed: progress.totalLeadsClosed,
             totalLeadsWithDamage: canvassers.reduce((sum, c) => sum + c.leadsWithDamage, 0),
-            totalShiftsWorked: canvassers.reduce((sum, c) => sum + c.shiftsWorked, 0),
+            totalHoursWorked: canvassers.reduce((sum, c) => sum + c.hoursWorked, 0),
             totalCanvasserIncome: progress.totalCanvasserIncome,
             // Company Goals
             salesRevenueGoal: parseFloat(salesGoal) || 0,

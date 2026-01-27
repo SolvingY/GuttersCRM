@@ -50,15 +50,19 @@ export type Database = {
       canvasser_metrics: {
         Row: {
           contest_points: number | null
+          conversations_had: number | null
           created_at: string | null
           display_name: string | null
           doors_knocked: number | null
+          hours_worked: number | null
           id: string
           income: number | null
           leads_closed: number | null
           leads_set: number | null
           leads_with_damage: number | null
+          leads_without_damage: number | null
           metric_date: string
+          not_interested: number | null
           points: number | null
           shifts_worked: number | null
           updated_at: string | null
@@ -68,15 +72,19 @@ export type Database = {
         }
         Insert: {
           contest_points?: number | null
+          conversations_had?: number | null
           created_at?: string | null
           display_name?: string | null
           doors_knocked?: number | null
+          hours_worked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
           leads_set?: number | null
           leads_with_damage?: number | null
+          leads_without_damage?: number | null
           metric_date?: string
+          not_interested?: number | null
           points?: number | null
           shifts_worked?: number | null
           updated_at?: string | null
@@ -86,15 +94,19 @@ export type Database = {
         }
         Update: {
           contest_points?: number | null
+          conversations_had?: number | null
           created_at?: string | null
           display_name?: string | null
           doors_knocked?: number | null
+          hours_worked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
           leads_set?: number | null
           leads_with_damage?: number | null
+          leads_without_damage?: number | null
           metric_date?: string
+          not_interested?: number | null
           points?: number | null
           shifts_worked?: number | null
           updated_at?: string | null
@@ -273,15 +285,19 @@ export type Database = {
       }
       daily_canvasser_metric_entries: {
         Row: {
+          conversations_had_delta: number | null
           created_at: string
           doors_knocked_delta: number | null
           entered_by: string | null
           entry_date: string
+          hours_worked_delta: number | null
           id: string
           income_delta: number | null
           leads_closed_delta: number | null
           leads_set_delta: number | null
           leads_with_damage_delta: number | null
+          leads_without_damage_delta: number | null
+          not_interested_delta: number | null
           notes: string | null
           points_earned: number | null
           shifts_worked_delta: number | null
@@ -289,15 +305,19 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          conversations_had_delta?: number | null
           created_at?: string
           doors_knocked_delta?: number | null
           entered_by?: string | null
           entry_date?: string
+          hours_worked_delta?: number | null
           id?: string
           income_delta?: number | null
           leads_closed_delta?: number | null
           leads_set_delta?: number | null
           leads_with_damage_delta?: number | null
+          leads_without_damage_delta?: number | null
+          not_interested_delta?: number | null
           notes?: string | null
           points_earned?: number | null
           shifts_worked_delta?: number | null
@@ -305,15 +325,19 @@ export type Database = {
           user_id: string
         }
         Update: {
+          conversations_had_delta?: number | null
           created_at?: string
           doors_knocked_delta?: number | null
           entered_by?: string | null
           entry_date?: string
+          hours_worked_delta?: number | null
           id?: string
           income_delta?: number | null
           leads_closed_delta?: number | null
           leads_set_delta?: number | null
           leads_with_damage_delta?: number | null
+          leads_without_damage_delta?: number | null
+          not_interested_delta?: number | null
           notes?: string | null
           points_earned?: number | null
           shifts_worked_delta?: number | null
@@ -845,13 +869,17 @@ export type Database = {
       }
       weekly_canvasser_metrics: {
         Row: {
+          conversations_had: number | null
           created_at: string
           doors_knocked: number | null
+          hours_worked: number | null
           id: string
           income: number | null
           leads_closed: number | null
           leads_set: number | null
           leads_with_damage: number | null
+          leads_without_damage: number | null
+          not_interested: number | null
           points_earned: number | null
           shifts_worked: number | null
           updated_at: string
@@ -860,13 +888,17 @@ export type Database = {
           week_start: string
         }
         Insert: {
+          conversations_had?: number | null
           created_at?: string
           doors_knocked?: number | null
+          hours_worked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
           leads_set?: number | null
           leads_with_damage?: number | null
+          leads_without_damage?: number | null
+          not_interested?: number | null
           points_earned?: number | null
           shifts_worked?: number | null
           updated_at?: string
@@ -875,13 +907,17 @@ export type Database = {
           week_start: string
         }
         Update: {
+          conversations_had?: number | null
           created_at?: string
           doors_knocked?: number | null
+          hours_worked?: number | null
           id?: string
           income?: number | null
           leads_closed?: number | null
           leads_set?: number | null
           leads_with_damage?: number | null
+          leads_without_damage?: number | null
+          not_interested?: number | null
           points_earned?: number | null
           shifts_worked?: number | null
           updated_at?: string

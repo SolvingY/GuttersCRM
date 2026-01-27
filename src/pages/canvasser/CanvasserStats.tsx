@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote, Users } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format, subWeeks } from "date-fns";
@@ -18,7 +18,10 @@ interface CanvasserMetrics {
   leads_set: number;
   leads_closed: number;
   leads_with_damage: number;
-  shifts_worked: number;
+  leads_without_damage: number;
+  conversations_had: number;
+  not_interested: number;
+  hours_worked: number;
   points: number;
   income: number;
   yearly_goal: number;
@@ -30,7 +33,10 @@ interface WeeklyCanvasserMetric {
   leads_set: number;
   leads_closed: number;
   leads_with_damage: number;
-  shifts_worked: number;
+  leads_without_damage: number;
+  conversations_had: number;
+  not_interested: number;
+  hours_worked: number;
   income: number;
   points_earned: number;
 }
@@ -245,7 +251,10 @@ export default function CanvasserStats() {
             <StatsCard title="Leads Set" value={metrics?.leads_set ?? 0} icon={Target} />
             <StatsCard title="Leads Closed" value={metrics?.leads_closed ?? 0} icon={CheckCircle} />
             <StatsCard title="Leads with Damage" value={metrics?.leads_with_damage ?? 0} icon={AlertTriangle} />
-            <StatsCard title="Shifts Worked" value={metrics?.shifts_worked ?? 0} icon={Clock} />
+            <StatsCard title="Leads w/o Damage" value={metrics?.leads_without_damage ?? 0} icon={Target} />
+            <StatsCard title="Conversations Had" value={metrics?.conversations_had ?? 0} icon={Users} />
+            <StatsCard title="Not Interested" value={metrics?.not_interested ?? 0} icon={AlertTriangle} />
+            <StatsCard title="Hours Worked" value={metrics?.hours_worked ?? 0} icon={Clock} />
             <StatsCard title="Points" value={metrics?.points?.toLocaleString() ?? 0} icon={Star} />
             <StatsCard 
               title="YTD Income" 
@@ -288,7 +297,7 @@ export default function CanvasserStats() {
                         <div className="flex gap-4 text-xs text-muted-foreground">
                           <span>{week.leads_set} leads set</span>
                           <span>{week.leads_closed} closed</span>
-                          <span>{week.shifts_worked} shifts</span>
+                          <span>{week.hours_worked || 0} hours</span>
                         </div>
                       </div>
                       <div className="text-right">

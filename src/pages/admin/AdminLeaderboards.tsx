@@ -68,7 +68,7 @@ interface WeeklyCanvasserEntry {
   leadsSet: number;
   leadsWithDamage: number;
   leadsClosed: number;
-  shiftsWorked: number;
+  hoursWorked: number;
   doorsKnocked: number;
   pointsEarned: number;
 }
@@ -477,7 +477,7 @@ export default function AdminLeaderboards() {
             leadsSet: Number(w.leads_set) || 0,
             leadsWithDamage: Number(w.leads_with_damage) || 0,
             leadsClosed: Number(w.leads_closed) || 0,
-            shiftsWorked: Number(w.shifts_worked) || 0,
+            hoursWorked: Number((w as any).hours_worked) || 0,
             doorsKnocked: Number(w.doors_knocked) || 0,
             pointsEarned: Number(w.points_earned) || 0,
             name: displayNameMap.get(w.user_id) || 'Anonymous',

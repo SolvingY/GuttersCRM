@@ -29,7 +29,7 @@ export interface CanvasserData {
   leadsSet: number;
   leadsClosed: number;
   leadsWithDamage: number;
-  shiftsWorked: number;
+  hoursWorked: number;
   points: number;
   income: number;
   conversionRate: number;
@@ -67,7 +67,7 @@ export interface CompanySummary {
   totalLeadsSet?: number;
   totalLeadsClosed?: number;
   totalLeadsWithDamage?: number;
-  totalShiftsWorked?: number;
+  totalHoursWorked?: number;
   totalDoorsKnocked?: number;
   totalCanvasserIncome?: number;
   // Progress percentages
@@ -180,7 +180,7 @@ export function exportToExcel(
     ['Total Leads Set', companySummary.totalLeadsSet || 0],
     ['Total Leads Closed', companySummary.totalLeadsClosed || 0],
     ['Total Leads with Damage', companySummary.totalLeadsWithDamage || 0],
-    ['Total Shifts Worked', companySummary.totalShiftsWorked || 0],
+    ['Total Hours Worked', companySummary.totalHoursWorked || 0],
     ['Total Doors Knocked', companySummary.totalDoorsKnocked || 0],
     ['Total Canvasser Income', formatCurrency(companySummary.totalCanvasserIncome || 0)],
   );
@@ -225,7 +225,7 @@ export function exportToExcel(
   if (canvassers.length > 0) {
     const canvasserHeaders = [
       'Name', 'Leads Set', 'Leads Closed', 'Leads w/ Damage', 
-      'Shifts Worked', 'Points', 'Income', 'Conversion %',
+      'Hours Worked', 'Points', 'Income', 'Conversion %',
       'Doors Knocked', 'Yearly Goal', 'Contest Pts', 'Wager Pts'
     ];
     const canvasserData = canvassers.map(c => [
@@ -233,7 +233,7 @@ export function exportToExcel(
       c.leadsSet,
       c.leadsClosed,
       c.leadsWithDamage,
-      c.shiftsWorked,
+      c.hoursWorked,
       c.points.toLocaleString(),
       formatCurrency(c.income),
       `${c.conversionRate.toFixed(1)}%`,
@@ -424,7 +424,7 @@ export function exportToPDF(
     [formatCurrency(companySummary.totalApprovedRevenue) + ' Revenue', `${companySummary.totalLeadsSet || 0} Leads Set`],
     [`${companySummary.totalClosedDeals} Total Contracts`, `${companySummary.totalLeadsClosed || 0} Leads Closed`],
     [`${companySummary.companyLeadCloseRate.toFixed(1)}% Close Rate`, `${companySummary.totalLeadsWithDamage || 0} w/ Damage`],
-    [formatCurrency(companySummary.totalCollections) + ' Collections', `${companySummary.totalShiftsWorked || 0} Shifts Worked`],
+    [formatCurrency(companySummary.totalCollections) + ' Collections', `${companySummary.totalHoursWorked || 0} Hours Worked`],
   ];
 
   autoTable(doc, {
@@ -498,13 +498,13 @@ export function exportToPDF(
       
       autoTable(doc, {
         startY: 24,
-        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Shifts', 'Points', 'Income', 'Conv %']],
+        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Hours', 'Points', 'Income', 'Conv %']],
         body: canvassers.map(c => [
           c.name,
           c.leadsSet,
           c.leadsClosed,
           c.leadsWithDamage,
-          c.shiftsWorked,
+          c.hoursWorked,
           c.points.toLocaleString(),
           formatCurrency(c.income),
           `${c.conversionRate.toFixed(1)}%`,
@@ -519,13 +519,13 @@ export function exportToPDF(
 
       autoTable(doc, {
         startY: canvasserStartY + 4,
-        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Shifts', 'Points', 'Income', 'Conv %']],
+        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Hours', 'Points', 'Income', 'Conv %']],
         body: canvassers.map(c => [
           c.name,
           c.leadsSet,
           c.leadsClosed,
           c.leadsWithDamage,
-          c.shiftsWorked,
+          c.hoursWorked,
           c.points.toLocaleString(),
           formatCurrency(c.income),
           `${c.conversionRate.toFixed(1)}%`,

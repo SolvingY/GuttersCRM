@@ -30,7 +30,7 @@ interface CanvasserAggregates {
   totalLeadsSet: number;
   totalLeadsClosed: number;
   totalLeadsWithDamage: number;
-  totalShiftsWorked: number;
+  totalHoursWorked: number;
 }
 
 interface UserDetail {
@@ -61,7 +61,10 @@ interface CanvasserDetail {
   leadsSet: number;
   leadsClosed: number;
   leadsWithDamage: number;
-  shiftsWorked: number;
+  leadsWithoutDamage: number;
+  conversationsHad: number;
+  notInterested: number;
+  hoursWorked: number;
   points: number;
   income: number;
   yearlyGoal: number;
@@ -89,7 +92,7 @@ export default function AdminOverview() {
     totalLeadsSet: 0,
     totalLeadsClosed: 0,
     totalLeadsWithDamage: 0,
-    totalShiftsWorked: 0,
+    totalHoursWorked: 0,
   });
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [canvasserDetails, setCanvasserDetails] = useState<CanvasserDetail[]>([]);
@@ -172,7 +175,7 @@ export default function AdminOverview() {
     // Fetch canvasser metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: canvasserMetrics, error: canvasserError } = await supabase
       .from('canvasser_metrics')
-      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, shifts_worked, points, income, yearly_goal, metric_date, updated_at')
+      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, points, income, yearly_goal, metric_date, updated_at')
       .order('metric_date', { ascending: false })
       .order('updated_at', { ascending: false });
 
@@ -297,7 +300,10 @@ export default function AdminOverview() {
         leadsSet: number;
         leadsClosed: number;
         leadsWithDamage: number;
-        shiftsWorked: number;
+        leadsWithoutDamage: number;
+        conversationsHad: number;
+        notInterested: number;
+        hoursWorked: number;
         points: number;
         income: number;
         yearlyGoal: number;
@@ -313,7 +319,10 @@ export default function AdminOverview() {
             leadsSet: item.leads_set || 0,
             leadsClosed: item.leads_closed || 0,
             leadsWithDamage: item.leads_with_damage || 0,
-            shiftsWorked: item.shifts_worked || 0,
+            leadsWithoutDamage: Number((item as any).leads_without_damage) || 0,
+            conversationsHad: Number((item as any).conversations_had) || 0,
+            notInterested: Number((item as any).not_interested) || 0,
+            hoursWorked: Number((item as any).hours_worked) || 0,
             points: Number(item.points) || 0,
             income: Number(item.income) || 0,
             yearlyGoal: item.yearly_goal || 0,
@@ -331,7 +340,10 @@ export default function AdminOverview() {
           leadsSet: data.leadsSet,
           leadsClosed: data.leadsClosed,
           leadsWithDamage: data.leadsWithDamage,
-          shiftsWorked: data.shiftsWorked,
+          leadsWithoutDamage: data.leadsWithoutDamage,
+          conversationsHad: data.conversationsHad,
+          notInterested: data.notInterested,
+          hoursWorked: data.hoursWorked,
           points: data.points,
           income: data.income,
           yearlyGoal: data.yearlyGoal,
@@ -346,9 +358,9 @@ export default function AdminOverview() {
           totalLeadsSet: acc.totalLeadsSet + c.leadsSet,
           totalLeadsClosed: acc.totalLeadsClosed + c.leadsClosed,
           totalLeadsWithDamage: acc.totalLeadsWithDamage + c.leadsWithDamage,
-          totalShiftsWorked: acc.totalShiftsWorked + c.shiftsWorked,
+          totalHoursWorked: acc.totalHoursWorked + c.hoursWorked,
         }),
-        { totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, totalShiftsWorked: 0 }
+        { totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, totalHoursWorked: 0 }
       );
 
       const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
@@ -498,7 +510,7 @@ export default function AdminOverview() {
             leadsSet: c.leadsSet,
             leadsClosed: c.leadsClosed,
             leadsWithDamage: c.leadsWithDamage,
-            shiftsWorked: c.shiftsWorked,
+            hoursWorked: c.hoursWorked,
             points: c.points,
             income: c.income,
             conversionRate: c.conversionRate,
@@ -522,7 +534,7 @@ export default function AdminOverview() {
             totalLeadsSet: canvasserAggregates.totalLeadsSet,
             totalLeadsClosed: canvasserAggregates.totalLeadsClosed,
             totalLeadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-            totalShiftsWorked: canvasserAggregates.totalShiftsWorked,
+            totalHoursWorked: canvasserAggregates.totalHoursWorked,
             totalCanvasserIncome: totalCanvasserIncome,
             // Company Goals
             salesRevenueGoal: companyGoals?.salesRevenueGoal,
@@ -762,7 +774,7 @@ export default function AdminOverview() {
             <StatsCard title="Leads Set" value={canvasserAggregates.totalLeadsSet} icon={Target} />
             <StatsCard title="Leads Closed" value={canvasserAggregates.totalLeadsClosed} icon={CheckCircle} />
             <StatsCard title="With Damage" value={canvasserAggregates.totalLeadsWithDamage} icon={AlertTriangle} />
-            <StatsCard title="Shifts Worked" value={canvasserAggregates.totalShiftsWorked} icon={Clock} />
+            <StatsCard title="Hours Worked" value={canvasserAggregates.totalHoursWorked} icon={Clock} />
             <StatsCard 
               title="Lead Close %" 
               value={`${canvasserAggregates.totalLeadsSet > 0 ? ((canvasserAggregates.totalLeadsClosed / canvasserAggregates.totalLeadsSet) * 100).toFixed(1) : '0.0'}%`} 
@@ -801,7 +813,7 @@ export default function AdminOverview() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Shifts</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
@@ -832,7 +844,7 @@ export default function AdminOverview() {
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.shiftsWorked}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
                           <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
                             {canvasser.conversionRate.toFixed(1)}%
@@ -879,7 +891,10 @@ export default function AdminOverview() {
           leadsSet: selectedCanvasser.leadsSet,
           leadsClosed: selectedCanvasser.leadsClosed,
           leadsWithDamage: selectedCanvasser.leadsWithDamage,
-          shiftsWorked: selectedCanvasser.shiftsWorked,
+          leadsWithoutDamage: selectedCanvasser.leadsWithoutDamage || 0,
+          conversationsHad: selectedCanvasser.conversationsHad || 0,
+          notInterested: selectedCanvasser.notInterested || 0,
+          hoursWorked: selectedCanvasser.hoursWorked,
           points: selectedCanvasser.points,
           income: selectedCanvasser.income || 0,
           yearlyGoal: selectedCanvasser.yearlyGoal || 0,
