@@ -6,6 +6,7 @@ import { WhyChooseUsSection } from "@/components/WhyChooseUsSection";
 import { AboutSection } from "@/components/AboutSection";
 import { TeamSection } from "@/components/TeamSection";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
+import { InstagramGallery } from "@/components/InstagramGallery";
 import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
 import { StickyCallCTA } from "@/components/StickyCallCTA";
@@ -31,6 +32,9 @@ const Index = () => {
         </section>
         <section id="reviews">
           <TestimonialsSection />
+        </section>
+        <section id="instagram">
+          <InstagramGallery />
         </section>
         <section id="contact">
           <ContactSection />
