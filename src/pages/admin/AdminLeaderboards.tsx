@@ -65,6 +65,7 @@ interface WeeklyCanvasserEntry {
   rank: number;
   name: string;
   userId: string;
+  canvasserRank?: string;
   leadsSet: number;
   leadsWithDamage: number;
   leadsWithoutDamage: number;
@@ -464,13 +465,17 @@ export default function AdminLeaderboards() {
 
         const userIds = weeklyData.map(w => w.user_id);
         const { data: metricsData } = userIds.length > 0
-          ? await supabase.from('canvasser_metrics').select('user_id, display_name').in('user_id', userIds)
+          ? await supabase.from('canvasser_metrics').select('user_id, display_name, canvasser_rank').in('user_id', userIds)
           : { data: [] };
 
         const displayNameMap = new Map<string, string | null>();
+        const rankMap = new Map<string, string | null>();
         metricsData?.forEach(m => {
           if (m.display_name && !displayNameMap.has(m.user_id)) {
             displayNameMap.set(m.user_id, m.display_name);
+          }
+          if (m.canvasser_rank && !rankMap.has(m.user_id)) {
+            rankMap.set(m.user_id, m.canvasser_rank);
           }
         });
 
@@ -487,6 +492,7 @@ export default function AdminLeaderboards() {
             doorsKnocked: Number(w.doors_knocked) || 0,
             pointsEarned: Number(w.points_earned) || 0,
             name: displayNameMap.get(w.user_id) || 'Anonymous',
+            canvasserRank: rankMap.get(w.user_id) || 'C1',
           }))
           // Filter out canvassers with zero metrics for weekly
           .filter(entry => 
@@ -537,13 +543,17 @@ export default function AdminLeaderboards() {
 
         const userIds = Array.from(aggregated.keys());
         const { data: metricsData } = userIds.length > 0
-          ? await supabase.from('canvasser_metrics').select('user_id, display_name').in('user_id', userIds)
+          ? await supabase.from('canvasser_metrics').select('user_id, display_name, canvasser_rank').in('user_id', userIds)
           : { data: [] };
 
         const displayNameMap = new Map<string, string | null>();
+        const rankMap = new Map<string, string | null>();
         metricsData?.forEach(m => {
           if (m.display_name && !displayNameMap.has(m.user_id)) {
             displayNameMap.set(m.user_id, m.display_name);
+          }
+          if (m.canvasser_rank && !rankMap.has(m.user_id)) {
+            rankMap.set(m.user_id, m.canvasser_rank);
           }
         });
 
@@ -560,6 +570,7 @@ export default function AdminLeaderboards() {
             doorsKnocked: data.doorsKnocked,
             pointsEarned: data.pointsEarned,
             name: displayNameMap.get(userId) || 'Anonymous',
+            canvasserRank: rankMap.get(userId) || 'C1',
           }))
           // Filter out canvassers with zero metrics for monthly
           .filter(entry => 

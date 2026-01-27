@@ -12,6 +12,9 @@ export const FISCAL_YEAR = {
 // Sales Rank Options
 export const RANK_OPTIONS = ['SR1', 'SR2', 'SR3', 'SR4', 'SR5', 'SR6', 'Y?', 'CEO', 'GM'];
 
+// Canvasser Rank Options
+export const CANVASSER_RANK_OPTIONS = ['C1', 'C2', 'C3'];
+
 // Calculate fiscal year progress percentage
 export const getFiscalYearProgress = (): number => {
   const now = new Date();
