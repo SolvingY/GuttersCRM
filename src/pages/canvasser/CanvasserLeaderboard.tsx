@@ -30,6 +30,8 @@ interface CanvasserEntry {
   leadsClosed: number;
   leadsSet: number;
   leadsWithDamage: number;
+  leadsWithoutDamage: number;
+  doorsKnocked: number;
   points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
@@ -85,10 +87,18 @@ export default function CanvasserLeaderboard() {
     const fetchYtdLeaderboard = async () => {
       setLoading(true);
       
-      // Fetch canvasser metrics from leaderboard view (bypasses RLS for all users visibility)
+      // Fetch active profiles first (filter archived users)
+      const { data: activeProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("is_archived", false);
+      
+      const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+
+      // Fetch canvasser metrics 
       const { data: metricsData, error } = await supabase
-        .from("canvasser_metrics_leaderboard")
-        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, points")
+        .from("canvasser_metrics")
+        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, doors_knocked, points")
         .order("leads_closed", { ascending: false });
 
       // Also fetch contest_points and wager_points from canvasser_metrics
@@ -148,10 +158,10 @@ export default function CanvasserLeaderboard() {
         }
       });
 
-      // Get unique entries per user (latest)
+      // Get unique entries per user (latest) - filter for active users only
       const uniqueUsers = new Map<string, any>();
       metricsData?.forEach((entry) => {
-        if (!uniqueUsers.has(entry.user_id)) {
+        if (!uniqueUsers.has(entry.user_id) && activeUserIds.has(entry.user_id)) {
           uniqueUsers.set(entry.user_id, entry);
         }
       });
@@ -175,6 +185,8 @@ export default function CanvasserLeaderboard() {
             leadsClosed,
             leadsSet: entry.leads_set || 0,
             leadsWithDamage: entry.leads_with_damage || 0,
+            leadsWithoutDamage: entry.leads_without_damage || 0,
+            doorsKnocked: entry.doors_knocked || 0,
             points: Number(entry.points) || 0,
             amountUntilGoal,
             percentOfGoal,
@@ -197,6 +209,14 @@ export default function CanvasserLeaderboard() {
       setWeeklyLoading(true);
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
 
+      // Fetch active profiles first (filter archived users)
+      const { data: activeProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("is_archived", false);
+      
+      const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+
       const { data: weeklyData, error } = await supabase
         .from("weekly_canvasser_metrics")
         .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned")
@@ -214,8 +234,11 @@ export default function CanvasserLeaderboard() {
         return;
       }
 
+      // Filter for active users only
+      const filteredData = weeklyData.filter(w => activeUserIds.has(w.user_id));
+
       // Fetch display names
-      const userIds = weeklyData.map(w => w.user_id);
+      const userIds = filteredData.map(w => w.user_id);
       const { data: metricsData } = userIds.length > 0
         ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
         : { data: [] };
@@ -227,7 +250,7 @@ export default function CanvasserLeaderboard() {
         }
       });
 
-      const sorted = weeklyData
+      const sorted = filteredData
         .map(w => ({
           userId: w.user_id,
           leadsSet: Number(w.leads_set) || 0,
@@ -256,6 +279,14 @@ export default function CanvasserLeaderboard() {
     const fetchMonthlyLeaderboard = async () => {
       setMonthlyLoading(true);
 
+      // Fetch active profiles first (filter archived users)
+      const { data: activeProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("is_archived", false);
+      
+      const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+
       const monthStartStr = format(monthStart, 'yyyy-MM-dd');
       const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
@@ -278,9 +309,11 @@ export default function CanvasserLeaderboard() {
         return;
       }
 
-      // Aggregate by user
+      // Aggregate by user - only for active users
       const aggregated = new Map<string, any>();
       weeklyData.forEach(w => {
+        if (!activeUserIds.has(w.user_id)) return;
+        
         const existing = aggregated.get(w.user_id) || { 
           leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
           conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 

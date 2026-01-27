@@ -58,8 +58,10 @@ export type Database = {
           hours_worked: number | null
           id: string
           income: number | null
+          income_goal: number | null
           leads_closed: number | null
           leads_set: number | null
+          leads_set_goal: number | null
           leads_with_damage: number | null
           leads_without_damage: number | null
           metric_date: string
@@ -81,8 +83,10 @@ export type Database = {
           hours_worked?: number | null
           id?: string
           income?: number | null
+          income_goal?: number | null
           leads_closed?: number | null
           leads_set?: number | null
+          leads_set_goal?: number | null
           leads_with_damage?: number | null
           leads_without_damage?: number | null
           metric_date?: string
@@ -104,8 +108,10 @@ export type Database = {
           hours_worked?: number | null
           id?: string
           income?: number | null
+          income_goal?: number | null
           leads_closed?: number | null
           leads_set?: number | null
+          leads_set_goal?: number | null
           leads_with_damage?: number | null
           leads_without_damage?: number | null
           metric_date?: string
