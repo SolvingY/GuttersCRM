@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Target } from "lucide-react";
+import { Loader2, Target, FileCheck, DollarSign } from "lucide-react";
 
 interface CanvasserGoalModalProps {
   onGoalSet?: () => void;
@@ -21,7 +21,9 @@ interface CanvasserGoalModalProps {
 export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [yearlyGoal, setYearlyGoal] = useState("");
+  const [contractsGoal, setContractsGoal] = useState("");
+  const [leadsSetGoal, setLeadsSetGoal] = useState("");
+  const [incomeGoal, setIncomeGoal] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,7 +38,7 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
 
     const { data, error } = await supabase
       .from("canvasser_metrics")
-      .select("yearly_goal")
+      .select("yearly_goal, leads_set_goal, income_goal")
       .eq("user_id", user.id)
       .order("metric_date", { ascending: false })
       .limit(1)
@@ -48,8 +50,13 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
       return;
     }
 
-    // Show modal if no goal set or goal is 0
-    if (!data || data.yearly_goal === 0 || data.yearly_goal === null) {
+    // Show modal if all goals are unset (all three = 0 or null)
+    const hasNoGoals = !data || 
+      ((data.yearly_goal === 0 || data.yearly_goal === null) &&
+       (data.leads_set_goal === 0 || data.leads_set_goal === null) &&
+       (data.income_goal === 0 || data.income_goal === null));
+
+    if (hasNoGoals) {
       setOpen(true);
     }
     setLoading(false);
@@ -58,11 +65,15 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
   const handleSubmit = async () => {
     if (!user) return;
 
-    const goal = parseInt(yearlyGoal);
-    if (isNaN(goal) || goal <= 0) {
+    const contracts = parseInt(contractsGoal) || 0;
+    const leadsSet = parseInt(leadsSetGoal) || 0;
+    const income = parseFloat(incomeGoal) || 0;
+
+    // At least one goal should be set
+    if (contracts <= 0 && leadsSet <= 0 && income <= 0) {
       toast({
-        title: "Invalid goal",
-        description: "Please enter a valid number greater than 0.",
+        title: "Invalid goals",
+        description: "Please enter at least one goal greater than 0.",
         variant: "destructive",
       });
       return;
@@ -71,19 +82,23 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
     setSaving(true);
     const { error } = await supabase
       .from("canvasser_metrics")
-      .update({ yearly_goal: goal })
+      .update({ 
+        yearly_goal: contracts,
+        leads_set_goal: leadsSet,
+        income_goal: income
+      })
       .eq("user_id", user.id);
 
     if (error) {
       toast({
-        title: "Error saving goal",
+        title: "Error saving goals",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: "Goal set!",
-        description: `Your yearly goal of ${goal} leads closed has been saved.`,
+        title: "Goals set!",
+        description: "Your yearly goals have been saved.",
       });
       setOpen(false);
       if (onGoalSet) onGoalSet();
@@ -94,8 +109,8 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
   const handleSkip = () => {
     setOpen(false);
     toast({
-      title: "Goal skipped",
-      description: "You can set your goal later in Settings.",
+      title: "Goals skipped",
+      description: "You can set your goals later in Settings.",
     });
     if (onGoalSet) onGoalSet();
   };
@@ -108,27 +123,62 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            Set Your Yearly Goal
+            Set Your Yearly Goals
           </DialogTitle>
           <DialogDescription>
-            Set a goal for leads closed this year. This will help track your progress on the leaderboard.
+            Set your goals for the year. This will help track your progress on the leaderboard and stats page.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="yearlyGoal">Yearly Leads Closed Goal</Label>
+            <Label htmlFor="contractsGoal" className="flex items-center gap-2">
+              <FileCheck className="h-4 w-4 text-primary" />
+              Contracts Goal (Leads Closed)
+            </Label>
             <Input
-              id="yearlyGoal"
+              id="contractsGoal"
               type="number"
-              placeholder="e.g., 100"
-              value={yearlyGoal}
-              onChange={(e) => setYearlyGoal(e.target.value)}
-              min={1}
+              placeholder="e.g., 50"
+              value={contractsGoal}
+              onChange={(e) => setContractsGoal(e.target.value)}
+              min={0}
             />
-            <p className="text-xs text-muted-foreground">
-              How many leads do you want to close this year?
-            </p>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="leadsSetGoal" className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-blue-500" />
+              Leads Set Goal
+            </Label>
+            <Input
+              id="leadsSetGoal"
+              type="number"
+              placeholder="e.g., 200"
+              value={leadsSetGoal}
+              onChange={(e) => setLeadsSetGoal(e.target.value)}
+              min={0}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="incomeGoal" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-500" />
+              Income Goal ($)
+            </Label>
+            <Input
+              id="incomeGoal"
+              type="number"
+              placeholder="e.g., 50000"
+              value={incomeGoal}
+              onChange={(e) => setIncomeGoal(e.target.value)}
+              min={0}
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            You can update these goals anytime in Settings.
+          </p>
+
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -139,7 +189,7 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={saving || !yearlyGoal}
+              disabled={saving}
               className="flex-1"
             >
               {saving ? (
@@ -148,7 +198,7 @@ export function CanvasserGoalModal({ onGoalSet }: CanvasserGoalModalProps) {
                   Saving...
                 </>
               ) : (
-                "Set Goal"
+                "Set Goals"
               )}
             </Button>
           </div>

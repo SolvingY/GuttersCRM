@@ -27,6 +27,8 @@ interface CanvasserMetrics {
   points: number;
   income: number;
   yearly_goal: number;
+  leads_set_goal: number;
+  income_goal: number;
 }
 
 interface WeeklyCanvasserMetric {
@@ -368,8 +370,8 @@ export default function CanvasserStats() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* 5. Goal Progress */}
-      {yearlyGoal > 0 && (
+      {/* 5. Goal Progress - All Three Goals */}
+      {(yearlyGoal > 0 || (metrics?.leads_set_goal || 0) > 0 || (metrics?.income_goal || 0) > 0) && (
         <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
           <CollapsibleTrigger asChild>
             <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -379,31 +381,79 @@ export default function CanvasserStats() {
             </Card>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
-            <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
-              <CardContent className="pt-4 space-y-4">
-                <CardDescription>
-                  {leadsClosed >= yearlyGoal
-                    ? "🎉 Congratulations! You've reached your goal!"
-                    : `${yearlyGoal - leadsClosed} leads closed to go`}
-                </CardDescription>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <span className="text-4xl font-bold text-primary">{leadsClosed}</span>
-                    <span className="text-2xl text-muted-foreground"> / {yearlyGoal}</span>
-                  </div>
-                  <span className="text-2xl font-semibold text-foreground">
-                    {goalPercentage.toFixed(1)}%
-                  </span>
-                </div>
-                <Progress 
-                  value={Math.min(goalPercentage, 100)} 
-                  className="h-3"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Leads closed this year towards your annual target
-                </p>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              {/* Contracts Goal */}
+              {yearlyGoal > 0 && (
+                <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-primary" />
+                      <span className="font-semibold">Contracts Goal (Leads Closed)</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <span className="text-3xl font-bold text-primary">{leadsClosed}</span>
+                        <span className="text-xl text-muted-foreground"> / {yearlyGoal}</span>
+                      </div>
+                      <span className="text-xl font-semibold text-foreground">
+                        {goalPercentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress value={Math.min(goalPercentage, 100)} className="h-2" />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Leads Set Goal */}
+              {(metrics?.leads_set_goal || 0) > 0 && (
+                <Card className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-blue-500/20">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-500" />
+                      <span className="font-semibold">Leads Set Goal</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <span className="text-3xl font-bold text-blue-500">{metrics?.leads_set || 0}</span>
+                        <span className="text-xl text-muted-foreground"> / {metrics?.leads_set_goal || 0}</span>
+                      </div>
+                      <span className="text-xl font-semibold text-foreground">
+                        {((metrics?.leads_set || 0) / (metrics?.leads_set_goal || 1) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={Math.min(((metrics?.leads_set || 0) / (metrics?.leads_set_goal || 1) * 100), 100)} 
+                      className="h-2" 
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Income Goal */}
+              {(metrics?.income_goal || 0) > 0 && (
+                <Card className="bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent border-green-500/20">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-green-500" />
+                      <span className="font-semibold">Income Goal</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <span className="text-3xl font-bold text-green-500">{formatCurrency(metrics?.income || 0)}</span>
+                        <span className="text-xl text-muted-foreground"> / {formatCurrency(metrics?.income_goal || 0)}</span>
+                      </div>
+                      <span className="text-xl font-semibold text-foreground">
+                        {((metrics?.income || 0) / (metrics?.income_goal || 1) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={Math.min(((metrics?.income || 0) / (metrics?.income_goal || 1) * 100), 100)} 
+                      className="h-2" 
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}

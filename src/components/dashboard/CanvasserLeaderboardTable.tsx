@@ -10,6 +10,7 @@ export interface CanvasserLeaderboardEntry {
   leadsClosed: number;
   leadsSet: number;
   leadsWithDamage: number;
+  leadsWithoutDamage?: number;
   points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
@@ -59,13 +60,14 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
             <tr>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Yearly Goal</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Closed</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors Knocked</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Until Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Closed</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Goal</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contests Won</th>
             </tr>
           </thead>
           <tbody>
@@ -108,13 +110,13 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                       )}
                     </span>
                   </td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
                   <td className="py-3 px-4 text-right font-bold">
                     {hasGoal ? entry.yearlyGoal : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked || 0}</td>
-                  <td className="py-3 px-4 text-right font-bold">
-                    {hasGoal ? entry.amountUntilGoal : '-'}
                   </td>
                   <td className="py-3 px-4 text-center">
                     {hasGoal ? (
@@ -146,9 +148,6 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                         {(entry.points || 0).toLocaleString()}
                       </span>
                     </PointsBreakdownTooltip>
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold">
-                    {entry.contestsWon > 0 ? entry.contestsWon : '-'}
                   </td>
                 </tr>
               );

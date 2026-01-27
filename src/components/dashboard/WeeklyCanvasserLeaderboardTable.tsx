@@ -23,9 +23,10 @@ export interface WeeklyCanvasserEntry {
 interface WeeklyCanvasserLeaderboardTableProps {
   entries: WeeklyCanvasserEntry[];
   currentUserId?: string;
+  showHours?: boolean;
 }
 
-export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: WeeklyCanvasserLeaderboardTableProps) {
+export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHours = false }: WeeklyCanvasserLeaderboardTableProps) {
   // Get row background color based on rank
   const getRowColor = (rank: number) => {
     if (rank === 1) return 'bg-emerald-500 text-white';
@@ -58,7 +59,9 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Closed</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours</th>
+              {showHours && (
+                <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours</th>
+              )}
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
             </tr>
           </thead>
@@ -113,7 +116,9 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId }: Week
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.hoursWorked}</td>
+                  {showHours && (
+                    <td className="py-3 px-4 text-right font-bold">{entry.hoursWorked}</td>
+                  )}
                   <td className="py-3 px-4 text-right">
                     <PointsBreakdownTooltip
                       data={{

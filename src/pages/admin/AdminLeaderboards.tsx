@@ -705,7 +705,7 @@ export default function AdminLeaderboards() {
               ) : timeFrame === 'yearly' ? (
                 <CanvasserLeaderboardTable entries={canvasserYtdEntries} />
               ) : (
-                <WeeklyCanvasserLeaderboardTable entries={canvasserWeeklyEntries} />
+                <WeeklyCanvasserLeaderboardTable entries={canvasserWeeklyEntries} showHours={true} />
               )}
             </TabsContent>
           </Tabs>
