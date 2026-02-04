@@ -47,13 +47,13 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
     return (revenue / goal) * 100;
   };
 
-  // Get row background color based on percentage of goal
-  const getRowColor = (percentage: number) => {
-    if (percentage >= 100) return 'bg-emerald-500 text-white'; // Deep green for 100%+
-    if (percentage >= 75) return 'bg-green-400 text-green-950'; // Light green for 75-99%
-    if (percentage >= 50) return 'bg-yellow-300 text-yellow-950'; // Yellow for 50-74%
-    if (percentage >= 25) return 'bg-orange-400 text-orange-950'; // Orange for 25-49%
-    return 'bg-red-300 text-red-950'; // Red/Pink for below 25%
+  // Get row background color based on rank (consistent with weekly tables)
+  const getRowColor = (rank: number) => {
+    if (rank === 1) return 'bg-emerald-500 text-white';
+    if (rank === 2) return 'bg-green-400 text-green-950';
+    if (rank === 3) return 'bg-yellow-300 text-yellow-950';
+    if (rank <= 5) return 'bg-orange-300 text-orange-950';
+    return 'bg-card text-card-foreground';
   };
 
   // Get percentage badge color (matches row but slightly different for contrast)
@@ -92,10 +92,10 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
             </tr>
           </thead>
           <tbody>
-          {entries.map((entry, index) => {
+          {entries.map((entry) => {
               const percentage = calculatePercentage(entry.approvedRevenue, entry.yearlyGoal);
               const amountUntilGoal = Math.max(0, entry.yearlyGoal - entry.approvedRevenue);
-              const rowColor = getRowColor(percentage);
+              const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
               
               return (

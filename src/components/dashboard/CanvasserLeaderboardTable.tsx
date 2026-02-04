@@ -26,14 +26,13 @@ interface CanvasserLeaderboardTableProps {
 }
 
 export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserLeaderboardTableProps) {
-  // Color code based on % of goal (matching sales rep format)
-  const getRowColor = (percentOfGoal: number, hasGoal: boolean) => {
-    if (!hasGoal) return 'bg-card text-card-foreground';
-    if (percentOfGoal >= 100) return 'bg-emerald-500 text-white';
-    if (percentOfGoal >= 75) return 'bg-green-400 text-green-950';
-    if (percentOfGoal >= 50) return 'bg-yellow-300 text-yellow-950';
-    if (percentOfGoal >= 25) return 'bg-orange-400 text-orange-950';
-    return 'bg-red-400 text-red-950';
+  // Get row background color based on rank (consistent with weekly tables)
+  const getRowColor = (rank: number) => {
+    if (rank === 1) return 'bg-emerald-500 text-white';
+    if (rank === 2) return 'bg-green-400 text-green-950';
+    if (rank === 3) return 'bg-yellow-300 text-yellow-950';
+    if (rank <= 5) return 'bg-orange-300 text-orange-950';
+    return 'bg-card text-card-foreground';
   };
 
   const getPercentBadgeColor = (percentOfGoal: number) => {
@@ -71,9 +70,9 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
+          {entries.map((entry) => {
               const hasGoal = entry.yearlyGoal > 0;
-              const rowColor = getRowColor(entry.percentOfGoal, hasGoal);
+              const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
               
               return (
@@ -127,9 +126,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                         {entry.percentOfGoal.toFixed(1)}%
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-muted text-muted-foreground">
-                        No Goal
-                      </span>
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
