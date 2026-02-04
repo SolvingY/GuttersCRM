@@ -593,7 +593,7 @@ export default function AdminOverview() {
         {/* Sales Reps Tab */}
         <TabsContent value="sales" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            <StatsCard title="Total Users" value={aggregates.totalUsers} icon={UserCheck} />
+            <StatsCard title="Total Sales Reps" value={aggregates.totalUsers} icon={UserCheck} />
             <StatsCard title="Total Approved Revenue" value={formatCurrency(aggregates.totalApprovedRevenue)} icon={DollarSign} />
             <StatsCard title="Total Points" value={aggregates.totalPoints.toLocaleString()} icon={Star} />
             <StatsCard title="Total Leads" value={aggregates.totalLeads} icon={Users} />

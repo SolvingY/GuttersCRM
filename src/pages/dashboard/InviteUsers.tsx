@@ -57,8 +57,9 @@ export default function InviteUsers() {
   const [manualPassword, setManualPassword] = useState('');
   const [manualDisplayName, setManualDisplayName] = useState('');
   const [manualSalesRank, setManualSalesRank] = useState('SR1');
+  const [manualCanvasserRank, setManualCanvasserRank] = useState('C1');
   const [manualYearlyGoal, setManualYearlyGoal] = useState('');
-  const [manualRole, setManualRole] = useState<'user' | 'admin' | 'canvasser'>('user');
+  const [manualRoleType, setManualRoleType] = useState<'admin_only' | 'sales_rep' | 'canvasser' | 'super_admin'>('sales_rep');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
@@ -210,8 +211,9 @@ export default function InviteUsers() {
           password: manualPassword,
           displayName: manualDisplayName.trim() || null,
           salesRank: manualSalesRank,
+          canvasserRank: manualCanvasserRank,
           yearlyGoal: manualYearlyGoal ? parseFloat(manualYearlyGoal) : 0,
-          role: manualRole,
+          roleType: manualRoleType,
         },
       });
 
@@ -242,8 +244,9 @@ export default function InviteUsers() {
       setManualPassword('');
       setManualDisplayName('');
       setManualSalesRank('SR1');
+      setManualCanvasserRank('C1');
       setManualYearlyGoal('');
-      setManualRole('user');
+      setManualRoleType('sales_rep');
     } catch (error: unknown) {
       console.error('Error creating user:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
@@ -388,7 +391,7 @@ export default function InviteUsers() {
           </TabsTrigger>
           <TabsTrigger value="create" className="text-xs sm:text-sm">
             <UserPlus className="h-4 w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Create</span> User
+            <span className="hidden sm:inline">Create</span> Account
           </TabsTrigger>
         </TabsList>
 
@@ -593,7 +596,7 @@ export default function InviteUsers() {
           {/* Manual User Creation Form */}
           <Card>
             <CardHeader className="pb-3 sm:pb-6">
-              <CardTitle className="text-base sm:text-lg">Create User Account</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Create Account</CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 Directly create an account with a password. User can log in immediately.
               </CardDescription>
@@ -637,56 +640,79 @@ export default function InviteUsers() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="manualSalesRank" className="text-sm">Starting Rank</Label>
-                    <Select value={manualSalesRank} onValueChange={setManualSalesRank} disabled={isCreatingUser}>
+                    <Label htmlFor="manualRoleType" className="text-sm">Account Type</Label>
+                    <Select value={manualRoleType} onValueChange={(val) => setManualRoleType(val as 'admin_only' | 'sales_rep' | 'canvasser' | 'super_admin')} disabled={isCreatingUser}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select rank" />
+                        <SelectValue placeholder="Select account type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {RANK_OPTIONS.map((rank) => (
-                          <SelectItem key={rank} value={rank}>
-                            {rank}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="manualYearlyGoal" className="text-sm">Yearly Goal (optional)</Label>
-                    <Input
-                      id="manualYearlyGoal"
-                      type="number"
-                      min="0"
-                      step="1000"
-                      placeholder="e.g., 500000"
-                      value={manualYearlyGoal}
-                      onChange={(e) => setManualYearlyGoal(e.target.value)}
-                      disabled={isCreatingUser}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="manualRole" className="text-sm">Role</Label>
-                    <Select value={manualRole} onValueChange={(val) => setManualRole(val as 'user' | 'admin' | 'canvasser')} disabled={isCreatingUser}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">User (Sales Rep)</SelectItem>
+                        <SelectItem value="admin_only">Admin Only</SelectItem>
+                        <SelectItem value="sales_rep">Sales Rep</SelectItem>
                         <SelectItem value="canvasser">Canvasser</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="super_admin">Super Admin (All Roles)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+                {/* Conditional rank and goal fields based on role type */}
+                {(manualRoleType === 'sales_rep' || manualRoleType === 'super_admin') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="manualSalesRank" className="text-sm">Sales Rank</Label>
+                      <Select value={manualSalesRank} onValueChange={setManualSalesRank} disabled={isCreatingUser}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {RANK_OPTIONS.map((rank) => (
+                            <SelectItem key={rank} value={rank}>
+                              {rank}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manualYearlyGoal" className="text-sm">Yearly Goal (optional)</Label>
+                      <Input
+                        id="manualYearlyGoal"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        placeholder="e.g., 500000"
+                        value={manualYearlyGoal}
+                        onChange={(e) => setManualYearlyGoal(e.target.value)}
+                        disabled={isCreatingUser}
+                      />
+                    </div>
+                  </div>
+                )}
+                {(manualRoleType === 'canvasser' || manualRoleType === 'super_admin') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="manualCanvasserRank" className="text-sm">Canvasser Rank</Label>
+                      <Select value={manualCanvasserRank} onValueChange={setManualCanvasserRank} disabled={isCreatingUser}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CANVASSER_RANK_OPTIONS.map((rank) => (
+                            <SelectItem key={rank} value={rank}>
+                              {rank}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
                 <Button type="submit" disabled={isCreatingUser || !manualEmail.trim() || !manualPassword.trim()} className="w-full sm:w-auto">
                   {isCreatingUser ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Create User
+                      Create Account
                     </>
                   )}
                 </Button>

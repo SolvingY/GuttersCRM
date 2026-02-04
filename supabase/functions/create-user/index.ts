@@ -7,6 +7,36 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
+// Role type configuration
+interface RoleConfig {
+  roles: string[];
+  createSalesMetrics: boolean;
+  createCanvasserMetrics: boolean;
+}
+
+function getRoleConfig(roleType: string | undefined, legacyRole?: string): RoleConfig {
+  // Handle new roleType parameter
+  switch (roleType) {
+    case 'admin_only':
+      return { roles: ['admin'], createSalesMetrics: false, createCanvasserMetrics: false };
+    case 'sales_rep':
+      return { roles: ['user'], createSalesMetrics: true, createCanvasserMetrics: false };
+    case 'canvasser':
+      return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true };
+    case 'super_admin':
+      return { roles: ['admin', 'user', 'canvasser'], createSalesMetrics: true, createCanvasserMetrics: true };
+    default:
+      // Backward compatibility with old 'role' parameter
+      if (legacyRole === 'admin') {
+        return { roles: ['admin'], createSalesMetrics: true, createCanvasserMetrics: false };
+      } else if (legacyRole === 'canvasser') {
+        return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true };
+      }
+      // Default to sales rep
+      return { roles: ['user'], createSalesMetrics: true, createCanvasserMetrics: false };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -79,7 +109,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, displayName, salesRank, yearlyGoal, role } = body;
+    const { email, password, displayName, salesRank, canvasserRank, yearlyGoal, roleType, role } = body;
 
     // Validate required fields
     if (!email || !password) {
@@ -96,6 +126,10 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
+
+    // Get role configuration (handles both new roleType and legacy role parameter)
+    const config = getRoleConfig(roleType, role);
+    console.log("create-user: Role config:", config);
 
     // Create user with service role key (admin privileges)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -138,10 +172,7 @@ serve(async (req) => {
     // Wait for trigger to complete (if it exists)
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Use UPSERT pattern to ensure data exists regardless of trigger
-    // This handles both cases: trigger exists or doesn't exist
-
-    // 1. UPSERT profiles
+    // UPSERT profile
     console.log("create-user: Upserting profile...");
     const { error: profileError } = await adminClient
       .from("profiles")
@@ -156,84 +187,35 @@ serve(async (req) => {
       console.log("create-user: Profile upserted successfully");
     }
 
-    // 2. UPSERT user_roles - now supports 'canvasser' role
-    console.log("create-user: Upserting user role...");
-    const targetRole = role === "admin" ? "admin" : (role === "canvasser" ? "canvasser" : "user");
-    
-    // First check if role exists
-    const { data: existingRole } = await adminClient
-      .from("user_roles")
-      .select("id")
-      .eq("user_id", newUser.user.id)
-      .single();
-
-    if (existingRole) {
-      // Update existing role
-      const { error: roleUpdateError } = await adminClient
+    // Insert all roles (the trigger won't create any since we do it first)
+    console.log("create-user: Creating user roles:", config.roles);
+    for (const r of config.roles) {
+      // Check if role already exists
+      const { data: existingRole } = await adminClient
         .from("user_roles")
-        .update({ role: targetRole })
-        .eq("user_id", newUser.user.id);
+        .select("id")
+        .eq("user_id", newUser.user.id)
+        .eq("role", r)
+        .single();
 
-      if (roleUpdateError) {
-        console.error("create-user: Error updating user role:", roleUpdateError);
-      } else {
-        console.log("create-user: User role updated to:", targetRole);
-      }
-    } else {
-      // Insert new role
-      const { error: roleInsertError } = await adminClient
-        .from("user_roles")
-        .insert({ user_id: newUser.user.id, role: targetRole });
+      if (!existingRole) {
+        const { error: roleInsertError } = await adminClient
+          .from("user_roles")
+          .insert({ user_id: newUser.user.id, role: r });
 
-      if (roleInsertError) {
-        console.error("create-user: Error inserting user role:", roleInsertError);
+        if (roleInsertError) {
+          console.error(`create-user: Error inserting role ${r}:`, roleInsertError);
+        } else {
+          console.log(`create-user: Role ${r} inserted`);
+        }
       } else {
-        console.log("create-user: User role inserted:", targetRole);
+        console.log(`create-user: Role ${r} already exists`);
       }
     }
 
-    // 3. Create appropriate metrics based on role
-    if (targetRole === "canvasser") {
-      // Create canvasser_metrics for canvasser role
-      console.log("create-user: Creating canvasser metrics...");
-      
-      const { data: existingCanvasserMetrics } = await adminClient
-        .from("canvasser_metrics")
-        .select("id")
-        .eq("user_id", newUser.user.id)
-        .single();
-
-      if (existingCanvasserMetrics) {
-        const { error: metricsUpdateError } = await adminClient
-          .from("canvasser_metrics")
-          .update({
-            display_name: displayName || null,
-          })
-          .eq("user_id", newUser.user.id);
-
-        if (metricsUpdateError) {
-          console.error("create-user: Error updating canvasser metrics:", metricsUpdateError);
-        } else {
-          console.log("create-user: Canvasser metrics updated");
-        }
-      } else {
-        const { error: metricsInsertError } = await adminClient
-          .from("canvasser_metrics")
-          .insert({
-            user_id: newUser.user.id,
-            display_name: displayName || null,
-            metric_date: new Date().toISOString().split('T')[0],
-          });
-
-        if (metricsInsertError) {
-          console.error("create-user: Error inserting canvasser metrics:", metricsInsertError);
-        } else {
-          console.log("create-user: Canvasser metrics inserted");
-        }
-      }
-    } else {
-      // Create user_metrics for user/admin roles
-      console.log("create-user: Upserting user metrics...");
+    // Create sales metrics if needed
+    if (config.createSalesMetrics) {
+      console.log("create-user: Creating sales metrics...");
       
       const { data: existingMetrics } = await adminClient
         .from("user_metrics")
@@ -271,6 +253,48 @@ serve(async (req) => {
           console.error("create-user: Error inserting user metrics:", metricsInsertError);
         } else {
           console.log("create-user: User metrics inserted");
+        }
+      }
+    }
+
+    // Create canvasser metrics if needed
+    if (config.createCanvasserMetrics) {
+      console.log("create-user: Creating canvasser metrics...");
+      
+      const { data: existingCanvasserMetrics } = await adminClient
+        .from("canvasser_metrics")
+        .select("id")
+        .eq("user_id", newUser.user.id)
+        .single();
+
+      if (existingCanvasserMetrics) {
+        const { error: metricsUpdateError } = await adminClient
+          .from("canvasser_metrics")
+          .update({
+            display_name: displayName || null,
+            canvasser_rank: canvasserRank || "C1",
+          })
+          .eq("user_id", newUser.user.id);
+
+        if (metricsUpdateError) {
+          console.error("create-user: Error updating canvasser metrics:", metricsUpdateError);
+        } else {
+          console.log("create-user: Canvasser metrics updated");
+        }
+      } else {
+        const { error: metricsInsertError } = await adminClient
+          .from("canvasser_metrics")
+          .insert({
+            user_id: newUser.user.id,
+            display_name: displayName || null,
+            canvasser_rank: canvasserRank || "C1",
+            metric_date: new Date().toISOString().split('T')[0],
+          });
+
+        if (metricsInsertError) {
+          console.error("create-user: Error inserting canvasser metrics:", metricsInsertError);
+        } else {
+          console.log("create-user: Canvasser metrics inserted");
         }
       }
     }
