@@ -1,174 +1,103 @@
 
-## Plan: Fix Leaderboard Color Schemes, YTD Ranking, and Super Admin Roles
+## Implementation Plan: Fix User Creation, Rename Labels, and Add Role Types
 
-### Summary of Issues to Fix
-
-Based on the screenshots and code analysis, there are 4 distinct issues:
-
-1. **Canvasser YTD Leaderboard not sorting by Points** - The admin leaderboard sorts by percentage of goal first, but per system requirements, canvasser YTD should be sorted by **points in descending order**
-
-2. **YTD Leaderboard Color Scheme using goal-based instead of rank-based** - Per the memory notes: "Yearly (YTD) tables utilize goal-based color coding relative to performance targets, while Weekly and Monthly tables use rank-based color coding." However, looking at the screenshots, all users appear coral/red because they're all below 25% of goal. The user wants **rank-based coloring for all YTD tables** (matching the weekly/monthly approach)
-
-3. **Canvasser YTD rankings showing 0 and "No Goal"** - The table component relies on goals for display, but when no goal is set, it shows confusing "0" values. Need to fix the display when goals aren't set
-
-4. **Super Admin role flexibility** - Current system only allows "Admin Only" OR "Sales/Canvasser". User wants admins to optionally ALSO have Sales and/or Canvasser roles (a "Super Admin" who has Admin + any combination of operational roles)
+Based on my investigation, I will implement the following changes:
 
 ---
 
-### Part 1: Fix Canvasser YTD Sorting in AdminLeaderboards.tsx
+### 1. Database Migration - Fix `handle_new_user()` Trigger
 
-**Problem**: The sorting at lines 411-416 sorts by `percentOfGoal` first, then by `leadsClosed`. Per system requirements, it should sort by **points**.
+**Root Cause**: The trigger uses `ON CONFLICT (user_id)` but the unique constraint on `user_id` was removed to allow multiple roles per user. This causes the "Database error creating new user" when creating users.
 
-**File**: `src/pages/admin/AdminLeaderboards.tsx` (lines 411-417)
-
-**Current code**:
-```typescript
-const sorted = Array.from(uniqueUsers.values())
-  .sort((a, b) => {
-    const aPercent = a.yearly_goal > 0 ? (a.leads_closed || 0) / a.yearly_goal : 0;
-    const bPercent = b.yearly_goal > 0 ? (b.leads_closed || 0) / b.yearly_goal : 0;
-    if (bPercent !== aPercent) return bPercent - aPercent;
-    return (b.leads_closed || 0) - (a.leads_closed || 0);
-  })
-```
-
-**Fixed code**:
-```typescript
-const sorted = Array.from(uniqueUsers.values())
-  .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
-```
+**Solution**: Replace `ON CONFLICT (user_id)` with an explicit role count check:
+- First check if ANY roles already exist for the user
+- Only insert role if none exist (edge functions handle their own role creation)
+- This allows the edge function to pre-create roles before the trigger runs
 
 ---
 
-### Part 2: Update YTD Leaderboard Tables to Use Rank-Based Colors
+### 2. Rename Labels in Admin Overview
 
-Both `LeaderboardTable.tsx` and `CanvasserLeaderboardTable.tsx` currently use goal-based coloring. Change them to use rank-based coloring (matching the weekly tables).
+**File**: `src/pages/dashboard/AdminOverview.tsx`
 
-**Files**:
-- `src/components/dashboard/LeaderboardTable.tsx`
-- `src/components/dashboard/CanvasserLeaderboardTable.tsx`
-
-**Changes**:
-
-Replace the goal-based `getRowColor` function with rank-based:
-
-```typescript
-// Get row background color based on rank (matching weekly tables)
-const getRowColor = (rank: number) => {
-  if (rank === 1) return 'bg-emerald-500 text-white';
-  if (rank === 2) return 'bg-green-400 text-green-950';
-  if (rank === 3) return 'bg-yellow-300 text-yellow-950';
-  if (rank <= 5) return 'bg-orange-300 text-orange-950';
-  return 'bg-card text-card-foreground';
-};
-```
-
-Update the row rendering to use `entry.rank` instead of percentage.
+| Line | Current | New |
+|------|---------|-----|
+| 596 | `title="Total Users"` | `title="Total Sales Reps"` |
 
 ---
 
-### Part 3: Fix Canvasser YTD Table Display for No-Goal Users
+### 3. Rename Tab Label in InviteUsers
 
-**File**: `src/components/dashboard/CanvasserLeaderboardTable.tsx`
+**File**: `src/pages/dashboard/InviteUsers.tsx`
 
-When there's no goal set, the "Place" column incorrectly shows 0 and "No Goal" badge. The rank is actually calculated correctly from the entry, but display is confusing.
-
-**Changes**:
-1. Always show the proper rank number or trophy (the rank comes from the sorted array)
-2. Simplify the "% of Goal" display - show dash when no goal instead of "No Goal" badge for cleaner appearance
-3. Remove dependency on `hasGoal` for the row color since we're now using rank-based coloring
+| Line | Current | New |
+|------|---------|-----|
+| 391 | `Create User` | `Create Account` |
+| 596 | `Create User Account` | `Create Account` |
+| 689 | `Create User` button | `Create Account` button |
 
 ---
 
-### Part 4: Add Super Admin Role Support
+### 4. Add 4 Role Types in InviteUsers
 
-**Current behavior**: 
-- "Admin Only" checkbox → User gets ONLY admin role (no sales/canvasser)
-- Sales Rep / Canvasser checkboxes → User gets operational roles, preserves existing admin
+**Current role options**: User (Sales Rep), Canvasser, Admin
 
-**Requested behavior**:
-- Add an explicit "Admin" checkbox that can be combined WITH Sales/Canvasser
-- Allow any combination: Admin only, Admin+Sales, Admin+Canvasser, Admin+Sales+Canvasser, Sales only, Canvasser only, Sales+Canvasser
-
-**File**: `src/components/admin/EditUserRoleModal.tsx`
+**New role options**:
+| Value | Label | Roles Created | Metrics |
+|-------|-------|---------------|---------|
+| `admin_only` | Admin Only | `admin` | None |
+| `sales_rep` | Sales Rep | `user` | user_metrics |
+| `canvasser` | Canvasser | `canvasser` | canvasser_metrics |
+| `super_admin` | Super Admin (All Roles) | `admin`, `user`, `canvasser` | Both |
 
 **UI Changes**:
-Replace current structure with:
-
-```
-Account Type:
-  [✓] Admin (Portal Access)     ← Can be combined with below
-  
-Operational Roles (optional):
-  [✓] Sales Rep
-      Rank: [SR1 ▼]
-  [✓] Canvasser
-      Rank: [C1 ▼]
-```
-
-**Logic Changes**:
-1. Add `isAdmin` checkbox (separate from Admin-Only concept)
-2. If ONLY `isAdmin` is checked → Admin-only user (no metrics)
-3. If `isAdmin` + any operational role → Super Admin with metrics
-4. If only operational roles → Regular user with metrics
-
-**State Changes**:
-```typescript
-const [isAdmin, setIsAdmin] = useState(false);     // Has admin portal access
-const [isSalesRep, setIsSalesRep] = useState(false); // Has sales role
-const [isCanvasser, setIsCanvasser] = useState(false); // Has canvasser role
-```
-
-Validation:
-- At least one checkbox must be selected
-- If only Admin is checked, show note about "Admin-only (no metrics)"
-- If Admin + other roles, show note about "Super Admin with full access"
+- Update state type to `'admin_only' | 'sales_rep' | 'canvasser' | 'super_admin'`
+- Add new canvasser rank state for manual creation
+- Show/hide rank fields based on selected role:
+  - **Admin Only**: No rank fields
+  - **Sales Rep**: Sales rank + yearly goal
+  - **Canvasser**: Canvasser rank only
+  - **Super Admin**: Sales rank + canvasser rank + yearly goal
 
 ---
 
-### Files to Modify
+### 5. Update create-user Edge Function
+
+**File**: `supabase/functions/create-user/index.ts`
+
+Handle `roleType` parameter with 4 options:
+
+```text
+roleType → Roles Created → Metrics Created
+─────────────────────────────────────────────
+admin_only  → [admin]                    → none
+sales_rep   → [user]                     → user_metrics
+canvasser   → [canvasser]                → canvasser_metrics  
+super_admin → [admin, user, canvasser]   → user_metrics + canvasser_metrics
+```
+
+Also accept `canvasserRank` parameter for Canvasser and Super Admin roles.
+
+---
+
+### Files to be Modified
 
 | File | Changes |
 |------|---------|
-| `src/pages/admin/AdminLeaderboards.tsx` | Fix canvasser YTD sorting to use points |
-| `src/components/dashboard/LeaderboardTable.tsx` | Change to rank-based coloring |
-| `src/components/dashboard/CanvasserLeaderboardTable.tsx` | Change to rank-based coloring, fix display |
-| `src/components/admin/EditUserRoleModal.tsx` | Restructure to support Admin + Sales/Canvasser combos |
-| `supabase/functions/admin-set-user-role/index.ts` | Update logic for super admin role combinations |
-
----
-
-### Technical Details
-
-**Color Scheme Standardization**:
-
-| Table Type | Timeframe | Color Method |
-|------------|-----------|--------------|
-| Sales YTD | Yearly | Rank-based (1st=emerald, 2nd=green, 3rd=yellow, 4-5=orange, 6+=neutral) |
-| Sales Weekly/Monthly | Weekly/Monthly | Rank-based |
-| Canvasser YTD | Yearly | Rank-based |
-| Canvasser Weekly/Monthly | Weekly/Monthly | Rank-based |
-
-All leaderboards now use consistent rank-based coloring.
-
-**Super Admin Role Matrix**:
-
-| Admin | Sales | Canvasser | Result |
-|-------|-------|-----------|--------|
-| ✓ | ✗ | ✗ | Admin-only (no metrics) |
-| ✓ | ✓ | ✗ | Admin + Sales Rep |
-| ✓ | ✗ | ✓ | Admin + Canvasser |
-| ✓ | ✓ | ✓ | Full Super Admin |
-| ✗ | ✓ | ✗ | Sales Rep only |
-| ✗ | ✗ | ✓ | Canvasser only |
-| ✗ | ✓ | ✓ | Dual Role (no admin) |
+| **New Migration** | Update `handle_new_user()` function |
+| `src/pages/dashboard/AdminOverview.tsx` | Rename "Total Users" → "Total Sales Reps" |
+| `src/pages/dashboard/InviteUsers.tsx` | Rename tabs, add 4 role types, conditional rank fields |
+| `supabase/functions/create-user/index.ts` | Handle roleType param with 4 options |
 
 ---
 
 ### Expected Results
 
-1. **Canvasser YTD Leaderboard**: Sorted by points in descending order
-2. **All YTD Tables**: Use rank-based coloring (1st place = emerald, 2nd = green, etc.)
-3. **Canvasser Table Display**: Clean display even when no goal is set
-4. **Super Admin Support**: Can now assign Admin + any combination of Sales/Canvasser roles
-5. **Consistent Color Scheme**: All leaderboards (weekly, monthly, yearly) use the same rank-based approach
+1. ✅ **User creation works** - S.elliott@oknextgen.com can be created successfully
+2. ✅ **"Total Users" renamed** to "Total Sales Reps" in Admin Overview
+3. ✅ **Tab renamed** to "Create Account" 
+4. ✅ **4 role types available**:
+   - Admin Only: Admin portal only, no metrics (not on leaderboards)
+   - Sales Rep: Sales dashboard with sales metrics
+   - Canvasser: Canvasser portal with canvasser metrics
+   - Super Admin: All portals with both metrics types
