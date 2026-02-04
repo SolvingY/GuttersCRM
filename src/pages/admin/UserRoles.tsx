@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 
 interface UserWithRole {
   id: string;
+  email: string | null;
   fullName: string | null;
   role: 'admin' | 'user' | 'canvasser';
   rank: string | null;
@@ -109,6 +110,7 @@ export default function UserRoles() {
       
       return {
         id: profile.id,
+        email: null, // Email fetched from edge function when needed
         fullName: profile.full_name,
         role,
         rank,
@@ -230,6 +232,34 @@ export default function UserRoles() {
     }
   };
 
+  const handlePasswordReset = async (user: UserWithRole) => {
+    setActionLoading(user.id);
+    try {
+      const response = await supabase.functions.invoke('admin-manage-user', {
+        body: { action: 'reset-password', targetUserId: user.id },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to send password reset');
+      }
+
+      const data = response.data;
+      toast({
+        title: 'Password Reset Sent',
+        description: `A password reset email has been sent to ${data.email || user.fullName || 'the user'}.`,
+      });
+    } catch (error) {
+      console.error('Error sending password reset:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to send password reset',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
@@ -339,6 +369,15 @@ export default function UserRoles() {
                                 ) : (
                                   <Archive className="h-4 w-4" />
                                 )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePasswordReset(user)}
+                                disabled={actionLoading === user.id}
+                                title="Send password reset email"
+                              >
+                                <KeyRound className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"

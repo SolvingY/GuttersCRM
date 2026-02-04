@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isCanvasser } = useAuth();
+  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, activeView } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -28,13 +28,24 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireCanvasser && !isCanvasser) {
+  if (requireCanvasser && !hasCanvasserRole) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Redirect canvassers away from sales dashboard to canvasser dashboard
+  // Handle dual-role users - they can access both portals
+  if (isDualRole) {
+    // Let them access whatever portal they're on
+    return <>{children}</>;
+  }
+
+  // Redirect canvasser-only users away from sales dashboard to canvasser dashboard
   if (isCanvasser && location.pathname.startsWith('/dashboard')) {
     return <Navigate to="/canvasser" replace />;
+  }
+
+  // Redirect sales-only users away from canvasser portal
+  if (!hasCanvasserRole && location.pathname.startsWith('/canvasser')) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

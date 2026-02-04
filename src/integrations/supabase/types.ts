@@ -718,6 +718,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_archived: boolean | null
+          preferred_view: string | null
           tour_completed: boolean | null
           updated_at: string
         }
@@ -729,6 +730,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_archived?: boolean | null
+          preferred_view?: string | null
           tour_completed?: boolean | null
           updated_at?: string
         }
@@ -740,6 +742,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_archived?: boolean | null
+          preferred_view?: string | null
           tour_completed?: boolean | null
           updated_at?: string
         }

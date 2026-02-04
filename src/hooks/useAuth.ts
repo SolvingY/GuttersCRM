@@ -7,7 +7,8 @@ type AppRole = 'admin' | 'user' | 'canvasser';
 interface AuthState {
   user: User | null;
   session: Session | null;
-  role: AppRole | null;
+  roles: AppRole[];
+  activeView: 'sales' | 'canvasser';
   sessionLoading: boolean;
   roleLoading: boolean;
 }
@@ -16,32 +17,43 @@ export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     session: null,
-    role: null,
+    roles: [],
+    activeView: 'sales',
     sessionLoading: true,
     roleLoading: true,
   });
 
-  const fetchUserRole = useCallback(async (userId: string): Promise<AppRole> => {
-    // Fetch all roles for the user (should be one after migration, but handle edge cases)
+  const fetchUserRoles = useCallback(async (userId: string): Promise<AppRole[]> => {
+    // Fetch all roles for the user
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error fetching user role:', error);
-      return 'user';
+      console.error('Error fetching user roles:', error);
+      return ['user'];
     }
 
     if (!data || data.length === 0) {
-      return 'user';
+      return ['user'];
     }
 
-    // If somehow multiple roles exist, prioritize: admin > canvasser > user
-    const roles = data.map(r => r.role as AppRole);
-    if (roles.includes('admin')) return 'admin';
-    if (roles.includes('canvasser')) return 'canvasser';
-    return 'user';
+    return data.map(r => r.role as AppRole);
+  }, []);
+
+  const fetchPreferredView = useCallback(async (userId: string): Promise<'sales' | 'canvasser'> => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('preferred_view')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data?.preferred_view) {
+      return 'sales';
+    }
+
+    return data.preferred_view as 'sales' | 'canvasser';
   }, []);
 
   useEffect(() => {
@@ -58,19 +70,26 @@ export function useAuth() {
 
         // Defer role fetch to avoid deadlock
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserRole(session.user.id).then(role => {
-              setAuthState(prev => ({ ...prev, role, roleLoading: false }));
-            });
+          setTimeout(async () => {
+            const [roles, preferredView] = await Promise.all([
+              fetchUserRoles(session.user.id),
+              fetchPreferredView(session.user.id),
+            ]);
+            setAuthState(prev => ({ 
+              ...prev, 
+              roles, 
+              activeView: preferredView,
+              roleLoading: false 
+            }));
           }, 0);
         } else {
-          setAuthState(prev => ({ ...prev, role: null, roleLoading: false }));
+          setAuthState(prev => ({ ...prev, roles: [], roleLoading: false }));
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setAuthState(prev => ({
         ...prev,
         session,
@@ -80,16 +99,23 @@ export function useAuth() {
       }));
 
       if (session?.user) {
-        fetchUserRole(session.user.id).then(role => {
-          setAuthState(prev => ({ ...prev, role, roleLoading: false }));
-        });
+        const [roles, preferredView] = await Promise.all([
+          fetchUserRoles(session.user.id),
+          fetchPreferredView(session.user.id),
+        ]);
+        setAuthState(prev => ({ 
+          ...prev, 
+          roles, 
+          activeView: preferredView,
+          roleLoading: false 
+        }));
       } else {
         setAuthState(prev => ({ ...prev, roleLoading: false }));
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchUserRole]);
+  }, [fetchUserRoles, fetchPreferredView]);
 
   // Loading is true until both session AND role are resolved
   const loading = authState.sessionLoading || authState.roleLoading;
@@ -127,7 +153,8 @@ export function useAuth() {
     setAuthState({
       user: null,
       session: null,
-      role: null,
+      roles: [],
+      activeView: 'sales',
       sessionLoading: false,
       roleLoading: false,
     });
@@ -139,16 +166,41 @@ export function useAuth() {
     return { error: null };
   };
 
-  const isAdmin = authState.role === 'admin';
-  const isCanvasser = authState.role === 'canvasser';
+  const setActiveView = async (view: 'sales' | 'canvasser') => {
+    setAuthState(prev => ({ ...prev, activeView: view }));
+    
+    // Save preference to database
+    if (authState.user) {
+      await supabase
+        .from('profiles')
+        .update({ preferred_view: view })
+        .eq('id', authState.user.id);
+    }
+  };
+
+  // Role checks
+  const isAdmin = authState.roles.includes('admin');
+  const hasSalesRole = authState.roles.includes('user') || authState.roles.includes('admin');
+  const hasCanvasserRole = authState.roles.includes('canvasser');
+  const isDualRole = hasSalesRole && hasCanvasserRole;
+  
+  // Legacy compatibility - primary role for routing decisions
+  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : 'user';
+  const isCanvasser = hasCanvasserRole && !hasSalesRole && !isAdmin;
 
   return {
     user: authState.user,
     session: authState.session,
-    role: authState.role,
+    roles: authState.roles,
+    role,
     loading,
     isAdmin,
     isCanvasser,
+    hasSalesRole,
+    hasCanvasserRole,
+    isDualRole,
+    activeView: authState.activeView,
+    setActiveView,
     signIn,
     signUp,
     signOut,

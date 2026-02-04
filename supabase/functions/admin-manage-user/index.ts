@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { action, targetUserId } = await req.json();
+    const { action, targetUserId, targetUserEmail } = await req.json();
     
     if (!targetUserId || !action) {
       return new Response(
@@ -66,9 +66,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!["archive", "unarchive", "delete"].includes(action)) {
+    if (!["archive", "unarchive", "delete", "reset-password"].includes(action)) {
       return new Response(
-        JSON.stringify({ error: "Invalid action. Must be 'archive', 'unarchive', or 'delete'" }),
+        JSON.stringify({ error: "Invalid action. Must be 'archive', 'unarchive', 'delete', or 'reset-password'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -191,6 +191,85 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, action: "delete" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "reset-password") {
+      // Get user email if not provided
+      let emailToReset = targetUserEmail;
+      
+      if (!emailToReset) {
+        const { data: userData, error: userFetchError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+        if (userFetchError || !userData?.user?.email) {
+          console.error("Error fetching user email:", userFetchError);
+          return new Response(
+            JSON.stringify({ error: "Failed to get user email" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        emailToReset = userData.user.email;
+      }
+
+      // Generate password reset link
+      const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: emailToReset,
+      });
+
+      if (resetError) {
+        console.error("Reset link generation error:", resetError);
+        return new Response(
+          JSON.stringify({ error: "Failed to generate reset link" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Send password reset email using Resend
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (!RESEND_API_KEY) {
+        console.error("RESEND_API_KEY not configured");
+        return new Response(
+          JSON.stringify({ error: "Email service not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const resetUrl = resetData.properties?.action_link;
+      
+      const emailResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Next Gen Roofing <noreply@nextgenroofingcompany.com>",
+          to: [emailToReset],
+          subject: "Reset Your Password - Next Gen Roofing",
+          html: `
+            <h1>Password Reset Request</h1>
+            <p>An administrator has initiated a password reset for your account.</p>
+            <p><a href="${resetUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Your Password</a></p>
+            <p>If you did not expect this email, please contact your administrator.</p>
+            <p>This link will expire in 1 hour.</p>
+          `,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorBody = await emailResponse.text();
+        console.error("Email send error:", errorBody);
+        return new Response(
+          JSON.stringify({ error: "Failed to send reset email" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Password reset email sent to ${emailToReset}`);
+
+      return new Response(
+        JSON.stringify({ success: true, action: "reset-password", email: emailToReset }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

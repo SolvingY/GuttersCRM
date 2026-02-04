@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { RoleViewToggle } from './RoleViewToggle';
 
 interface DashboardHeaderProps {
   onMenuClick?: () => void;
@@ -75,6 +76,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           <span className="text-[10px] text-accent font-medium tracking-widest uppercase hidden sm:block">The 6 Figure System</span>
         </div>
         {user && getRoleBadge()}
+        <RoleViewToggle />
       </div>
       
       <div className="flex items-center">

@@ -26,6 +26,7 @@ interface CompanyProgress {
   totalSales: number;
   totalCollections: number;
   totalLeadsClosed: number;
+  totalCanvasserLeadsSet: number;
   salesRepsCount: number;
   canvassersCount: number;
   totalSalesLeads: number;
@@ -42,6 +43,7 @@ export default function CompanyGoals() {
     totalSales: 0,
     totalCollections: 0,
     totalLeadsClosed: 0,
+    totalCanvasserLeadsSet: 0,
     salesRepsCount: 0,
     canvassersCount: 0,
     totalSalesLeads: 0,
@@ -145,7 +147,7 @@ export default function CompanyGoals() {
       const { data: canvasserData } = canvasserIds.length > 0
         ? await supabase
             .from('canvasser_metrics')
-            .select('user_id, leads_closed, income')
+            .select('user_id, leads_closed, income, leads_set')
             .in('user_id', canvasserIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
@@ -167,6 +169,7 @@ export default function CompanyGoals() {
         }
       });
       const totalLeadsClosed = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.leadsClosed, 0);
+      const totalCanvasserLeadsSet = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.leadsSet, 0);
       const totalCanvasserIncome = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.income, 0);
 
       // Build salesReps array for exports
@@ -209,6 +212,7 @@ export default function CompanyGoals() {
         totalSales,
         totalCollections,
         totalLeadsClosed,
+        totalCanvasserLeadsSet,
         salesRepsCount: salesByUser.size,
         canvassersCount: leadsByUser.size,
         totalSalesLeads,
@@ -612,7 +616,7 @@ export default function CompanyGoals() {
       </div>
 
       {/* Additional Metrics Cards with Goal Tracking */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Sales Lead-to-Close Rate with Goal */}
         <Card>
           <CardHeader className="pb-2">
@@ -660,6 +664,42 @@ export default function CompanyGoals() {
                       </div>
                     </div>
                   )}
+                </>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* Canvasser Lead-to-Close Rate */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Percent className="h-5 w-5 text-primary" />
+              Canvasser Lead-to-Close Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(() => {
+              const currentRate = progress.totalCanvasserLeadsSet > 0 
+                ? (progress.totalLeadsClosed / progress.totalCanvasserLeadsSet) * 100 
+                : 0;
+              
+              return (
+                <>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-foreground">
+                        {currentRate.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {progress.totalLeadsClosed} closed / {progress.totalCanvasserLeadsSet} leads set
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Formula</p>
+                    <p className="text-sm font-medium text-foreground">Leads Closed ÷ Leads Set</p>
+                  </div>
                 </>
               );
             })()}
