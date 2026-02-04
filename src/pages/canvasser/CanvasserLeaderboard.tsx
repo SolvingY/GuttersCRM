@@ -168,7 +168,7 @@ export default function CanvasserLeaderboard() {
 
       const sorted = Array.from(uniqueUsers.values())
         .sort((a, b) => {
-          return (b.leads_closed || 0) - (a.leads_closed || 0);
+          return (Number(b.points) || 0) - (Number(a.points) || 0);
         })
         .map((entry, index) => {
           const leadsClosed = entry.leads_closed || 0;
@@ -264,7 +264,7 @@ export default function CanvasserLeaderboard() {
           pointsEarned: Number(w.points_earned) || 0,
           name: displayNameMap.get(w.user_id) || "Anonymous",
         }))
-        .sort((a, b) => b.leadsClosed - a.leadsClosed)
+        .sort((a, b) => b.pointsEarned - a.pointsEarned)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
       setWeeklyEntries(sorted);
@@ -349,7 +349,7 @@ export default function CanvasserLeaderboard() {
           ...data,
           name: displayNameMap.get(userId) || "Anonymous",
         }))
-        .sort((a, b) => b.leadsClosed - a.leadsClosed)
+        .sort((a, b) => b.pointsEarned - a.pointsEarned)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
       setMonthlyEntries(sorted);

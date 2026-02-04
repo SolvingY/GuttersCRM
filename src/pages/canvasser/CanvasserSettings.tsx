@@ -147,7 +147,7 @@ export default function CanvasserSettings() {
           <div className="space-y-2">
             <Label htmlFor="contractsGoal" className="flex items-center gap-2">
               <FileCheck className="h-4 w-4 text-primary" />
-              Contracts Goal (Leads Closed)
+              Contracts Signed From Leads
             </Label>
             <Input
               id="contractsGoal"

@@ -258,7 +258,7 @@ export default function CanvasserStats() {
             <StatsCard title="Leads with Damage" value={metrics?.leads_with_damage ?? 0} icon={AlertTriangle} />
             <StatsCard title="Leads w/o Damage" value={metrics?.leads_without_damage ?? 0} icon={Target} />
             <StatsCard title="Conversations Had" value={metrics?.conversations_had ?? 0} icon={Users} />
-            <StatsCard title="Not Interested" value={metrics?.not_interested ?? 0} icon={AlertTriangle} />
+            <StatsCard title="Canceled Lead" value={metrics?.not_interested ?? 0} icon={AlertTriangle} />
             <StatsCard title="Hours Worked" value={metrics?.hours_worked ?? 0} icon={Clock} />
             <StatsCard title="Points" value={metrics?.points?.toLocaleString() ?? 0} icon={Star} />
             <StatsCard 
@@ -388,7 +388,7 @@ export default function CanvasserStats() {
                   <CardContent className="pt-4 space-y-3">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-5 w-5 text-primary" />
-                      <span className="font-semibold">Contracts Goal (Leads Closed)</span>
+                      <span className="font-semibold">Contracts Signed From Leads</span>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
