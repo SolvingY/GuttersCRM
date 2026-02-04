@@ -421,7 +421,7 @@ export default function CompanyGoals() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="leadsGoal">Company Leads Closed Goal</Label>
+              <Label htmlFor="leadsGoal">Company Contracts Goal</Label>
               <Input
                 id="leadsGoal"
                 type="number"
@@ -431,7 +431,7 @@ export default function CompanyGoals() {
                 onChange={(e) => setLeadsGoal(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Combined target for all canvassers
+                Combined target for all canvassers (closed contracts)
               </p>
             </div>
           </div>
@@ -453,7 +453,7 @@ export default function CompanyGoals() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="targetCostPerLead">Target Cost per Lead ($)</Label>
+              <Label htmlFor="targetCostPerLead">Target Cost per Contract ($)</Label>
               <Input
                 id="targetCostPerLead"
                 type="number"
@@ -464,7 +464,7 @@ export default function CompanyGoals() {
                 onChange={(e) => setTargetCostPerLead(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Target cost to acquire a closed lead
+                Target cost to acquire a closed contract
               </p>
             </div>
           </div>
@@ -534,7 +534,7 @@ export default function CompanyGoals() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="h-5 w-5 text-primary" />
-              Canvasser Leads Progress
+              Canvasser Contracts Progress
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -561,7 +561,7 @@ export default function CompanyGoals() {
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Remaining to goal</p>
                 <p className="text-lg font-semibold text-foreground">
-                  {Math.max(0, leadsGoalNum - progress.totalLeadsClosed).toLocaleString()} leads
+                  {Math.max(0, leadsGoalNum - progress.totalLeadsClosed).toLocaleString()} contracts
                 </p>
               </div>
             )}
@@ -616,7 +616,7 @@ export default function CompanyGoals() {
       </div>
 
       {/* Additional Metrics Cards with Goal Tracking */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Lead-to-Close Rate (Canvasser) */}
         <Card>
           <CardHeader className="pb-2">
@@ -670,12 +670,12 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
 
-        {/* Canvasser Cost per Lead with Goal */}
+        {/* Cost Per Contract (was Cost per Lead) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Calculator className="h-5 w-5 text-primary" />
-              Canvasser Cost per Lead
+              Cost Per Contract
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -695,7 +695,7 @@ export default function CompanyGoals() {
                         {progress.totalLeadsClosed > 0 ? formatCurrency(currentCost) : 'N/A'}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} leads
+                        {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} contracts
                       </p>
                     </div>
                     {targetCost > 0 && (
@@ -722,6 +722,47 @@ export default function CompanyGoals() {
             })()}
           </CardContent>
         </Card>
+
+        {/* NEW: Cost Per Lead (based on leads set, not closed) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calculator className="h-5 w-5 text-blue-500" />
+              Cost Per Lead
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(() => {
+              const costPerLead = progress.totalCanvasserLeadsSet > 0 
+                ? progress.totalCanvasserIncome / progress.totalCanvasserLeadsSet 
+                : 0;
+              const costPerContract = progress.totalLeadsClosed > 0 
+                ? progress.totalCanvasserIncome / progress.totalLeadsClosed 
+                : 0;
+              
+              return (
+                <>
+                  <div>
+                    <p className="text-3xl font-bold text-foreground">
+                      {progress.totalCanvasserLeadsSet > 0 ? formatCurrency(costPerLead) : 'N/A'}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalCanvasserLeadsSet} leads set
+                    </p>
+                  </div>
+                  {progress.totalLeadsClosed > 0 && progress.totalCanvasserLeadsSet > 0 && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">vs Cost Per Contract</p>
+                      <p className="text-lg font-semibold text-foreground">
+                        {formatCurrency(costPerContract)}
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="bg-accent/5 border-accent/20">
@@ -731,10 +772,11 @@ export default function CompanyGoals() {
             <div className="text-sm text-muted-foreground">
               <p className="font-medium text-foreground mb-1">How Company Goals Work</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Set annual targets for combined sales revenue and canvasser leads closed</li>
+                <li>Set annual targets for combined sales revenue and canvasser contracts closed</li>
                 <li>Progress is automatically calculated from all team members' metrics</li>
-                <li>Sales reps contribute to the revenue goal, canvassers contribute to the leads goal</li>
+                <li>Sales reps contribute to the revenue goal, canvassers contribute to the contracts goal</li>
                 <li>Track company-wide performance against targets in real-time</li>
+                <li>Cost Per Lead shows acquisition cost; Cost Per Contract shows closed sale cost</li>
               </ul>
             </div>
           </div>
