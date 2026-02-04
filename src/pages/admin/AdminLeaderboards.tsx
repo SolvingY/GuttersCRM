@@ -142,7 +142,7 @@ export default function AdminLeaderboards() {
 
       const { data: metricsData } = await supabase
         .from('user_metrics')
-        .select('id, user_id, display_name, points, closed_deals, yearly_goal, sales_rank, metric_date, approved_revenue, collections, updated_at')
+        .select('id, user_id, display_name, points, closed_deals, self_generated_deals, canvass_deals_closed, yearly_goal, sales_rank, metric_date, approved_revenue, collections, updated_at')
         .order('metric_date', { ascending: false })
         .order('updated_at', { ascending: false });
 
@@ -175,7 +175,7 @@ export default function AdminLeaderboards() {
           latestByUser.set(key, {
             points: Number(item.points) || 0,
             approvedRevenue: Number(item.approved_revenue) || 0,
-            closedDeals: Number(item.closed_deals) || 0,
+            closedDeals: (Number(item.self_generated_deals) || 0) + (Number(item.canvass_deals_closed) || 0),
             yearlyGoal: Number(item.yearly_goal) || 0,
             salesRank: item.sales_rank || 'SR1',
             displayName: item.display_name,

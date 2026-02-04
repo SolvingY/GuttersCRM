@@ -16,11 +16,17 @@ export function RoleViewToggle() {
     const newView = value as 'sales' | 'canvasser';
     setActiveView(newView);
     
-    // Navigate to the appropriate portal
-    if (newView === 'canvasser' && !location.pathname.startsWith('/canvasser')) {
-      navigate('/canvasser');
-    } else if (newView === 'sales' && !location.pathname.startsWith('/dashboard')) {
-      navigate('/dashboard');
+    // Navigate immediately to the appropriate portal
+    if (newView === 'canvasser') {
+      // Always navigate to canvasser portal when selecting canvasser view
+      if (!location.pathname.startsWith('/canvasser')) {
+        navigate('/canvasser');
+      }
+    } else if (newView === 'sales') {
+      // Always navigate to sales dashboard when selecting sales view
+      if (!location.pathname.startsWith('/dashboard')) {
+        navigate('/dashboard');
+      }
     }
   };
 
