@@ -1,200 +1,174 @@
 
-## Plan: Fix Dual-Role Switching, Admin-Only Role, and Leaderboard Issues
+## Plan: Fix Leaderboard Color Schemes, YTD Ranking, and Super Admin Roles
 
 ### Summary of Issues to Fix
 
-Based on my investigation, there are 5 distinct issues:
+Based on the screenshots and code analysis, there are 4 distinct issues:
 
-1. **Dual-role goal error** - When switching from Canvasser to Sales view, saving goals fails with "Canvassers cannot have sales user metrics"
-2. **52-week tracker not showing** - Related to the same validation trigger blocking dual-role users
-3. **No Admin-only role option** - Currently cannot set a user as Admin-only (no sales profile)
-4. **YTD Point rankings not working in Canvasser Dashboard** - The canvasser YTD leaderboard exists but may not be visible in the stats page
-5. **Leaderboard color scheme mismatch** - Weekly leaderboards use rank-based colors while YTD uses goal-based colors
+1. **Canvasser YTD Leaderboard not sorting by Points** - The admin leaderboard sorts by percentage of goal first, but per system requirements, canvasser YTD should be sorted by **points in descending order**
+
+2. **YTD Leaderboard Color Scheme using goal-based instead of rank-based** - Per the memory notes: "Yearly (YTD) tables utilize goal-based color coding relative to performance targets, while Weekly and Monthly tables use rank-based color coding." However, looking at the screenshots, all users appear coral/red because they're all below 25% of goal. The user wants **rank-based coloring for all YTD tables** (matching the weekly/monthly approach)
+
+3. **Canvasser YTD rankings showing 0 and "No Goal"** - The table component relies on goals for display, but when no goal is set, it shows confusing "0" values. Need to fix the display when goals aren't set
+
+4. **Super Admin role flexibility** - Current system only allows "Admin Only" OR "Sales/Canvasser". User wants admins to optionally ALSO have Sales and/or Canvasser roles (a "Super Admin" who has Admin + any combination of operational roles)
 
 ---
 
-### Root Cause Analysis
+### Part 1: Fix Canvasser YTD Sorting in AdminLeaderboards.tsx
 
-#### Issue 1 & 2: Database Trigger Blocking Dual-Role Users
+**Problem**: The sorting at lines 411-416 sorts by `percentOfGoal` first, then by `leadsClosed`. Per system requirements, it should sort by **points**.
 
-The `validate_user_metrics()` trigger (in migration file) blocks ALL users who have a 'canvasser' role from accessing user_metrics:
+**File**: `src/pages/admin/AdminLeaderboards.tsx` (lines 411-417)
 
-```sql
-IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = NEW.user_id AND role = 'canvasser') THEN
-  -- Allow if admin is inserting
-  IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin') THEN
-    RETURN NEW;
-  END IF;
-  RAISE EXCEPTION 'Canvassers cannot have sales user metrics';
-END IF;
+**Current code**:
+```typescript
+const sorted = Array.from(uniqueUsers.values())
+  .sort((a, b) => {
+    const aPercent = a.yearly_goal > 0 ? (a.leads_closed || 0) / a.yearly_goal : 0;
+    const bPercent = b.yearly_goal > 0 ? (b.leads_closed || 0) / b.yearly_goal : 0;
+    if (bPercent !== aPercent) return bPercent - aPercent;
+    return (b.leads_closed || 0) - (a.leads_closed || 0);
+  })
 ```
 
-This doesn't account for users who have BOTH the 'user' and 'canvasser' roles. It only allows admins to bypass the check.
-
-**Fix**: Update the trigger to also allow users who have the 'user' role (even if they also have 'canvasser').
-
----
-
-#### Issue 3: No Admin-Only Role Option
-
-Currently, the `EditUserRoleModal` only allows selecting Sales Rep and/or Canvasser. There's no way to set someone as Admin-only without a sales/canvasser profile.
-
-**Fix**: 
-1. Add an "Admin Only" option to the modal
-2. Update the edge function to handle admin-only role assignment
-3. Ensure admin-only users don't get redirected to sales dashboard
-
----
-
-#### Issue 4: Canvasser YTD Leaderboard in Stats Page
-
-Looking at `CanvasserStats.tsx`, there's no YTD Point rankings section displayed. The leaderboard exists at `/canvasser/leaderboard` but users want to see their ranking directly on the stats page.
-
-**Fix**: Add a mini-leaderboard widget showing the user's current YTD ranking and top 3 canvassers on the CanvasserStats page.
-
----
-
-#### Issue 5: Leaderboard Color Scheme Inconsistency
-
-| Table | Color Logic |
-|-------|-------------|
-| `LeaderboardTable` (Sales YTD) | Based on % of goal |
-| `CanvasserLeaderboardTable` (Canvasser YTD) | Based on % of goal |
-| `WeeklyLeaderboardTable` (Sales Weekly/Monthly) | Based on rank (1st=green, 2nd=light green...) |
-| `WeeklyCanvasserLeaderboardTable` (Canvasser Weekly/Monthly) | Based on rank |
-
-The YTD tables use goal-based colors while weekly/monthly use rank-based colors. This is inconsistent.
-
-**Fix**: Standardize weekly/monthly tables to use the same approach as YTD tables OR update all to use rank-based colors. Since weekly data doesn't have goals, rank-based is more appropriate for weekly views. The current implementation is actually intentional (YTD shows goal progress, weekly shows weekly performance). But the canvasser YTD table should match the sales YTD approach more closely.
-
----
-
-### Implementation Plan
-
-#### Part 1: Fix Database Trigger for Dual-Role Users
-
-**Database Migration** to update `validate_user_metrics()`:
-
-```sql
-CREATE OR REPLACE FUNCTION public.validate_user_metrics()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  -- Allow if user has the 'user' role (sales rep)
-  IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = NEW.user_id AND role = 'user') THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Allow if user is admin (admins can have sales metrics)
-  IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = NEW.user_id AND role = 'admin') THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Allow if the inserting user is an admin (for admin-created metrics)
-  IF EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin') THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Block canvasser-only users from having sales metrics
-  RAISE EXCEPTION 'User must have sales rep role to access sales metrics';
-END;
-$$;
+**Fixed code**:
+```typescript
+const sorted = Array.from(uniqueUsers.values())
+  .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
 ```
 
-This allows:
-- Users with 'user' role (including dual-role users)
-- Admin users
-- Entries made by an admin on behalf of others
+---
+
+### Part 2: Update YTD Leaderboard Tables to Use Rank-Based Colors
+
+Both `LeaderboardTable.tsx` and `CanvasserLeaderboardTable.tsx` currently use goal-based coloring. Change them to use rank-based coloring (matching the weekly tables).
+
+**Files**:
+- `src/components/dashboard/LeaderboardTable.tsx`
+- `src/components/dashboard/CanvasserLeaderboardTable.tsx`
+
+**Changes**:
+
+Replace the goal-based `getRowColor` function with rank-based:
+
+```typescript
+// Get row background color based on rank (matching weekly tables)
+const getRowColor = (rank: number) => {
+  if (rank === 1) return 'bg-emerald-500 text-white';
+  if (rank === 2) return 'bg-green-400 text-green-950';
+  if (rank === 3) return 'bg-yellow-300 text-yellow-950';
+  if (rank <= 5) return 'bg-orange-300 text-orange-950';
+  return 'bg-card text-card-foreground';
+};
+```
+
+Update the row rendering to use `entry.rank` instead of percentage.
 
 ---
 
-#### Part 2: Add Admin-Only Role Support
+### Part 3: Fix Canvasser YTD Table Display for No-Goal Users
 
-**File: `src/components/admin/EditUserRoleModal.tsx`**
+**File**: `src/components/dashboard/CanvasserLeaderboardTable.tsx`
 
-Add a third checkbox option for "Admin Only" that:
-- When checked, disables both Sales Rep and Canvasser checkboxes
-- Sets the user as admin without sales/canvasser roles
+When there's no goal set, the "Place" column incorrectly shows 0 and "No Goal" badge. The rank is actually calculated correctly from the entry, but display is confusing.
 
-**File: `supabase/functions/admin-set-user-role/index.ts`**
-
-Update to accept 'admin' in the roles array and handle admin-only assignment:
-- When roles = ['admin'], delete existing user/canvasser roles
-- Create admin role entry only
-- Do NOT create user_metrics or canvasser_metrics
-
-**File: `src/pages/admin/UserRoles.tsx`**
-
-Update `canEditUser()` to allow editing admin users to toggle their admin-only status.
+**Changes**:
+1. Always show the proper rank number or trophy (the rank comes from the sorted array)
+2. Simplify the "% of Goal" display - show dash when no goal instead of "No Goal" badge for cleaner appearance
+3. Remove dependency on `hasGoal` for the row color since we're now using rank-based coloring
 
 ---
 
-#### Part 3: Add YTD Ranking Widget to Canvasser Stats
+### Part 4: Add Super Admin Role Support
 
-**File: `src/pages/canvasser/CanvasserStats.tsx`**
+**Current behavior**: 
+- "Admin Only" checkbox → User gets ONLY admin role (no sales/canvasser)
+- Sales Rep / Canvasser checkboxes → User gets operational roles, preserves existing admin
 
-Add a new collapsible section "YTD Ranking" that shows:
-- Current user's rank and points
-- Top 3 canvassers
-- Link to full leaderboard
+**Requested behavior**:
+- Add an explicit "Admin" checkbox that can be combined WITH Sales/Canvasser
+- Allow any combination: Admin only, Admin+Sales, Admin+Canvasser, Admin+Sales+Canvasser, Sales only, Canvasser only, Sales+Canvasser
 
-This fetches data from `canvasser_metrics` sorted by points.
+**File**: `src/components/admin/EditUserRoleModal.tsx`
+
+**UI Changes**:
+Replace current structure with:
+
+```
+Account Type:
+  [✓] Admin (Portal Access)     ← Can be combined with below
+  
+Operational Roles (optional):
+  [✓] Sales Rep
+      Rank: [SR1 ▼]
+  [✓] Canvasser
+      Rank: [C1 ▼]
+```
+
+**Logic Changes**:
+1. Add `isAdmin` checkbox (separate from Admin-Only concept)
+2. If ONLY `isAdmin` is checked → Admin-only user (no metrics)
+3. If `isAdmin` + any operational role → Super Admin with metrics
+4. If only operational roles → Regular user with metrics
+
+**State Changes**:
+```typescript
+const [isAdmin, setIsAdmin] = useState(false);     // Has admin portal access
+const [isSalesRep, setIsSalesRep] = useState(false); // Has sales role
+const [isCanvasser, setIsCanvasser] = useState(false); // Has canvasser role
+```
+
+Validation:
+- At least one checkbox must be selected
+- If only Admin is checked, show note about "Admin-only (no metrics)"
+- If Admin + other roles, show note about "Super Admin with full access"
 
 ---
 
-#### Part 4: Standardize Leaderboard Color Scheme
-
-Both `CanvasserLeaderboardTable.tsx` and `LeaderboardTable.tsx` use goal-based coloring (emerald for 100%+, green for 75%+, etc.).
-
-The weekly tables use rank-based coloring (1st place = green, 2nd = lighter green, etc.).
-
-**Decision**: Keep the current approach (goal-based for YTD, rank-based for weekly) as it makes contextual sense:
-- YTD: Shows progress toward annual goal
-- Weekly: Shows relative weekly performance
-
-However, the Canvasser YTD table needs a slight fix - when there's no goal set, it falls back to `bg-card` which may not match the rest. I'll ensure "No Goal" users still get a neutral background that fits the theme.
-
-The color schemes ARE already matching between sales and canvasser for the same timeframe type.
-
----
-
-### Files to be Modified
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| **Database Migration** | Update `validate_user_metrics()` function to allow dual-role users |
-| `src/components/admin/EditUserRoleModal.tsx` | Add "Admin Only" checkbox option |
-| `supabase/functions/admin-set-user-role/index.ts` | Support 'admin' in roles array for admin-only assignment |
-| `src/pages/admin/UserRoles.tsx` | Allow editing admin users to toggle admin status |
-| `src/pages/canvasser/CanvasserStats.tsx` | Add YTD Ranking collapsible widget |
-| `src/pages/Auth.tsx` | Already correct - admins go to /admin |
-| `src/hooks/useAuth.ts` | No changes needed - already handles multiple roles |
-
----
-
-### Expected Results After Implementation
-
-1. **Dual-role users can switch views** and save goals in both Sales and Canvasser settings without errors
-2. **52-week tracker loads** for dual-role users viewing sales metrics
-3. **Admin-only users** can be created via User Roles - they won't have sales/canvasser metrics
-4. **Canvasser Stats page** shows YTD ranking widget with current position and top 3
-5. **Color schemes** remain consistent (YTD = goal-based, Weekly = rank-based)
+| `src/pages/admin/AdminLeaderboards.tsx` | Fix canvasser YTD sorting to use points |
+| `src/components/dashboard/LeaderboardTable.tsx` | Change to rank-based coloring |
+| `src/components/dashboard/CanvasserLeaderboardTable.tsx` | Change to rank-based coloring, fix display |
+| `src/components/admin/EditUserRoleModal.tsx` | Restructure to support Admin + Sales/Canvasser combos |
+| `supabase/functions/admin-set-user-role/index.ts` | Update logic for super admin role combinations |
 
 ---
 
 ### Technical Details
 
-**Trigger Logic Change**:
-- OLD: Block if user has 'canvasser' role (regardless of other roles)
-- NEW: Allow if user has 'user' OR 'admin' role, block only pure canvasser-only users
+**Color Scheme Standardization**:
 
-**Admin-Only Flow**:
-1. Admin selects "Admin Only" checkbox in Edit modal
-2. Modal disables Sales Rep and Canvasser checkboxes
-3. Edge function receives roles = ['admin']
-4. Edge function deletes 'user' and 'canvasser' roles, inserts 'admin'
-5. No metrics are created
-6. User logs in and is redirected to /admin
+| Table Type | Timeframe | Color Method |
+|------------|-----------|--------------|
+| Sales YTD | Yearly | Rank-based (1st=emerald, 2nd=green, 3rd=yellow, 4-5=orange, 6+=neutral) |
+| Sales Weekly/Monthly | Weekly/Monthly | Rank-based |
+| Canvasser YTD | Yearly | Rank-based |
+| Canvasser Weekly/Monthly | Weekly/Monthly | Rank-based |
+
+All leaderboards now use consistent rank-based coloring.
+
+**Super Admin Role Matrix**:
+
+| Admin | Sales | Canvasser | Result |
+|-------|-------|-----------|--------|
+| ✓ | ✗ | ✗ | Admin-only (no metrics) |
+| ✓ | ✓ | ✗ | Admin + Sales Rep |
+| ✓ | ✗ | ✓ | Admin + Canvasser |
+| ✓ | ✓ | ✓ | Full Super Admin |
+| ✗ | ✓ | ✗ | Sales Rep only |
+| ✗ | ✗ | ✓ | Canvasser only |
+| ✗ | ✓ | ✓ | Dual Role (no admin) |
+
+---
+
+### Expected Results
+
+1. **Canvasser YTD Leaderboard**: Sorted by points in descending order
+2. **All YTD Tables**: Use rank-based coloring (1st place = emerald, 2nd = green, etc.)
+3. **Canvasser Table Display**: Clean display even when no goal is set
+4. **Super Admin Support**: Can now assign Admin + any combination of Sales/Canvasser roles
+5. **Consistent Color Scheme**: All leaderboards (weekly, monthly, yearly) use the same rank-based approach
