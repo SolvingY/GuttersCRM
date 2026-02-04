@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
@@ -36,6 +37,17 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
     return 'bg-card text-card-foreground';
   };
 
+  // Calculate team totals
+  const totals = useMemo(() => {
+    const totalLeadsSet = entries.reduce((sum, e) => sum + e.leadsSet, 0);
+    const totalClosed = entries.reduce((sum, e) => sum + e.leadsClosed, 0);
+    const totalDoors = entries.reduce((sum, e) => sum + e.doorsKnocked, 0);
+    const closePercent = totalLeadsSet > 0 ? (totalClosed / totalLeadsSet) * 100 : 0;
+    const leadsPerContract = totalClosed > 0 ? totalLeadsSet / totalClosed : 0;
+    
+    return { totalLeadsSet, totalClosed, totalDoors, closePercent, leadsPerContract };
+  }, [entries]);
+
   if (entries.length === 0) {
     return (
       <div className="bg-card border border-border rounded-lg p-8 text-center">
@@ -59,6 +71,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Closed</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Close %</th>
               {showHours && (
                 <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours</th>
               )}
@@ -69,6 +82,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
             {entries.map((entry) => {
               const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
+              const closePercent = entry.leadsSet > 0 ? (entry.leadsClosed / entry.leadsSet) * 100 : 0;
               
               return (
                 <tr
@@ -116,6 +130,9 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsClosed}</td>
+                  <td className="py-3 px-4 text-right font-medium">
+                    {entry.leadsSet > 0 ? `${closePercent.toFixed(1)}%` : '—'}
+                  </td>
                   {showHours && (
                     <td className="py-3 px-4 text-right font-bold">{entry.hoursWorked}</td>
                   )}
@@ -140,6 +157,33 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
               );
             })}
           </tbody>
+          <tfoot className="bg-slate-700 text-white font-bold">
+            <tr>
+              <td colSpan={2} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td className="py-3 px-4 text-right">{totals.totalDoors}</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">{totals.totalLeadsSet}</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">{totals.totalClosed}</td>
+              <td className="py-3 px-4 text-right">
+                {totals.totalLeadsSet > 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                    {totals.closePercent.toFixed(1)}%
+                  </span>
+                ) : '—'}
+              </td>
+              {showHours && <td className="py-3 px-4 text-right">—</td>}
+              <td className="py-3 px-4 text-right">
+                {totals.totalClosed > 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                    {totals.leadsPerContract.toFixed(1)}:1
+                  </span>
+                ) : '—'}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

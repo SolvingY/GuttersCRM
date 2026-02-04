@@ -242,7 +242,7 @@ export default function AdminLeaderboards() {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_user_metrics')
-          .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
+          .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned')
           .eq('week_start', weekStartStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -275,7 +275,7 @@ export default function AdminLeaderboards() {
             approvedRevenue: Number(w.approved_revenue) || 0,
             collections: Number(w.collections) || 0,
             leads: Number(w.leads) || 0,
-            closedDeals: Number(w.closed_deals) || 0,
+            closedDeals: (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
             pointsEarned: Number(w.points_earned) || 0,
             name: String(displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User'),
           }))
@@ -298,7 +298,7 @@ export default function AdminLeaderboards() {
 
         const { data: weeklyData } = await supabase
           .from('weekly_user_metrics')
-          .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
+          .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned')
           .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
@@ -317,7 +317,7 @@ export default function AdminLeaderboards() {
             approvedRevenue: existing.approvedRevenue + (Number(w.approved_revenue) || 0),
             collections: existing.collections + (Number(w.collections) || 0),
             leads: existing.leads + (Number(w.leads) || 0),
-            closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0),
+            closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
             pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
           });
         });
