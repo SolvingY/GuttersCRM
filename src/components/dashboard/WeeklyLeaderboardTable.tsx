@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
@@ -39,6 +40,17 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
     return 'bg-card text-card-foreground';
   };
 
+  // Calculate team totals
+  const totals = useMemo(() => {
+    const totalRevenue = entries.reduce((sum, e) => sum + e.approvedRevenue, 0);
+    const totalCollections = entries.reduce((sum, e) => sum + (e.collections || 0), 0);
+    const totalContracts = entries.reduce((sum, e) => sum + e.closedDeals, 0);
+    const totalLeads = entries.reduce((sum, e) => sum + (e.leads || 0), 0);
+    const closePercent = totalLeads > 0 ? (totalContracts / totalLeads) * 100 : 0;
+    
+    return { totalRevenue, totalCollections, totalContracts, totalLeads, closePercent };
+  }, [entries]);
+
   if (entries.length === 0) {
     return (
       <div className="bg-card border border-border rounded-lg p-8 text-center">
@@ -60,6 +72,7 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Total Contracts</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Close %</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points Earned</th>
             </tr>
           </thead>
@@ -67,6 +80,7 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
             {entries.map((entry) => {
               const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
+              const closePercent = entry.leads > 0 ? (entry.closedDeals / entry.leads) * 100 : 0;
               
               return (
                 <tr
@@ -118,8 +132,13 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="font-medium">
+                    <span className="font-bold">
                       {entry.closedDeals}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="font-medium">
+                      {entry.leads > 0 ? `${closePercent.toFixed(1)}%` : '—'}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -143,6 +162,23 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
               );
             })}
           </tbody>
+          <tfoot className="bg-slate-700 text-white font-bold">
+            <tr>
+              <td colSpan={2} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td className="py-3 px-4 text-right">{formatCurrency(totals.totalRevenue)}</td>
+              <td className="py-3 px-4 text-right">{formatCurrency(totals.totalCollections)}</td>
+              <td className="py-3 px-4 text-right">{totals.totalLeads}</td>
+              <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
+              <td className="py-3 px-4 text-right">
+                {totals.totalLeads > 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                    {totals.closePercent.toFixed(1)}%
+                  </span>
+                ) : '—'}
+              </td>
+              <td className="py-3 px-4 text-right">—</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

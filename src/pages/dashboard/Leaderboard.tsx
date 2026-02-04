@@ -324,7 +324,7 @@ export default function Leaderboard() {
 
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
-        .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
+        .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned')
         .eq('week_start', weekStartStr);
 
       if (weeklyError) {
@@ -371,7 +371,7 @@ export default function Leaderboard() {
           approvedRevenue: Number(w.approved_revenue) || 0,
           collections: Number(w.collections) || 0,
           leads: Number(w.leads) || 0,
-          closedDeals: Number(w.closed_deals) || 0,
+          closedDeals: (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
           pointsEarned: Number(w.points_earned) || 0,
           name: displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User',
         }))
@@ -420,7 +420,7 @@ export default function Leaderboard() {
       // Filter weeks where week_start falls within this month
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
-        .select('user_id, approved_revenue, collections, leads, closed_deals, points_earned')
+        .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned')
         .gte('week_start', monthStartStr)
         .lte('week_start', monthEndStr);
 
@@ -445,7 +445,7 @@ export default function Leaderboard() {
           approvedRevenue: existing.approvedRevenue + (Number(w.approved_revenue) || 0),
           collections: existing.collections + (Number(w.collections) || 0),
           leads: existing.leads + (Number(w.leads) || 0),
-          closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0),
+          closedDeals: existing.closedDeals + (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
           pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
         });
       });

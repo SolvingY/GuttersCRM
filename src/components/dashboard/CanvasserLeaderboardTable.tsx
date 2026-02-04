@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
@@ -42,6 +43,16 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
     if (percentOfGoal >= 25) return 'bg-orange-500 text-white';
     return 'bg-red-500 text-white';
   };
+
+  // Calculate team totals
+  const totals = useMemo(() => {
+    const totalLeadsSet = entries.reduce((sum, e) => sum + e.leadsSet, 0);
+    const totalClosed = entries.reduce((sum, e) => sum + e.leadsClosed, 0);
+    const closePercent = totalLeadsSet > 0 ? (totalClosed / totalLeadsSet) * 100 : 0;
+    const leadsPerContract = totalClosed > 0 ? totalLeadsSet / totalClosed : 0;
+    
+    return { totalLeadsSet, totalClosed, closePercent, leadsPerContract };
+  }, [entries]);
 
   if (entries.length === 0) {
     return (
@@ -150,6 +161,30 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               );
             })}
           </tbody>
+          <tfoot className="bg-slate-700 text-white font-bold">
+            <tr>
+              <td colSpan={3} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td className="py-3 px-4 text-right">{totals.totalLeadsSet}</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">{totals.totalClosed}</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-center">
+                {totals.totalLeadsSet > 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                    {totals.closePercent.toFixed(1)}%
+                  </span>
+                ) : '—'}
+              </td>
+              <td className="py-3 px-4 text-right">
+                {totals.totalClosed > 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                    {totals.leadsPerContract.toFixed(1)}:1
+                  </span>
+                ) : '—'}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

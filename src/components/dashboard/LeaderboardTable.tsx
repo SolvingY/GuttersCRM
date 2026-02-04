@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PointsBreakdownTooltip } from './PointsBreakdownTooltip';
@@ -15,6 +16,7 @@ interface LeaderboardEntry {
   collections?: number;
   contestPoints?: number;
   wagerPoints?: number;
+  leads?: number;
 }
 
 interface LeaderboardTableProps {
@@ -65,6 +67,17 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
     return 'bg-red-600 text-white';
   };
 
+  // Calculate team totals
+  const totals = useMemo(() => {
+    const totalRevenue = entries.reduce((sum, e) => sum + e.approvedRevenue, 0);
+    const totalCollections = entries.reduce((sum, e) => sum + (e.collections || 0), 0);
+    const totalContracts = entries.reduce((sum, e) => sum + e.closedDeals, 0);
+    const totalLeads = entries.reduce((sum, e) => sum + (e.leads || 0), 0);
+    const closePercent = totalLeads > 0 ? (totalContracts / totalLeads) * 100 : 0;
+    
+    return { totalRevenue, totalCollections, totalContracts, totalLeads, closePercent };
+  }, [entries]);
+
   if (entries.length === 0) {
     return (
       <div className="bg-card border border-border rounded-lg p-8 text-center">
@@ -85,6 +98,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Indiv. Rep Goals</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Total Contracts</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
@@ -153,6 +167,11 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
+                    <span className="font-bold">
+                      {entry.closedDeals}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
                     <span className="font-medium">
                       {formatCurrency(amountUntilGoal)}
                     </span>
@@ -195,6 +214,24 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               );
             })}
           </tbody>
+          <tfoot className="bg-slate-700 text-white font-bold">
+            <tr>
+              <td colSpan={4} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td className="py-3 px-4 text-right">{formatCurrency(totals.totalRevenue)}</td>
+              <td className="py-3 px-4 text-right">{formatCurrency(totals.totalCollections)}</td>
+              <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">
+                {totals.totalLeads > 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                    {totals.closePercent.toFixed(1)}% Close
+                  </span>
+                ) : '—'}
+              </td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-center">—</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
