@@ -24,7 +24,7 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; inviteCode?: string }>({});
 
-  const { signIn, signUp, user, loading, isAdmin, isCanvasser } = useAuth();
+  const { signIn, signUp, user, loading, isAdmin, isCanvasser, hasSalesRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -48,32 +48,39 @@ export default function Auth() {
   // Role-based redirect after login with cross-portal protection
   useEffect(() => {
     if (!loading && user) {
-      // Determine correct portal based on role
+      // Determine correct portal based on role priority:
+      // 1. Admins always go to admin portal (they can also access sales dashboard)
+      // 2. Canvasser-only users go to canvasser portal
+      // 3. Sales rep (with or without canvasser) goes to dashboard
       let targetRoute = '/dashboard';
-      if (isCanvasser) {
-        targetRoute = '/canvasser';
-      } else if (isAdmin) {
-        targetRoute = '/admin';
-      }
       
-      // Only honor fromState if it matches the user's portal
+      if (isAdmin) {
+        // Admin users always go to admin portal by default
+        targetRoute = '/admin';
+      } else if (isCanvasser && !hasSalesRole) {
+        // Canvasser-only users go to canvasser portal
+        targetRoute = '/canvasser';
+      }
+      // else: Sales rep (or dual role) goes to dashboard with toggle
+      
+      // Only honor fromState if it matches the user's allowed portals
       if (fromState) {
         const isCanvasserRoute = fromState.startsWith('/canvasser');
         const isAdminRoute = fromState.startsWith('/admin');
         const isDashboardRoute = fromState.startsWith('/dashboard');
         
-        // Canvassers can only go to canvasser routes
-        if (isCanvasser && isCanvasserRoute) {
-          navigate(fromState, { replace: true });
-          return;
-        }
         // Admins can go to admin or dashboard routes
         if (isAdmin && (isAdminRoute || isDashboardRoute)) {
           navigate(fromState, { replace: true });
           return;
         }
-        // Regular users can only go to dashboard routes
-        if (!isCanvasser && !isAdmin && isDashboardRoute) {
+        // Canvasser-only users can only go to canvasser routes
+        if (isCanvasser && !hasSalesRole && isCanvasserRoute) {
+          navigate(fromState, { replace: true });
+          return;
+        }
+        // Sales rep users (with or without canvasser) can go to dashboard or canvasser routes
+        if (hasSalesRole && (isDashboardRoute || (isCanvasser && isCanvasserRoute))) {
           navigate(fromState, { replace: true });
           return;
         }
@@ -82,7 +89,7 @@ export default function Auth() {
       // Default to role-appropriate portal
       navigate(targetRoute, { replace: true });
     }
-  }, [user, loading, navigate, fromState, isAdmin, isCanvasser]);
+  }, [user, loading, navigate, fromState, isAdmin, isCanvasser, hasSalesRole]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; inviteCode?: string } = {};

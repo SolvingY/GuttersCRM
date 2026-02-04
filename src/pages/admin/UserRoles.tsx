@@ -30,8 +30,9 @@ interface UserWithRole {
   id: string;
   email: string | null;
   fullName: string | null;
-  role: 'admin' | 'user' | 'canvasser';
-  rank: string | null;
+  roles: ('admin' | 'user' | 'canvasser')[];
+  salesRank: string | null;
+  canvasserRank: string | null;
   isArchived: boolean;
   archivedAt: string | null;
 }
@@ -68,7 +69,7 @@ export default function UserRoles() {
       return;
     }
 
-    // Fetch roles
+    // Fetch ALL roles (users can now have multiple)
     const { data: rolesData, error: rolesError } = await supabase
       .from('user_roles')
       .select('user_id, role');
@@ -94,26 +95,27 @@ export default function UserRoles() {
       .from('canvasser_metrics')
       .select('user_id, canvasser_rank');
 
-    const rolesMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
+    // Build a map of user_id -> array of roles
+    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser')[]>();
+    for (const r of rolesData || []) {
+      const existing = rolesMap.get(r.user_id) || [];
+      existing.push(r.role as 'admin' | 'user' | 'canvasser');
+      rolesMap.set(r.user_id, existing);
+    }
+
     const salesRankMap = new Map(userMetricsData?.map(m => [m.user_id, m.sales_rank]) || []);
     const canvasserRankMap = new Map(canvasserMetricsData?.map(m => [m.user_id, m.canvasser_rank]) || []);
 
     const combined: UserWithRole[] = (profilesData || []).map(profile => {
-      const role = (rolesMap.get(profile.id) as 'admin' | 'user' | 'canvasser') || 'user';
-      let rank: string | null = null;
-      
-      if (role === 'canvasser') {
-        rank = canvasserRankMap.get(profile.id) || 'C1';
-      } else if (role === 'user') {
-        rank = salesRankMap.get(profile.id) || 'SR1';
-      }
+      const roles = rolesMap.get(profile.id) || ['user'];
       
       return {
         id: profile.id,
         email: null, // Email fetched from edge function when needed
         fullName: profile.full_name,
-        role,
-        rank,
+        roles,
+        salesRank: salesRankMap.get(profile.id) || 'SR1',
+        canvasserRank: canvasserRankMap.get(profile.id) || 'C1',
         isArchived: profile.is_archived || false,
         archivedAt: profile.archived_at,
       };
@@ -121,8 +123,10 @@ export default function UserRoles() {
 
     // Sort: admins first, then by name
     combined.sort((a, b) => {
-      if (a.role === 'admin' && b.role !== 'admin') return -1;
-      if (b.role === 'admin' && a.role !== 'admin') return 1;
+      const aIsAdmin = a.roles.includes('admin');
+      const bIsAdmin = b.roles.includes('admin');
+      if (aIsAdmin && !bIsAdmin) return -1;
+      if (bIsAdmin && !aIsAdmin) return 1;
       return (a.fullName || '').localeCompare(b.fullName || '');
     });
 
@@ -260,15 +264,57 @@ export default function UserRoles() {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return <Badge variant="destructive">Admin</Badge>;
-      case 'canvasser':
-        return <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>;
-      default:
-        return <Badge variant="secondary">Sales Rep</Badge>;
+  const getRoleBadges = (roles: string[]) => {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {roles.includes('admin') && (
+          <Badge variant="destructive">Admin</Badge>
+        )}
+        {roles.includes('user') && (
+          <Badge variant="secondary">Sales Rep</Badge>
+        )}
+        {roles.includes('canvasser') && (
+          <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>
+        )}
+      </div>
+    );
+  };
+
+  const getRankDisplay = (user: UserWithRole) => {
+    const ranks: string[] = [];
+    
+    // Admin-only users don't have ranks
+    if (user.roles.length === 1 && user.roles.includes('admin')) {
+      return <span className="text-muted-foreground">—</span>;
     }
+    
+    if (user.roles.includes('user')) {
+      ranks.push(user.salesRank || 'SR1');
+    }
+    if (user.roles.includes('canvasser')) {
+      ranks.push(user.canvasserRank || 'C1');
+    }
+    
+    if (ranks.length === 0) {
+      return <span className="text-muted-foreground">—</span>;
+    }
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {ranks.map((rank, idx) => (
+          <Badge key={idx} variant="outline">{rank}</Badge>
+        ))}
+      </div>
+    );
+  };
+
+  // Check if user can be edited (has non-admin roles or is not admin-only)
+  const canEditUser = (user: UserWithRole) => {
+    // Admin-only users cannot be edited (they don't have sales/canvasser roles to change)
+    if (user.roles.length === 1 && user.roles.includes('admin')) {
+      return false;
+    }
+    return true;
   };
 
   const filteredUsers = users.filter(u => 
@@ -288,7 +334,7 @@ export default function UserRoles() {
       <div>
         <h2 className="text-2xl font-heading text-foreground">User Roles Management</h2>
         <p className="text-sm text-muted-foreground">
-          Manage user roles, ranks, and account status. Archive users to remove them from active views while keeping their metrics.
+          Manage user roles, ranks, and account status. Users can have both Sales Rep and Canvasser roles.
         </p>
       </div>
 
@@ -308,8 +354,8 @@ export default function UserRoles() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Rank</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>Ranks</TableHead>
                   {activeTab === 'archived' && <TableHead>Archived</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -327,14 +373,8 @@ export default function UserRoles() {
                       <TableCell className="font-medium">
                         {user.fullName || 'Unknown User'}
                       </TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>
-                        {user.role === 'admin' ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : (
-                          <Badge variant="outline">{user.rank || '—'}</Badge>
-                        )}
-                      </TableCell>
+                      <TableCell>{getRoleBadges(user.roles)}</TableCell>
+                      <TableCell>{getRankDisplay(user)}</TableCell>
                       {activeTab === 'archived' && (
                         <TableCell className="text-muted-foreground text-sm">
                           {user.archivedAt ? format(new Date(user.archivedAt), 'MMM d, yyyy') : '—'}
@@ -342,7 +382,7 @@ export default function UserRoles() {
                       )}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {user.role !== 'admin' && activeTab === 'active' && (
+                          {canEditUser(user) && activeTab === 'active' && (
                             <>
                               <Button
                                 variant="ghost"
@@ -481,18 +521,17 @@ export default function UserRoles() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Permanently Delete User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you absolutely sure you want to delete <strong>{targetUser?.fullName || 'this user'}</strong>?
+            <AlertDialogTitle>Delete User Permanently</AlertDialogTitle>
+            <AlertDialogDescription className="text-destructive">
+              ⚠️ This action cannot be undone!
               <br /><br />
-              <span className="text-destructive font-semibold">This action cannot be undone.</span>
+              Are you sure you want to permanently delete <strong>{targetUser?.fullName || 'this user'}</strong>?
               <br /><br />
-              All of the user's data will be permanently removed:
+              This will:
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>User account and login</li>
-                <li>Profile information</li>
-                <li>All metrics and historical data</li>
-                <li>Contest entries and wagers</li>
+                <li>Remove all their metrics and historical data</li>
+                <li>Delete their account completely</li>
+                <li>Remove them from all leaderboards</li>
               </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
