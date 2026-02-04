@@ -57,9 +57,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse request body - support both old single-role and new multi-role format
+    // Parse request body
     const body = await req.json();
-    const { targetUserId, roles, newRole, salesRank, canvasserRank } = body;
+    const { targetUserId, roles, newRole, salesRank, canvasserRank, isAdminOnly } = body;
     
     if (!targetUserId) {
       return new Response(
@@ -83,12 +83,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate roles
-    const validRoles = ['user', 'canvasser'];
+    // Validate roles - now including 'admin' as valid
+    const validRoles = ['user', 'canvasser', 'admin'];
     for (const role of rolesToSet) {
       if (!validRoles.includes(role)) {
         return new Response(
-          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user' or 'canvasser'` }),
+          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', or 'admin'` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -112,14 +112,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Admin ${user.id} changing roles for ${targetUserId} to [${rolesToSet.join(', ')}]`);
+    console.log(`Admin ${user.id} changing roles for ${targetUserId} to [${rolesToSet.join(', ')}], isAdminOnly: ${isAdminOnly}`);
 
-    // Delete all existing non-admin roles for the user
+    // Delete ALL existing roles for the user (including admin if setting new configuration)
     const { error: deleteError } = await supabaseAdmin
       .from("user_roles")
       .delete()
-      .eq("user_id", targetUserId)
-      .neq("role", "admin");
+      .eq("user_id", targetUserId);
 
     if (deleteError) {
       console.error("Error deleting old roles:", deleteError);
@@ -156,9 +155,19 @@ Deno.serve(async (req) => {
 
     const displayName = profileData?.full_name || null;
 
-    // Ensure baseline metrics exist for each role
+    // Determine what metrics to create/update
     const hasSalesRole = rolesToSet.includes('user');
     const hasCanvasserRole = rolesToSet.includes('canvasser');
+    const hasAdminRole = rolesToSet.includes('admin');
+
+    // For admin-only users, we don't create any metrics
+    if (isAdminOnly && hasAdminRole && !hasSalesRole && !hasCanvasserRole) {
+      console.log("Admin-only user, skipping metrics creation");
+      return new Response(
+        JSON.stringify({ success: true, roles: rolesToSet, adminOnly: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (hasCanvasserRole) {
       // Check if canvasser metrics exist
