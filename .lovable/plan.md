@@ -1,162 +1,220 @@
 
-## Plan: Fix Multi-Role User Display & Add "Hide from Leaderboard" Feature
-
-### Issue 1: Adam Coury Not Showing in Sales Rep Overview
-
-**Root Cause Confirmed:**
-Adam Coury has THREE roles in the database: `admin`, `user`, `canvasser`. The current code in `AdminOverview.tsx` lines 249-252 uses a simple `Map.set()` which overwrites values:
-
-```typescript
-const rolesMap = new Map<string, 'admin' | 'user' | 'canvasser'>();
-rolesData?.forEach((r) => {
-  rolesMap.set(r.user_id, r.role as 'admin' | 'user' | 'canvasser');
-});
-```
-
-When iterating through Adam's roles (`admin`, `user`, `canvasser`), the LAST one (`canvasser`) becomes his assigned role. Then on line 287:
-```typescript
-const salesReps = users.filter(user => user.role !== 'canvasser');
-```
-Adam gets filtered OUT because his role is `canvasser`.
-
-**Solution:**
-Use role priority logic: `admin` > `user` > `canvasser`. If a user has the `user` role (Sales Rep), they should appear in the Sales Rep table regardless of other roles.
-
----
-
-### Issue 2: Add "Hide from Leaderboard" Feature
-
-**Implementation Approach:**
-
-1. **Database Change**: Add a `hidden_from_leaderboard` boolean column to the `profiles` table
-2. **Admin UI**: Add a toggle in the User Roles management page to hide/show users from leaderboards
-3. **Filter Logic**: Update all leaderboard queries to exclude users where `hidden_from_leaderboard = true`
-
----
-
-### Technical Implementation
-
-**Part A: Fix Multi-Role Handling in AdminOverview.tsx**
-
-Update lines 249-252 to use role priority:
-
-```typescript
-const rolesMap = new Map<string, 'admin' | 'user' | 'canvasser'>();
-const rolePriority = { admin: 3, user: 2, canvasser: 1 };
-
-rolesData?.forEach((r) => {
-  const currentRole = rolesMap.get(r.user_id);
-  const newRole = r.role as 'admin' | 'user' | 'canvasser';
-  
-  // Only update if no role exists OR new role has higher priority
-  if (!currentRole || rolePriority[newRole] > rolePriority[currentRole]) {
-    rolesMap.set(r.user_id, newRole);
-  }
-});
-```
-
-This ensures:
-- Adam (with `admin`, `user`, `canvasser`) gets assigned `admin` role (highest priority)
-- Users with `user` + `canvasser` get assigned `user` role
-- Users with ONLY `canvasser` get assigned `canvasser` and appear in the Canvasser tab
-
-**Part B: Database Migration - Add `hidden_from_leaderboard` Column**
-
-```sql
--- Add hidden_from_leaderboard column to profiles table
-ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS hidden_from_leaderboard boolean DEFAULT false;
-
--- Add comment for documentation
-COMMENT ON COLUMN public.profiles.hidden_from_leaderboard IS 'When true, user stats are excluded from all leaderboard displays';
-```
-
-**Part C: Update User Roles Management UI**
-
-Add a toggle switch in `src/components/admin/EditUserRoleModal.tsx`:
-
-- Add state for `hiddenFromLeaderboard`
-- Add a Switch component with label "Hide from Leaderboards"
-- Update the edge function call to save this setting
-- The toggle should be visible for all users with operational roles (Sales Rep or Canvasser)
-
-**Part D: Update Edge Function**
-
-Update `admin-set-user-role` to accept and save `hiddenFromLeaderboard`:
-
-```typescript
-// Add to request body handling
-const hiddenFromLeaderboard = body.hiddenFromLeaderboard ?? false;
-
-// Update profiles table
-await supabaseClient
-  .from('profiles')
-  .update({ hidden_from_leaderboard: hiddenFromLeaderboard })
-  .eq('id', targetUserId);
-```
-
-**Part E: Update Leaderboard Queries**
-
-Filter out hidden users in these files:
-
-| File | Change Required |
-|------|-----------------|
-| `src/pages/dashboard/Leaderboard.tsx` | Join with profiles to filter `hidden_from_leaderboard = false` |
-| `src/pages/admin/AdminLeaderboards.tsx` | Join with profiles to filter `hidden_from_leaderboard = false` |
-| `src/pages/dashboard/AdminOverview.tsx` | Filter based on profiles `hidden_from_leaderboard` status |
-
-Example query update for YTD leaderboard:
-```typescript
-// Fetch profiles with hidden status
-const { data: profilesData } = await supabase
-  .from('profiles')
-  .select('id, full_name, hidden_from_leaderboard')
-  .in('id', userIds);
-
-// Filter out hidden users
-const visibleUserIds = profilesData
-  ?.filter(p => !p.hidden_from_leaderboard)
-  .map(p => p.id) || [];
-
-// Apply filter to leaderboard entries
-const visibleEntries = entries.filter(e => visibleUserIds.includes(e.userId));
-```
-
----
-
-### Files to be Modified
-
-| File | Changes |
-|------|---------|
-| `src/pages/dashboard/AdminOverview.tsx` | Fix role priority logic (lines 249-252) |
-| `src/components/admin/EditUserRoleModal.tsx` | Add "Hide from Leaderboard" toggle |
-| `src/pages/admin/UserRoles.tsx` | Display hidden status indicator + pass to modal |
-| `supabase/functions/admin-set-user-role/index.ts` | Handle `hiddenFromLeaderboard` parameter |
-| `src/pages/dashboard/Leaderboard.tsx` | Filter out hidden users from all leaderboard views |
-| `src/pages/admin/AdminLeaderboards.tsx` | Filter out hidden users from admin leaderboard views |
-
-**Database Migration:**
-- Add `hidden_from_leaderboard` boolean column to `profiles` table
-
----
+## Plan: Update Company Goals Terminology and Add Cost Per Lead Metric
 
 ### Summary of Changes
 
-**Bug Fix:**
-- Multi-role users (like Adam with Sales Rep + Canvasser) will now appear in the Sales Rep Overview based on role priority
-- Priority order: `admin` > `user` > `canvasser`
-
-**New Feature: Hide from Leaderboard**
-- Admins can toggle users on/off from appearing in leaderboards
-- Hidden users' stats are still tracked but not displayed publicly
-- Toggle is available in the Edit User Role modal
-- Applies to: YTD, Weekly, and Monthly leaderboards for both Sales Reps and Canvassers
+The Company Goals page has incorrect terminology - it says "Leads" when it's actually tracking "Contracts" (closed leads). We need to:
+1. Rename "Canvasser Leads Progress" to "Canvasser Contracts Progress"
+2. Rename "Canvasser Cost per Lead" to "Cost Per Contract" 
+3. Add a NEW "Cost Per Lead" calculation: Total Canvasser Income ÷ Total Leads Set
 
 ---
 
-### Expected Results
+### Change 1: Rename "Canvasser Leads Progress" Card
 
-1. **Adam Coury appears in Sales Rep Overview** with his correct contract count (1)
-2. **New toggle in User Roles** to hide users from leaderboards
-3. **Hidden users excluded** from all leaderboard displays but their data remains tracked
-4. **Admin Overview still shows all users** for management purposes (only public leaderboards are filtered)
+**Current (lines 535-537):**
+```
+Canvasser Leads Progress
+```
+
+**Updated:**
+```
+Canvasser Contracts Progress
+```
+
+**Additional text changes in this card:**
+- Line 564: "Remaining to goal: X leads" → "Remaining to goal: X contracts"
+- Line 424: Label "Company Leads Closed Goal" → "Company Contracts Goal"
+- Line 433-434: Helper text → "Combined target for all canvassers (closed contracts)"
+
+---
+
+### Change 2: Rename "Cost per Lead" to "Cost Per Contract"
+
+**Current card (lines 676-678):**
+```
+Canvasser Cost per Lead
+```
+
+**Updated:**
+```
+Cost Per Contract
+```
+
+**Additional text changes:**
+- Line 698: "$X paid / Y leads" → "$X paid / Y contracts"
+- Line 456: Goal input label "Target Cost per Lead ($)" → "Target Cost per Contract ($)"
+- Line 466-467: Helper text → "Target cost to acquire a closed contract"
+
+---
+
+### Change 3: Add NEW "Cost Per Lead" Metric Card
+
+**Calculation:** `Total Canvasser Income ÷ Total Leads Set`
+
+This shows what you're paying to generate each lead (before they close). Add a new card in the metrics row alongside the existing Lead-to-Close Rate and Cost Per Contract cards.
+
+**New card layout:**
+```
+Cost Per Lead
+─────────────────────
+$X,XXX        (No goal tracking for this one - informational only)
+$25,157 paid / 150 leads set
+
+(Optional comparison: vs $Y per contract)
+```
+
+---
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/admin/CompanyGoals.tsx` | Update all terminology; add new Cost Per Lead card |
+
+---
+
+### Detailed Code Changes
+
+**Line 424:** Change label
+```typescript
+// From:
+<Label htmlFor="leadsGoal">Company Leads Closed Goal</Label>
+// To:
+<Label htmlFor="leadsGoal">Company Contracts Goal</Label>
+```
+
+**Lines 432-434:** Update helper text
+```typescript
+<p className="text-xs text-muted-foreground">
+  Combined target for all canvassers (closed contracts)
+</p>
+```
+
+**Line 456:** Change label
+```typescript
+// From:
+<Label htmlFor="targetCostPerLead">Target Cost per Lead ($)</Label>
+// To:
+<Label htmlFor="targetCostPerLead">Target Cost per Contract ($)</Label>
+```
+
+**Lines 466-467:** Update helper text
+```typescript
+<p className="text-xs text-muted-foreground">
+  Target cost to acquire a closed contract
+</p>
+```
+
+**Lines 535-537:** Change card title
+```typescript
+// From:
+Canvasser Leads Progress
+// To:
+Canvasser Contracts Progress
+```
+
+**Line 564:** Change remaining text
+```typescript
+// From:
+{Math.max(0, leadsGoalNum - progress.totalLeadsClosed).toLocaleString()} leads
+// To:
+{Math.max(0, leadsGoalNum - progress.totalLeadsClosed).toLocaleString()} contracts
+```
+
+**Lines 676-678:** Change card title
+```typescript
+// From:
+Canvasser Cost per Lead
+// To:
+Cost Per Contract
+```
+
+**Line 698:** Change subtitle
+```typescript
+// From:
+{formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} leads
+// To:
+{formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalLeadsClosed} contracts
+```
+
+**NEW: Add Cost Per Lead Card (after the Cost Per Contract card)**
+```typescript
+{/* Cost Per Lead (based on leads set, not closed) */}
+<Card>
+  <CardHeader className="pb-2">
+    <CardTitle className="flex items-center gap-2 text-lg">
+      <Calculator className="h-5 w-5 text-blue-500" />
+      Cost Per Lead
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3">
+    {(() => {
+      const costPerLead = progress.totalCanvasserLeadsSet > 0 
+        ? progress.totalCanvasserIncome / progress.totalCanvasserLeadsSet 
+        : 0;
+      const costPerContract = progress.totalLeadsClosed > 0 
+        ? progress.totalCanvasserIncome / progress.totalLeadsClosed 
+        : 0;
+      
+      return (
+        <>
+          <div>
+            <p className="text-3xl font-bold text-foreground">
+              {progress.totalCanvasserLeadsSet > 0 ? formatCurrency(costPerLead) : 'N/A'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {formatCurrency(progress.totalCanvasserIncome)} paid / {progress.totalCanvasserLeadsSet} leads set
+            </p>
+          </div>
+          {progress.totalLeadsClosed > 0 && progress.totalCanvasserLeadsSet > 0 && (
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">vs Cost Per Contract</p>
+              <p className="text-lg font-semibold text-foreground">
+                {formatCurrency(costPerContract)}
+              </p>
+            </div>
+          )}
+        </>
+      );
+    })()}
+  </CardContent>
+</Card>
+```
+
+**Update grid layout (line 619):**
+Change from `md:grid-cols-2` to `md:grid-cols-3` to accommodate the third card:
+```typescript
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+```
+
+---
+
+### Visual Result
+
+After implementation, the Company Goals page will show:
+
+| Card | Value | Formula |
+|------|-------|---------|
+| Canvasser Contracts Progress | 5 / 1,000 goal | Leads Closed (contracts) |
+| Cost Per Contract | $5,031 | Total Income ÷ Leads Closed |
+| Cost Per Lead | $168 (example) | Total Income ÷ Leads Set |
+
+**Key Distinction:**
+- **Cost Per Contract** = What you pay for each closed sale
+- **Cost Per Lead** = What you pay to produce each canvassed lead (before knowing if it closes)
+
+---
+
+### Explanation Card Update (lines 733-737)
+
+Update the "How Company Goals Work" section to reflect new terminology:
+```typescript
+<ul className="list-disc list-inside space-y-1">
+  <li>Set annual targets for combined sales revenue and canvasser contracts closed</li>
+  <li>Progress is automatically calculated from all team members' metrics</li>
+  <li>Sales reps contribute to the revenue goal, canvassers contribute to the contracts goal</li>
+  <li>Track company-wide performance against targets in real-time</li>
+  <li>Cost Per Lead shows acquisition cost; Cost Per Contract shows closed sale cost</li>
+</ul>
+```
