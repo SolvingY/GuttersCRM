@@ -308,12 +308,8 @@ export default function UserRoles() {
     );
   };
 
-  // Check if user can be edited (has non-admin roles or is not admin-only)
-  const canEditUser = (user: UserWithRole) => {
-    // Admin-only users cannot be edited (they don't have sales/canvasser roles to change)
-    if (user.roles.length === 1 && user.roles.includes('admin')) {
-      return false;
-    }
+  // All users can be edited now (including admin-only to toggle admin status)
+  const canEditUser = (_user: UserWithRole) => {
     return true;
   };
 

@@ -13,6 +13,7 @@ import {
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { getRandomQuote } from "@/lib/motivationalQuotes";
 import { CanvasserConversionFunnel } from "@/components/canvasser/CanvasserConversionFunnel";
+import { CanvasserYTDRankingWidget } from "@/components/canvasser/CanvasserYTDRankingWidget";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -55,6 +56,7 @@ export default function CanvasserStats() {
   
   // Collapsible states
   const [contestsOpen, setContestsOpen] = useState(false);
+  const [rankingOpen, setRankingOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [funnelOpen, setFunnelOpen] = useState(false);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
@@ -242,7 +244,21 @@ export default function CanvasserStats() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* 2. Key Metrics (Using StatsCard for consistency) */}
+      {/* 2. YTD Point Rankings */}
+      <Collapsible open={rankingOpen} onOpenChange={setRankingOpen}>
+        <CollapsibleTrigger asChild>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader className="py-4">
+              <CollapsibleHeader isOpen={rankingOpen} title="YTD Point Rankings" icon={TrendingUp} />
+            </CardHeader>
+          </Card>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <CanvasserYTDRankingWidget />
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* 3. Key Metrics (Using StatsCard for consistency) */}
       <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
         <CollapsibleTrigger asChild>
           <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
