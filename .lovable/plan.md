@@ -1,86 +1,162 @@
 
-## Fix Plan: Canvasser View Toggle & Admin YTD Total Contracts
+## Plan: Fix Multi-Role User Display & Add "Hide from Leaderboard" Feature
 
-### Problem 1: Canvasser Dashboard Not Displaying
+### Issue 1: Adam Coury Not Showing in Sales Rep Overview
 
-**Current Behavior**: When you toggle from "Sales" to "Canvasser" in the header, the URL changes but you still see the Sales Rep Dashboard layout instead of the Canvasser Portal.
+**Root Cause Confirmed:**
+Adam Coury has THREE roles in the database: `admin`, `user`, `canvasser`. The current code in `AdminOverview.tsx` lines 249-252 uses a simple `Map.set()` which overwrites values:
 
-**Root Cause**: The `RoleViewToggle` component currently only navigates when the path doesn't already start with `/canvasser`. However, when you're in the Sales Rep dashboard and toggle to Canvasser, the navigation should work. Looking at the screenshot, the toggle shows "Canvasser" is selected but the dashboard title still says "Sales Rep Dashboard".
+```typescript
+const rolesMap = new Map<string, 'admin' | 'user' | 'canvasser'>();
+rolesData?.forEach((r) => {
+  rolesMap.set(r.user_id, r.role as 'admin' | 'user' | 'canvasser');
+});
+```
 
-**Fix**: The `RoleViewToggle` component's navigation logic needs adjustment. When clicking Canvasser while on `/dashboard/*`, it should navigate to `/canvasser`. The issue may be that the toggle is appearing correctly but the `CanvasserLayout` component uses the same `DashboardHeader`, which shows the correct title based on path. Need to verify the navigation is actually being triggered.
+When iterating through Adam's roles (`admin`, `user`, `canvasser`), the LAST one (`canvasser`) becomes his assigned role. Then on line 287:
+```typescript
+const salesReps = users.filter(user => user.role !== 'canvasser');
+```
+Adam gets filtered OUT because his role is `canvasser`.
 
-**Files to Modify**:
-- `src/components/dashboard/RoleViewToggle.tsx` - Ensure navigation happens immediately on toggle
+**Solution:**
+Use role priority logic: `admin` > `user` > `canvasser`. If a user has the `user` role (Sales Rep), they should appear in the Sales Rep table regardless of other roles.
 
 ---
 
-### Problem 2: Admin YTD Total Contracts Shows 0
+### Issue 2: Add "Hide from Leaderboard" Feature
 
-**Current Behavior**: The Admin Leaderboards YTD view shows "Total Contracts: 0" for all sales reps, while the Sales Rep dashboard correctly shows the contracts.
+**Implementation Approach:**
 
-**Root Cause**: The Admin YTD query in `AdminLeaderboards.tsx` only fetches `closed_deals` from `user_metrics`, but:
-- `closed_deals` is NOT the same as Total Contracts
-- Total Contracts should be calculated as: `self_generated_deals + canvass_deals_closed`
+1. **Database Change**: Add a `hidden_from_leaderboard` boolean column to the `profiles` table
+2. **Admin UI**: Add a toggle in the User Roles management page to hide/show users from leaderboards
+3. **Filter Logic**: Update all leaderboard queries to exclude users where `hidden_from_leaderboard = true`
 
-The Sales Rep dashboard (`Leaderboard.tsx`) correctly fetches both fields and calculates the sum on line 275. The Admin query does not.
+---
 
-**Fix**: Update `AdminLeaderboards.tsx` YTD fetch to:
-1. Fetch `self_generated_deals` and `canvass_deals_closed` from `user_metrics`
-2. Calculate Total Contracts as the sum of both
+### Technical Implementation
 
-**Current Admin Query (line 145)**:
+**Part A: Fix Multi-Role Handling in AdminOverview.tsx**
+
+Update lines 249-252 to use role priority:
+
 ```typescript
-.select('id, user_id, display_name, points, closed_deals, yearly_goal, sales_rank, metric_date, approved_revenue, collections, updated_at')
+const rolesMap = new Map<string, 'admin' | 'user' | 'canvasser'>();
+const rolePriority = { admin: 3, user: 2, canvasser: 1 };
+
+rolesData?.forEach((r) => {
+  const currentRole = rolesMap.get(r.user_id);
+  const newRole = r.role as 'admin' | 'user' | 'canvasser';
+  
+  // Only update if no role exists OR new role has higher priority
+  if (!currentRole || rolePriority[newRole] > rolePriority[currentRole]) {
+    rolesMap.set(r.user_id, newRole);
+  }
+});
 ```
 
-**Fixed Query**:
-```typescript
-.select('id, user_id, display_name, points, closed_deals, self_generated_deals, canvass_deals_closed, yearly_goal, sales_rank, metric_date, approved_revenue, collections, updated_at')
+This ensures:
+- Adam (with `admin`, `user`, `canvasser`) gets assigned `admin` role (highest priority)
+- Users with `user` + `canvasser` get assigned `user` role
+- Users with ONLY `canvasser` get assigned `canvasser` and appear in the Canvasser tab
+
+**Part B: Database Migration - Add `hidden_from_leaderboard` Column**
+
+```sql
+-- Add hidden_from_leaderboard column to profiles table
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS hidden_from_leaderboard boolean DEFAULT false;
+
+-- Add comment for documentation
+COMMENT ON COLUMN public.profiles.hidden_from_leaderboard IS 'When true, user stats are excluded from all leaderboard displays';
 ```
 
-**Current Mapping (line 178)**:
+**Part C: Update User Roles Management UI**
+
+Add a toggle switch in `src/components/admin/EditUserRoleModal.tsx`:
+
+- Add state for `hiddenFromLeaderboard`
+- Add a Switch component with label "Hide from Leaderboards"
+- Update the edge function call to save this setting
+- The toggle should be visible for all users with operational roles (Sales Rep or Canvasser)
+
+**Part D: Update Edge Function**
+
+Update `admin-set-user-role` to accept and save `hiddenFromLeaderboard`:
+
 ```typescript
-closedDeals: Number(item.closed_deals) || 0,
+// Add to request body handling
+const hiddenFromLeaderboard = body.hiddenFromLeaderboard ?? false;
+
+// Update profiles table
+await supabaseClient
+  .from('profiles')
+  .update({ hidden_from_leaderboard: hiddenFromLeaderboard })
+  .eq('id', targetUserId);
 ```
 
-**Fixed Mapping**:
+**Part E: Update Leaderboard Queries**
+
+Filter out hidden users in these files:
+
+| File | Change Required |
+|------|-----------------|
+| `src/pages/dashboard/Leaderboard.tsx` | Join with profiles to filter `hidden_from_leaderboard = false` |
+| `src/pages/admin/AdminLeaderboards.tsx` | Join with profiles to filter `hidden_from_leaderboard = false` |
+| `src/pages/dashboard/AdminOverview.tsx` | Filter based on profiles `hidden_from_leaderboard` status |
+
+Example query update for YTD leaderboard:
 ```typescript
-closedDeals: (Number(item.self_generated_deals) || 0) + (Number(item.canvass_deals_closed) || 0),
+// Fetch profiles with hidden status
+const { data: profilesData } = await supabase
+  .from('profiles')
+  .select('id, full_name, hidden_from_leaderboard')
+  .in('id', userIds);
+
+// Filter out hidden users
+const visibleUserIds = profilesData
+  ?.filter(p => !p.hidden_from_leaderboard)
+  .map(p => p.id) || [];
+
+// Apply filter to leaderboard entries
+const visibleEntries = entries.filter(e => visibleUserIds.includes(e.userId));
 ```
 
-**Files to Modify**:
-- `src/pages/admin/AdminLeaderboards.tsx` - Update YTD query and mapping
+---
+
+### Files to be Modified
+
+| File | Changes |
+|------|---------|
+| `src/pages/dashboard/AdminOverview.tsx` | Fix role priority logic (lines 249-252) |
+| `src/components/admin/EditUserRoleModal.tsx` | Add "Hide from Leaderboard" toggle |
+| `src/pages/admin/UserRoles.tsx` | Display hidden status indicator + pass to modal |
+| `supabase/functions/admin-set-user-role/index.ts` | Handle `hiddenFromLeaderboard` parameter |
+| `src/pages/dashboard/Leaderboard.tsx` | Filter out hidden users from all leaderboard views |
+| `src/pages/admin/AdminLeaderboards.tsx` | Filter out hidden users from admin leaderboard views |
+
+**Database Migration:**
+- Add `hidden_from_leaderboard` boolean column to `profiles` table
 
 ---
 
 ### Summary of Changes
 
-| File | Change |
-|------|--------|
-| `src/components/dashboard/RoleViewToggle.tsx` | Fix navigation to ensure immediate portal switch |
-| `src/pages/admin/AdminLeaderboards.tsx` | Fix YTD Total Contracts calculation to use `self_generated_deals + canvass_deals_closed` |
+**Bug Fix:**
+- Multi-role users (like Adam with Sales Rep + Canvasser) will now appear in the Sales Rep Overview based on role priority
+- Priority order: `admin` > `user` > `canvasser`
 
----
-
-### Technical Details
-
-**RoleViewToggle Navigation Fix**:
-The current logic checks if path starts with `/canvasser` before navigating. But when toggling from Sales to Canvasser while on `/dashboard/stats`, it should navigate to `/canvasser/stats` or just `/canvasser`. The navigation appears correct but may have a race condition with state updates.
-
-**Admin YTD Data Flow**:
-```
-user_metrics table
-├── self_generated_deals (Self-Gen Contracts)
-├── canvass_deals_closed (Canvass Contracts)
-└── closed_deals (Legacy field - don't use for Total)
-
-Total Contracts = self_generated_deals + canvass_deals_closed
-```
+**New Feature: Hide from Leaderboard**
+- Admins can toggle users on/off from appearing in leaderboards
+- Hidden users' stats are still tracked but not displayed publicly
+- Toggle is available in the Edit User Role modal
+- Applies to: YTD, Weekly, and Monthly leaderboards for both Sales Reps and Canvassers
 
 ---
 
 ### Expected Results
 
-1. When Super Admin toggles to "Canvasser", they immediately see the Canvasser Portal with canvasser-specific navigation and stats
-2. Admin YTD leaderboard shows correct Total Contracts (matching what Sales Rep dashboard shows)
-3. The screenshot showing "2" contracts for one user will show correctly in Admin view
+1. **Adam Coury appears in Sales Rep Overview** with his correct contract count (1)
+2. **New toggle in User Roles** to hide users from leaderboards
+3. **Hidden users excluded** from all leaderboard displays but their data remains tracked
+4. **Admin Overview still shows all users** for management purposes (only public leaderboards are filtered)
