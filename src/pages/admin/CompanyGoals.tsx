@@ -616,19 +616,19 @@ export default function CompanyGoals() {
       </div>
 
       {/* Additional Metrics Cards with Goal Tracking */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Sales Lead-to-Close Rate with Goal */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Lead-to-Close Rate (Canvasser) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Percent className="h-5 w-5 text-accent" />
-              Sales Lead-to-Close Rate
+              <Percent className="h-5 w-5 text-primary" />
+              Lead-to-Close Rate
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {(() => {
-              const currentRate = progress.totalSalesLeads > 0 
-                ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 
+              const currentRate = progress.totalCanvasserLeadsSet > 0 
+                ? (progress.totalLeadsClosed / progress.totalCanvasserLeadsSet) * 100 
                 : 0;
               const targetRate = parseFloat(targetLeadToCloseRatio) || 0;
               const variance = currentRate - targetRate;
@@ -642,7 +642,7 @@ export default function CompanyGoals() {
                         {currentRate.toFixed(1)}%
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {progress.totalSalesClosedDeals} closed / {progress.totalSalesLeads} leads
+                        {progress.totalLeadsClosed} closed / {progress.totalCanvasserLeadsSet} leads set
                       </p>
                     </div>
                     {targetRate > 0 && (
@@ -664,42 +664,6 @@ export default function CompanyGoals() {
                       </div>
                     </div>
                   )}
-                </>
-              );
-            })()}
-          </CardContent>
-        </Card>
-
-        {/* Canvasser Lead-to-Close Rate */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Percent className="h-5 w-5 text-primary" />
-              Canvasser Lead-to-Close Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(() => {
-              const currentRate = progress.totalCanvasserLeadsSet > 0 
-                ? (progress.totalLeadsClosed / progress.totalCanvasserLeadsSet) * 100 
-                : 0;
-              
-              return (
-                <>
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-3xl font-bold text-foreground">
-                        {currentRate.toFixed(1)}%
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {progress.totalLeadsClosed} closed / {progress.totalCanvasserLeadsSet} leads set
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">Formula</p>
-                    <p className="text-sm font-medium text-foreground">Leads Closed ÷ Leads Set</p>
-                  </div>
                 </>
               );
             })()}
