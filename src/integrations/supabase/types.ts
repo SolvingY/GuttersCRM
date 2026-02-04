@@ -716,6 +716,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string | null
+          hidden_from_leaderboard: boolean | null
           id: string
           is_archived: boolean | null
           preferred_view: string | null
@@ -728,6 +729,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          hidden_from_leaderboard?: boolean | null
           id: string
           is_archived?: boolean | null
           preferred_view?: string | null
@@ -740,6 +742,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          hidden_from_leaderboard?: boolean | null
           id?: string
           is_archived?: boolean | null
           preferred_view?: string | null

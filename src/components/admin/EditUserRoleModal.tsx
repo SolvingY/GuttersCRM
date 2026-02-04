@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield, Users, UserCheck } from 'lucide-react';
+import { Loader2, Shield, Users, UserCheck, EyeOff } from 'lucide-react';
 import { RANK_OPTIONS, CANVASSER_RANK_OPTIONS } from '@/lib/constants';
 
 interface UserWithRole {
@@ -30,6 +31,7 @@ interface UserWithRole {
   canvasserRank: string | null;
   isArchived: boolean;
   archivedAt: string | null;
+  hiddenFromLeaderboard?: boolean;
 }
 
 interface EditUserRoleModalProps {
@@ -47,6 +49,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
   const [isCanvasser, setIsCanvasser] = useState(false);
   const [salesRank, setSalesRank] = useState<string>('SR1');
   const [canvasserRank, setCanvasserRank] = useState<string>('C1');
+  const [hiddenFromLeaderboard, setHiddenFromLeaderboard] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -55,6 +58,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       setIsCanvasser(user.roles.includes('canvasser'));
       setSalesRank(user.salesRank || 'SR1');
       setCanvasserRank(user.canvasserRank || 'C1');
+      setHiddenFromLeaderboard(user.hiddenFromLeaderboard || false);
     }
   }, [user]);
 
@@ -90,6 +94,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
           salesRank: isSalesRep ? salesRank : undefined,
           canvasserRank: isCanvasser ? canvasserRank : undefined,
           isAdminOnly,
+          hiddenFromLeaderboard: (isSalesRep || isCanvasser) ? hiddenFromLeaderboard : false,
         },
       });
 
@@ -238,6 +243,28 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
                 )}
               </div>
             </div>
+
+            {/* Hide from Leaderboard Toggle - only show for operational roles */}
+            {(isSalesRep || isCanvasser) && (
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="hiddenFromLeaderboard" className="text-sm font-medium flex items-center gap-2">
+                      <EyeOff className="h-4 w-4" />
+                      Hide from Leaderboard
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      User's stats will be tracked but not shown in public leaderboards
+                    </p>
+                  </div>
+                  <Switch
+                    id="hiddenFromLeaderboard"
+                    checked={hiddenFromLeaderboard}
+                    onCheckedChange={setHiddenFromLeaderboard}
+                  />
+                </div>
+              </div>
+            )}
 
             {!isValid && (
               <p className="text-sm text-destructive">
