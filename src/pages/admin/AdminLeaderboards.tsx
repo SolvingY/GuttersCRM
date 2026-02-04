@@ -408,13 +408,9 @@ export default function AdminLeaderboards() {
         }
       });
 
+      // Sort by points descending (per system requirements for canvasser YTD)
       const sorted = Array.from(uniqueUsers.values())
-        .sort((a, b) => {
-          const aPercent = a.yearly_goal > 0 ? (a.leads_closed || 0) / a.yearly_goal : 0;
-          const bPercent = b.yearly_goal > 0 ? (b.leads_closed || 0) / b.yearly_goal : 0;
-          if (bPercent !== aPercent) return bPercent - aPercent;
-          return (b.leads_closed || 0) - (a.leads_closed || 0);
-        })
+        .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
         .map((entry, index) => {
           const yearlyGoal = entry.yearly_goal || 0;
           const leadsClosed = entry.leads_closed || 0;
