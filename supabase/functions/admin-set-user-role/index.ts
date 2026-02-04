@@ -46,31 +46,52 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .single();
+      .eq("role", "admin")
+      .maybeSingle();
 
-    if (roleError || callerRoleData?.role !== "admin") {
-      console.error("Role check error:", roleError, "Role:", callerRoleData?.role);
+    if (roleError || !callerRoleData) {
+      console.error("Role check error:", roleError, "Role:", callerRoleData);
       return new Response(
         JSON.stringify({ error: "Only admins can change user roles" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Parse request body
-    const { targetUserId, newRole, salesRank, canvasserRank } = await req.json();
+    // Parse request body - support both old single-role and new multi-role format
+    const body = await req.json();
+    const { targetUserId, roles, newRole, salesRank, canvasserRank } = body;
     
-    if (!targetUserId || !newRole) {
+    if (!targetUserId) {
       return new Response(
-        JSON.stringify({ error: "Missing targetUserId or newRole" }),
+        JSON.stringify({ error: "Missing targetUserId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!["user", "canvasser"].includes(newRole)) {
+    // Handle both formats: new `roles` array or legacy `newRole` string
+    let rolesToSet: string[] = [];
+    if (roles && Array.isArray(roles)) {
+      rolesToSet = roles;
+    } else if (newRole) {
+      rolesToSet = [newRole];
+    }
+
+    if (rolesToSet.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Invalid role. Must be 'user' or 'canvasser'" }),
+        JSON.stringify({ error: "At least one role is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validate roles
+    const validRoles = ['user', 'canvasser'];
+    for (const role of rolesToSet) {
+      if (!validRoles.includes(role)) {
+        return new Response(
+          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user' or 'canvasser'` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Validate ranks if provided
@@ -91,22 +112,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Admin ${user.id} changing role for ${targetUserId} to ${newRole}`);
+    console.log(`Admin ${user.id} changing roles for ${targetUserId} to [${rolesToSet.join(', ')}]`);
 
-    // Update or insert the role
-    const { error: upsertError } = await supabaseAdmin
+    // Delete all existing non-admin roles for the user
+    const { error: deleteError } = await supabaseAdmin
       .from("user_roles")
-      .upsert(
-        { user_id: targetUserId, role: newRole },
-        { onConflict: "user_id" }
-      );
+      .delete()
+      .eq("user_id", targetUserId)
+      .neq("role", "admin");
 
-    if (upsertError) {
-      console.error("Role upsert error:", upsertError);
+    if (deleteError) {
+      console.error("Error deleting old roles:", deleteError);
       return new Response(
-        JSON.stringify({ error: "Failed to update role" }),
+        JSON.stringify({ error: "Failed to update roles" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Insert new roles
+    for (const role of rolesToSet) {
+      const { error: insertError } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: targetUserId, role });
+
+      if (insertError) {
+        // Ignore duplicate key errors (role already exists)
+        if (!insertError.message.includes("duplicate")) {
+          console.error("Error inserting role:", insertError);
+          return new Response(
+            JSON.stringify({ error: "Failed to insert role" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     // Get the user's display name from profiles
@@ -118,8 +156,11 @@ Deno.serve(async (req) => {
 
     const displayName = profileData?.full_name || null;
 
-    // Ensure baseline metrics exist for the new role
-    if (newRole === "canvasser") {
+    // Ensure baseline metrics exist for each role
+    const hasSalesRole = rolesToSet.includes('user');
+    const hasCanvasserRole = rolesToSet.includes('canvasser');
+
+    if (hasCanvasserRole) {
       // Check if canvasser metrics exist
       const { data: existingCanvasserMetrics } = await supabaseAdmin
         .from("canvasser_metrics")
@@ -153,7 +194,9 @@ Deno.serve(async (req) => {
           console.error("Failed to update canvasser rank:", updateError);
         }
       }
-    } else if (newRole === "user") {
+    }
+
+    if (hasSalesRole) {
       // Check if user metrics exist
       const { data: existingUserMetrics } = await supabaseAdmin
         .from("user_metrics")
@@ -191,7 +234,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, newRole }),
+      JSON.stringify({ success: true, roles: rolesToSet }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
