@@ -387,7 +387,7 @@ export default function AdminOverview() {
       const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
       setTotalCanvasserIncome(totalIncome);
       setCanvasserAggregates(canvasserTotals);
-      setCanvasserDetails(canvassers.sort((a, b) => b.leadsSet - a.leadsSet));
+      setCanvasserDetails(canvassers.sort((a, b) => b.points - a.points));
     }
 
     setLoading(false);
