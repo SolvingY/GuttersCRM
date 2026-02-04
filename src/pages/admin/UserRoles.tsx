@@ -35,6 +35,7 @@ interface UserWithRole {
   canvasserRank: string | null;
   isArchived: boolean;
   archivedAt: string | null;
+  hiddenFromLeaderboard: boolean;
 }
 
 export default function UserRoles() {
@@ -53,10 +54,10 @@ export default function UserRoles() {
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Fetch profiles with archive status
+    // Fetch profiles with archive status and hidden_from_leaderboard
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, is_archived, archived_at');
+      .select('id, full_name, is_archived, archived_at, hidden_from_leaderboard');
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
@@ -118,6 +119,7 @@ export default function UserRoles() {
         canvasserRank: canvasserRankMap.get(profile.id) || 'C1',
         isArchived: profile.is_archived || false,
         archivedAt: profile.archived_at,
+        hiddenFromLeaderboard: (profile as any).hidden_from_leaderboard || false,
       };
     });
 

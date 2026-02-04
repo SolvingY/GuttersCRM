@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { targetUserId, roles, newRole, salesRank, canvasserRank, isAdminOnly } = body;
+    const { targetUserId, roles, newRole, salesRank, canvasserRank, isAdminOnly, hiddenFromLeaderboard } = body;
     
     if (!targetUserId) {
       return new Response(
@@ -154,6 +154,20 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const displayName = profileData?.full_name || null;
+
+    // Update hidden_from_leaderboard in profiles if provided
+    if (typeof hiddenFromLeaderboard === 'boolean') {
+      const { error: profileUpdateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ hidden_from_leaderboard: hiddenFromLeaderboard })
+        .eq('id', targetUserId);
+      
+      if (profileUpdateError) {
+        console.error("Failed to update hidden_from_leaderboard:", profileUpdateError);
+      } else {
+        console.log(`Updated hidden_from_leaderboard to ${hiddenFromLeaderboard} for user ${targetUserId}`);
+      }
+    }
 
     // Determine what metrics to create/update
     const hasSalesRole = rolesToSet.includes('user');

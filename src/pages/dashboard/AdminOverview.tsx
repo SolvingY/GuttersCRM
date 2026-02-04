@@ -246,9 +246,19 @@ export default function AdminOverview() {
         profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
       );
 
+      // Use role priority: admin > user > canvasser
+      // This ensures multi-role users (like Adam with admin+user+canvasser) appear correctly
       const rolesMap = new Map<string, 'admin' | 'user' | 'canvasser'>();
+      const rolePriority: Record<string, number> = { admin: 3, user: 2, canvasser: 1 };
+      
       rolesData?.forEach((r) => {
-        rolesMap.set(r.user_id, r.role as 'admin' | 'user' | 'canvasser');
+        const currentRole = rolesMap.get(r.user_id);
+        const newRole = r.role as 'admin' | 'user' | 'canvasser';
+        
+        // Only update if no role exists OR new role has higher priority
+        if (!currentRole || rolePriority[newRole] > rolePriority[currentRole]) {
+          rolesMap.set(r.user_id, newRole);
+        }
       });
 
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {

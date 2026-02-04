@@ -140,6 +140,15 @@ export default function AdminLeaderboards() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
+      // Fetch profiles to check hidden_from_leaderboard status
+      const { data: profilesForHidden } = await supabase
+        .from('profiles')
+        .select('id, hidden_from_leaderboard');
+      
+      const hiddenUserIds = new Set(
+        profilesForHidden?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+      );
+
       const { data: metricsData } = await supabase
         .from('user_metrics')
         .select('id, user_id, display_name, points, closed_deals, self_generated_deals, canvass_deals_closed, yearly_goal, sales_rank, metric_date, approved_revenue, collections, updated_at')
@@ -169,7 +178,8 @@ export default function AdminLeaderboards() {
 
       const latestByUser = new Map<string, any>();
       for (const item of metricsData) {
-        if (item.user_id && !eligibleUserIds.has(item.user_id)) continue;
+        // Skip ineligible users and hidden users
+        if (item.user_id && (!eligibleUserIds.has(item.user_id) || hiddenUserIds.has(item.user_id))) continue;
         const key = item.user_id || `metric_${item.id}`;
         if (!latestByUser.has(key)) {
           latestByUser.set(key, {
@@ -238,6 +248,15 @@ export default function AdminLeaderboards() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
+      // Fetch profiles to check hidden_from_leaderboard status
+      const { data: profilesForHidden } = await supabase
+        .from('profiles')
+        .select('id, hidden_from_leaderboard');
+      
+      const hiddenUserIds = new Set(
+        profilesForHidden?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+      );
+
       if (timeFrame === 'weekly') {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
@@ -251,7 +270,8 @@ export default function AdminLeaderboards() {
           return;
         }
 
-        const filteredWeekly = weeklyData.filter(w => eligibleUserIds.has(w.user_id));
+        // Filter out ineligible and hidden users
+        const filteredWeekly = weeklyData.filter(w => eligibleUserIds.has(w.user_id) && !hiddenUserIds.has(w.user_id));
         const userIds = filteredWeekly.map(w => w.user_id);
         
         const { data: profilesData } = userIds.length > 0 
@@ -308,10 +328,10 @@ export default function AdminLeaderboards() {
           return;
         }
 
-        // Aggregate by user
+        // Aggregate by user (excluding hidden users)
         const aggregated = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; pointsEarned: number }>();
         weeklyData.forEach(w => {
-          if (!eligibleUserIds.has(w.user_id)) return;
+          if (!eligibleUserIds.has(w.user_id) || hiddenUserIds.has(w.user_id)) return;
           const existing = aggregated.get(w.user_id) || { approvedRevenue: 0, collections: 0, leads: 0, closedDeals: 0, pointsEarned: 0 };
           aggregated.set(w.user_id, {
             approvedRevenue: existing.approvedRevenue + (Number(w.approved_revenue) || 0),
@@ -371,6 +391,15 @@ export default function AdminLeaderboards() {
     const fetchCanvasserYtd = async () => {
       setCanvasserLoading(true);
 
+      // Fetch profiles to check hidden_from_leaderboard status
+      const { data: profilesForHidden } = await supabase
+        .from('profiles')
+        .select('id, hidden_from_leaderboard');
+      
+      const hiddenUserIds = new Set(
+        profilesForHidden?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+      );
+
       const { data } = await supabase
         .from('canvasser_metrics')
         .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, yearly_goal, points')
@@ -401,9 +430,10 @@ export default function AdminLeaderboards() {
         }
       });
 
+      // Filter out hidden users
       const uniqueUsers = new Map<string, any>();
       data.forEach(entry => {
-        if (!uniqueUsers.has(entry.user_id)) {
+        if (!uniqueUsers.has(entry.user_id) && !hiddenUserIds.has(entry.user_id)) {
           uniqueUsers.set(entry.user_id, entry);
         }
       });
@@ -447,13 +477,16 @@ export default function AdminLeaderboards() {
       setCanvasserLoading(true);
 
       if (timeFrame === 'weekly') {
-        // Fetch active profiles to filter archived users
+        // Fetch active profiles to filter archived and hidden users
         const { data: activeProfiles } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, hidden_from_leaderboard')
           .eq('is_archived', false);
         
         const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+        const hiddenUserIds = new Set(
+          activeProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+        );
 
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
@@ -467,8 +500,8 @@ export default function AdminLeaderboards() {
           return;
         }
 
-        // Filter for active users only
-        const filteredWeeklyData = weeklyData.filter(w => activeUserIds.has(w.user_id));
+        // Filter for active and non-hidden users only
+        const filteredWeeklyData = weeklyData.filter(w => activeUserIds.has(w.user_id) && !hiddenUserIds.has(w.user_id));
 
         const userIds = filteredWeeklyData.map(w => w.user_id);
         const { data: metricsData } = userIds.length > 0
@@ -514,13 +547,16 @@ export default function AdminLeaderboards() {
 
         setCanvasserWeeklyEntries(sorted);
       } else if (timeFrame === 'monthly') {
-        // Fetch active profiles to filter archived users
+        // Fetch active profiles to filter archived and hidden users
         const { data: activeProfiles } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, hidden_from_leaderboard')
           .eq('is_archived', false);
         
         const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
+        const hiddenUserIds = new Set(
+          activeProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+        );
 
         const monthStartStr = format(monthStart, 'yyyy-MM-dd');
         const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
@@ -537,10 +573,10 @@ export default function AdminLeaderboards() {
           return;
         }
 
-        // Aggregate by user - only for active users
+        // Aggregate by user - only for active and non-hidden users
         const aggregated = new Map<string, any>();
         weeklyData.forEach(w => {
-          if (!activeUserIds.has(w.user_id)) return; // Skip archived users
+          if (!activeUserIds.has(w.user_id) || hiddenUserIds.has(w.user_id)) return; // Skip archived or hidden users
           
           const existing = aggregated.get(w.user_id) || { 
             leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
