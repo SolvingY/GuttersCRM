@@ -295,24 +295,13 @@ export function TeamSection() {
                 ))}
               </div>
 
-              <div className="text-center">
-                <p className="text-muted-foreground mb-4">Ready to join a winning team?</p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                  <a 
-                    href="mailto:j.whitton@oknextgen.com"
-                    className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-lg font-heading uppercase text-sm hover:bg-accent/90 transition-colors w-full sm:w-auto min-h-[44px]"
-                  >
-                    <Mail className="w-4 h-4" />
-                    Send Your Resume
-                  </a>
-                  <Link
-                    to="/apply"
-                    className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-6 py-3 rounded-lg font-heading uppercase text-sm hover:bg-foreground/90 transition-colors w-full sm:w-auto min-h-[44px] touch-manipulation"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                    Apply Now
-                  </Link>
-                </div>
+              <div className="flex justify-center mt-6">
+                <Link
+                  to="/apply"
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-accent text-accent-foreground font-bold text-lg text-center rounded-lg hover:bg-accent/90 transition-colors min-h-[44px] touch-manipulation shadow-lg"
+                >
+                  Apply Now →
+                </Link>
               </div>
             </div>
           </div>

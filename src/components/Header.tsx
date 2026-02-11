@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin, KeyRound } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin, KeyRound, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -244,6 +244,15 @@ export function Header() {
                   {link.name}
                 </a>
               ))}
+
+              <Link
+                to="/apply"
+                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Briefcase className="w-5 h-5" />
+                Apply Now
+              </Link>
 
               <Link
                 to="/dashboard"
