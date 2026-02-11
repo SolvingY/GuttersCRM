@@ -48,28 +48,24 @@ export default function GetQuote() {
     setSubmitting(true);
 
     try {
-      const { data: inserted, error } = await supabase
-        .from("quote_requests")
-        .insert({
-          service_type: serviceType,
-          form_data: formData,
-          full_name: contactData.fullName.trim(),
-          email: contactData.email.trim(),
-          phone: contactData.phone.trim(),
-          street_address: contactData.streetAddress.trim(),
-          city: contactData.city.trim(),
-          state: contactData.state || "Oklahoma",
-          zip_code: contactData.zipCode.trim(),
-          best_contact_time: contactData.bestContactTime || [],
-          referral_source: contactData.referralSource || null,
-          photo_urls: formData.photoUrls || [],
-        })
-        .select("reference_number")
-        .single();
+      const { data: refNumber, error } = await supabase.rpc("submit_quote_request", {
+        p_service_type: serviceType,
+        p_form_data: formData,
+        p_full_name: contactData.fullName.trim(),
+        p_email: contactData.email.trim(),
+        p_phone: contactData.phone.trim(),
+        p_street_address: contactData.streetAddress.trim(),
+        p_city: contactData.city.trim(),
+        p_state: contactData.state || "Oklahoma",
+        p_zip_code: contactData.zipCode.trim(),
+        p_best_contact_time: contactData.bestContactTime || [],
+        p_referral_source: contactData.referralSource || null,
+        p_photo_urls: formData.photoUrls || [],
+      });
 
       if (error) throw error;
 
-      setReferenceNumber(inserted.reference_number);
+      setReferenceNumber(refNumber);
 
       // Send confirmation email
       try {
@@ -78,7 +74,7 @@ export default function GetQuote() {
             clientName: contactData.fullName.trim(),
             clientEmail: contactData.email.trim(),
             serviceType,
-            referenceNumber: inserted.reference_number,
+            referenceNumber: refNumber,
           },
         });
       } catch {

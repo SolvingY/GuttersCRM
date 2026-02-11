@@ -47,6 +47,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_assignment_settings: {
+        Row: {
+          assignment_method: string
+          enabled: boolean
+          id: string
+          max_leads_per_rep: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          assignment_method?: string
+          enabled?: boolean
+          id?: string
+          max_leads_per_rep?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          assignment_method?: string
+          enabled?: boolean
+          id?: string
+          max_leads_per_rep?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       canvasser_metrics: {
         Row: {
           canvasser_rank: string | null
@@ -568,6 +595,41 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_activity_log: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activity_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_comments: {
         Row: {
           content: string
@@ -879,7 +941,11 @@ export type Database = {
           quote_approved: boolean | null
           quote_approved_at: string | null
           quote_approved_by: string | null
+          quote_rejected_reason: string | null
           quote_sent_at: string | null
+          quote_status: string | null
+          quote_submitted_at: string | null
+          quote_submitted_by: string | null
           quoted_at: string | null
           reference_number: string | null
           referral_source: string | null
@@ -916,7 +982,11 @@ export type Database = {
           quote_approved?: boolean | null
           quote_approved_at?: string | null
           quote_approved_by?: string | null
+          quote_rejected_reason?: string | null
           quote_sent_at?: string | null
+          quote_status?: string | null
+          quote_submitted_at?: string | null
+          quote_submitted_by?: string | null
           quoted_at?: string | null
           reference_number?: string | null
           referral_source?: string | null
@@ -953,7 +1023,11 @@ export type Database = {
           quote_approved?: boolean | null
           quote_approved_at?: string | null
           quote_approved_by?: string | null
+          quote_rejected_reason?: string | null
           quote_sent_at?: string | null
+          quote_status?: string | null
+          quote_submitted_at?: string | null
+          quote_submitted_by?: string | null
           quoted_at?: string | null
           reference_number?: string | null
           referral_source?: string | null
@@ -1326,6 +1400,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      submit_quote_request: {
+        Args: {
+          p_best_contact_time?: string[]
+          p_city: string
+          p_email: string
+          p_form_data: Json
+          p_full_name: string
+          p_phone: string
+          p_photo_urls?: string[]
+          p_referral_source?: string
+          p_service_type: string
+          p_state?: string
+          p_street_address: string
+          p_zip_code?: string
+        }
+        Returns: string
       }
       verify_invite_code: {
         Args: { _email: string; _invite_code: string }
