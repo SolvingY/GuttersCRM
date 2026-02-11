@@ -101,7 +101,7 @@ export default function MyLeads() {
             return (
               <Link
                 key={lead.id}
-                to={`/admin/leads/${lead.id}`}
+                to={`/dashboard/leads/${lead.id}`}
                 className="block border border-border rounded-lg p-4 hover:border-accent/50 transition-colors bg-card"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
