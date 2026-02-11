@@ -1,145 +1,129 @@
 
 
-## Phase 1: Client Quote Request System - Implementation Plan
+## Phase 2: Advanced Lead Management - Implementation Plan
 
-This is a large implementation covering the public quote form, database setup, photo uploads, admin lead management, navigation updates, and bug fixes.
+### Answers to Your Questions
+
+**1. User Metrics Table:** `user_metrics` lacks `active_leads`, `total_leads_assigned`, `close_rate`. Instead of creating a separate `sales_rep_stats` table, we will compute these dynamically: active leads = `COUNT` of `quote_requests` assigned to that user with open status; close rate = `closed_deals / NULLIF(leads, 0)` from `user_metrics`. This avoids data duplication and sync issues.
+
+**2. Sales Rep Identification:** Already solved by the existing role system. The `user_roles` table has role `'user'` for sales reps. Auto-assignment will query users with the `'user'` role. No new columns or role types needed.
+
+**3. Follow-up auto-setting:** Yes, included as a trigger.
+
+**4. Quote approval notifications:** Yes, included. We will use the `lead_activity_log` table to record these events (since there is no `client_notifications` table in the database). Admins see pending approvals via the leads dashboard filters; sales reps see activity on their assigned leads.
+
+**5. Activity log RLS:** Confirmed, using the exact pattern you described.
+
+**6. Ranking logic:** Will use `closed_deals / NULLIF(leads, 0) DESC, active_lead_count ASC` directly in the auto-assign function.
 
 ---
 
 ### 1. Database Migration
 
-Create `quote_requests` table, reference number sequence, auto-priority trigger, and storage bucket.
+**Fix RLS bug - new function:**
 
-**Table: `quote_requests`**
-- id (UUID, PK), created_at, updated_at
-- service_type (text: 'commercial', 'residential', 'gutters', 'repair')
-- form_data (JSONB - stores all dynamic service-specific answers)
-- Contact: full_name, email, phone, street_address, city, state (default 'Oklahoma'), zip_code
-- best_contact_time (text[]), referral_source (text)
-- Lead management: status (default 'new'), priority (default 'normal'), assigned_to (UUID), assigned_at, assigned_by (UUID)
-- photo_urls (text[])
-- reference_number (text, unique, auto-generated)
-- Tracking timestamps: contacted_at, quoted_at, quote_amount, won_at, lost_at, lost_reason
-- Follow-up: last_followup_at, next_followup_due, followup_count (default 0)
-- admin_notes (text)
+`submit_quote_request(...)` - SECURITY DEFINER function that accepts all form fields, performs the INSERT, and returns the reference_number. This bypasses the SELECT RLS restriction for anonymous users.
 
-**RLS Policies:**
-- Anyone can INSERT (public form submission)
-- Admins can SELECT, UPDATE, DELETE
-- Assigned users (sales reps) can SELECT their own assigned leads
+**New table: `auto_assignment_settings`**
+- id (UUID PK), enabled (boolean default false), assignment_method (text default 'round_robin'), max_leads_per_rep (integer default 10), updated_at, updated_by (UUID)
+- RLS: Admin-only for all operations
+- Pre-populated with one default row
 
-**Reference number sequence:**
-- PostgreSQL sequence `quote_request_sequence`
-- Function `generate_reference_number()` returns format `NGR-YYYY-#####`
-- Default on reference_number column
+**New table: `lead_activity_log`**
+- id (UUID PK), lead_id (UUID references quote_requests), user_id (UUID), activity_type (text), content (text), created_at (timestamptz default now())
+- Activity types: 'note', 'call', 'email', 'status_change', 'assignment', 'followup', 'quote_submitted', 'quote_approved', 'quote_rejected'
+- RLS: Admins can do all operations; sales reps can INSERT and SELECT only on leads assigned to them
 
-**Auto-priority trigger:**
-- BEFORE INSERT trigger checks form_data for timeline/urgency values
-- Sets priority to 'urgent', 'high', or 'normal' accordingly
+**Add columns to `quote_requests`:**
+- quote_status (text, nullable) - null / 'pending_approval' / 'approved' / 'rejected'
+- quote_submitted_by (UUID)
+- quote_submitted_at (timestamptz)
+- quote_rejected_reason (text)
 
-**Storage bucket:**
-- Create `quote-photos` bucket (public)
-- RLS: anyone can upload to the bucket, admins can read all
+**New database functions:**
+- `auto_assign_lead()` - SECURITY DEFINER trigger function. Checks `auto_assignment_settings`, finds eligible sales reps (role = 'user'), counts their active leads from `quote_requests`, assigns based on method.
+- `set_followup_on_update()` - trigger function that sets `next_followup_due` to NOW() + 24 hours when `assigned_to` or `status` changes to 'contacted'.
+- `log_status_change()` - trigger that auto-logs status changes to `lead_activity_log`.
+
+**New triggers:**
+- `auto_assign_on_insert` - AFTER INSERT on `quote_requests`, calls auto-assign logic
+- `set_followup_on_assignment_or_contact` - BEFORE UPDATE on `quote_requests`, sets follow-up due date
+- `log_quote_status_change` - AFTER UPDATE on `quote_requests`, logs status/assignment changes
 
 ---
 
-### 2. New Files to Create
+### 2. New Files
 
 | File | Purpose |
 |------|---------|
-| `src/pages/GetQuote.tsx` | Main page: multi-step wizard container with progress indicator |
-| `src/components/quote/ServiceSelection.tsx` | Step 1: 4 service type cards with icons |
-| `src/components/quote/CommercialQuestions.tsx` | Step 2 variant: building type, sq footage, roof type, needs, timeline |
-| `src/components/quote/ResidentialQuestions.tsx` | Step 2 variant: property type, home age, roof type, stories, needs, issues, timeline |
-| `src/components/quote/GutterQuestions.tsx` | Step 2 variant: property type, needs, linear footage, issues, timeline |
-| `src/components/quote/RepairQuestions.tsx` | Step 2 variant: what needs repair, urgency, property type, description (min 20 words), when noticed, photo upload |
-| `src/components/quote/ContactInfoStep.tsx` | Step 3: name, email, phone, address, best contact time, referral source |
-| `src/components/quote/QuoteConfirmation.tsx` | Step 4: success page with reference number, next steps |
-| `src/pages/admin/Leads.tsx` | Admin leads dashboard: stats bar, filters, lead card list |
-| `src/pages/admin/LeadDetail.tsx` | Individual lead detail: full form data, status/priority management, assignment, notes, photos, timeline |
-| `supabase/functions/send-quote-email/index.ts` | Edge function: sends branded confirmation email to client via Resend |
+| `src/components/admin/AutoAssignmentSettings.tsx` | Collapsible settings panel: enable/disable toggle, method dropdown (Round Robin / Ranking Based / Workload Based), max leads per rep input |
+| `src/components/admin/QuoteApprovalSection.tsx` | In lead detail: quote amount input, "Submit for Approval" button, admin approve/reject buttons with rejection reason textarea |
+| `src/components/admin/LeadActivityLog.tsx` | Timeline of all lead activities with a form to add new entries (note/call/email/followup types) |
+| `src/components/admin/LeadExportButton.tsx` | CSV export button using installed `xlsx` library |
+| `src/pages/dashboard/MyLeads.tsx` | Sales rep view: their assigned leads with status filters and click-through to detail |
 
 ---
 
 ### 3. Modified Files
 
-**`src/App.tsx`** (3 new routes)
-- `/get-quote` -> `GetQuote` component
-- `/admin/leads` -> `Leads` component (inside admin layout)
-- `/admin/leads/:id` -> `LeadDetail` component (inside admin layout)
+**`src/pages/GetQuote.tsx`**
+- Replace `.insert().select()` with `supabase.rpc('submit_quote_request', {...})` to fix the RLS error
 
-**`src/components/Header.tsx`**
-- Add "Get an Estimate" CTA button in desktop nav (accent-styled Link to `/get-quote`)
-- Add "Get an Estimate" link in mobile hamburger menu (before "Apply Now")
-- Import `ClipboardList` icon from lucide-react
+**`src/pages/admin/Leads.tsx`**
+- Add AutoAssignmentSettings as collapsible section
+- Add LeadExportButton in header
+- Add "Assigned to" filter dropdown (All / Unassigned / specific rep names)
+- Add date range filter
+- Add follow-up indicators on lead cards (overdue in red, due today in yellow)
 
-**`src/components/Hero.tsx`**
-- Add third CTA button "Get a Free Estimate" (Link to `/get-quote`) alongside existing buttons
-- Import `Link` from react-router-dom and `ClipboardList` from lucide-react
+**`src/pages/admin/LeadDetail.tsx`**
+- Add QuoteApprovalSection component
+- Add LeadActivityLog component
+- Add follow-up tracking: next follow-up date display, "Log Follow-up" button, "Snooze 24h" button
+- Show quote_status badge in header area
 
-**`src/components/Footer.tsx`**
-- Change "Free Estimate" quick link from `#contact` scroll to a Link to `/get-quote`
-- Update social media links:
-  - Instagram: `https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv`
-  - Add Facebook link (currently missing from footer social icons): `https://www.facebook.com/profile.php?id=100064277643225`
-- Import `Link` from react-router-dom and `Facebook` icon
+**`src/App.tsx`**
+- Add route `/dashboard/my-leads` for sales rep leads view
 
-**`src/pages/admin/AdminLayout.tsx`**
-- Add "Leads" nav item to `adminNavItems` array (ClipboardList icon, path `/admin/leads`)
-- Add a second query to count new quote requests for notification badge on "Leads" nav item
-- Fix bell dropdown score display: change `/20` to `/30` on line 147
-
-**`src/pages/apply/ApplicationThankYou.tsx`**
-- Update Facebook URL to `https://www.facebook.com/profile.php?id=100064277643225`
-- Update Instagram URL to `https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv`
-
-**`src/components/admin/NewApplicantsModal.tsx`**
-- Already displays `/30` (confirmed in code) -- no change needed
+**`src/pages/dashboard/DashboardLayout.tsx`**
+- Add "My Leads" nav item (ClipboardList icon) visible to users with the 'user' role
 
 ---
 
-### 4. Quote Form Details
+### 4. Feature Details
 
-**Step 1 - Service Selection:** 4 large clickable cards with icons and descriptions. Single selection required before proceeding.
+**Auto-Assignment Logic (database function):**
+- Checks if enabled in `auto_assignment_settings`
+- Queries all users with role 'user' from `user_roles`
+- Counts each rep's active leads (`status NOT IN ('won', 'lost')`) from `quote_requests`
+- Filters out reps at max capacity
+- Round Robin: assign to rep with fewest active leads
+- Ranking Based: assign to rep with highest close rate (`closed_deals / NULLIF(leads, 0)` from `user_metrics`), breaking ties by fewest active leads
+- Workload Based: assign to rep with fewest active leads, breaking ties by close rate
+- Updates `assigned_to`, `assigned_at` on the lead
+- Logs assignment in `lead_activity_log`
 
-**Step 2 - Dynamic Questions:** Component renders based on selected service type. Each service has its own set of questions as specified (dropdowns, radio buttons, checkboxes, textareas). Repair type includes photo upload (up to 5 files, jpg/png/jpeg, max 10MB each) uploaded to `quote-photos` storage bucket.
+**Quote Approval Flow:**
+1. Sales rep enters amount, clicks "Submit for Approval"
+2. Sets `quote_amount`, `quote_status = 'pending_approval'`, `quote_submitted_by`, `quote_submitted_at`
+3. Activity logged: "Quote of $X submitted for approval"
+4. Admin sees pending indicator on lead card in list view
+5. Admin clicks Approve: sets `quote_status = 'approved'`, `quote_approved = true`, `quote_approved_by`, `quote_approved_at`; activity logged
+6. Admin clicks Reject: sets `quote_status = 'rejected'`, `quote_rejected_reason`; activity logged
+7. After approval, "Send Quote to Client" button appears (uses existing `send-quote-email` edge function with quote amount included)
 
-**Step 3 - Contact Info:** Standard form fields. State defaults to Oklahoma. Phone input with formatting. Address fields required. Best contact time checkboxes. Referral source dropdown.
+**Follow-Up Tracking:**
+- Trigger auto-sets `next_followup_due` = NOW() + 24h when lead is assigned or status changes to 'contacted'
+- Lead cards show: overdue (red clock icon), due today (yellow), upcoming (gray)
+- "Log Follow-up" button: saves note to `lead_activity_log`, resets `next_followup_due` to +24h, increments `followup_count`
+- "Snooze" button: pushes `next_followup_due` by 24 hours without logging
 
-**Step 4 - Confirmation:** Shows reference number, service type summary, next steps, and "Return to Home" button. Triggers the `send-quote-email` edge function.
+**CSV Export columns:**
+Reference Number, Date Submitted, Service Type, Name, Email, Phone, Address, City, State, Zip, Status, Priority, Assigned To, Quote Amount, Quote Status, Referral Source, Follow-up Count
 
----
-
-### 5. Admin Leads Dashboard
-
-**Stats bar:** Shows count of leads by status (New, Contacted, Quoted, Scheduled, Won)
-
-**Filters:** Status, service type, priority. Default sort by priority (urgent first), then date (newest).
-
-**Lead cards:** Display service type icon, client name, address, priority badge (color-coded), status badge (color-coded), reference number, submission date, assigned rep dropdown.
-
-**Lead detail view:**
-- Full form data display (parsed from JSONB, rendered by service type)
-- Status dropdown (new, contacted, quoted, scheduled, won, lost)
-- Priority dropdown (urgent, high, normal, low)
-- Assignment dropdown (lists users with 'user' or 'admin' role)
-- Admin notes textarea (auto-saves)
-- Photo gallery (if repair type with uploads)
-- Timeline section (contacted_at, quoted_at timestamps)
-- Win/Loss buttons with loss reason dropdown
-
----
-
-### 6. Edge Function: `send-quote-email`
-
-- No JWT verification required (public form submission)
-- Accepts: client name, email, service type, reference number
-- Sends branded HTML email via Resend from `invites@oknextgen.com` (same sender as invites)
-- Email includes: reference number, service type, next steps, contact info, NGR branding
-
----
-
-### 7. Bug Fix
-
-**AdminLayout.tsx line 147:** Change `{a.dna_score}/20` to `{a.dna_score}/30` to match the updated 30-point weighted DNA scoring system.
+**My Leads (Sales Rep View):**
+- Filtered to `assigned_to = current user` only
+- Status and priority filters
+- Lead cards identical to admin view but without assignment dropdown
+- Click through to LeadDetail with limited permissions: can change status, log activities, submit quotes for approval, but cannot reassign, change priority, or delete
 
