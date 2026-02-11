@@ -86,6 +86,16 @@ interface OverdueFollowup {
   status: string;
 }
 
+interface OpenLead {
+  id: string;
+  full_name: string;
+  service_type: string;
+  status: string;
+  priority: string;
+  next_followup_due: string | null;
+  assigned_at: string | null;
+}
+
 export function WelcomeModal() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -108,6 +118,7 @@ export function WelcomeModal() {
   const [newLeads, setNewLeads] = useState<NewLead[]>([]);
   const [leadUpdates, setLeadUpdates] = useState<LeadUpdate[]>([]);
   const [overdueFollowups, setOverdueFollowups] = useState<OverdueFollowup[]>([]);
+  const [openLeads, setOpenLeads] = useState<OpenLead[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -310,6 +321,17 @@ export function WelcomeModal() {
 
         setOverdueFollowups(overdueData || []);
 
+        // All open leads (not won/lost) for persistent follow-up prompt
+        const { data: openLeadsData } = await supabase
+          .from('quote_requests')
+          .select('id, full_name, service_type, status, priority, next_followup_due, assigned_at')
+          .eq('assigned_to', user.id)
+          .not('status', 'in', '("won","lost")')
+          .order('next_followup_due', { ascending: true, nullsFirst: false })
+          .limit(10);
+
+        setOpenLeads(openLeadsData || []);
+
         // Recent lead updates (activity by others on my leads, last 7 days)
         const sevenDaysAgoDate = new Date();
         sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
@@ -384,7 +406,27 @@ export function WelcomeModal() {
 
   if (loading) return null;
 
-  const hasLeadNotifications = newLeads.length > 0 || overdueFollowups.length > 0 || leadUpdates.length > 0;
+  const hasLeadNotifications = newLeads.length > 0 || overdueFollowups.length > 0 || leadUpdates.length > 0 || openLeads.length > 0;
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'new': return <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">New</Badge>;
+      case 'contacted': return <Badge className="bg-yellow-500 text-yellow-950 text-[10px] px-1.5 py-0">Contacted</Badge>;
+      case 'quoted': return <Badge className="bg-purple-500 text-white text-[10px] px-1.5 py-0">Quoted</Badge>;
+      case 'scheduled': return <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0">Scheduled</Badge>;
+      default: return <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{status}</Badge>;
+    }
+  };
+
+  const getFollowupIndicator = (nextFollowupDue: string | null) => {
+    if (!nextFollowupDue) return <span className="h-2 w-2 rounded-full bg-muted-foreground/40 inline-block" title="No follow-up set" />;
+    const due = new Date(nextFollowupDue);
+    const now = new Date();
+    if (isPast(due)) return <span className="h-2 w-2 rounded-full bg-destructive inline-block animate-pulse" title="Overdue" />;
+    const hoursUntil = differenceInHours(due, now);
+    if (hoursUntil <= 24) return <span className="h-2 w-2 rounded-full bg-yellow-500 inline-block" title="Due today" />;
+    return <span className="h-2 w-2 rounded-full bg-muted-foreground/40 inline-block" title="Upcoming" />;
+  };
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
@@ -460,6 +502,44 @@ export function WelcomeModal() {
               </div>
             </div>
           </div>
+
+          {/* Open Leads - Persistent Follow-up Prompt */}
+          {openLeads.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                <h3 className="text-sm font-semibold text-foreground">Open Leads — Action Required</h3>
+              </div>
+              <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-2">
+                  ⚡ You have {openLeads.length} open lead{openLeads.length > 1 ? 's' : ''}. Follow up to close them out!
+                </p>
+                <div className="space-y-1.5">
+                  {openLeads.map(lead => (
+                    <div key={lead.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {getFollowupIndicator(lead.next_followup_due)}
+                        <button
+                          onClick={() => { handleClose(); navigate(`/dashboard/leads/${lead.id}`); }}
+                          className="text-foreground hover:text-accent underline-offset-2 hover:underline text-left truncate"
+                        >
+                          {lead.full_name}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {getStatusBadge(lead.status)}
+                        {(lead.priority === 'urgent' || lead.priority === 'high') && (
+                          <Badge variant={lead.priority === 'urgent' ? 'destructive' : 'default'} className={`text-[10px] px-1.5 py-0 ${lead.priority === 'high' ? 'bg-orange-500' : ''}`}>
+                            {lead.priority === 'urgent' ? '🔥' : '⬆'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Lead Notifications Section */}
           {hasLeadNotifications && (
