@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Users, Mail, ChevronDown, Briefcase, Rocket, Heart, Trophy } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Users, Mail, ChevronDown, Briefcase, Rocket, Heart, Trophy, ArrowRight } from "lucide-react";
 import teamRob from "@/assets/team-rob.png";
 import teamJonathan from "@/assets/team-jonathan.png";
 import teamDustin from "@/assets/team-dustin.png";
@@ -303,6 +304,13 @@ export function TeamSection() {
                   <Mail className="w-4 h-4" />
                   Send Your Resume
                 </a>
+                <Link
+                  to="/apply"
+                  className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3 rounded-lg font-heading uppercase text-sm hover:bg-foreground/90 transition-colors ml-3"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  Apply Now
+                </Link>
               </div>
             </div>
           </div>

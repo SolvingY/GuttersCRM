@@ -19,7 +19,9 @@ import {
   BarChart3,
   Megaphone,
   Target,
-  Flame
+  Flame,
+  Briefcase,
+  Bell
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,6 +30,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { NewApplicantsModal } from '@/components/admin/NewApplicantsModal';
+import { getScoreColor } from '@/lib/dnaAssessment';
 import nextGenLogo from '@/assets/next-gen-logo.png';
 
 const adminNavItems = [
@@ -41,6 +47,7 @@ const adminNavItems = [
   { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
   { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
   { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
+  { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
 ];
 
 export default function AdminLayout() {
@@ -50,6 +57,23 @@ export default function AdminLayout() {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+
+  const { data: newApps = [] } = useQuery({
+    queryKey: ['new-applicants-count'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('id, full_name, desired_position, dna_score')
+        .eq('status', 'new')
+        .eq('archived', false)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+  const newCount = newApps.length;
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -96,6 +120,42 @@ export default function AdminLayout() {
             <span className="hidden sm:inline">Back to</span> Dashboard
           </Button>
           
+          {/* Bell notification */}
+          <DropdownMenu open={bellOpen} onOpenChange={setBellOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground relative">
+                <Bell className="h-4 w-4" />
+                {newCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                    {newCount}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              {newApps.length === 0 ? (
+                <DropdownMenuItem disabled>No new applications</DropdownMenuItem>
+              ) : (
+                <>
+                  {newApps.map((a: any) => (
+                    <DropdownMenuItem key={a.id} onClick={() => { setBellOpen(false); navigate(`/admin/applicants/${a.id}`); }}>
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                          <p className="font-semibold text-sm">{a.full_name}</p>
+                          <p className="text-xs text-muted-foreground">{a.desired_position}</p>
+                        </div>
+                        <span className={`text-sm font-heading ${getScoreColor(a.dna_score)}`}>{a.dna_score}/20</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem onClick={() => { setBellOpen(false); navigate('/admin/applicants'); }} className="text-accent justify-center text-sm">
+                    View All Applications
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -163,7 +223,16 @@ export default function AdminLayout() {
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && (
+                    <span className="flex-1 flex items-center justify-between">
+                      {item.label}
+                      {item.path === '/admin/applicants' && newCount > 0 && (
+                        <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                          {newCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}
@@ -205,7 +274,14 @@ export default function AdminLayout() {
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  <span>{item.label}</span>
+                  <span className="flex-1 flex items-center justify-between">
+                    {item.label}
+                    {item.path === '/admin/applicants' && newCount > 0 && (
+                      <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                        {newCount}
+                      </span>
+                    )}
+                  </span>
                 </NavLink>
               );
             })}
@@ -231,6 +307,7 @@ export default function AdminLayout() {
           </div>
         </main>
       </div>
+      <NewApplicantsModal />
     </div>
   );
 }
