@@ -1390,6 +1390,66 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_canvasser_metrics_leaderboard: {
+        Row: {
+          canvasser_rank: string | null
+          conversations_had: number | null
+          created_at: string | null
+          doors_knocked: number | null
+          hours_worked: number | null
+          id: string | null
+          leads_closed: number | null
+          leads_set: number | null
+          leads_with_damage: number | null
+          leads_without_damage: number | null
+          not_interested: number | null
+          points_earned: number | null
+          shifts_worked: number | null
+          updated_at: string | null
+          user_id: string | null
+          week_end: string | null
+          week_start: string | null
+        }
+        Insert: {
+          canvasser_rank?: string | null
+          conversations_had?: number | null
+          created_at?: string | null
+          doors_knocked?: number | null
+          hours_worked?: number | null
+          id?: string | null
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          leads_without_damage?: number | null
+          not_interested?: number | null
+          points_earned?: number | null
+          shifts_worked?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_end?: string | null
+          week_start?: string | null
+        }
+        Update: {
+          canvasser_rank?: string | null
+          conversations_had?: number | null
+          created_at?: string | null
+          doors_knocked?: number | null
+          hours_worked?: number | null
+          id?: string | null
+          leads_closed?: number | null
+          leads_set?: number | null
+          leads_with_damage?: number | null
+          leads_without_damage?: number | null
+          not_interested?: number | null
+          points_earned?: number | null
+          shifts_worked?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_end?: string | null
+          week_start?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       archive_old_applications: { Args: never; Returns: undefined }
