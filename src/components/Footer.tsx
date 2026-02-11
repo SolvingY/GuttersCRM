@@ -1,4 +1,5 @@
-import { Phone, Mail, MapPin, Instagram, Star, Linkedin } from "lucide-react";
+import { Phone, Mail, MapPin, Instagram, Star, Linkedin, Facebook } from "lucide-react";
+import { Link } from "react-router-dom";
 import logo from "@/assets/logo.jpg";
 
 const services = [
@@ -49,7 +50,16 @@ export function Footer() {
             </p>
             <div className="flex gap-4">
               <a 
-                href="https://www.instagram.com/next_generation_roofing/" 
+                href="https://www.facebook.com/profile.php?id=100064277643225" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-primary-foreground/10 rounded hover:bg-accent transition-colors" 
+                aria-label="Facebook"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-primary-foreground/10 rounded hover:bg-accent transition-colors" 
@@ -123,13 +133,12 @@ export function Footer() {
                 </li>
               ))}
               <li>
-                <a
-                  href="#contact"
-                  onClick={(e) => scrollToSection(e, "#contact")}
+                <Link
+                  to="/get-quote"
                   className="text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors"
                 >
                   Free Estimate
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

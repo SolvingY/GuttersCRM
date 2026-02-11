@@ -117,7 +117,7 @@ export default function ApplicationThankYou() {
           <h2 className="font-heading text-xl uppercase">See the Team in Action</h2>
           <div className="flex justify-center gap-4">
             <a
-              href="https://www.facebook.com/oknextgenroofing/"
+              href="https://www.facebook.com/profile.php?id=100064277643225"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-lg hover:border-accent transition-colors"
@@ -125,7 +125,7 @@ export default function ApplicationThankYou() {
               <Facebook className="w-5 h-5 text-accent" /> Facebook
             </a>
             <a
-              href="https://www.instagram.com/nextgenroofingok/"
+              href="https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-lg hover:border-accent transition-colors"

@@ -27,6 +27,9 @@ import PitManagement from "./pages/admin/PitManagement";
 import ReportSettings from "./pages/admin/ReportSettings";
 import FutureTeamMates from "./pages/admin/FutureTeamMates";
 import ApplicantDetail from "./pages/admin/ApplicantDetail";
+import Leads from "./pages/admin/Leads";
+import LeadDetail from "./pages/admin/LeadDetail";
+import GetQuote from "./pages/GetQuote";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
 import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
@@ -49,6 +52,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/apply" element={<JobApplication />} />
           <Route path="/apply/thank-you" element={<ApplicationThankYou />} />
+          <Route path="/get-quote" element={<GetQuote />} />
           
           {/* Protected Dashboard Routes (Sales Reps) */}
           <Route
@@ -108,6 +112,8 @@ const App = () => (
             <Route path="reports" element={<ReportSettings />} />
             <Route path="applicants" element={<FutureTeamMates />} />
             <Route path="applicants/:id" element={<ApplicantDetail />} />
+            <Route path="leads" element={<Leads />} />
+            <Route path="leads/:id" element={<LeadDetail />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

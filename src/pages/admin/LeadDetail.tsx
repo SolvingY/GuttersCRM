@@ -1,0 +1,307 @@
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+const serviceLabels: Record<string, string> = {
+  commercial: "Commercial Roofing",
+  residential: "Residential Roofing",
+  gutters: "Gutters & Protection",
+  repair: "Repair Work",
+};
+
+const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
+
+const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost"];
+const priorityOptions = ["urgent", "high", "normal", "low"];
+const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
+
+export default function LeadDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [notes, setNotes] = useState<string | null>(null);
+  const [lostReason, setLostReason] = useState("");
+
+  const { data: lead, isLoading } = useQuery({
+    queryKey: ["lead-detail", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("quote_requests").select("*").eq("id", id).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["sales-reps-for-assignment"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_metrics").select("user_id, display_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateLead = useMutation({
+    mutationFn: async (updates: Record<string, any>) => {
+      const { error } = await supabase.from("quote_requests").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      toast({ title: "Lead updated" });
+    },
+    onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
+  });
+
+  if (isLoading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
+  if (!lead) return <div className="text-center py-12 text-muted-foreground">Lead not found</div>;
+
+  const ServiceIcon = serviceIcons[lead.service_type] || Building2;
+  const formData = (lead.form_data || {}) as Record<string, any>;
+  const currentNotes = notes ?? lead.admin_notes ?? "";
+
+  const renderFormData = () => {
+    const entries = Object.entries(formData).filter(([k]) => k !== "photoUrls");
+    if (entries.length === 0) return <p className="text-sm text-muted-foreground">No details provided</p>;
+    return (
+      <div className="space-y-2">
+        {entries.map(([key, value]) => (
+          <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1">
+            <span className="text-xs text-muted-foreground capitalize min-w-[140px]">
+              {key.replace(/([A-Z])/g, " $1").trim()}:
+            </span>
+            <span className="text-sm font-medium">
+              {Array.isArray(value) ? value.join(", ") : String(value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={() => navigate("/admin/leads")} className="gap-2 -ml-2">
+        <ArrowLeft className="w-4 h-4" /> Back to All Leads
+      </Button>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-secondary rounded-lg">
+            <ServiceIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="font-heading text-xl uppercase">{lead.full_name}</h1>
+            <p className="text-sm text-muted-foreground">{serviceLabels[lead.service_type]} • {lead.reference_number}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={lead.status} onValueChange={(v) => {
+            const updates: Record<string, any> = { status: v };
+            if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
+            if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
+            if (v === "won") updates.won_at = new Date().toISOString();
+            updateLead.mutate(updates);
+          }}>
+            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={lead.priority} onValueChange={(v) => updateLead.mutate({ priority: v })}>
+            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {priorityOptions.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Service Info */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Service Details</h2>
+            {renderFormData()}
+          </div>
+
+          {/* Contact Info */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Contact Information</h2>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4 text-muted-foreground" />
+                <a href={`mailto:${lead.email}`} className="text-sm hover:text-accent">{lead.email}</a>
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone className="w-4 h-4 text-muted-foreground" />
+                <a href={`tel:${lead.phone}`} className="text-sm hover:text-accent">{lead.phone}</a>
+              </div>
+              <div className="flex items-start gap-3">
+                <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                <div className="text-sm">
+                  <p>{lead.street_address}</p>
+                  <p>{lead.city}, {lead.state} {lead.zip_code}</p>
+                </div>
+              </div>
+              {lead.best_contact_time?.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <Clock className="w-4 h-4 text-muted-foreground mt-0.5" />
+                  <p className="text-sm">{lead.best_contact_time.join(", ")}</p>
+                </div>
+              )}
+              {lead.referral_source && (
+                <p className="text-xs text-muted-foreground">Source: {lead.referral_source}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Photos */}
+          {lead.photo_urls?.length > 0 && (
+            <div className="border border-border rounded-lg p-5">
+              <h2 className="font-heading text-lg uppercase mb-4">Photos</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {lead.photo_urls.map((url: string, i: number) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
+                    <img src={url} alt={`Photo ${i + 1}`} className="w-full h-32 object-cover" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-6">
+          {/* Assignment */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Assignment</h2>
+            <Select
+              value={lead.assigned_to || "unassigned"}
+              onValueChange={(v) => {
+                if (v === "unassigned") {
+                  updateLead.mutate({ assigned_to: null, assigned_at: null });
+                } else {
+                  updateLead.mutate({ assigned_to: v, assigned_at: new Date().toISOString() });
+                }
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {salesReps.map((rep) => (
+                  <SelectItem key={rep.user_id} value={rep.user_id}>
+                    {rep.display_name || "Unknown"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {lead.assigned_at && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Assigned: {new Date(lead.assigned_at).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+
+          {/* Timeline */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Timeline</h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Submitted</span>
+                <span>{new Date(lead.created_at).toLocaleDateString()}</span>
+              </div>
+              {lead.contacted_at && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Contacted</span>
+                  <span>{new Date(lead.contacted_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              {lead.quoted_at && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Quoted</span>
+                  <span>{new Date(lead.quoted_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              {lead.won_at && (
+                <div className="flex justify-between text-green-600">
+                  <span>Won</span>
+                  <span>{new Date(lead.won_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              {lead.lost_at && (
+                <div className="flex justify-between text-destructive">
+                  <span>Lost</span>
+                  <span>{new Date(lead.lost_at).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+
+            {lead.status !== "won" && lead.status !== "lost" && (
+              <div className="flex gap-2 mt-4">
+                <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
+                  onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
+                  <CheckCircle className="w-3 h-3" /> Won
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => {
+                    if (!lostReason) {
+                      toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
+                      return;
+                    }
+                    updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
+                  }}>
+                  <XCircle className="w-3 h-3" /> Lost
+                </Button>
+              </div>
+            )}
+
+            {lead.status !== "won" && lead.status !== "lost" && (
+              <div className="mt-3">
+                <Select value={lostReason} onValueChange={setLostReason}>
+                  <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
+                  <SelectContent>
+                    {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Notes */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Admin Notes</h2>
+            <Textarea
+              value={currentNotes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes..."
+              className="min-h-[120px]"
+            />
+            <Button
+              size="sm"
+              className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => updateLead.mutate({ admin_notes: currentNotes })}
+              disabled={updateLead.isPending}
+            >
+              {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              Save Notes
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

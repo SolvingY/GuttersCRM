@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Star, Phone } from "lucide-react";
+import { ArrowRight, Star, Phone, ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-split-building.jpg";
 import heroLogo from "@/assets/hero-logo-new.png";
 import bbbBadge from "@/assets/badge-bbb.png";
@@ -75,12 +76,12 @@ export function Hero() {
                   Schedule Inspection NOW
                 </Button>
               </a>
-              <a href="#services" className="w-full sm:w-auto">
+              <Link to="/get-quote" className="w-full sm:w-auto">
                 <Button variant="heroOutline" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
-                  View Our Services
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Get a Free Estimate
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>

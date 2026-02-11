@@ -21,7 +21,8 @@ import {
   Target,
   Flame,
   Briefcase,
-  Bell
+  Bell,
+  ClipboardList
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -48,6 +49,7 @@ const adminNavItems = [
   { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
   { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
   { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
+  { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
 ];
 
 export default function AdminLayout() {
@@ -74,6 +76,18 @@ export default function AdminLayout() {
     },
   });
   const newCount = newApps.length;
+
+  const { data: newLeadsCount = 0 } = useQuery({
+    queryKey: ['new-leads-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('quote_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'new');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -144,7 +158,7 @@ export default function AdminLayout() {
                           <p className="font-semibold text-sm">{a.full_name}</p>
                           <p className="text-xs text-muted-foreground">{a.desired_position}</p>
                         </div>
-                        <span className={`text-sm font-heading ${getScoreColor(a.dna_score)}`}>{a.dna_score}/20</span>
+                        <span className={`text-sm font-heading ${getScoreColor(a.dna_score)}`}>{a.dna_score}/30</span>
                       </div>
                     </DropdownMenuItem>
                   ))}
@@ -231,6 +245,11 @@ export default function AdminLayout() {
                           {newCount}
                         </span>
                       )}
+                      {item.path === '/admin/leads' && newLeadsCount > 0 && (
+                        <span className="w-5 h-5 bg-accent text-accent-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                          {newLeadsCount}
+                        </span>
+                      )}
                     </span>
                   )}
                 </NavLink>
@@ -279,6 +298,11 @@ export default function AdminLayout() {
                     {item.path === '/admin/applicants' && newCount > 0 && (
                       <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
                         {newCount}
+                      </span>
+                    )}
+                    {item.path === '/admin/leads' && newLeadsCount > 0 && (
+                      <span className="w-5 h-5 bg-accent text-accent-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                        {newLeadsCount}
                       </span>
                     )}
                   </span>
