@@ -60,7 +60,7 @@ export function NewApplicantsModal() {
                 <p className="font-semibold">{a.full_name}</p>
                 <p className="text-xs text-muted-foreground">{a.alignment_category} · {a.desired_position}</p>
               </div>
-              <span className={`font-heading text-lg ${getScoreColor(a.dna_score)}`}>{a.dna_score}/20</span>
+              <span className={`font-heading text-lg ${getScoreColor(a.dna_score)}`}>{a.dna_score}/30</span>
             </div>
           ))}
         </div>

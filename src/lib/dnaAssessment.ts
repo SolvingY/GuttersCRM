@@ -12,6 +12,23 @@ export interface DNACategory {
   questionIds: string[];
 }
 
+export const QUESTION_WEIGHTS: Record<string, number> = {
+  q1: 1, q2: 2, q3: 2, q4: 3, q5: 1,
+  q6: 1, q7: 1, q8: 3, q9: 1, q10: 2,
+  q11: 1, q12: 1, q13: 1, q14: 1, q15: 2,
+  q16: 1, q17: 0, q18: 1, q19: 2, q20: 3,
+};
+
+export const MAX_SCORE = 30;
+
+export const CATEGORY_MAXES: Record<string, number> = {
+  "Performance Mindset": 9,
+  "Consistency & Commitment": 3,
+  "Coaching & Growth": 8,
+  "Teamwork & Culture": 5,
+  "Leadership Potential": 5,
+};
+
 export const dnaCategories: DNACategory[] = [
   {
     name: "Performance Mindset",
@@ -198,74 +215,141 @@ export const dnaQuestions: DNAQuestion[] = [
   },
 ];
 
-export type AlignmentCategory = "High Performance" | "Mid Performance" | "Support" | "Low Fit";
+export type AlignmentCategory = "Excellent Fit" | "Strong Fit" | "Moderate Fit" | "Marginal Fit" | "Low Fit";
 
 export interface DNAResult {
   score: number;
   alignmentCategory: AlignmentCategory;
   recommendedRole: string;
   redFlags: string[];
+  positiveIndicators: string[];
 }
 
 const HIGH_PERFORMANCE_ROLES = ["Sales - Residential", "Sales - Commercial", "Sales - Gutters", "Canvassing", "Management"];
+
+export function getQuestionWeight(qId: string): number {
+  return QUESTION_WEIGHTS[qId] ?? 0;
+}
+
+export function getQuestionWeightLabel(qId: string): string {
+  const w = QUESTION_WEIGHTS[qId];
+  if (w === 3) return "CRITICAL - 3 pts";
+  if (w === 2) return "2 pts";
+  if (w === 0) return "Informational";
+  return "1 pt";
+}
+
+export function getPositiveIndicators(answers: Record<string, "A" | "B">): string[] {
+  const indicators: string[] = [];
+
+  if (answers.q4 === "B" && answers.q8 === "B" && answers.q20 === "B") {
+    indicators.push("Strong cultural alignment");
+  }
+  if (answers.q2 === "B" && answers.q10 === "B" && answers.q15 === "B") {
+    indicators.push("Exceptional accountability");
+  }
+  if (answers.q8 === "B" && answers.q12 === "B" && answers.q18 === "B") {
+    indicators.push("Growth-oriented mindset");
+  }
+
+  let score = 0;
+  for (let i = 1; i <= 20; i++) {
+    if (answers[`q${i}`] === "B") score += QUESTION_WEIGHTS[`q${i}`];
+  }
+  if (score >= 24) {
+    indicators.push("Elite performer profile");
+  }
+
+  return indicators;
+}
 
 export function calculateDNAResult(
   answers: Record<string, "A" | "B">,
   desiredPosition: string
 ): DNAResult {
-  // Count B answers
+  // Weighted scoring
   let score = 0;
   for (let i = 1; i <= 20; i++) {
-    if (answers[`q${i}`] === "B") score++;
+    if (answers[`q${i}`] === "B") {
+      score += QUESTION_WEIGHTS[`q${i}`];
+    }
   }
 
   // Determine alignment category
   let alignmentCategory: AlignmentCategory;
-  if (score >= 16) alignmentCategory = "High Performance";
-  else if (score >= 11) alignmentCategory = "Mid Performance";
-  else if (score >= 6) alignmentCategory = "Support";
+  if (score >= 24) alignmentCategory = "Excellent Fit";
+  else if (score >= 18) alignmentCategory = "Strong Fit";
+  else if (score >= 12) alignmentCategory = "Moderate Fit";
+  else if (score >= 6) alignmentCategory = "Marginal Fit";
   else alignmentCategory = "Low Fit";
 
   // Determine recommended role
   let recommendedRole: string;
-  if (score >= 16) recommendedRole = "Sales, Canvassing, or Management";
-  else if (score >= 11) recommendedRole = "Production, Service, or Sales (with training)";
+  if (score >= 24) recommendedRole = "Sales, Canvassing, or Management";
+  else if (score >= 18) recommendedRole = "Sales or Canvassing (with training)";
+  else if (score >= 12) recommendedRole = "Production, Service, or Admin";
   else if (score >= 6) recommendedRole = "Admin or Production (supervised)";
   else recommendedRole = "Not recommended — additional screening needed";
 
   // Red flags
   const redFlags: string[] = [];
-  if (score < 6) redFlags.push("Low Cultural Fit");
-  if (HIGH_PERFORMANCE_ROLES.includes(desiredPosition) && score < 11) {
+  if (score < 12) redFlags.push("Low Cultural Fit");
+  if (HIGH_PERFORMANCE_ROLES.includes(desiredPosition) && score < 18) {
     redFlags.push("Role Mismatch — desired role requires higher alignment score");
   }
-  if (answers.q4 === "A") redFlags.push("External blame mindset");
-  if (answers.q8 === "A") redFlags.push("Resistant to coaching");
-  if (answers.q20 === "A") redFlags.push("Not aligned with excellence standard");
 
-  return { score, alignmentCategory, recommendedRole, redFlags };
+  let criticalCount = 0;
+  if (answers.q4 === "A") {
+    redFlags.push("External blame mindset (CRITICAL)");
+    criticalCount++;
+  }
+  if (answers.q8 === "A") {
+    redFlags.push("Resistant to coaching (CRITICAL)");
+    criticalCount++;
+  }
+  if (answers.q20 === "A") {
+    redFlags.push("Not aligned with excellence standard (CRITICAL)");
+    criticalCount++;
+  }
+  if (criticalCount >= 2) {
+    redFlags.push("Multiple critical concerns");
+  }
+
+  if (desiredPosition.includes("Sales") && answers.q2 === "A" && answers.q3 === "A") {
+    redFlags.push("May struggle with rejection and feedback");
+  }
+
+  if (desiredPosition === "Admin" && score > 24) {
+    redFlags.push("Consider sales/leadership roles — higher potential");
+  }
+
+  // Positive indicators
+  const positiveIndicators = getPositiveIndicators(answers);
+
+  return { score, alignmentCategory, recommendedRole, redFlags, positiveIndicators };
 }
 
 export function getAlignmentStars(category: AlignmentCategory): number {
   switch (category) {
-    case "High Performance": return 5;
-    case "Mid Performance": return 4;
-    case "Support": return 3;
+    case "Excellent Fit": return 5;
+    case "Strong Fit": return 4;
+    case "Moderate Fit": return 3;
+    case "Marginal Fit": return 2;
     case "Low Fit": return 1;
   }
 }
 
 export function getScoreColor(score: number): string {
-  if (score >= 16) return "text-green-600";
-  if (score >= 11) return "text-yellow-600";
-  if (score >= 6) return "text-orange-500";
+  if (score >= 24) return "text-green-600";
+  if (score >= 18) return "text-yellow-600";
+  if (score >= 12) return "text-orange-500";
   return "text-red-600";
 }
 
 export function getScoreBarColor(score: number): string {
-  if (score >= 16) return "bg-green-500";
-  if (score >= 11) return "bg-yellow-500";
-  if (score >= 6) return "bg-orange-500";
+  if (score >= 24) return "bg-green-500";
+  if (score >= 18) return "bg-yellow-500";
+  if (score >= 12) return "bg-orange-500";
   return "bg-red-500";
 }
 
@@ -274,10 +358,13 @@ export function getCategoryScore(
   category: DNACategory
 ): { earned: number; total: number } {
   let earned = 0;
+  let total = 0;
   for (const qId of category.questionIds) {
-    if (answers[qId] === "B") earned++;
+    const weight = QUESTION_WEIGHTS[qId];
+    total += weight;
+    if (answers[qId] === "B") earned += weight;
   }
-  return { earned, total: category.questionIds.length };
+  return { earned, total };
 }
 
 export const desiredPositions = [

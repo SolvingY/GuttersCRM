@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, CheckCircle, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar } from "lucide-react";
+import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import {
   dnaQuestions,
@@ -17,8 +17,109 @@ import {
   getScoreColor,
   getScoreBarColor,
   getAlignmentStars,
+  getPositiveIndicators,
+  getQuestionWeight,
+  getQuestionWeightLabel,
+  MAX_SCORE,
+  QUESTION_WEIGHTS,
 } from "@/lib/dnaAssessment";
 import type { AlignmentCategory } from "@/lib/dnaAssessment";
+import { HireApplicantDialog } from "@/components/admin/HireApplicantDialog";
+
+function generateHTMLReport(app: any) {
+  const answers = (app.dna_answers || {}) as Record<string, "A" | "B">;
+  const redFlags = (app.red_flags || []) as string[];
+  const positiveIndicators = getPositiveIndicators(answers);
+  const score = app.dna_score || 0;
+  const percentage = Math.round((score / MAX_SCORE) * 100);
+
+  const scoreColor = score >= 24 ? "#16a34a" : score >= 18 ? "#eab308" : score >= 12 ? "#f97316" : "#dc2626";
+
+  const categoryHTML = dnaCategories.map((cat) => {
+    const { earned, total } = getCategoryScore(answers, cat);
+    const questionsHTML = cat.questionIds.map((qId) => {
+      const q = dnaQuestions.find((dq) => dq.id === qId)!;
+      const ans = answers[qId];
+      const isB = ans === "B";
+      const weight = getQuestionWeight(qId);
+      const weightLabel = weight >= 2 ? ` <span style="background:#fef3c7;padding:2px 6px;border-radius:3px;font-size:11px;font-weight:bold;color:#92400e;">${getQuestionWeightLabel(qId)}</span>` : "";
+      return `<div style="margin:8px 0;padding-left:20px;font-size:13px;">
+        <span style="color:${isB ? "#16a34a" : "#dc2626"};">${isB ? "✓" : "✗"}</span>
+        <strong>Q${q.number}:</strong>
+        ${isB ? q.optionB : q.optionA} (${ans})${weightLabel}
+      </div>`;
+    }).join("");
+
+    return `<div style="margin:20px 0;padding:15px;background:#f9fafb;border-radius:6px;">
+      <h3 style="margin:0 0 10px;color:#374151;">${cat.name} (${earned}/${total})</h3>
+      ${questionsHTML}
+    </div>`;
+  }).join("");
+
+  const positiveHTML = positiveIndicators.length > 0
+    ? `<div style="margin:15px 0;"><h4>Positive Indicators</h4>${positiveIndicators.map((i) => `<div style="background:#dcfce7;padding:8px 12px;margin:5px 0;border-left:4px solid #16a34a;border-radius:4px;color:#166534;">✓ ${i}</div>`).join("")}</div>`
+    : "";
+
+  const redFlagsHTML = redFlags.length > 0
+    ? `<div style="margin:15px 0;"><h4>Areas to Explore</h4>${redFlags.map((f) => `<div style="background:#fee2e2;padding:8px 12px;margin:5px 0;border-left:4px solid #dc2626;border-radius:4px;color:#991b1b;">⚠ ${f}</div>`).join("")}</div>`
+    : "";
+
+  const htmlContent = `<!DOCTYPE html>
+<html><head><title>Job Application - ${app.full_name}</title>
+<style>
+  body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;max-width:900px;margin:40px auto;padding:20px;line-height:1.6;}
+  .header{background:#dc2626;color:white;padding:30px;border-radius:8px;margin-bottom:30px;}
+  .header h1{margin:0 0 10px;font-size:28px;}
+  .section{margin:30px 0;padding:25px;border:1px solid #e5e5e5;border-radius:8px;}
+  .section h2{margin-top:0;color:#1f2937;border-bottom:2px solid #dc2626;padding-bottom:10px;}
+  .narrative{background:#f9fafb;padding:15px;border-left:3px solid #9ca3af;margin:15px 0;white-space:pre-wrap;}
+  @media print{.no-print{display:none;}body{margin:0;}.section{page-break-inside:avoid;}}
+</style></head><body>
+<div class="header">
+  <h1>Next Generation Roofing</h1>
+  <p>Job Application Assessment</p>
+  <p><strong>Applicant:</strong> ${app.full_name}</p>
+  <p><strong>Applied:</strong> ${format(new Date(app.created_at), "MMMM d, yyyy")}</p>
+</div>
+<div class="section"><h2>Basic Information</h2>
+  <p><strong>Email:</strong> ${app.email}</p>
+  <p><strong>Phone:</strong> ${app.phone}</p>
+  <p><strong>Current Title:</strong> ${app.current_job_title || "N/A"}</p>
+</div>
+<div class="section"><h2>Position & Experience</h2>
+  <p><strong>Desired Position:</strong> ${app.desired_position}</p>
+  <p><strong>Years of Experience:</strong> ${app.years_experience}</p>
+  <p><strong>Availability:</strong> ${app.availability}</p>
+</div>
+<div class="section"><h2>NGR DNA Assessment</h2>
+  <div style="font-size:48px;font-weight:bold;color:${scoreColor};margin:20px 0;">${score}/${MAX_SCORE} (${percentage}%)</div>
+  <p><strong>Alignment:</strong> ${app.alignment_category}</p>
+  <p><strong>Recommended Role:</strong> ${app.recommended_role}</p>
+  ${positiveHTML}${redFlagsHTML}
+  <h3>Detailed Category Breakdown</h3>
+  ${categoryHTML}
+</div>
+<div class="section"><h2>Narrative Responses</h2>
+  <h3>1. The Ownership Standard</h3>
+  <div class="narrative">${app.narrative_ownership}</div>
+  <h3>2. The Mentor Mindset</h3>
+  <div class="narrative">${app.narrative_mentor}</div>
+  <h3>3. The "Next Gen" Why</h3>
+  <div class="narrative">${app.narrative_why_ngr}</div>
+</div>
+${app.admin_notes ? `<div class="section"><h2>Admin Notes</h2><div class="narrative">${app.admin_notes}</div></div>` : ""}
+${app.interview_notes ? `<div class="section"><h2>Interview Notes</h2><div class="narrative">${app.interview_notes}</div></div>` : ""}
+<div class="no-print" style="text-align:center;margin:40px 0;">
+  <button onclick="window.print()" style="background:#dc2626;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+</div>
+</body></html>`;
+
+  const printWindow = window.open("", "_blank");
+  if (printWindow) {
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  }
+}
 
 export default function ApplicantDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +130,7 @@ export default function ApplicantDetail() {
   const [interviewNotes, setInterviewNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [dnaOpen, setDnaOpen] = useState(false);
+  const [showHireDialog, setShowHireDialog] = useState(false);
 
   const { data: app, isLoading } = useQuery({
     queryKey: ["job-application", id],
@@ -72,12 +174,8 @@ export default function ApplicantDetail() {
 
   const changeStatus = (status: string) => {
     const extra: Record<string, any> = { status };
-    if (status === "reviewed") {
-      extra.reviewed_at = new Date().toISOString();
-    }
-    if (status === "contacted") {
-      extra.contacted_at = new Date().toISOString();
-    }
+    if (status === "reviewed") extra.reviewed_at = new Date().toISOString();
+    if (status === "contacted") extra.contacted_at = new Date().toISOString();
     updateApp.mutate(extra);
   };
 
@@ -86,8 +184,9 @@ export default function ApplicantDetail() {
 
   const answers = (app.dna_answers || {}) as Record<string, "A" | "B">;
   const redFlags = (app.red_flags || []) as string[];
+  const positiveIndicators = getPositiveIndicators(answers);
   const stars = getAlignmentStars(app.alignment_category as AlignmentCategory);
-  const scorePercent = Math.round((app.dna_score / 20) * 100);
+  const scorePercent = Math.round((app.dna_score / MAX_SCORE) * 100);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -139,7 +238,7 @@ export default function ApplicantDetail() {
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="flex items-end gap-2 mb-1">
-              <span className={`text-3xl font-heading ${getScoreColor(app.dna_score)}`}>{app.dna_score}/20</span>
+              <span className={`text-3xl font-heading ${getScoreColor(app.dna_score)}`}>{app.dna_score}/{MAX_SCORE}</span>
               <span className="text-sm text-muted-foreground">({scorePercent}%)</span>
             </div>
             <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
@@ -157,6 +256,17 @@ export default function ApplicantDetail() {
           </div>
           <div><span className="text-muted-foreground">Recommended:</span> {app.recommended_role}</div>
         </div>
+
+        {/* Positive Indicators */}
+        {positiveIndicators.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {positiveIndicators.map((indicator, i) => (
+              <Badge key={i} className="text-xs bg-green-50 text-green-800 border-l-4 border-green-500 hover:bg-green-100">
+                <CheckCircle className="w-3 h-3 mr-1" /> {indicator}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Red flags */}
         {redFlags.length > 0 && (
@@ -180,13 +290,13 @@ export default function ApplicantDetail() {
           <CollapsibleContent className="space-y-4 mt-4">
             {dnaCategories.map((cat) => {
               const { earned, total } = getCategoryScore(answers, cat);
-              const allB = earned === total;
+              const allCorrect = earned === total;
               return (
                 <div key={cat.name} className="border border-border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-heading uppercase text-sm">{cat.name}</h3>
-                    <span className={`text-sm font-semibold ${allB ? "text-green-600" : earned >= total / 2 ? "text-yellow-600" : "text-red-600"}`}>
-                      {earned}/{total} {allB ? "✅" : "⚠"}
+                    <span className={`text-sm font-semibold ${allCorrect ? "text-green-600" : earned >= total / 2 ? "text-yellow-600" : "text-red-600"}`}>
+                      {earned}/{total} {allCorrect ? "✅" : "⚠"}
                     </span>
                   </div>
                   <div className="space-y-1">
@@ -194,11 +304,17 @@ export default function ApplicantDetail() {
                       const q = dnaQuestions.find((dq) => dq.id === qId)!;
                       const ans = answers[qId];
                       const isB = ans === "B";
+                      const weight = getQuestionWeight(qId);
                       return (
                         <div key={qId} className="flex items-start gap-2 text-xs">
                           <span className={`mt-0.5 ${isB ? "text-green-600" : "text-red-500"}`}>{isB ? "✓" : "✗"}</span>
                           <span className="text-muted-foreground">Q{q.number}:</span>
                           <span>{isB ? q.optionB : q.optionA} ({ans})</span>
+                          {weight >= 2 && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-semibold ml-1">
+                              {getQuestionWeightLabel(qId)}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -257,13 +373,27 @@ export default function ApplicantDetail() {
         <Button variant="outline" onClick={() => changeStatus("contacted")}>
           <Phone className="w-4 h-4 mr-1" /> Mark as Contacted
         </Button>
-        <Button variant="outline" onClick={() => changeStatus("hired")} className="border-blue-500 text-blue-600 hover:bg-blue-50">
+        <Button variant="outline" onClick={() => generateHTMLReport(app)}>
+          <FileText className="w-4 h-4 mr-1" /> Export to PDF
+        </Button>
+        <Button variant="outline" onClick={() => setShowHireDialog(true)} className="border-blue-500 text-blue-600 hover:bg-blue-50">
           <UserCheck className="w-4 h-4 mr-1" /> Move to Hired
         </Button>
         <Button variant="outline" onClick={() => changeStatus("rejected")} className="border-destructive text-destructive hover:bg-destructive/10">
           <XCircle className="w-4 h-4 mr-1" /> Reject
         </Button>
       </div>
+
+      {/* Hire Dialog */}
+      <HireApplicantDialog
+        isOpen={showHireDialog}
+        onClose={() => setShowHireDialog(false)}
+        applicant={app}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["job-application", id] });
+          queryClient.invalidateQueries({ queryKey: ["job-applications"] });
+        }}
+      />
     </div>
   );
 }
