@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { action, targetUserId, targetUserEmail } = await req.json();
+    const { action, targetUserId, targetUserEmail, newPassword } = await req.json();
     
     if (!targetUserId || !action) {
       return new Response(
@@ -66,9 +66,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!["archive", "unarchive", "delete", "reset-password"].includes(action)) {
+    if (!["archive", "unarchive", "delete", "reset-password", "set-password"].includes(action)) {
       return new Response(
-        JSON.stringify({ error: "Invalid action. Must be 'archive', 'unarchive', 'delete', or 'reset-password'" }),
+        JSON.stringify({ error: "Invalid action. Must be 'archive', 'unarchive', 'delete', 'reset-password', or 'set-password'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -191,6 +191,35 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, action: "delete" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "set-password") {
+      if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+        return new Response(
+          JSON.stringify({ error: "Password must be at least 6 characters" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        targetUserId,
+        { password: newPassword }
+      );
+
+      if (updateError) {
+        console.error("Set password error:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to set password" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Password set for user ${targetUserId} by admin ${user.id}`);
+
+      return new Response(
+        JSON.stringify({ success: true, action: "set-password" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

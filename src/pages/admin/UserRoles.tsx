@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EditUserRoleModal } from '@/components/admin/EditUserRoleModal';
+import { SetPasswordModal } from '@/components/admin/SetPasswordModal';
 import { format } from 'date-fns';
 
 interface UserWithRole {
@@ -50,6 +51,8 @@ export default function UserRoles() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [targetUser, setTargetUser] = useState<UserWithRole | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<UserWithRole | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -238,33 +241,6 @@ export default function UserRoles() {
     }
   };
 
-  const handlePasswordReset = async (user: UserWithRole) => {
-    setActionLoading(user.id);
-    try {
-      const response = await supabase.functions.invoke('admin-manage-user', {
-        body: { action: 'reset-password', targetUserId: user.id },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to send password reset');
-      }
-
-      const data = response.data;
-      toast({
-        title: 'Password Reset Sent',
-        description: `A password reset email has been sent to ${data.email || user.fullName || 'the user'}.`,
-      });
-    } catch (error) {
-      console.error('Error sending password reset:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to send password reset',
-        variant: 'destructive',
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const getRoleBadges = (roles: string[]) => {
     return (
@@ -411,9 +387,12 @@ export default function UserRoles() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handlePasswordReset(user)}
+                                onClick={() => {
+                                  setPasswordUser(user);
+                                  setPasswordModalOpen(true);
+                                }}
                                 disabled={actionLoading === user.id}
-                                title="Send password reset email"
+                                title="Set password"
                               >
                                 <KeyRound className="h-4 w-4" />
                               </Button>
@@ -544,6 +523,13 @@ export default function UserRoles() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Set Password Modal */}
+      <SetPasswordModal
+        open={passwordModalOpen}
+        onOpenChange={setPasswordModalOpen}
+        user={passwordUser}
+      />
     </div>
   );
 }
