@@ -475,12 +475,14 @@ export type Database = {
           availability: string
           contacted_at: string | null
           created_at: string
+          created_user_id: string | null
           current_job_title: string | null
           desired_position: string
           dna_answers: Json
           dna_score: number
           email: string
           full_name: string
+          hired_at: string | null
           id: string
           interview_notes: string | null
           narrative_mentor: string
@@ -491,6 +493,7 @@ export type Database = {
           red_flags: Json
           reviewed_at: string | null
           reviewed_by: string | null
+          start_date: string | null
           status: string
           status_changed_at: string | null
           status_changed_by: string | null
@@ -505,12 +508,14 @@ export type Database = {
           availability: string
           contacted_at?: string | null
           created_at?: string
+          created_user_id?: string | null
           current_job_title?: string | null
           desired_position: string
           dna_answers: Json
           dna_score: number
           email: string
           full_name: string
+          hired_at?: string | null
           id?: string
           interview_notes?: string | null
           narrative_mentor: string
@@ -521,6 +526,7 @@ export type Database = {
           red_flags?: Json
           reviewed_at?: string | null
           reviewed_by?: string | null
+          start_date?: string | null
           status?: string
           status_changed_at?: string | null
           status_changed_by?: string | null
@@ -535,12 +541,14 @@ export type Database = {
           availability?: string
           contacted_at?: string | null
           created_at?: string
+          created_user_id?: string | null
           current_job_title?: string | null
           desired_position?: string
           dna_answers?: Json
           dna_score?: number
           email?: string
           full_name?: string
+          hired_at?: string | null
           id?: string
           interview_notes?: string | null
           narrative_mentor?: string
@@ -551,6 +559,7 @@ export type Database = {
           red_flags?: Json
           reviewed_at?: string | null
           reviewed_by?: string | null
+          start_date?: string | null
           status?: string
           status_changed_at?: string | null
           status_changed_by?: string | null

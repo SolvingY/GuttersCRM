@@ -149,7 +149,7 @@ export default function FutureTeamMates() {
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Alignment" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Alignment</SelectItem>
-            {["High Performance", "Mid Performance", "Support", "Low Fit"].map((a) => (
+            {["Excellent Fit", "Strong Fit", "Moderate Fit", "Marginal Fit", "Low Fit"].map((a) => (
               <SelectItem key={a} value={a}>{a}</SelectItem>
             ))}
           </SelectContent>
@@ -189,7 +189,7 @@ export default function FutureTeamMates() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Applied: {format(new Date(app.created_at), "MMM d, yyyy")} · DNA Score: <span className={`font-semibold ${getScoreColor(app.dna_score)}`}>{app.dna_score}/20</span>
+                      Applied: {format(new Date(app.created_at), "MMM d, yyyy")} · DNA Score: <span className={`font-semibold ${getScoreColor(app.dna_score)}`}>{app.dna_score}/30</span>
                     </p>
                     <p className="text-sm mt-1">Desired: {app.desired_position} · Recommended: {app.recommended_role}</p>
                     <p className="text-sm text-muted-foreground">{app.years_experience} · {app.availability}</p>

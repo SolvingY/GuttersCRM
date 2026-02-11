@@ -89,9 +89,9 @@ export default function JobApplication() {
 
   const validateStep3 = (): boolean => {
     const errs: Record<string, string> = {};
-    if (wordCount(narrativeOwnership) < 100) errs.narrativeOwnership = `Minimum 100 words required (${wordCount(narrativeOwnership)} words)`;
-    if (wordCount(narrativeMentor) < 100) errs.narrativeMentor = `Minimum 100 words required (${wordCount(narrativeMentor)} words)`;
-    if (wordCount(narrativeWhyNgr) < 100) errs.narrativeWhyNgr = `Minimum 100 words required (${wordCount(narrativeWhyNgr)} words)`;
+    if (wordCount(narrativeOwnership) < 25) errs.narrativeOwnership = `Minimum 25 words required (${wordCount(narrativeOwnership)} words)`;
+    if (wordCount(narrativeMentor) < 25) errs.narrativeMentor = `Minimum 25 words required (${wordCount(narrativeMentor)} words)`;
+    if (wordCount(narrativeWhyNgr) < 25) errs.narrativeWhyNgr = `Minimum 25 words required (${wordCount(narrativeWhyNgr)} words)`;
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return false;
@@ -275,7 +275,7 @@ export default function JobApplication() {
         {step === 2 && (
           <div className="space-y-6">
             <p className="text-muted-foreground text-sm">
-              Tell us your story. Be honest and specific—we want to know the real you. Each response requires a minimum of 100 words.
+              Tell us your story. Be honest and specific—we want to know the real you. Each response requires a minimum of 25 words.
             </p>
             <div>
               <Label className="text-base font-heading uppercase">1. The Ownership Standard</Label>
@@ -288,8 +288,8 @@ export default function JobApplication() {
                 rows={6}
                 placeholder="Share your experience..."
               />
-              <p className={`text-xs mt-1 ${wordCount(narrativeOwnership) >= 100 ? "text-green-600" : "text-muted-foreground"}`}>
-                {wordCount(narrativeOwnership)}/100 words
+              <p className={`text-xs mt-1 ${wordCount(narrativeOwnership) >= 25 ? "text-green-600" : "text-muted-foreground"}`}>
+                {wordCount(narrativeOwnership)}/25 words
               </p>
               {errors.narrativeOwnership && <p className="text-destructive text-sm">{errors.narrativeOwnership}</p>}
             </div>
@@ -304,8 +304,8 @@ export default function JobApplication() {
                 rows={6}
                 placeholder="Share your thoughts..."
               />
-              <p className={`text-xs mt-1 ${wordCount(narrativeMentor) >= 100 ? "text-green-600" : "text-muted-foreground"}`}>
-                {wordCount(narrativeMentor)}/100 words
+              <p className={`text-xs mt-1 ${wordCount(narrativeMentor) >= 25 ? "text-green-600" : "text-muted-foreground"}`}>
+                {wordCount(narrativeMentor)}/25 words
               </p>
               {errors.narrativeMentor && <p className="text-destructive text-sm">{errors.narrativeMentor}</p>}
             </div>
@@ -320,8 +320,8 @@ export default function JobApplication() {
                 rows={6}
                 placeholder="Tell us why you..."
               />
-              <p className={`text-xs mt-1 ${wordCount(narrativeWhyNgr) >= 100 ? "text-green-600" : "text-muted-foreground"}`}>
-                {wordCount(narrativeWhyNgr)}/100 words
+              <p className={`text-xs mt-1 ${wordCount(narrativeWhyNgr) >= 25 ? "text-green-600" : "text-muted-foreground"}`}>
+                {wordCount(narrativeWhyNgr)}/25 words
               </p>
               {errors.narrativeWhyNgr && <p className="text-destructive text-sm">{errors.narrativeWhyNgr}</p>}
             </div>
