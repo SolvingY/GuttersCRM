@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
-import { Trophy, Megaphone, Quote, Sparkles, Rocket, Flame, Clock, TrendingUp, Gift, Zap } from 'lucide-react';
+import { Trophy, Megaphone, Quote, Sparkles, Rocket, Flame, Clock, TrendingUp, Gift, Zap, ClipboardList, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays, differenceInHours, isPast } from 'date-fns';
 
 interface Announcement {
@@ -62,8 +63,32 @@ interface ActiveContest {
   gap?: number;
 }
 
+interface NewLead {
+  id: string;
+  full_name: string;
+  service_type: string;
+  priority: string;
+  assigned_at: string | null;
+}
+
+interface LeadUpdate {
+  id: string;
+  activity_type: string;
+  content: string | null;
+  created_at: string;
+  lead_name?: string;
+}
+
+interface OverdueFollowup {
+  id: string;
+  full_name: string;
+  next_followup_due: string;
+  status: string;
+}
+
 export function WelcomeModal() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -78,6 +103,11 @@ export function WelcomeModal() {
   
   // Active contest states
   const [activeContests, setActiveContests] = useState<ActiveContest[]>([]);
+
+  // Lead notification states
+  const [newLeads, setNewLeads] = useState<NewLead[]>([]);
+  const [leadUpdates, setLeadUpdates] = useState<LeadUpdate[]>([]);
+  const [overdueFollowups, setOverdueFollowups] = useState<OverdueFollowup[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -248,6 +278,74 @@ export function WelcomeModal() {
           setActiveContests(contestsWithRanking);
         }
 
+        // --- Lead Notifications ---
+        // Determine the reference time for "new" leads
+        const lastShownKey = `welcome_modal_last_shown_${user.id}`;
+        const lastShownStr = sessionStorage.getItem(lastShownKey);
+        const fortyEightHoursAgo = new Date();
+        fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
+        const referenceSince = lastShownStr ? new Date(lastShownStr) : fortyEightHoursAgo;
+
+        // New leads assigned to this user since last session
+        const { data: newLeadsData } = await supabase
+          .from('quote_requests')
+          .select('id, full_name, service_type, priority, assigned_at')
+          .eq('assigned_to', user.id)
+          .gte('assigned_at', referenceSince.toISOString())
+          .order('assigned_at', { ascending: false })
+          .limit(5);
+
+        setNewLeads(newLeadsData || []);
+
+        // Overdue follow-ups
+        const { data: overdueData } = await supabase
+          .from('quote_requests')
+          .select('id, full_name, next_followup_due, status')
+          .eq('assigned_to', user.id)
+          .not('next_followup_due', 'is', null)
+          .lt('next_followup_due', new Date().toISOString())
+          .not('status', 'in', '("won","lost")')
+          .order('next_followup_due', { ascending: true })
+          .limit(5);
+
+        setOverdueFollowups(overdueData || []);
+
+        // Recent lead updates (activity by others on my leads, last 7 days)
+        const sevenDaysAgoDate = new Date();
+        sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
+
+        // First get user's assigned lead IDs
+        const { data: myLeadIds } = await supabase
+          .from('quote_requests')
+          .select('id, full_name')
+          .eq('assigned_to', user.id)
+          .not('status', 'in', '("won","lost")');
+
+        if (myLeadIds && myLeadIds.length > 0) {
+          const leadIdMap = new Map(myLeadIds.map(l => [l.id, l.full_name]));
+          const ids = myLeadIds.map(l => l.id);
+
+          const { data: activityData } = await supabase
+            .from('lead_activity_log')
+            .select('id, activity_type, content, created_at, lead_id')
+            .in('lead_id', ids)
+            .in('activity_type', ['quote_approved', 'quote_rejected', 'status_change', 'assignment'])
+            .neq('user_id', user.id)
+            .gte('created_at', sevenDaysAgoDate.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          const enrichedUpdates: LeadUpdate[] = (activityData || []).map(a => ({
+            id: a.id,
+            activity_type: a.activity_type,
+            content: a.content,
+            created_at: a.created_at,
+            lead_name: leadIdMap.get(a.lead_id) || 'Unknown',
+          }));
+
+          setLeadUpdates(enrichedUpdates);
+        }
+
         // Show modal if returning user
         setIsOpen(true);
       } finally {
@@ -273,12 +371,20 @@ export function WelcomeModal() {
       await supabase.from('user_announcement_reads').insert(reads);
     }
 
-    // Mark as shown for this session
+    // Mark as shown for this session and record timestamp
     sessionStorage.setItem(`welcome_modal_shown_${user.id}`, 'true');
+    sessionStorage.setItem(`welcome_modal_last_shown_${user.id}`, new Date().toISOString());
     setIsOpen(false);
   };
 
+  const handleViewLeads = async () => {
+    await handleClose();
+    navigate('/dashboard/my-leads');
+  };
+
   if (loading) return null;
+
+  const hasLeadNotifications = newLeads.length > 0 || overdueFollowups.length > 0 || leadUpdates.length > 0;
 
   const getPriorityBadge = (priority: string | null) => {
     switch (priority) {
@@ -315,6 +421,16 @@ export function WelcomeModal() {
     return `${hours}h left`;
   };
 
+  const getUpdateLabel = (activityType: string) => {
+    switch (activityType) {
+      case 'quote_approved': return '✅ Quote Approved';
+      case 'quote_rejected': return '❌ Quote Rejected';
+      case 'status_change': return '🔄 Status Changed';
+      case 'assignment': return '📋 Assigned';
+      default: return '📝 Update';
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -344,6 +460,87 @@ export function WelcomeModal() {
               </div>
             </div>
           </div>
+
+          {/* Lead Notifications Section */}
+          {hasLeadNotifications && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-accent" />
+                <h3 className="text-sm font-semibold text-foreground">My Leads</h3>
+              </div>
+
+              {/* New Leads Assigned */}
+              {newLeads.length > 0 && (
+                <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">
+                    📬 {newLeads.length} New Lead{newLeads.length > 1 ? 's' : ''} Assigned
+                  </p>
+                  <div className="space-y-1.5">
+                    {newLeads.map(lead => (
+                      <div key={lead.id} className="flex items-center justify-between text-sm">
+                        <button
+                          onClick={() => { handleClose(); navigate(`/dashboard/leads/${lead.id}`); }}
+                          className="text-foreground hover:text-accent underline-offset-2 hover:underline text-left truncate max-w-[60%]"
+                        >
+                          {lead.full_name}
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground capitalize">{lead.service_type}</span>
+                          {lead.priority === 'urgent' && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Urgent</Badge>}
+                          {lead.priority === 'high' && <Badge className="bg-orange-500 text-[10px] px-1.5 py-0">High</Badge>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Overdue Follow-ups */}
+              {overdueFollowups.length > 0 && (
+                <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <p className="text-xs font-medium text-destructive mb-2 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {overdueFollowups.length} Overdue Follow-up{overdueFollowups.length > 1 ? 's' : ''}
+                  </p>
+                  <div className="space-y-1.5">
+                    {overdueFollowups.map(lead => (
+                      <div key={lead.id} className="flex items-center justify-between text-sm">
+                        <button
+                          onClick={() => { handleClose(); navigate(`/dashboard/leads/${lead.id}`); }}
+                          className="text-foreground hover:text-accent underline-offset-2 hover:underline text-left truncate max-w-[60%]"
+                        >
+                          {lead.full_name}
+                        </button>
+                        <span className="text-xs text-destructive">
+                          {formatDistanceToNow(new Date(lead.next_followup_due), { addSuffix: false })} overdue
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lead Updates */}
+              {leadUpdates.length > 0 && (
+                <div className="p-3 bg-secondary/50 rounded-lg border border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Recent Lead Updates</p>
+                  <div className="space-y-1.5">
+                    {leadUpdates.map(update => (
+                      <div key={update.id} className="text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-foreground">
+                            {getUpdateLabel(update.activity_type)} — {update.lead_name}
+                          </span>
+                        </div>
+                        {update.content && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{update.content}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Active Contests */}
           {activeContests.length > 0 && (
@@ -520,14 +717,25 @@ export function WelcomeModal() {
           )}
 
           {/* CTA Button */}
-          <Button
-            onClick={handleClose}
-            size="lg"
-            className="w-full text-lg font-heading gap-2"
-          >
-            <Rocket className="h-5 w-5" />
-            Let's Get It
-          </Button>
+          {hasLeadNotifications ? (
+            <Button
+              onClick={handleViewLeads}
+              size="lg"
+              className="w-full text-lg font-heading gap-2"
+            >
+              <ClipboardList className="h-5 w-5" />
+              View My Leads
+            </Button>
+          ) : (
+            <Button
+              onClick={handleClose}
+              size="lg"
+              className="w-full text-lg font-heading gap-2"
+            >
+              <Rocket className="h-5 w-5" />
+              Let's Get It
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
