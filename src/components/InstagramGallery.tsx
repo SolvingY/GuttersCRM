@@ -7,42 +7,42 @@ const instagramPosts = [
   {
     id: '1',
     imageUrl: '/instagram/post1.jpg',
-    permalink: 'https://instagram.com/nextgenroofingok',
+    permalink: 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv',
     caption: 'Quality roofing installation'
   },
   {
     id: '2',
     imageUrl: '/instagram/post2.jpg',
-    permalink: 'https://instagram.com/nextgenroofingok',
+    permalink: 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv',
     caption: 'Storm damage repair'
   },
   {
     id: '3',
     imageUrl: '/instagram/post3.jpg',
-    permalink: 'https://instagram.com/nextgenroofingok',
+    permalink: 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv',
     caption: 'Commercial roofing project'
   },
   {
     id: '4',
     imageUrl: '/instagram/post4.jpg',
-    permalink: 'https://instagram.com/nextgenroofingok',
+    permalink: 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv',
     caption: 'Residential roof replacement'
   },
   {
     id: '5',
     imageUrl: '/instagram/post5.jpg',
-    permalink: 'https://instagram.com/nextgenroofingok',
+    permalink: 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv',
     caption: 'Gutter installation'
   },
   {
     id: '6',
     imageUrl: '/instagram/post6.jpg',
-    permalink: 'https://instagram.com/nextgenroofingok',
+    permalink: 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv',
     caption: 'Before and after transformation'
   },
 ];
 
-const INSTAGRAM_PROFILE_URL = 'https://instagram.com/nextgenroofingok';
+const INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv';
 
 export function InstagramGallery() {
   return (
@@ -62,7 +62,7 @@ export function InstagramGallery() {
             rel="noopener noreferrer"
             className="text-lg md:text-xl text-muted-foreground hover:text-accent transition-colors font-heading"
           >
-            @nextgenroofingok
+            @next_generation_roofing
           </a>
         </div>
 
