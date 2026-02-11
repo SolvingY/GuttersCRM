@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin, KeyRound, Briefcase } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, Instagram, Facebook, Star, Linkedin, KeyRound, Briefcase, ClipboardList } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,12 +42,12 @@ const socialLinks = [
   {
     icon: Instagram,
     label: "Instagram",
-    href: "https://www.instagram.com/next_generation_roofing/",
+    href: "https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv",
   },
   {
     icon: Facebook,
     label: "Facebook",
-    href: "https://www.facebook.com/people/Next-Generation-Roofing/100064277643225/?mibextid=LQQJ4d",
+    href: "https://www.facebook.com/profile.php?id=100064277643225",
   },
   {
     icon: TikTokIcon,
@@ -194,6 +194,12 @@ export function Header() {
 
           {/* CTA Button + Dashboard Key */}
           <div className="flex items-center gap-2 md:gap-4">
+            <Link to="/get-quote" className="hidden md:flex">
+              <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1 bg-accent text-accent-foreground hover:bg-accent/90">
+                <ClipboardList className="w-4 h-4" />
+                <span>Get an Estimate</span>
+              </Button>
+            </Link>
             <a href="tel:4057248092" className="hidden md:flex">
               <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1">
                 <Phone className="w-4 h-4" />
@@ -244,6 +250,15 @@ export function Header() {
                   {link.name}
                 </a>
               ))}
+
+              <Link
+                to="/get-quote"
+                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <ClipboardList className="w-5 h-5" />
+                Get an Estimate
+              </Link>
 
               <Link
                 to="/apply"

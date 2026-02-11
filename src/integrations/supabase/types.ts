@@ -853,6 +853,120 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_requests: {
+        Row: {
+          admin_notes: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          best_contact_time: string[] | null
+          city: string
+          contacted_at: string | null
+          created_at: string
+          email: string
+          followup_count: number
+          form_data: Json
+          full_name: string
+          id: string
+          last_followup_at: string | null
+          lost_at: string | null
+          lost_reason: string | null
+          next_followup_due: string | null
+          phone: string
+          photo_urls: string[] | null
+          priority: string
+          quote_amount: number | null
+          quote_approved: boolean | null
+          quote_approved_at: string | null
+          quote_approved_by: string | null
+          quote_sent_at: string | null
+          quoted_at: string | null
+          reference_number: string | null
+          referral_source: string | null
+          service_type: string
+          state: string
+          status: string
+          street_address: string
+          updated_at: string
+          won_at: string | null
+          zip_code: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          best_contact_time?: string[] | null
+          city: string
+          contacted_at?: string | null
+          created_at?: string
+          email: string
+          followup_count?: number
+          form_data?: Json
+          full_name: string
+          id?: string
+          last_followup_at?: string | null
+          lost_at?: string | null
+          lost_reason?: string | null
+          next_followup_due?: string | null
+          phone: string
+          photo_urls?: string[] | null
+          priority?: string
+          quote_amount?: number | null
+          quote_approved?: boolean | null
+          quote_approved_at?: string | null
+          quote_approved_by?: string | null
+          quote_sent_at?: string | null
+          quoted_at?: string | null
+          reference_number?: string | null
+          referral_source?: string | null
+          service_type: string
+          state?: string
+          status?: string
+          street_address: string
+          updated_at?: string
+          won_at?: string | null
+          zip_code: string
+        }
+        Update: {
+          admin_notes?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          best_contact_time?: string[] | null
+          city?: string
+          contacted_at?: string | null
+          created_at?: string
+          email?: string
+          followup_count?: number
+          form_data?: Json
+          full_name?: string
+          id?: string
+          last_followup_at?: string | null
+          lost_at?: string | null
+          lost_reason?: string | null
+          next_followup_due?: string | null
+          phone?: string
+          photo_urls?: string[] | null
+          priority?: string
+          quote_amount?: number | null
+          quote_approved?: boolean | null
+          quote_approved_at?: string | null
+          quote_approved_by?: string | null
+          quote_sent_at?: string | null
+          quoted_at?: string | null
+          reference_number?: string | null
+          referral_source?: string | null
+          service_type?: string
+          state?: string
+          status?: string
+          street_address?: string
+          updated_at?: string
+          won_at?: string | null
+          zip_code?: string
+        }
+        Relationships: []
+      }
       report_settings: {
         Row: {
           id: string
@@ -1205,6 +1319,7 @@ export type Database = {
     }
     Functions: {
       archive_old_applications: { Args: never; Returns: undefined }
+      generate_reference_number: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
