@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import JobApplication from "./pages/apply/JobApplication";
+import ApplicationThankYou from "./pages/apply/ApplicationThankYou";
 import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import MyStats from "./pages/dashboard/MyStats";
 import Leaderboard from "./pages/dashboard/Leaderboard";
@@ -23,6 +25,8 @@ import Announcements from "./pages/admin/Announcements";
 import CompanyGoals from "./pages/admin/CompanyGoals";
 import PitManagement from "./pages/admin/PitManagement";
 import ReportSettings from "./pages/admin/ReportSettings";
+import FutureTeamMates from "./pages/admin/FutureTeamMates";
+import ApplicantDetail from "./pages/admin/ApplicantDetail";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
 import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
@@ -43,6 +47,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/apply" element={<JobApplication />} />
+          <Route path="/apply/thank-you" element={<ApplicationThankYou />} />
           
           {/* Protected Dashboard Routes (Sales Reps) */}
           <Route
@@ -100,6 +106,8 @@ const App = () => (
             <Route path="contests" element={<Contests />} />
             <Route path="pit" element={<PitManagement />} />
             <Route path="reports" element={<ReportSettings />} />
+            <Route path="applicants" element={<FutureTeamMates />} />
+            <Route path="applicants/:id" element={<ApplicantDetail />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

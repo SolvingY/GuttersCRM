@@ -466,6 +466,99 @@ export type Database = {
         }
         Relationships: []
       }
+      job_applications: {
+        Row: {
+          admin_notes: string | null
+          alignment_category: string
+          archived: boolean
+          archived_at: string | null
+          availability: string
+          contacted_at: string | null
+          created_at: string
+          current_job_title: string | null
+          desired_position: string
+          dna_answers: Json
+          dna_score: number
+          email: string
+          full_name: string
+          id: string
+          interview_notes: string | null
+          narrative_mentor: string
+          narrative_ownership: string
+          narrative_why_ngr: string
+          phone: string
+          recommended_role: string | null
+          red_flags: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          status_changed_at: string | null
+          status_changed_by: string | null
+          updated_at: string
+          years_experience: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          alignment_category: string
+          archived?: boolean
+          archived_at?: string | null
+          availability: string
+          contacted_at?: string | null
+          created_at?: string
+          current_job_title?: string | null
+          desired_position: string
+          dna_answers: Json
+          dna_score: number
+          email: string
+          full_name: string
+          id?: string
+          interview_notes?: string | null
+          narrative_mentor: string
+          narrative_ownership: string
+          narrative_why_ngr: string
+          phone: string
+          recommended_role?: string | null
+          red_flags?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          updated_at?: string
+          years_experience: string
+        }
+        Update: {
+          admin_notes?: string | null
+          alignment_category?: string
+          archived?: boolean
+          archived_at?: string | null
+          availability?: string
+          contacted_at?: string | null
+          created_at?: string
+          current_job_title?: string | null
+          desired_position?: string
+          dna_answers?: Json
+          dna_score?: number
+          email?: string
+          full_name?: string
+          id?: string
+          interview_notes?: string | null
+          narrative_mentor?: string
+          narrative_ownership?: string
+          narrative_why_ngr?: string
+          phone?: string
+          recommended_role?: string | null
+          red_flags?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          updated_at?: string
+          years_experience?: string
+        }
+        Relationships: []
+      }
       leaderboard_comments: {
         Row: {
           content: string
@@ -1102,6 +1195,7 @@ export type Database = {
       }
     }
     Functions: {
+      archive_old_applications: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
