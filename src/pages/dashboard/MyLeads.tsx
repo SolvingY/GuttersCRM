@@ -5,9 +5,8 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { AutoAssignmentSettings } from "@/components/admin/AutoAssignmentSettings";
-import { LeadExportButton } from "@/components/admin/LeadExportButton";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -39,88 +38,38 @@ const priorityConfig: Record<string, { label: string; className: string; icon: a
   low: { label: "Low", className: "bg-muted text-muted-foreground border-border", icon: null },
 };
 
-export default function Leads() {
+export default function MyLeads() {
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
-  const [serviceFilter, setServiceFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [assignedFilter, setAssignedFilter] = useState("all");
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ["admin-leads", statusFilter, serviceFilter, priorityFilter, assignedFilter],
+    queryKey: ["my-leads", user?.id, statusFilter],
     queryFn: async () => {
       let query = supabase
         .from("quote_requests")
         .select("*")
-        .order("priority", { ascending: true })
+        .eq("assigned_to", user!.id)
         .order("created_at", { ascending: false });
 
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
-      if (serviceFilter !== "all") query = query.eq("service_type", serviceFilter);
-      if (priorityFilter !== "all") query = query.eq("priority", priorityFilter);
-      if (assignedFilter === "unassigned") query = query.is("assigned_to", null);
-      else if (assignedFilter !== "all") query = query.eq("assigned_to", assignedFilter);
 
       const { data, error } = await query;
       if (error) throw error;
       return data;
     },
-  });
-
-  const { data: salesReps = [] } = useQuery({
-    queryKey: ["sales-reps-for-filter"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("user_metrics").select("user_id, display_name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const statusCounts = {
-    new: leads.filter((l) => l.status === "new").length,
-    contacted: leads.filter((l) => l.status === "contacted").length,
-    quoted: leads.filter((l) => l.status === "quoted").length,
-    scheduled: leads.filter((l) => l.status === "scheduled").length,
-    won: leads.filter((l) => l.status === "won").length,
-  };
-
-  const sortedLeads = [...leads].sort((a, b) => {
-    const order: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-    return (order[a.priority] ?? 2) - (order[b.priority] ?? 2);
+    enabled: !!user,
   });
 
   const now = new Date();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-2xl uppercase">Lead Management</h1>
-          <p className="text-sm text-muted-foreground">Manage quote requests and client leads</p>
-        </div>
-        <LeadExportButton leads={leads} salesReps={salesReps} />
+      <div>
+        <h1 className="font-heading text-2xl uppercase">My Leads</h1>
+        <p className="text-sm text-muted-foreground">Leads assigned to you</p>
       </div>
 
-      <AutoAssignmentSettings />
-
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {Object.entries(statusCounts).map(([status, count]) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
-            className={cn(
-              "p-3 rounded-lg border text-center transition-colors",
-              statusFilter === status ? "border-accent bg-accent/5" : "border-border hover:border-accent/50"
-            )}
-          >
-            <div className="font-heading text-2xl">{count}</div>
-            <div className="text-xs text-muted-foreground capitalize">{status}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
@@ -133,48 +82,15 @@ export default function Leads() {
             <SelectItem value="lost">Lost</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={serviceFilter} onValueChange={setServiceFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Service" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Services</SelectItem>
-            <SelectItem value="commercial">Commercial</SelectItem>
-            <SelectItem value="residential">Residential</SelectItem>
-            <SelectItem value="gutters">Gutters</SelectItem>
-            <SelectItem value="repair">Repair</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Priority" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Priority</SelectItem>
-            <SelectItem value="urgent">Urgent</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-            <SelectItem value="normal">Normal</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={assignedFilter} onValueChange={setAssignedFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Assigned To" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Reps</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-            {salesReps.map((rep) => (
-              <SelectItem key={rep.user_id} value={rep.user_id}>
-                {rep.display_name || "Unknown"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Lead Cards */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading leads...</div>
-      ) : sortedLeads.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">No leads found</div>
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+      ) : leads.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">No leads assigned to you</div>
       ) : (
         <div className="space-y-3">
-          {sortedLeads.map((lead) => {
+          {leads.map((lead) => {
             const ServiceIcon = serviceIcons[lead.service_type] || Building2;
             const priority = priorityConfig[lead.priority] || priorityConfig.normal;
             const PriorityIcon = priority.icon;
@@ -195,12 +111,8 @@ export default function Leads() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-heading text-sm uppercase">
-                          {serviceLabels[lead.service_type]}
-                        </span>
-                        <Badge className={cn("text-[10px]", statusColors[lead.status])}>
-                          {lead.status}
-                        </Badge>
+                        <span className="font-heading text-sm uppercase">{serviceLabels[lead.service_type]}</span>
+                        <Badge className={cn("text-[10px]", statusColors[lead.status])}>{lead.status}</Badge>
                         {lead.priority !== "normal" && (
                           <Badge variant="outline" className={cn("text-[10px] gap-1", priority.className)}>
                             {PriorityIcon && <PriorityIcon className="w-3 h-3" />}
@@ -215,18 +127,8 @@ export default function Leads() {
                       </div>
                       <p className="font-medium">{lead.full_name}</p>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {lead.city}, {lead.state}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {lead.phone}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3 h-3" />
-                          {lead.email}
-                        </span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{lead.city}, {lead.state}</span>
+                        <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{lead.phone}</span>
                       </div>
                     </div>
                   </div>

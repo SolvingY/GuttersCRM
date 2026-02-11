@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { QuoteApprovalSection } from "@/components/admin/QuoteApprovalSection";
+import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -28,9 +30,20 @@ export default function LeadDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<string | null>(null);
   const [lostReason, setLostReason] = useState("");
+
+  // Check if current user is admin
+  const { data: isAdmin = false } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user!.id).eq("role", "admin");
+      return (data?.length ?? 0) > 0;
+    },
+    enabled: !!user,
+  });
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead-detail", id],
@@ -59,6 +72,7 @@ export default function LeadDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["my-leads"] });
       toast({ title: "Lead updated" });
     },
     onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
@@ -90,10 +104,32 @@ export default function LeadDetail() {
     );
   };
 
+  const handleLogFollowup = async () => {
+    await supabase.from("lead_activity_log").insert({
+      lead_id: lead.id,
+      user_id: user?.id,
+      activity_type: "followup",
+      content: "Follow-up completed",
+    });
+    updateLead.mutate({
+      next_followup_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      last_followup_at: new Date().toISOString(),
+      followup_count: (lead.followup_count || 0) + 1,
+    });
+    queryClient.invalidateQueries({ queryKey: ["lead-activities", lead.id] });
+  };
+
+  const handleSnooze = () => {
+    const current = lead.next_followup_due ? new Date(lead.next_followup_due) : new Date();
+    updateLead.mutate({
+      next_followup_due: new Date(current.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <Button variant="ghost" onClick={() => navigate("/admin/leads")} className="gap-2 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Back to All Leads
+      <Button variant="ghost" onClick={() => navigate(isAdmin ? "/admin/leads" : "/dashboard/my-leads")} className="gap-2 -ml-2">
+        <ArrowLeft className="w-4 h-4" /> Back to Leads
       </Button>
 
       {/* Header */}
@@ -120,12 +156,14 @@ export default function LeadDetail() {
               {statusOptions.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={lead.priority} onValueChange={(v) => updateLead.mutate({ priority: v })}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {priorityOptions.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          {isAdmin && (
+            <Select value={lead.priority} onValueChange={(v) => updateLead.mutate({ priority: v })}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {priorityOptions.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -182,39 +220,77 @@ export default function LeadDetail() {
               </div>
             </div>
           )}
+
+          {/* Activity Log */}
+          <LeadActivityLog leadId={lead.id} />
         </div>
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* Assignment */}
+          {/* Quote Approval */}
+          <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
+
+          {/* Follow-up Tracking */}
           <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Assignment</h2>
-            <Select
-              value={lead.assigned_to || "unassigned"}
-              onValueChange={(v) => {
-                if (v === "unassigned") {
-                  updateLead.mutate({ assigned_to: null, assigned_at: null });
-                } else {
-                  updateLead.mutate({ assigned_to: v, assigned_at: new Date().toISOString() });
-                }
-              }}
-            >
-              <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
-                {salesReps.map((rep) => (
-                  <SelectItem key={rep.user_id} value={rep.user_id}>
-                    {rep.display_name || "Unknown"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {lead.assigned_at && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Assigned: {new Date(lead.assigned_at).toLocaleDateString()}
-              </p>
+            <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
+            {lead.next_followup_due ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-muted-foreground" />
+                  <span className={cn(
+                    "text-sm",
+                    new Date(lead.next_followup_due) < new Date() ? "text-destructive font-medium" : ""
+                  )}>
+                    {new Date(lead.next_followup_due) < new Date() ? "Overdue: " : "Due: "}
+                    {new Date(lead.next_followup_due).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Follow-ups: {lead.followup_count || 0}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No follow-up scheduled</p>
             )}
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleLogFollowup} disabled={updateLead.isPending}>
+                <CheckCircle className="w-3 h-3" /> Log Follow-up
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleSnooze} disabled={updateLead.isPending}>
+                <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
+              </Button>
+            </div>
           </div>
+
+          {/* Assignment */}
+          {isAdmin && (
+            <div className="border border-border rounded-lg p-5">
+              <h2 className="font-heading text-lg uppercase mb-4">Assignment</h2>
+              <Select
+                value={lead.assigned_to || "unassigned"}
+                onValueChange={(v) => {
+                  if (v === "unassigned") {
+                    updateLead.mutate({ assigned_to: null, assigned_at: null });
+                  } else {
+                    updateLead.mutate({ assigned_to: v, assigned_at: new Date().toISOString() });
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {salesReps.map((rep) => (
+                    <SelectItem key={rep.user_id} value={rep.user_id}>
+                      {rep.display_name || "Unknown"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {lead.assigned_at && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Assigned: {new Date(lead.assigned_at).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Timeline */}
           <div className="border border-border rounded-lg p-5">
