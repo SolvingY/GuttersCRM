@@ -3,8 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -23,49 +21,29 @@ const serviceLabels: Record<string, string> = {
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
 const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost"];
-const priorityOptions = ["urgent", "high", "normal", "low"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
 
-export default function LeadDetail() {
+export default function LeadDetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [notes, setNotes] = useState<string | null>(null);
   const [lostReason, setLostReason] = useState("");
-
-  // Check if current user is admin
-  const { data: isAdmin = false } = useQuery({
-    queryKey: ["is-admin", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user!.id).eq("role", "admin");
-      return (data?.length ?? 0) > 0;
-    },
-    enabled: !!user,
-  });
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead-detail", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("quote_requests").select("*").eq("id", id).single();
+      const { data, error } = await supabase
+        .from("quote_requests")
+        .select("*")
+        .eq("id", id)
+        .eq("assigned_to", user!.id)
+        .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
-  });
-
-  const { data: salesReps = [] } = useQuery({
-    queryKey: ["sales-reps-for-assignment"],
-    queryFn: async () => {
-      // Get users who have role='user' (sales reps have entries in user_metrics)
-      const { data: reps, error } = await supabase.from("user_metrics").select("user_id, display_name");
-      if (error) throw error;
-      // Filter to only users with 'user' role (excludes canvasser-only)
-      const { data: userRoles } = await supabase.from("user_roles").select("user_id").eq("role", "user");
-      const userRoleIds = new Set((userRoles || []).map(r => r.user_id));
-      return (reps || []).filter(r => userRoleIds.has(r.user_id));
-    },
+    enabled: !!id && !!user,
   });
 
   const updateLead = useMutation({
@@ -75,7 +53,6 @@ export default function LeadDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-      queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
       queryClient.invalidateQueries({ queryKey: ["my-leads"] });
       toast({ title: "Lead updated" });
     },
@@ -83,11 +60,20 @@ export default function LeadDetail() {
   });
 
   if (isLoading) return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
-  if (!lead) return <div className="text-center py-12 text-muted-foreground">Lead not found</div>;
+
+  if (!lead) {
+    return (
+      <div className="text-center py-12 space-y-4">
+        <p className="text-muted-foreground">This lead is not assigned to you or does not exist.</p>
+        <Button variant="ghost" onClick={() => navigate("/dashboard/my-leads")} className="gap-2">
+          <ArrowLeft className="w-4 h-4" /> Back to My Leads
+        </Button>
+      </div>
+    );
+  }
 
   const ServiceIcon = serviceIcons[lead.service_type] || Building2;
   const formData = (lead.form_data || {}) as Record<string, any>;
-  const currentNotes = notes ?? lead.admin_notes ?? "";
 
   const renderFormData = () => {
     const entries = Object.entries(formData).filter(([k]) => k !== "photoUrls");
@@ -132,8 +118,8 @@ export default function LeadDetail() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" onClick={() => navigate(isAdmin ? "/admin/leads" : "/dashboard/my-leads")} className="gap-2 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Back to Leads
+      <Button variant="ghost" onClick={() => navigate("/dashboard/my-leads")} className="gap-2 -ml-2">
+        <ArrowLeft className="w-4 h-4" /> Back to My Leads
       </Button>
 
       {/* Header */}
@@ -147,28 +133,18 @@ export default function LeadDetail() {
             <p className="text-sm text-muted-foreground">{serviceLabels[lead.service_type]} • {lead.reference_number}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={lead.status} onValueChange={(v) => {
-            const updates: Record<string, any> = { status: v };
-            if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
-            if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
-            if (v === "won") updates.won_at = new Date().toISOString();
-            updateLead.mutate(updates);
-          }}>
-            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {statusOptions.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {isAdmin && (
-            <Select value={lead.priority} onValueChange={(v) => updateLead.mutate({ priority: v })}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {priorityOptions.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        <Select value={lead.status} onValueChange={(v) => {
+          const updates: Record<string, any> = { status: v };
+          if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
+          if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
+          if (v === "won") updates.won_at = new Date().toISOString();
+          updateLead.mutate(updates);
+        }}>
+          <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {statusOptions.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -231,8 +207,8 @@ export default function LeadDetail() {
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* Quote Approval */}
-          <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
+          {/* Quote Section - submit only, no approve/reject */}
+          <QuoteApprovalSection lead={lead} isAdmin={false} />
 
           {/* Follow-up Tracking */}
           <div className="border border-border rounded-lg p-5">
@@ -263,38 +239,6 @@ export default function LeadDetail() {
               </Button>
             </div>
           </div>
-
-          {/* Assignment */}
-          {isAdmin && (
-            <div className="border border-border rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-4">Assignment</h2>
-              <Select
-                value={lead.assigned_to || "unassigned"}
-                onValueChange={(v) => {
-                  if (v === "unassigned") {
-                    updateLead.mutate({ assigned_to: null, assigned_at: null });
-                  } else {
-                    updateLead.mutate({ assigned_to: v, assigned_at: new Date().toISOString() });
-                  }
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {salesReps.map((rep) => (
-                    <SelectItem key={rep.user_id} value={rep.user_id}>
-                      {rep.display_name || "Unknown"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {lead.assigned_at && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Assigned: {new Date(lead.assigned_at).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-          )}
 
           {/* Timeline */}
           <div className="border border-border rounded-lg p-5">
@@ -359,26 +303,6 @@ export default function LeadDetail() {
                 </Select>
               </div>
             )}
-          </div>
-
-          {/* Admin Notes */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Admin Notes</h2>
-            <Textarea
-              value={currentNotes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Internal notes..."
-              className="min-h-[120px]"
-            />
-            <Button
-              size="sm"
-              className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={() => updateLead.mutate({ admin_notes: currentNotes })}
-              disabled={updateLead.isPending}
-            >
-              {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-              Save Notes
-            </Button>
           </div>
         </div>
       </div>

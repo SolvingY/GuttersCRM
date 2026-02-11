@@ -16,6 +16,7 @@ import Settings from "./pages/dashboard/Settings";
 import ThePit from "./pages/dashboard/ThePit";
 import PointsHistory from "./pages/dashboard/PointsHistory";
 import MyLeads from "./pages/dashboard/MyLeads";
+import LeadDetailView from "./pages/dashboard/LeadDetailView";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="pit" element={<ThePit />} />
             <Route path="points-history" element={<PointsHistory />} />
             <Route path="my-leads" element={<MyLeads />} />
+            <Route path="leads/:id" element={<LeadDetailView />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 
