@@ -93,7 +93,7 @@ export function Header() {
           {/* Left side: Social Icons + Logo */}
           <div className="flex items-center gap-4">
             {/* Social Icons */}
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-1 sm:gap-2">
               {socialLinks.map((link) => (
                 <a
                   key={link.label}
@@ -115,7 +115,7 @@ export function Header() {
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
-              <span className="hidden md:block font-heading text-lg md:text-xl font-bold uppercase tracking-wide">
+              <span className="hidden lg:block font-heading text-lg lg:text-xl font-bold uppercase tracking-wide">
                 Next Generation Roofing
               </span>
             </a>
@@ -194,13 +194,13 @@ export function Header() {
 
           {/* CTA Button + Dashboard Key */}
           <div className="flex items-center gap-2 md:gap-4">
-            <Link to="/get-quote" className="hidden md:flex">
+            <Link to="/get-quote" className="hidden lg:flex">
               <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1 bg-accent text-accent-foreground hover:bg-accent/90">
                 <ClipboardList className="w-4 h-4" />
                 <span>Get an Estimate</span>
               </Button>
             </Link>
-            <a href="tel:4057248092" className="hidden md:flex">
+            <a href="tel:4057248092" className="hidden lg:flex">
               <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1">
                 <Phone className="w-4 h-4" />
                 <span>(405) 724-8092</span>
