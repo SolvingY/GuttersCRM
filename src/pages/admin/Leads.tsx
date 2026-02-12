@@ -104,7 +104,7 @@ export default function Leads() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl uppercase">Lead Management</h1>
           <p className="text-sm text-muted-foreground">Manage quote requests and client leads</p>
@@ -122,26 +122,26 @@ export default function Leads() {
       <AutoAssignmentSettings />
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-2 sm:gap-3">
         {Object.entries(statusCounts).map(([status, count]) => (
           <button
             key={status}
             onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
             className={cn(
-              "p-3 rounded-lg border text-center transition-colors",
+              "p-2 sm:p-3 rounded-lg border text-center transition-colors",
               statusFilter === status ? "border-accent bg-accent/5" : "border-border hover:border-accent/50"
             )}
           >
-            <div className="font-heading text-2xl">{count}</div>
+            <div className="font-heading text-xl sm:text-2xl">{count}</div>
             <div className="text-xs text-muted-foreground capitalize">{status}</div>
           </button>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="new">New</SelectItem>
@@ -154,7 +154,7 @@ export default function Leads() {
           </SelectContent>
         </Select>
         <Select value={serviceFilter} onValueChange={setServiceFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Service" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Service" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Services</SelectItem>
             <SelectItem value="commercial">Commercial</SelectItem>
@@ -164,7 +164,7 @@ export default function Leads() {
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Priority" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Priority" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Priority</SelectItem>
             <SelectItem value="urgent">Urgent</SelectItem>
@@ -174,7 +174,7 @@ export default function Leads() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Lead Source" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Lead Source" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sources</SelectItem>
             <SelectItem value="internet">Internet/Website</SelectItem>
@@ -186,7 +186,7 @@ export default function Leads() {
           </SelectContent>
         </Select>
         <Select value={assignedFilter} onValueChange={setAssignedFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Assigned To" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Assigned To" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Reps</SelectItem>
             <SelectItem value="unassigned">Unassigned</SelectItem>
