@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { getLeadSourceIcon } from "@/lib/leadSourceConfig";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -113,6 +114,16 @@ export default function MyLeads() {
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <span className="font-heading text-sm uppercase">{serviceLabels[lead.service_type]}</span>
                         <Badge className={cn("text-[10px]", statusColors[lead.status])}>{lead.status}</Badge>
+                        {(() => {
+                          const LeadSourceIcon = getLeadSourceIcon((lead as any).lead_source || "internet");
+                          const leadType = (lead as any).lead_type || "internet";
+                          return (
+                            <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                              <LeadSourceIcon className="w-3 h-3" />
+                              {leadType === "canvasser" ? "Canvasser" : "Internet"}
+                            </Badge>
+                          );
+                        })()}
                         {lead.priority !== "normal" && (
                           <Badge variant="outline" className={cn("text-[10px] gap-1", priority.className)}>
                             {PriorityIcon && <PriorityIcon className="w-3 h-3" />}

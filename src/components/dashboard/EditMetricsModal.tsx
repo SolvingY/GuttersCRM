@@ -44,10 +44,11 @@ interface UserMetrics {
   earningsYtd?: number;
   leads: number;
   collections?: number;
-  // Sub-component values for direct editing
   selfGeneratedDeals: number;
   canvassLeads: number;
   canvassDealsClose: number;
+  internetLeads?: number;
+  internetLeadsClosed?: number;
 }
 
 interface EditMetricsModalProps {
@@ -362,6 +363,50 @@ export function EditMetricsModal({ open, onOpenChange, user, onSuccess }: EditMe
                   <span className="text-xs text-muted-foreground ml-2">(auto-calculated)</span>
                 </div>
               </div>
+
+              {/* Internet Leads Section (Read-Only) */}
+              {(user?.internetLeads !== undefined && user?.internetLeads !== null) && (
+                <>
+                  <div className="border-t border-border pt-4 mt-2">
+                    <p className="text-sm font-medium text-muted-foreground mb-3">Internet Leads (Auto-Tracked)</p>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                    <Label className="text-right text-muted-foreground">Internet Leads</Label>
+                    <div className="col-span-3 font-semibold">{user.internetLeads ?? 0}</div>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                    <Label className="text-right text-muted-foreground">Internet Closed</Label>
+                    <div className="col-span-3 font-semibold">{user.internetLeadsClosed ?? 0}</div>
+                  </div>
+
+                  {/* LtC Breakdown */}
+                  <div className="border-t border-border pt-4 mt-2">
+                    <p className="text-sm font-medium text-muted-foreground mb-3">Lead-to-Close Breakdown</p>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                    <Label className="text-right text-muted-foreground">Canvass LtC</Label>
+                    <div className="col-span-3 font-semibold">
+                      {formData.canvassLeads > 0 ? ((formData.canvassDealsClose / formData.canvassLeads) * 100).toFixed(1) : '0.0'}%
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                    <Label className="text-right text-muted-foreground">Internet LtC</Label>
+                    <div className="col-span-3 font-semibold">
+                      {(user.internetLeads ?? 0) > 0 ? (((user.internetLeadsClosed ?? 0) / (user.internetLeads ?? 1)) * 100).toFixed(1) : '0.0'}%
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4 bg-muted/50 rounded-md py-2">
+                    <Label className="text-right text-muted-foreground">Total LtC</Label>
+                    <div className="col-span-3 font-semibold">
+                      {(() => {
+                        const totalLeads = formData.canvassLeads + (user.internetLeads ?? 0);
+                        const totalClosed = formData.canvassDealsClose + (user.internetLeadsClosed ?? 0);
+                        return totalLeads > 0 ? ((totalClosed / totalLeads) * 100).toFixed(1) : '0.0';
+                      })()}%
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-4 border-t border-border">

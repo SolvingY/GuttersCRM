@@ -154,7 +154,11 @@ export default function MyStats() {
   // Lead-to-Close = Canvass Deals Closed / Canvass Leads Assigned
   const canvassLeads = Number((latestMetric as any)?.canvass_leads) || 0;
   const canvassDealsClose = Number((latestMetric as any)?.canvass_deals_closed) || 0;
-  const leadToCloseRate = canvassLeads > 0 ? (canvassDealsClose / canvassLeads) * 100 : 0;
+  const internetLeads = Number((latestMetric as any)?.internet_leads) || 0;
+  const internetLeadsClosed = Number((latestMetric as any)?.internet_leads_closed) || 0;
+  const totalLeadsForLtC = canvassLeads + internetLeads;
+  const totalClosedForLtC = canvassDealsClose + internetLeadsClosed;
+  const leadToCloseRate = totalLeadsForLtC > 0 ? (totalClosedForLtC / totalLeadsForLtC) * 100 : 0;
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= 60) return 'text-green-500';
@@ -364,7 +368,7 @@ export default function MyStats() {
                               <HelpCircle className="h-3 w-3 text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
-                              <p>Lead-to-Close measures Canvass Contracts Closed divided by Canvass Leads Assigned</p>
+                              <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
