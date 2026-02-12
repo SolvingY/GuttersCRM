@@ -948,6 +948,9 @@ export type Database = {
       quote_requests: {
         Row: {
           admin_notes: string | null
+          archived_at: string | null
+          archived_by: string | null
+          archived_reason: string | null
           assigned_at: string | null
           assigned_by: string | null
           assigned_to: string | null
@@ -995,6 +998,9 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          archived_reason?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
           assigned_to?: string | null
@@ -1042,6 +1048,9 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          archived_reason?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
           assigned_to?: string | null
@@ -1506,6 +1515,10 @@ export type Database = {
       }
     }
     Functions: {
+      archive_lead: {
+        Args: { p_lead_id: string; p_reason: string }
+        Returns: undefined
+      }
       archive_old_applications: { Args: never; Returns: undefined }
       create_manual_lead: {
         Args: {
