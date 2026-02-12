@@ -1,37 +1,48 @@
 
 
-## Add Persistent Open Leads Follow-up Prompt
+## Fix Header Layout, Mobile Social Links, and Sticky CTA
 
-### Overview
+### Issues Identified
 
-Currently the Welcome Modal shows only *overdue* follow-ups and *newly assigned* leads. The request is to always prompt sales reps about **all open leads** (any lead not in "won" or "lost" status) so they are reminded to follow up every time they log in until the lead is closed out.
+1. **Desktop header overlapping** -- The social icons, logo, and company name text crowd into the navigation links at certain screen widths (visible in the screenshot).
+2. **Mobile social links missing** -- Social media icons are hidden below `sm` breakpoint (`hidden sm:flex`), but should remain visible in the mobile header.
+3. **Sticky CTA routes to phone call** -- Should navigate to `/get-quote` instead of triggering a phone call.
+4. **Sticky CTA language** -- Update text to "Get your estimate within 24 Hours".
 
-### Changes (1 file)
+---
 
-**`src/components/dashboard/WelcomeModal.tsx`**
+### Changes
 
-1. **Add new state**: `openLeads` -- all leads assigned to the user where status is not "won" or "lost"
+#### 1. `src/components/Header.tsx`
 
-2. **Add new query** in `fetchData`:
-   - Query `quote_requests` where `assigned_to = user.id` and `status NOT IN ('won', 'lost')`
-   - Select `id, full_name, service_type, status, priority, next_followup_due, assigned_at`
-   - Order by priority (urgent first), then by `next_followup_due` ascending (most overdue first)
-   - Limit to 10
+**Desktop overlap fix:**
+- Hide the company name text ("Next Generation Roofing") at the `lg` breakpoint and only show it at `xl` to prevent it from colliding with nav links
+- Reduce desktop nav gap from `gap-6` to `gap-4` for tighter spacing
+- Hide social icons between `lg` and `xl` to free up space at the `lg` breakpoint where overlap occurs
 
-3. **Add new UI section** titled "Open Leads - Action Required" placed prominently above the existing lead notifications section:
-   - Amber/yellow card with a persistent reminder message: "You have X open leads. Follow up to close them out!"
-   - Each lead shown as a clickable row with:
-     - Lead name (links to `/dashboard/leads/:id`)
-     - Current status badge (color-coded: new=blue, contacted=yellow, quoted=purple, scheduled=green)
-     - Follow-up indicator (overdue=red dot, due today=yellow dot, upcoming=gray)
-     - Service type
-   - Priority leads (urgent/high) shown at the top with badges
+**Mobile social links:**
+- Change social icons container from `hidden sm:flex` to `flex` so they always show
+- Make icons smaller on mobile (`w-3 h-3` at base, `w-4 h-4` at `sm`) and reduce padding to fit in the compact header
 
-4. **Update `hasLeadNotifications`** to also include `openLeads.length > 0`, ensuring the "View My Leads" button appears whenever there are open leads
+#### 2. `src/components/StickyCallCTA.tsx`
 
-5. **Remove redundancy**: The existing "Overdue Follow-ups" section will remain since it highlights urgency separately, but the open leads section gives the full picture of their pipeline
+- Replace the `onClick` phone call handler with a `Link` to `/get-quote`
+- Update the button text to: **"Get your estimate within 24 Hours"**
+- Import `Link` from `react-router-dom`
 
-### No database changes needed
+---
 
-All data is already queryable via existing RLS policies on `quote_requests` (assigned reps can view their own leads).
+### Technical Details
+
+**Header.tsx changes:**
+- Line 96: Change `hidden sm:flex` to `flex` for social icons visibility on all screens
+- Line 103: Add responsive icon sizing (`w-3 h-3 sm:w-4 sm:h-4`) and smaller padding on mobile (`p-1 sm:p-2`)
+- Line 118: Change `hidden lg:block` to `hidden xl:block` for the company name
+- Line 126: Reduce nav gap to `gap-4`
+- Line 96: Hide social icons at `lg` only, show at `xl`: `flex lg:hidden xl:flex`
+
+**StickyCallCTA.tsx changes:**
+- Remove `handleCall` function
+- Wrap the button in a `Link` component pointing to `/get-quote`
+- Replace all inner text spans with a single line: "Get your estimate within 24 Hours"
 
