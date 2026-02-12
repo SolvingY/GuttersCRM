@@ -3,11 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock } from "lucide-react";
+import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AutoAssignmentSettings } from "@/components/admin/AutoAssignmentSettings";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
+import { CreateLeadDialog } from "@/components/admin/CreateLeadDialog";
+import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -44,9 +47,11 @@ export default function Leads() {
   const [serviceFilter, setServiceFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assignedFilter, setAssignedFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ["admin-leads", statusFilter, serviceFilter, priorityFilter, assignedFilter],
+    queryKey: ["admin-leads", statusFilter, serviceFilter, priorityFilter, assignedFilter, sourceFilter],
     queryFn: async () => {
       let query = supabase
         .from("quote_requests")
@@ -57,6 +62,7 @@ export default function Leads() {
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (serviceFilter !== "all") query = query.eq("service_type", serviceFilter);
       if (priorityFilter !== "all") query = query.eq("priority", priorityFilter);
+      if (sourceFilter !== "all") query = query.eq("lead_source", sourceFilter);
       if (assignedFilter === "unassigned") query = query.is("assigned_to", null);
       else if (assignedFilter !== "all") query = query.eq("assigned_to", assignedFilter);
 
@@ -97,8 +103,15 @@ export default function Leads() {
           <h1 className="font-heading text-2xl uppercase">Lead Management</h1>
           <p className="text-sm text-muted-foreground">Manage quote requests and client leads</p>
         </div>
-        <LeadExportButton leads={leads} salesReps={salesReps} />
+        <div className="flex items-center gap-2">
+          <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-4 h-4" /> Create Lead
+          </Button>
+          <LeadExportButton leads={leads} salesReps={salesReps} />
+        </div>
       </div>
+
+      <CreateLeadDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <AutoAssignmentSettings />
 
@@ -153,6 +166,18 @@ export default function Leads() {
             <SelectItem value="low">Low</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Lead Source" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sources</SelectItem>
+            <SelectItem value="internet">Internet/Website</SelectItem>
+            <SelectItem value="phone_general">Phone - General</SelectItem>
+            <SelectItem value="phone_canvasser">Phone - Canvasser</SelectItem>
+            <SelectItem value="referral">Referral</SelectItem>
+            <SelectItem value="walk_in">Walk-In</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={assignedFilter} onValueChange={setAssignedFilter}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Assigned To" /></SelectTrigger>
           <SelectContent>
@@ -181,6 +206,9 @@ export default function Leads() {
             const followupDue = lead.next_followup_due ? new Date(lead.next_followup_due) : null;
             const isOverdue = followupDue && followupDue < now;
             const isDueToday = followupDue && !isOverdue && followupDue.toDateString() === now.toDateString();
+            const LeadSourceIcon = getLeadSourceIcon((lead as any).lead_source || "internet");
+            const leadType = (lead as any).lead_type || "internet";
+            const manuallyCreated = (lead as any).manually_created;
 
             return (
               <Link
@@ -201,6 +229,15 @@ export default function Leads() {
                         <Badge className={cn("text-[10px]", statusColors[lead.status])}>
                           {lead.status}
                         </Badge>
+                        <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                          <LeadSourceIcon className="w-3 h-3" />
+                          {leadType === "canvasser" ? "Canvasser" : "Internet"}
+                        </Badge>
+                        {manuallyCreated && (
+                          <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
+                            Manual
+                          </Badge>
+                        )}
                         {lead.priority !== "normal" && (
                           <Badge variant="outline" className={cn("text-[10px] gap-1", priority.className)}>
                             {PriorityIcon && <PriorityIcon className="w-3 h-3" />}

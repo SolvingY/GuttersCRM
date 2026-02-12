@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_spend_tracking: {
+        Row: {
+          ad_spend: number
+          created_at: string
+          id: string
+          month: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ad_spend?: number
+          created_at?: string
+          id?: string
+          month: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ad_spend?: number
+          created_at?: string
+          id?: string
+          month?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
@@ -924,15 +951,21 @@ export type Database = {
           best_contact_time: string[] | null
           city: string
           contacted_at: string | null
+          counted_as_lead: boolean
           created_at: string
+          created_by: string | null
           email: string
           followup_count: number
           form_data: Json
           full_name: string
           id: string
           last_followup_at: string | null
+          lead_counted_at: string | null
+          lead_source: string
+          lead_type: string
           lost_at: string | null
           lost_reason: string | null
+          manually_created: boolean
           next_followup_due: string | null
           phone: string
           photo_urls: string[] | null
@@ -965,15 +998,21 @@ export type Database = {
           best_contact_time?: string[] | null
           city: string
           contacted_at?: string | null
+          counted_as_lead?: boolean
           created_at?: string
+          created_by?: string | null
           email: string
           followup_count?: number
           form_data?: Json
           full_name: string
           id?: string
           last_followup_at?: string | null
+          lead_counted_at?: string | null
+          lead_source?: string
+          lead_type?: string
           lost_at?: string | null
           lost_reason?: string | null
+          manually_created?: boolean
           next_followup_due?: string | null
           phone: string
           photo_urls?: string[] | null
@@ -1006,15 +1045,21 @@ export type Database = {
           best_contact_time?: string[] | null
           city?: string
           contacted_at?: string | null
+          counted_as_lead?: boolean
           created_at?: string
+          created_by?: string | null
           email?: string
           followup_count?: number
           form_data?: Json
           full_name?: string
           id?: string
           last_followup_at?: string | null
+          lead_counted_at?: string | null
+          lead_source?: string
+          lead_type?: string
           lost_at?: string | null
           lost_reason?: string | null
+          manually_created?: boolean
           next_followup_due?: string | null
           phone?: string
           photo_urls?: string[] | null
@@ -1106,6 +1151,8 @@ export type Database = {
           display_name: string | null
           earnings_ytd: number | null
           id: string
+          internet_leads: number
+          internet_leads_closed: number
           leads: number | null
           metric_date: string
           points: number | null
@@ -1129,6 +1176,8 @@ export type Database = {
           display_name?: string | null
           earnings_ytd?: number | null
           id?: string
+          internet_leads?: number
+          internet_leads_closed?: number
           leads?: number | null
           metric_date?: string
           points?: number | null
@@ -1152,6 +1201,8 @@ export type Database = {
           display_name?: string | null
           earnings_ytd?: number | null
           id?: string
+          internet_leads?: number
+          internet_leads_closed?: number
           leads?: number | null
           metric_date?: string
           points?: number | null
@@ -1453,6 +1504,25 @@ export type Database = {
     }
     Functions: {
       archive_old_applications: { Args: never; Returns: undefined }
+      create_manual_lead: {
+        Args: {
+          p_admin_notes?: string
+          p_assigned_to?: string
+          p_city: string
+          p_description?: string
+          p_email: string
+          p_full_name: string
+          p_lead_source: string
+          p_phone: string
+          p_priority?: string
+          p_service_type: string
+          p_state?: string
+          p_street_address: string
+          p_timeline?: string
+          p_zip_code?: string
+        }
+        Returns: string
+      }
       generate_reference_number: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1477,6 +1547,10 @@ export type Database = {
           p_zip_code?: string
         }
         Returns: string
+      }
+      update_ad_spend: {
+        Args: { p_ad_spend: number; p_month: string }
+        Returns: undefined
       }
       verify_invite_code: {
         Args: { _email: string; _invite_code: string }

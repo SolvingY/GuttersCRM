@@ -17,6 +17,11 @@ import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
+import { InternetLeadsCard } from '@/components/overview/InternetLeadsCard';
+import { InternetLeadCloseRateCard } from '@/components/overview/InternetLeadCloseRateCard';
+import { InternetCostPerLeadCard } from '@/components/overview/InternetCostPerLeadCard';
+import { InternetCostPerContractCard } from '@/components/overview/InternetCostPerContractCard';
+import { AdSpendCard } from '@/components/overview/AdSpendCard';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -53,10 +58,11 @@ interface UserDetail {
   avgJobSize: number;
   leadToClosePercent: number;
   role: 'admin' | 'user' | 'canvasser';
-  // Sub-component values for editing
   selfGeneratedDeals: number;
   canvassLeads: number;
   canvassDealsClose: number;
+  internetLeads: number;
+  internetLeadsClosed: number;
 }
 
 interface CanvasserDetail {
@@ -174,7 +180,7 @@ export default function AdminOverview() {
     // Fetch all sales rep metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
-      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, updated_at, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed')
+      .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, updated_at, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed, internet_leads, internet_leads_closed')
       .order('metric_date', { ascending: false })
       .order('updated_at', { ascending: false });
 
@@ -208,6 +214,8 @@ export default function AdminOverview() {
         canvassLeads: number;
         selfGeneratedDeals: number;
         canvassDealsClose: number;
+        internetLeads: number;
+        internetLeadsClosed: number;
       }>();
       
       for (const item of metrics) {
@@ -226,6 +234,8 @@ export default function AdminOverview() {
             canvassLeads: Number(item.canvass_leads) || 0,
             selfGeneratedDeals: Number(item.self_generated_deals) || 0,
             canvassDealsClose: Number(item.canvass_deals_closed) || 0,
+            internetLeads: Number((item as any).internet_leads) || 0,
+            internetLeadsClosed: Number((item as any).internet_leads_closed) || 0,
           });
         }
       }
@@ -262,14 +272,16 @@ export default function AdminOverview() {
       });
 
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
-        // Total Leads = Canvass Leads only (self-gen leads removed)
-        const calculatedLeads = data.canvassLeads;
-        // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
-        const calculatedClosedDeals = data.selfGeneratedDeals + data.canvassDealsClose;
+        // Total Leads = Canvass Leads + Internet Leads
+        const calculatedLeads = data.canvassLeads + data.internetLeads;
+        // Calculate Total Contracts = Self-Gen Deals + Canvass Deals + Internet Deals Closed
+        const calculatedClosedDeals = data.selfGeneratedDeals + data.canvassDealsClose + data.internetLeadsClosed;
         
         const avgJobSize = calculatedClosedDeals > 0 ? data.approvedRevenue / calculatedClosedDeals : 0;
-        // Lead-to-Close = Canvass Deals Closed / Canvass Leads Assigned
-        const leadToClosePercent = data.canvassLeads > 0 ? (data.canvassDealsClose / data.canvassLeads) * 100 : 0;
+        // Lead-to-Close = (Canvass Deals Closed + Internet Leads Closed) / (Canvass Leads + Internet Leads)
+        const totalLeadsForLtC = data.canvassLeads + data.internetLeads;
+        const totalClosedForLtC = data.canvassDealsClose + data.internetLeadsClosed;
+        const leadToClosePercent = totalLeadsForLtC > 0 ? (totalClosedForLtC / totalLeadsForLtC) * 100 : 0;
         
         return {
           metricId: data.metricId,
@@ -286,10 +298,11 @@ export default function AdminOverview() {
           avgJobSize,
           leadToClosePercent,
           role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
-          // Pass sub-component values for editing
           selfGeneratedDeals: data.selfGeneratedDeals,
           canvassLeads: data.canvassLeads,
           canvassDealsClose: data.canvassDealsClose,
+          internetLeads: data.internetLeads,
+          internetLeadsClosed: data.internetLeadsClosed,
         };
       });
       
@@ -702,7 +715,7 @@ export default function AdminOverview() {
                               <HelpCircle className="h-3 w-3" />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
-                              <p>Lead-to-Close measures Canvass Contracts Closed divided by Canvass Leads Assigned</p>
+                              <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>

@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { QuoteApprovalSection } from "@/components/admin/QuoteApprovalSection";
 import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
+import { Badge } from "@/components/ui/badge";
+import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -129,7 +131,19 @@ export default function LeadDetailView() {
             <ServiceIcon className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-heading text-xl uppercase">{lead.full_name}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-heading text-xl uppercase">{lead.full_name}</h1>
+              {(() => {
+                const LeadSourceIcon = getLeadSourceIcon((lead as any).lead_source || "internet");
+                const leadType = (lead as any).lead_type || "internet";
+                return (
+                  <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                    <LeadSourceIcon className="w-3 h-3" />
+                    {leadType === "canvasser" ? "Canvasser Lead" : "Internet Lead"}
+                  </Badge>
+                );
+              })()}
+            </div>
             <p className="text-sm text-muted-foreground">{serviceLabels[lead.service_type]} • {lead.reference_number}</p>
           </div>
         </div>
