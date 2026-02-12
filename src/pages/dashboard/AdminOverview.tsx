@@ -17,11 +17,6 @@ import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
-import { InternetLeadsCard } from '@/components/overview/InternetLeadsCard';
-import { InternetLeadCloseRateCard } from '@/components/overview/InternetLeadCloseRateCard';
-import { InternetCostPerLeadCard } from '@/components/overview/InternetCostPerLeadCard';
-import { InternetCostPerContractCard } from '@/components/overview/InternetCostPerContractCard';
-import { AdSpendCard } from '@/components/overview/AdSpendCard';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -667,15 +662,6 @@ export default function AdminOverview() {
                 </div>
               );
             })()}
-          </div>
-
-          {/* Internet Lead Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <InternetLeadsCard />
-            <AdSpendCard />
-            <InternetLeadCloseRateCard />
-            <InternetCostPerLeadCard />
-            <InternetCostPerContractCard />
           </div>
 
           {usersNeedingAttention.length > 0 && (

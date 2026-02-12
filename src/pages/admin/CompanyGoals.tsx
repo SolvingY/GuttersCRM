@@ -10,6 +10,11 @@ import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculat
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
 import { format, addMonths } from 'date-fns';
+import { InternetLeadsCard } from '@/components/overview/InternetLeadsCard';
+import { InternetLeadCloseRateCard } from '@/components/overview/InternetLeadCloseRateCard';
+import { InternetCostPerLeadCard } from '@/components/overview/InternetCostPerLeadCard';
+import { InternetCostPerContractCard } from '@/components/overview/InternetCostPerContractCard';
+import { AdSpendCard } from '@/components/overview/AdSpendCard';
 
 interface CompanyGoal {
   id: string;
@@ -763,6 +768,23 @@ export default function CompanyGoals() {
             })()}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Internet / Call-In Lead Metrics */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-heading font-bold text-foreground">Internet / Call-In Lead Metrics</h2>
+          <p className="text-sm text-muted-foreground">
+            Track performance and ROI for internet-sourced leads (website, phone calls, referrals)
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <InternetLeadsCard />
+          <AdSpendCard />
+          <InternetLeadCloseRateCard />
+          <InternetCostPerLeadCard />
+          <InternetCostPerContractCard />
+        </div>
       </div>
 
       <Card className="bg-accent/5 border-accent/20">
