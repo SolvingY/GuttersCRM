@@ -1,0 +1,1 @@
+ALTER TABLE public.company_goals ADD COLUMN target_ad_spend_budget NUMERIC(10,2) DEFAULT 0;

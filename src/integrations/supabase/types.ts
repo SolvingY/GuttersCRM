@@ -189,6 +189,7 @@ export type Database = {
           fiscal_year_start: string
           id: string
           sales_revenue_goal: number | null
+          target_ad_spend_budget: number | null
           target_cost_per_lead: number | null
           target_lead_to_close_ratio: number | null
           updated_at: string | null
@@ -202,6 +203,7 @@ export type Database = {
           fiscal_year_start: string
           id?: string
           sales_revenue_goal?: number | null
+          target_ad_spend_budget?: number | null
           target_cost_per_lead?: number | null
           target_lead_to_close_ratio?: number | null
           updated_at?: string | null
@@ -215,6 +217,7 @@ export type Database = {
           fiscal_year_start?: string
           id?: string
           sales_revenue_goal?: number | null
+          target_ad_spend_budget?: number | null
           target_cost_per_lead?: number | null
           target_lead_to_close_ratio?: number | null
           updated_at?: string | null
