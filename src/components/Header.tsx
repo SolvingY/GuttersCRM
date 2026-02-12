@@ -93,17 +93,17 @@ export function Header() {
           {/* Left side: Social Icons + Logo */}
           <div className="flex items-center gap-4">
             {/* Social Icons */}
-            <div className="hidden sm:flex items-center gap-1 sm:gap-2">
+            <div className="flex lg:hidden xl:flex items-center gap-1 sm:gap-2">
               {socialLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-full bg-primary-foreground/10 hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="p-1 sm:p-2 rounded-full bg-primary-foreground/10 hover:bg-accent hover:text-accent-foreground transition-colors"
                   aria-label={link.label}
                 >
-                  <link.icon className="w-4 h-4" />
+                  <link.icon className="w-3 h-3 sm:w-4 sm:h-4" />
                 </a>
               ))}
             </div>
@@ -115,7 +115,7 @@ export function Header() {
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
-              <span className="hidden lg:block font-heading text-lg lg:text-xl font-bold uppercase tracking-wide">
+              <span className="hidden xl:block font-heading text-lg xl:text-xl font-bold uppercase tracking-wide">
                 Next Generation Roofing
               </span>
             </a>
@@ -123,7 +123,7 @@ export function Header() {
 
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-4">
             <a
               href="#home"
               onClick={(e) => scrollToSection(e, "#home")}
