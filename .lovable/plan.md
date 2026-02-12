@@ -1,82 +1,66 @@
 
 
-## Fix Lead Counting Trigger and Move Internet Metrics to Company Goals
+## Redesign Internet Metrics to Match Canvass Layout and Move Ad Spend Budget
 
-### Summary
+### What's Changing
 
-Three fixes: (1) Add a BEFORE INSERT trigger so auto-assigned leads get counted immediately, plus a one-time data fix for existing uncounted leads; (2) Move the 5 internet metric cards from AdminOverview to the Company Goals page; (3) Keep the AdSpendCard edit button as the entry point for ad spend tracking on Company Goals.
+**1. Add "Monthly Ad Spend Budget" to the Fiscal Year Goals settings card** (lines 443-475 area in CompanyGoals.tsx)
+- Add a new input field for `target_ad_spend_budget` in the goal settings form, alongside the existing Target Lead-to-Close % and Target Cost per Contract fields
+- This requires adding a `target_ad_spend_budget` column to the `company_goals` table via migration
+- The budget value will be used as the goal comparison in the internet metric cards below
 
----
+**2. Replace the 5 simple StatsCard-based internet metric cards with 3 rich Card components** that match the canvass metrics style (Lead-to-Close Rate, Cost Per Contract, Cost Per Lead)
 
-### Fix 1: Database Migration
+The new cards will be:
 
-**A. New BEFORE INSERT trigger on `quote_requests`:**
+- **Internet Lead-to-Close Rate** -- Matches the canvass "Lead-to-Close Rate" card style. Shows current close %, "X closed / Y leads" subtitle, goal comparison with on-target/below-target indicator (using the same target LtC goal)
+- **Internet Cost Per Contract** -- Matches the canvass "Cost Per Contract" card style. Shows ad spend / contracts won, goal comparison against ad spend budget, over/under budget indicator
+- **Internet Cost Per Lead** -- Matches the canvass "Cost Per Lead" card style. Shows ad spend / internet leads, with a "vs Cost Per Contract" comparison box
 
-A new function `count_lead_on_insert_assign()` will fire BEFORE INSERT. If `assigned_to` is set (by auto-assignment) and `counted_as_lead` is false, it increments the appropriate `user_metrics` counter (`internet_leads` or `canvass_leads`) and marks the lead as counted.
+**3. Move Ad Spend and Internet Leads counts into the metric card subtitles** rather than as standalone cards. The Ad Spend actual amount will show as a subtitle ("$X spent / Y contracts"), and Internet Leads count shows in the LtC subtitle ("X closed / Y leads").
 
-Trigger naming ensures correct execution order: `auto_assign_lead` (existing, sets `assigned_to`) runs before `count_lead_on_insert_assign` (new, counts it) alphabetically.
+**4. Keep the AdSpendCard with edit button** as a standalone card at the top of the Internet section, so admins can still quickly update actual spend. But restyle it to match the rich card format.
 
-**B. One-time data fix in the same migration:**
+### Layout Comparison
 
-- Update `user_metrics.internet_leads` for all reps who have uncounted internet leads assigned to them
-- Update `user_metrics.canvass_leads` for any uncounted canvasser leads
-- Mark all previously uncounted leads as `counted_as_lead = TRUE`
+Current canvass section (3 cards in a row):
+- Lead-to-Close Rate | Cost Per Contract | Cost Per Lead
 
-This will fix Dru's missing lead count immediately.
+New internet section (matching 3 cards in a row + 1 ad spend entry):
+- Ad Spend (with edit) | Internet Lead-to-Close Rate | Internet Cost Per Contract | Internet Cost Per Lead
 
----
+Actually, to keep it truly uniform with the canvass section (3 cards), the layout will be:
 
-### Fix 2: Move Internet Metric Cards
+- **Row: 3 internet metric cards** matching the canvass row exactly:
+  - Internet Lead-to-Close Rate (with goal comparison)
+  - Internet Cost Per Contract (with ad spend budget goal comparison)
+  - Internet Cost Per Lead (with breakdown)
 
-**Remove from `src/pages/dashboard/AdminOverview.tsx`:**
-- Remove imports for InternetLeadsCard, AdSpendCard, InternetLeadCloseRateCard, InternetCostPerLeadCard, InternetCostPerContractCard
-- Remove the "Internet Lead Metrics" grid section (lines 672-679)
-
-**Add to `src/pages/admin/CompanyGoals.tsx`:**
-- Import the 5 internet metric cards
-- Add a new "Internet / Call-In Lead Metrics" section after the existing "Additional Metrics Cards" grid (after line 766), with a heading, description, and a responsive grid containing all 5 cards
-
----
-
-### Fix 3: Ad Spend on Company Goals
-
-The AdSpendCard already has an edit button that opens the AdSpendDialog for entering/updating monthly ad spend. By moving it to the Company Goals page, it naturally sits alongside the canvass cost metrics for comparison. No additional ad spend budget field is needed since the existing `target_cost_per_lead` field in company goals already serves as the budget benchmark.
-
----
-
-### Files Changed
-
-| File | Change |
-|---|---|
-| New migration SQL | BEFORE INSERT trigger + data fix for uncounted leads |
-| `src/pages/dashboard/AdminOverview.tsx` | Remove 5 internet metric card imports and grid |
-| `src/pages/admin/CompanyGoals.tsx` | Add 5 internet metric cards in new section |
-
----
+- The Ad Spend actual entry will be handled via the AdSpendCard kept as a single card above the row, or integrated into the Cost Per Contract subtitle.
 
 ### Technical Details
 
-**Migration SQL creates:**
+**Database migration:**
+- Add `target_ad_spend_budget NUMERIC(10,2) DEFAULT 0` to `company_goals` table
 
-```text
--- Function: count_lead_on_insert_assign()
--- Trigger: BEFORE INSERT on quote_requests
--- Data fix: UPDATE user_metrics + UPDATE quote_requests for uncounted leads
-```
+**Files changed:**
 
-**AdminOverview.tsx changes:**
-- Remove lines 20-24 (imports)
-- Remove lines 672-679 (Internet Lead Metrics grid)
+| File | Change |
+|---|---|
+| New migration SQL | Add `target_ad_spend_budget` column to `company_goals` |
+| `src/pages/admin/CompanyGoals.tsx` | (1) Add ad spend budget input to Fiscal Year Goals card; (2) Replace the 5 simple StatsCard grid with 3 rich Card components matching the canvass cards; (3) Keep AdSpendCard with edit button above the row; (4) Add state/save for `target_ad_spend_budget` |
 
-**CompanyGoals.tsx changes:**
-- Add imports for the 5 cards at top
-- Add new section after line 766 (after the Cost Per Lead card's closing div):
+**Detailed CompanyGoals.tsx changes:**
 
-```text
--- "Internet / Call-In Lead Metrics" heading
--- Description text
--- Grid with: InternetLeadsCard, AdSpendCard, InternetLeadCloseRateCard, InternetCostPerLeadCard, InternetCostPerContractCard
-```
+- Add `targetAdSpendBudget` state variable and wire it into `handleSave` and the goal fetch
+- Add a new input field in the goals form (line 460-474 area): "Monthly Ad Spend Budget ($)" with helper text "Target monthly advertising budget"
+- Replace lines 773-788 (the simple grid with 5 StatsCards) with:
+  - AdSpendCard with edit button (single card, full width or half width)
+  - 3 rich Card components in a `grid-cols-1 md:grid-cols-3` layout:
+    1. Internet Lead-to-Close Rate -- fetches from `user_metrics` aggregating `internet_leads` and `internet_leads_closed`, shows goal comparison against `targetLeadToCloseRatio`
+    2. Internet Cost Per Contract -- fetches ad spend from `ad_spend_tracking` and contract count from `quote_requests`, shows goal comparison against `targetAdSpendBudget`
+    3. Internet Cost Per Lead -- fetches ad spend and internet lead count, shows breakdown with vs Cost Per Contract comparison
 
-This creates the intended comparison: canvass metrics (Lead-to-Close Rate, Cost Per Contract, Cost Per Lead) sit directly above the internet equivalents on the same page.
+- The data fetching for internet metrics will be done inline in CompanyGoals (using `useQuery` or adding to the existing `fetchData`), pulling from `ad_spend_tracking` and `quote_requests` tables
 
+**The 5 standalone overview card components** (`InternetLeadsCard`, `InternetLeadCloseRateCard`, `InternetCostPerLeadCard`, `InternetCostPerContractCard`, `AdSpendCard`) will remain in the codebase but the first 4 will no longer be imported in CompanyGoals. `AdSpendCard` stays as the quick-edit entry point.
