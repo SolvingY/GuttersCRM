@@ -28,6 +28,13 @@ interface Contest {
   metric_type: string;
 }
 
+function escapeHtml(text: string): string {
+  if (!text) return '';
+  return text.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char] || char));
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("Weekly digest function invoked");
 
@@ -179,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
             ${topCanvassers.map((c, i) => `
               <tr style="background: ${i % 2 === 0 ? '#f8f9fa' : '#fff'};">
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">${c.display_name || 'Unknown'}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(c.display_name || 'Unknown')}</td>
                 <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">${c.points || 0}</td>
               </tr>
             `).join('')}
@@ -217,7 +224,7 @@ const handler = async (req: Request): Promise<Response> => {
             ${topSalesReps.map((s, i) => `
               <tr style="background: ${i % 2 === 0 ? '#f8f9fa' : '#fff'};">
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">${s.display_name || 'Unknown'}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${escapeHtml(s.display_name || 'Unknown')}</td>
                 <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">${s.points || 0}</td>
               </tr>
             `).join('')}
@@ -236,7 +243,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 16px;">
               <strong>⚠️ Ending Soon!</strong>
               <p style="margin: 8px 0 0 0; font-size: 14px;">
-                ${urgentContests.map(c => `${c.title} ends ${new Date(c.end_date).toLocaleDateString()}`).join(', ')}
+                ${urgentContests.map(c => `${escapeHtml(c.title)} ends ${new Date(c.end_date).toLocaleDateString()}`).join(', ')}
               </p>
             </div>
           ` : ''}
@@ -247,8 +254,8 @@ const handler = async (req: Request): Promise<Response> => {
               return `
                 <tr style="border-bottom: 1px solid #eee;">
                   <td style="padding: 12px 0;">
-                    <strong>${contest.title}</strong><br>
-                    <span style="font-size: 13px; color: #666;">Prize: ${contest.prize_description}</span>
+                    <strong>${escapeHtml(contest.title)}</strong><br>
+                    <span style="font-size: 13px; color: #666;">Prize: ${escapeHtml(contest.prize_description)}</span>
                   </td>
                   <td style="padding: 12px 0; text-align: right; color: ${daysLeft <= 3 ? '#dc3545' : daysLeft <= 7 ? '#ffc107' : '#28a745'};">
                     ${daysLeft} days left
