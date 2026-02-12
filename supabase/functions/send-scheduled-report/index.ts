@@ -33,6 +33,13 @@ interface CompanySummary {
   canvasserLeadsGoal: number;
 }
 
+function escapeHtml(text: string): string {
+  if (!text) return '';
+  return text.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char] || char));
+}
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -155,7 +162,7 @@ function generateEmailHTML(
                 ${topSalesReps.map((rep, i) => `
                 <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#f9fafb'};">
                   <td style="padding: 12px; color: #71717a; font-size: 14px;">${i + 1}</td>
-                  <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 500;">${rep.name}</td>
+                  <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 500;">${escapeHtml(rep.name)}</td>
                   <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${formatCurrency(rep.approvedRevenue)}</td>
                   <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${rep.closedDeals}</td>
                 </tr>
@@ -180,7 +187,7 @@ function generateEmailHTML(
                 ${topCanvassers.map((c, i) => `
                 <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#f9fafb'};">
                   <td style="padding: 12px; color: #71717a; font-size: 14px;">${i + 1}</td>
-                  <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 500;">${c.name}</td>
+                  <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 500;">${escapeHtml(c.name)}</td>
                   <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${c.leadsSet}</td>
                   <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${c.leadsClosed}</td>
                 </tr>
