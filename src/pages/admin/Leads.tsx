@@ -33,6 +33,7 @@ const statusColors: Record<string, string> = {
   scheduled: "bg-green-500 text-white",
   won: "bg-emerald-600 text-white",
   lost: "bg-muted text-muted-foreground",
+  archived: "bg-muted text-muted-foreground",
 };
 
 const priorityConfig: Record<string, { label: string; className: string; icon: any }> = {
@@ -58,6 +59,11 @@ export default function Leads() {
         .select("*")
         .order("priority", { ascending: true })
         .order("created_at", { ascending: false });
+
+      // Hide archived by default unless explicitly filtered
+      if (statusFilter !== "archived") {
+        query = query.neq("status", "archived");
+      }
 
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (serviceFilter !== "all") query = query.eq("service_type", serviceFilter);
@@ -144,6 +150,7 @@ export default function Leads() {
             <SelectItem value="scheduled">Scheduled</SelectItem>
             <SelectItem value="won">Won</SelectItem>
             <SelectItem value="lost">Lost</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>
         <Select value={serviceFilter} onValueChange={setServiceFilter}>
