@@ -669,6 +669,15 @@ export default function AdminOverview() {
             })()}
           </div>
 
+          {/* Internet Lead Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <InternetLeadsCard />
+            <AdSpendCard />
+            <InternetLeadCloseRateCard />
+            <InternetCostPerLeadCard />
+            <InternetCostPerContractCard />
+          </div>
+
           {usersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
