@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download } from 'lucide-react';
+import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download, Globe, Pencil } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { format, addMonths } from 'date-fns';
-import { InternetLeadsCard } from '@/components/overview/InternetLeadsCard';
-import { InternetLeadCloseRateCard } from '@/components/overview/InternetLeadCloseRateCard';
-import { InternetCostPerLeadCard } from '@/components/overview/InternetCostPerLeadCard';
-import { InternetCostPerContractCard } from '@/components/overview/InternetCostPerContractCard';
-import { AdSpendCard } from '@/components/overview/AdSpendCard';
+import { format, addMonths, startOfMonth } from 'date-fns';
+import { AdSpendDialog } from '@/components/admin/AdSpendDialog';
 
 interface CompanyGoal {
   id: string;
@@ -62,12 +59,86 @@ export default function CompanyGoals() {
   const [description, setDescription] = useState('');
   const [targetLeadToCloseRatio, setTargetLeadToCloseRatio] = useState('');
   const [targetCostPerLead, setTargetCostPerLead] = useState('');
+  const [targetAdSpendBudget, setTargetAdSpendBudget] = useState('');
+  const [adSpendDialogOpen, setAdSpendDialogOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
 
-  const fiscalStart = new Date(2025, 11, 15); // Dec 15, 2025
-  const fiscalEnd = new Date(2026, 11, 15); // Dec 15, 2026
+  const fiscalStart = new Date(2025, 11, 15);
+  const fiscalEnd = new Date(2026, 11, 15);
+  const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+
+  // Internet metrics queries
+  const { data: adSpendData } = useQuery({
+    queryKey: ['ad-spend-current'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ad_spend_tracking')
+        .select('ad_spend')
+        .eq('month', monthStart)
+        .maybeSingle();
+      if (error) throw error;
+      return Number(data?.ad_spend) || 0;
+    },
+  });
+
+  const { data: internetLeadCount } = useQuery({
+    queryKey: ['internet-leads-month'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('quote_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('lead_type', 'internet')
+        .not('assigned_to', 'is', null)
+        .gte('assigned_at', monthStart + 'T00:00:00');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const { data: internetContractsWon } = useQuery({
+    queryKey: ['internet-contracts-won-month'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('quote_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('lead_type', 'internet')
+        .eq('status', 'won')
+        .gte('won_at', monthStart + 'T00:00:00');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const { data: internetClosedFromMetrics } = useQuery({
+    queryKey: ['internet-ltc-totals'],
+    queryFn: async () => {
+      const { data: metrics, error } = await supabase
+        .from('user_metrics')
+        .select('user_id, internet_leads, internet_leads_closed')
+        .order('metric_date', { ascending: false });
+      if (error) throw error;
+      const seen = new Set<string>();
+      let totalLeads = 0;
+      let totalClosed = 0;
+      for (const m of metrics || []) {
+        if (seen.has(m.user_id)) continue;
+        seen.add(m.user_id);
+        totalLeads += Number(m.internet_leads) || 0;
+        totalClosed += Number(m.internet_leads_closed) || 0;
+      }
+      return { totalLeads, totalClosed };
+    },
+  });
+
+  const internetData = {
+    adSpend: adSpendData || 0,
+    internetLeadCount: internetLeadCount || 0,
+    internetContractsWon: internetContractsWon || 0,
+    internetClosedCount: internetClosedFromMetrics?.totalClosed || 0,
+    internetTotalLeads: internetClosedFromMetrics?.totalLeads || 0,
+  };
 
   useEffect(() => {
     fetchData();
@@ -91,6 +162,7 @@ export default function CompanyGoals() {
         setDescription(goalData.description || '');
         setTargetLeadToCloseRatio(String(goalData.target_lead_to_close_ratio || ''));
         setTargetCostPerLead(String(goalData.target_cost_per_lead || ''));
+        setTargetAdSpendBudget(String((goalData as any).target_ad_spend_budget || ''));
       }
 
       // Fetch sales rep metrics
@@ -272,7 +344,8 @@ export default function CompanyGoals() {
         description: description || null,
         target_lead_to_close_ratio: parseFloat(targetLeadToCloseRatio) || 0,
         target_cost_per_lead: parseFloat(targetCostPerLead) || 0,
-      };
+        target_ad_spend_budget: parseFloat(targetAdSpendBudget) || 0,
+      } as any;
 
       if (goal?.id) {
         // Update existing goal
@@ -470,6 +543,23 @@ export default function CompanyGoals() {
               />
               <p className="text-xs text-muted-foreground">
                 Target cost to acquire a closed contract
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="targetAdSpendBudget">Monthly Ad Spend Budget ($)</Label>
+              <Input
+                id="targetAdSpendBudget"
+                type="number"
+                min="0"
+                step="100"
+                placeholder="e.g., 5000"
+                value={targetAdSpendBudget}
+                onChange={(e) => setTargetAdSpendBudget(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Target monthly advertising budget for internet leads
               </p>
             </div>
           </div>
@@ -778,14 +868,203 @@ export default function CompanyGoals() {
             Track performance and ROI for internet-sourced leads (website, phone calls, referrals)
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          <InternetLeadsCard />
-          <AdSpendCard />
-          <InternetLeadCloseRateCard />
-          <InternetCostPerLeadCard />
-          <InternetCostPerContractCard />
+
+        {/* Ad Spend Entry Card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-lg">
+                <DollarSign className="h-5 w-5 text-accent" />
+                Ad Spend (This Month)
+              </span>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAdSpendDialogOpen(true)}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-foreground">
+              {internetData.adSpend > 0 ? formatCurrency(internetData.adSpend) : '$0'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {internetData.internetLeadCount} internet leads this month
+            </p>
+            {(() => {
+              const budget = parseFloat(targetAdSpendBudget) || 0;
+              if (budget > 0 && internetData.adSpend > 0) {
+                const variance = budget - internetData.adSpend;
+                const isUnder = variance >= 0;
+                return (
+                  <div className={`rounded-lg p-3 mt-3 ${isUnder ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-medium ${isUnder ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {isUnder ? '✓ Under budget' : '⚠ Over budget'}
+                      </span>
+                      <span className={`text-sm font-semibold ${isUnder ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {isUnder ? '-' : '+'}{formatCurrency(Math.abs(variance))}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* 3 Internet Metric Cards matching canvass layout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Internet Lead-to-Close Rate */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Percent className="h-5 w-5 text-primary" />
+                Internet Lead-to-Close Rate
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(() => {
+                const currentRate = internetData.internetLeadCount > 0
+                  ? (internetData.internetClosedCount / internetData.internetLeadCount) * 100
+                  : 0;
+                const targetRate = parseFloat(targetLeadToCloseRatio) || 0;
+                const variance = currentRate - targetRate;
+                const isOnTarget = targetRate === 0 || currentRate >= targetRate;
+
+                return (
+                  <>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-foreground">
+                          {currentRate.toFixed(1)}%
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {internetData.internetClosedCount} closed / {internetData.internetLeadCount} leads
+                        </p>
+                      </div>
+                      {targetRate > 0 && (
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Goal</p>
+                          <p className="text-xl font-semibold text-foreground">{targetRate.toFixed(1)}%</p>
+                        </div>
+                      )}
+                    </div>
+                    {targetRate > 0 && (
+                      <div className={`rounded-lg p-3 ${isOnTarget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${isOnTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {isOnTarget ? '✓ On target' : '⚠ Below target'}
+                          </span>
+                          <span className={`text-sm font-semibold ${variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {variance >= 0 ? '+' : ''}{variance.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Internet Cost Per Contract */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calculator className="h-5 w-5 text-primary" />
+                Internet Cost Per Contract
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(() => {
+                const currentCost = internetData.internetContractsWon > 0
+                  ? internetData.adSpend / internetData.internetContractsWon
+                  : 0;
+                const budget = parseFloat(targetAdSpendBudget) || 0;
+                const targetCostPerContract = budget > 0 && internetData.internetContractsWon > 0
+                  ? budget / internetData.internetContractsWon
+                  : 0;
+
+                return (
+                  <>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-foreground">
+                          {internetData.internetContractsWon > 0 ? formatCurrency(currentCost) : 'N/A'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatCurrency(internetData.adSpend)} spent / {internetData.internetContractsWon} contracts
+                        </p>
+                      </div>
+                      {budget > 0 && (
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Budget</p>
+                          <p className="text-xl font-semibold text-foreground">{formatCurrency(budget)}</p>
+                        </div>
+                      )}
+                    </div>
+                    {budget > 0 && internetData.adSpend > 0 && (
+                      <div className={`rounded-lg p-3 ${internetData.adSpend <= budget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${internetData.adSpend <= budget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {internetData.adSpend <= budget ? '✓ Under budget' : '⚠ Over budget'}
+                          </span>
+                          <span className={`text-sm font-semibold ${internetData.adSpend <= budget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {internetData.adSpend <= budget ? '-' : '+'}{formatCurrency(Math.abs(budget - internetData.adSpend))}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Internet Cost Per Lead */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calculator className="h-5 w-5 text-accent" />
+                Internet Cost Per Lead
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(() => {
+                const costPerLead = internetData.internetLeadCount > 0
+                  ? internetData.adSpend / internetData.internetLeadCount
+                  : 0;
+                const costPerContract = internetData.internetContractsWon > 0
+                  ? internetData.adSpend / internetData.internetContractsWon
+                  : 0;
+
+                return (
+                  <>
+                    <div>
+                      <p className="text-3xl font-bold text-foreground">
+                        {internetData.internetLeadCount > 0 ? formatCurrency(costPerLead) : 'N/A'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatCurrency(internetData.adSpend)} spent / {internetData.internetLeadCount} leads
+                      </p>
+                    </div>
+                    {internetData.internetContractsWon > 0 && internetData.internetLeadCount > 0 && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground">vs Cost Per Contract</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {formatCurrency(costPerContract)}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      <AdSpendDialog open={adSpendDialogOpen} onOpenChange={setAdSpendDialogOpen} />
 
       <Card className="bg-accent/5 border-accent/20">
         <CardContent className="pt-6">
