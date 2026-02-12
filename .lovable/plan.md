@@ -1,48 +1,21 @@
 
 
-## Fix Header Layout, Mobile Social Links, and Sticky CTA
+## Fix Desktop Header Text Overlap
 
-### Issues Identified
+### Problem
+At the `xl` breakpoint (1280px), the company name "Next Generation Roofing" appears alongside social icons, logo, nav links, and CTA buttons -- there is not enough horizontal space and the text overlaps with navigation links (visible in screenshot).
 
-1. **Desktop header overlapping** -- The social icons, logo, and company name text crowd into the navigation links at certain screen widths (visible in the screenshot).
-2. **Mobile social links missing** -- Social media icons are hidden below `sm` breakpoint (`hidden sm:flex`), but should remain visible in the mobile header.
-3. **Sticky CTA routes to phone call** -- Should navigate to `/get-quote` instead of triggering a phone call.
-4. **Sticky CTA language** -- Update text to "Get your estimate within 24 Hours".
+### Solution
+Hide the company name text entirely on desktop. The circular logo is always visible and provides sufficient branding. The company name text only adds clutter at these widths and causes the overlap.
 
----
+Additionally, hide social icons at the `lg` breakpoint (they currently show at `xl`) to give navigation links more breathing room. Social icons remain visible on mobile/tablet and can be accessed in the footer on desktop.
 
-### Changes
+### Changes (1 file)
 
-#### 1. `src/components/Header.tsx`
+**`src/components/Header.tsx`**
 
-**Desktop overlap fix:**
-- Hide the company name text ("Next Generation Roofing") at the `lg` breakpoint and only show it at `xl` to prevent it from colliding with nav links
-- Reduce desktop nav gap from `gap-6` to `gap-4` for tighter spacing
-- Hide social icons between `lg` and `xl` to free up space at the `lg` breakpoint where overlap occurs
+1. **Hide company name text completely** -- Change `hidden xl:block` to `hidden 2xl:block` (or remove it entirely). Since 2xl is 1536px+, only very wide screens will show it. This eliminates the overlap at 1280px-1535px.
 
-**Mobile social links:**
-- Change social icons container from `hidden sm:flex` to `flex` so they always show
-- Make icons smaller on mobile (`w-3 h-3` at base, `w-4 h-4` at `sm`) and reduce padding to fit in the compact header
+2. **Hide social icons on desktop nav sizes** -- Keep current `flex lg:hidden xl:flex` but change to `flex lg:hidden 2xl:flex` so social icons only reappear at 2xl (1536px+), freeing up space at xl for nav links and CTAs.
 
-#### 2. `src/components/StickyCallCTA.tsx`
-
-- Replace the `onClick` phone call handler with a `Link` to `/get-quote`
-- Update the button text to: **"Get your estimate within 24 Hours"**
-- Import `Link` from `react-router-dom`
-
----
-
-### Technical Details
-
-**Header.tsx changes:**
-- Line 96: Change `hidden sm:flex` to `flex` for social icons visibility on all screens
-- Line 103: Add responsive icon sizing (`w-3 h-3 sm:w-4 sm:h-4`) and smaller padding on mobile (`p-1 sm:p-2`)
-- Line 118: Change `hidden lg:block` to `hidden xl:block` for the company name
-- Line 126: Reduce nav gap to `gap-4`
-- Line 96: Hide social icons at `lg` only, show at `xl`: `flex lg:hidden xl:flex`
-
-**StickyCallCTA.tsx changes:**
-- Remove `handleCall` function
-- Wrap the button in a `Link` component pointing to `/get-quote`
-- Replace all inner text spans with a single line: "Get your estimate within 24 Hours"
-
+These two changes ensure no elements compete for space between 1024px and 1536px.
