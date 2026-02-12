@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,9 @@ export default function LeadDetail() {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<string | null>(null);
   const [lostReason, setLostReason] = useState("");
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiving, setArchiving] = useState(false);
 
   // Check if current user is admin
   const { data: isAdmin = false } = useQuery({
@@ -129,6 +134,30 @@ export default function LeadDetail() {
     updateLead.mutate({
       next_followup_due: new Date(current.getTime() + 24 * 60 * 60 * 1000).toISOString(),
     });
+  };
+
+  const handleArchive = async () => {
+    if (!archiveReason.trim()) {
+      toast({ title: "Reason required", description: "Please provide a reason for archiving", variant: "destructive" });
+      return;
+    }
+    setArchiving(true);
+    try {
+      const { error } = await supabase.rpc("archive_lead", {
+        p_lead_id: lead.id,
+        p_reason: archiveReason.trim(),
+      });
+      if (error) throw error;
+      toast({ title: "Lead archived", description: "Lead has been archived and metrics updated" });
+      queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+      navigate(isAdmin ? "/admin/leads" : "/dashboard/my-leads");
+    } catch (err: any) {
+      toast({ title: "Archive failed", description: err.message, variant: "destructive" });
+    } finally {
+      setArchiving(false);
+      setArchiveOpen(false);
+    }
   };
 
   return (
@@ -315,6 +344,37 @@ export default function LeadDetail() {
             </div>
           )}
 
+          {/* Archive Lead (Admin only) */}
+          {isAdmin && lead.status !== 'archived' && (
+            <div className="border border-destructive/20 rounded-lg p-5">
+              <h2 className="font-heading text-lg uppercase mb-2">Archive Lead</h2>
+              <p className="text-sm text-muted-foreground mb-3">
+                Archiving removes this lead from the rep's metrics and lead totals.
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => setArchiveOpen(true)}
+              >
+                <Archive className="w-4 h-4" /> Archive Lead
+              </Button>
+            </div>
+          )}
+
+          {lead.status === 'archived' && (
+            <div className="border border-muted rounded-lg p-5 bg-muted/30">
+              <h2 className="font-heading text-lg uppercase mb-2 text-muted-foreground">Archived</h2>
+              <p className="text-sm text-muted-foreground">
+                Reason: {(lead as any).archived_reason || 'No reason provided'}
+              </p>
+              {(lead as any).archived_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Archived: {new Date((lead as any).archived_at).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Timeline */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Timeline</h2>
@@ -401,6 +461,56 @@ export default function LeadDetail() {
           </div>
         </div>
       </div>
+
+      {/* Archive Dialog */}
+      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archive Lead</DialogTitle>
+            <DialogDescription>
+              This will remove the lead from the assigned rep's metrics and lead totals. This action cannot be easily undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label>Reason for archiving</Label>
+              <Select value={archiveReason} onValueChange={setArchiveReason}>
+                <SelectTrigger><SelectValue placeholder="Select a reason..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Duplicate lead">Duplicate lead</SelectItem>
+                  <SelectItem value="Invalid/fake lead">Invalid/fake lead</SelectItem>
+                  <SelectItem value="Customer requested removal">Customer requested removal</SelectItem>
+                  <SelectItem value="Wrong contact info">Wrong contact info</SelectItem>
+                  <SelectItem value="Out of service area">Out of service area</SelectItem>
+                  <SelectItem value="Test lead">Test lead</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {archiveReason === "Other" && (
+              <div className="space-y-2">
+                <Label>Custom reason</Label>
+                <Textarea
+                  placeholder="Enter reason..."
+                  value=""
+                  onChange={(e) => setArchiveReason(e.target.value || "Other")}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveOpen(false)}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleArchive} 
+              disabled={archiving || !archiveReason}
+            >
+              {archiving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Archive Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
