@@ -400,6 +400,16 @@ export default function AdminLeaderboards() {
         profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
       );
 
+      // Fetch current canvasser role holders to exclude deleted users
+      const { data: canvasserRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'canvasser');
+
+      const currentCanvasserRoleIds = new Set(
+        canvasserRoles?.map(r => r.user_id) || []
+      );
+
       const { data } = await supabase
         .from('canvasser_metrics')
         .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, yearly_goal, points')
@@ -433,7 +443,7 @@ export default function AdminLeaderboards() {
       // Filter out hidden users
       const uniqueUsers = new Map<string, any>();
       data.forEach(entry => {
-        if (!uniqueUsers.has(entry.user_id) && !hiddenUserIds.has(entry.user_id)) {
+        if (!uniqueUsers.has(entry.user_id) && !hiddenUserIds.has(entry.user_id) && currentCanvasserRoleIds.has(entry.user_id)) {
           uniqueUsers.set(entry.user_id, entry);
         }
       });
