@@ -1,30 +1,40 @@
 
 
-## Fix Canvasser Names Showing as "Unknown" in PDF Export
+## Remove "Next Generation Roofing" Text from Header + Verify Hours Tracker
 
-### Root Cause
-The canvasser name resolution (line 420 in `AdminOverview.tsx`) only checks `canvasser_metrics.display_name`. If that field is empty/null, it falls back to "Unknown Canvasser" -- it never checks the `profiles` table for `full_name`.
+### Problem
+The "Next Generation Roofing" text in the header overlaps onto the navigation menu items on desktop (visible in the screenshot). The text is redundant since the logo already identifies the brand.
 
-By contrast, the sales rep name resolution (line 312) correctly falls back to `profilesMap.get(data.realUserId)` which pulls `full_name` from profiles.
+### Fix: Header.tsx (lines 118-120)
 
-### Fix
+Remove the text span next to the logo. Change:
 
-**File: `src/pages/dashboard/AdminOverview.tsx`**
+```
+<img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
+<span className="hidden xl:block font-heading text-lg xl:text-xl font-bold uppercase tracking-wide">
+  Next Generation Roofing
+</span>
+```
 
-1. **Update canvasser profiles query** (line 396): Add `full_name` to the select:
-   - Change `.select('id, is_archived')` to `.select('id, is_archived, full_name')`
+To just:
 
-2. **Build a canvasser profiles name map** (after line 407): Create a map from canvasser user IDs to their `full_name` from profiles.
+```
+<img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
+```
 
-3. **Update canvasser name resolution** (line 420): Add profiles fallback:
-   - Change from: `data.displayName || 'Unknown Canvasser'`
-   - Change to: `data.displayName || (data.realUserId ? canvasserProfilesMap.get(data.realUserId) : null) || 'Unknown Canvasser'`
+### Hours Tracker Verification
 
-This ensures that even if `canvasser_metrics.display_name` is null, the system falls back to the profile's `full_name` before showing "Unknown."
+The Canvasser Hours Tracker widget is already correctly implemented in AdminOverview.tsx with:
+- Week navigation (Prev/Next buttons with date range display)
+- Mon-Sun daily hours grid per canvasser
+- Weekly totals column
+- Data fetched from `daily_canvasser_metric_entries`
+
+No changes needed for the Hours Tracker -- it is structurally correct.
 
 ### Summary
 
 | File | Change |
 |---|---|
-| `src/pages/dashboard/AdminOverview.tsx` | Add `full_name` to canvasser profiles query; use it as fallback for canvasser names |
+| `src/components/Header.tsx` | Remove the "Next Generation Roofing" text span (lines 118-120) |
 
