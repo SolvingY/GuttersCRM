@@ -115,9 +115,6 @@ export function Header() {
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
-              <span className="hidden xl:block font-heading text-lg xl:text-xl font-bold uppercase tracking-wide">
-                Next Generation Roofing
-              </span>
             </a>
           </div>
 
