@@ -24,6 +24,10 @@ interface AggregateMetrics {
   totalLeads: number;
   totalClosedDeals: number;
   totalUsers: number;
+  totalSelfGen: number;
+  totalCanvassClosedDeals: number;
+  totalInternetClosedDeals: number;
+  totalClosedForLtC: number;
 }
 
 interface CanvasserAggregates {
@@ -93,6 +97,10 @@ export default function AdminOverview() {
     totalLeads: 0,
     totalClosedDeals: 0,
     totalUsers: 0,
+    totalSelfGen: 0,
+    totalCanvassClosedDeals: 0,
+    totalInternetClosedDeals: 0,
+    totalClosedForLtC: 0,
   });
   const [canvasserAggregates, setCanvasserAggregates] = useState<CanvasserAggregates>({
     totalCanvassers: 0,
@@ -311,8 +319,12 @@ export default function AdminOverview() {
           totalLeads: acc.totalLeads + user.leads,
           totalClosedDeals: acc.totalClosedDeals + user.closedDeals,
           totalUsers: acc.totalUsers + 1,
+          totalSelfGen: acc.totalSelfGen + user.selfGeneratedDeals,
+          totalCanvassClosedDeals: acc.totalCanvassClosedDeals + user.canvassDealsClose,
+          totalInternetClosedDeals: acc.totalInternetClosedDeals + user.internetLeadsClosed,
+          totalClosedForLtC: acc.totalClosedForLtC + user.canvassDealsClose + user.internetLeadsClosed,
         }),
-        { totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0 }
+        { totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0, totalSelfGen: 0, totalCanvassClosedDeals: 0, totalInternetClosedDeals: 0, totalClosedForLtC: 0 }
       );
 
       setAggregates(totals);
@@ -614,11 +626,11 @@ export default function AdminOverview() {
             <StatsCard title="Total Sales Reps" value={aggregates.totalUsers} icon={UserCheck} />
             <StatsCard title="Total Approved Revenue" value={formatCurrency(aggregates.totalApprovedRevenue)} icon={DollarSign} />
             <StatsCard title="Total Points" value={aggregates.totalPoints.toLocaleString()} icon={Star} />
-            <StatsCard title="Total Leads" value={aggregates.totalLeads} icon={Users} />
-            <StatsCard title="Total Closed Deals" value={aggregates.totalClosedDeals} icon={Briefcase} />
+            <StatsCard title="Total Leads (Close %)" value={aggregates.totalLeads} icon={Users} />
+            <StatsCard title="Total Contracts" value={aggregates.totalClosedDeals} icon={Briefcase} />
             <StatsCard 
               title="Lead Close %" 
-              value={`${aggregates.totalLeads > 0 ? ((aggregates.totalClosedDeals / aggregates.totalLeads) * 100).toFixed(1) : '0.0'}%`} 
+              value={`${aggregates.totalLeads > 0 ? ((aggregates.totalClosedForLtC / aggregates.totalLeads) * 100).toFixed(1) : '0.0'}%`} 
               icon={Percent} 
             />
           </div>
@@ -630,34 +642,51 @@ export default function AdminOverview() {
               <h3 className="font-heading font-semibold text-foreground">Contract Sources</h3>
             </div>
             {(() => {
-              // Calculate self-gen vs canvass contracts for yearly comparison
-              const totalSelfGenContracts = userDetails.reduce((sum, u) => sum + u.selfGeneratedDeals, 0);
-              const totalCanvassContracts = userDetails.reduce((sum, u) => sum + u.canvassDealsClose, 0);
-              const totalContracts = totalSelfGenContracts + totalCanvassContracts;
+              const totalSelfGenContracts = aggregates.totalSelfGen;
+              const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
+              const totalInternetContracts = aggregates.totalInternetClosedDeals;
+              const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
               const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
               const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
+              const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
               
               return (
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Self-Generated Contracts</span>
-                    <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Self-Generated</span>
+                      <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                      <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2.5">
-                    <div 
-                      className="bg-accent h-2.5 rounded-full" 
-                      style={{ width: `${selfGenPct}%` }}
-                    />
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Canvass Contracts</span>
+                      <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                      <div className="bg-primary h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Canvass Contracts</span>
-                    <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Internet Contracts</span>
+                      <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                      <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2.5">
-                    <div 
-                      className="bg-primary h-2.5 rounded-full" 
-                      style={{ width: `${canvassPct}%` }}
-                    />
+                  <div className="pt-2 border-t border-border">
+                    <div className="flex justify-between font-semibold text-foreground">
+                      <span>Total Contracts</span>
+                      <span>{totalContracts}</span>
+                    </div>
                   </div>
                 </div>
               );
