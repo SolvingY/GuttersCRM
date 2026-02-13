@@ -126,14 +126,8 @@ export default function UserRoles() {
       };
     });
 
-    // Sort: admins first, then by name
-    combined.sort((a, b) => {
-      const aIsAdmin = a.roles.includes('admin');
-      const bIsAdmin = b.roles.includes('admin');
-      if (aIsAdmin && !bIsAdmin) return -1;
-      if (bIsAdmin && !aIsAdmin) return 1;
-      return (a.fullName || '').localeCompare(b.fullName || '');
-    });
+    // Sort alphabetically by name
+    combined.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
 
     setUsers(combined);
     setLoading(false);

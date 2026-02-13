@@ -154,7 +154,7 @@ export default function WeeklyUpdates() {
       const uniqueCanvassers = new Map<string, CanvasserMetric>();
       (canvasserData || []).forEach((item) => {
         // Filter out archived canvassers
-        if (item.user_id && !uniqueCanvassers.has(item.user_id) && !archivedUserIds.has(item.user_id)) {
+        if (item.user_id && !uniqueCanvassers.has(item.user_id) && !archivedUserIds.has(item.user_id) && canvasserUserIds.has(item.user_id)) {
           uniqueCanvassers.set(item.user_id, item as CanvasserMetric);
         }
       });
