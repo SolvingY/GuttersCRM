@@ -1,32 +1,40 @@
 
 
-## Fix Mobile Layout Wrapping on Leads Page
+## Fix Lead-to-Close % Calculation and Contract Source Breakdown
 
-### Issues Identified from Screenshot
+### Problem
+The "Lead Close %" shows **2000.0%** because the formula uses `totalClosedDeals` (which includes Self-Gen) divided by `totalLeads` (Canvass + Internet only). Self-Gen contracts inflate the numerator with no matching denominator. The Contract Sources card also omits Internet contracts.
 
-1. **Header row**: "LEAD MANAGEMENT" title and "Create Lead" / "Export" buttons are side-by-side with `justify-between`, causing the buttons to overflow and the title to get clipped on mobile.
-2. **Stats bar**: Uses `grid-cols-2 sm:grid-cols-5`, so on mobile the 5th card ("Won") sits alone on a third row, looking unbalanced.
-3. **Filter dropdowns**: Fixed widths (`w-[140px]`, `w-[160px]`, `w-[180px]`) cause horizontal overflow on narrow screens.
+### Changes (1 file: `src/pages/dashboard/AdminOverview.tsx`)
 
-### Changes (1 file: `src/pages/admin/Leads.tsx`)
+**1. Expand the AggregateMetrics interface and reduce function (lines 21-27, 307-316)**
+- Add `totalSelfGen`, `totalCanvassClosedDeals`, `totalInternetClosedDeals`, and `totalClosedForLtC` to the interface and the `reduce` call
+- `totalClosedForLtC` = canvass closed + internet closed (excludes Self-Gen)
 
-**1. Header section** -- Stack title and buttons vertically on mobile:
-- Change the container from `flex items-center justify-between` to `flex flex-col sm:flex-row sm:items-center justify-between gap-3`
-- This stacks the title above the buttons on small screens and places them side-by-side on larger screens
+**2. Fix Lead Close % StatsCard (line 621)**
+- Change formula from `totalClosedDeals / totalLeads` to `totalClosedForLtC / totalLeads`
+- Expected result with current data: (0 + 1) / (0 + 1) = **100.0%** instead of 2000%
 
-**2. Stats bar** -- Show all 5 in a scrollable row or use a mobile-friendly grid:
-- Change from `grid-cols-2 sm:grid-cols-5` to `grid-cols-5` with smaller padding on mobile, so all 5 stats stay in one row
-- Reduce padding to `p-2 sm:p-3` and font size to `text-xl sm:text-2xl` so they fit
+**3. Update "Total Leads" label (line 617)**
+- Rename to "Total Leads (Close %)" or add subtitle clarifying it only includes Canvass + Internet
 
-**3. Filter dropdowns** -- Make them responsive:
-- Change fixed widths to `w-full sm:w-[140px]` (and similar for others) so filters stack full-width on mobile
-- Alternatively, change the flex-wrap container to a grid: `grid grid-cols-2 sm:flex sm:flex-wrap gap-3`
+**4. Add Internet Contracts to Contract Sources card (lines 626-664)**
+- Add a third row for Internet Contracts with progress bar
+- Update total to include all three: Self-Gen + Canvass + Internet
+- Add helper text under each row: "Does not count toward Close %" for Self-Gen, "Counts toward Close %" for Canvass and Internet
+- Use a distinct color for the Internet progress bar (e.g., `bg-blue-500`)
 
-### Technical Details
+### Metrics Reference
 
-All changes are in `src/pages/admin/Leads.tsx`:
+| Metric | Formula | Counts Toward Close % |
+|---|---|---|
+| Self-Gen Contracts | `self_generated_deals` | No |
+| Canvass Contracts | `canvass_deals_closed` | Yes |
+| Internet Contracts | `internet_leads_closed` | Yes |
+| Lead Close % | (canvass closed + internet closed) / (canvass leads + internet leads) | -- |
 
-- **Lines 107-118** (header): Wrap with `flex-col sm:flex-row` and add `gap-3`
-- **Lines 125, 135-136** (stats grid): Change to `grid-cols-5 gap-2 sm:gap-3`, reduce text size on mobile
-- **Lines 142-190** (filters): Change container to `grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3` and update trigger widths to be responsive (`w-full sm:w-[140px]`)
+### Expected Result
+- Before: Lead Close % = 20 / 1 = 2000.0%
+- After: Lead Close % = (0 + 1) / (0 + 1) = 100.0%
+- Contract Sources: Self-Gen 18 (90%), Canvass 0 (0%), Internet 1 (5%), Total 19
 
