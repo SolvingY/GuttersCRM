@@ -41,15 +41,15 @@ Deno.serve(async (req) => {
     // Use service role client for admin checks and updates
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify the caller is an admin
-    const { data: callerRoleData, error: roleError } = await supabaseAdmin
+    // Verify the caller is an admin (supports multi-role users)
+    const { data: callerRoles, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (roleError || callerRoleData?.role !== "admin") {
-      console.error("Role check error:", roleError, "Role:", callerRoleData?.role);
+    const isCallerAdmin = callerRoles?.some(r => r.role === "admin");
+    if (roleError || !isCallerAdmin) {
+      console.error("Role check error:", roleError, "Roles:", callerRoles);
       return new Response(
         JSON.stringify({ error: "Only admins can manage users" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -73,14 +73,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if target user is an admin (cannot archive/delete admins)
-    const { data: targetRoleData } = await supabaseAdmin
+    // Check if target user is an admin (cannot archive/delete admins, supports multi-role)
+    const { data: targetRoles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", targetUserId)
-      .single();
+      .eq("user_id", targetUserId);
 
-    if (targetRoleData?.role === "admin") {
+    const isTargetAdmin = targetRoles?.some(r => r.role === "admin");
+    if (isTargetAdmin) {
       return new Response(
         JSON.stringify({ error: "Cannot archive or delete admin users" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
