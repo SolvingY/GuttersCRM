@@ -140,13 +140,13 @@ export default function AdminLeaderboards() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
-      // Fetch profiles to check hidden_from_leaderboard status
+      // Fetch profiles to check hidden_from_leaderboard and is_archived status
       const { data: profilesForHidden } = await supabase
         .from('profiles')
-        .select('id, hidden_from_leaderboard');
+        .select('id, hidden_from_leaderboard, is_archived');
       
       const hiddenUserIds = new Set(
-        profilesForHidden?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
       );
 
       const { data: metricsData } = await supabase
@@ -248,13 +248,13 @@ export default function AdminLeaderboards() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
-      // Fetch profiles to check hidden_from_leaderboard status
+      // Fetch profiles to check hidden_from_leaderboard and is_archived status
       const { data: profilesForHidden } = await supabase
         .from('profiles')
-        .select('id, hidden_from_leaderboard');
+        .select('id, hidden_from_leaderboard, is_archived');
       
       const hiddenUserIds = new Set(
-        profilesForHidden?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
       );
 
       if (timeFrame === 'weekly') {
@@ -391,13 +391,13 @@ export default function AdminLeaderboards() {
     const fetchCanvasserYtd = async () => {
       setCanvasserLoading(true);
 
-      // Fetch profiles to check hidden_from_leaderboard status
+      // Fetch profiles to check hidden_from_leaderboard and is_archived status
       const { data: profilesForHidden } = await supabase
         .from('profiles')
-        .select('id, hidden_from_leaderboard');
+        .select('id, hidden_from_leaderboard, is_archived');
       
       const hiddenUserIds = new Set(
-        profilesForHidden?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
       );
 
       const { data } = await supabase
