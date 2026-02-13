@@ -393,7 +393,7 @@ export default function AdminOverview() {
         .filter((id): id is string => id !== null);
       
       const { data: canvasserProfilesData } = canvasserUserIds.length > 0
-        ? await supabase.from('profiles').select('id, is_archived').in('id', canvasserUserIds)
+        ? await supabase.from('profiles').select('id, is_archived, full_name').in('id', canvasserUserIds)
         : { data: [] };
 
       // Fetch current canvasser roles to filter out users who no longer have the canvasser role
@@ -404,6 +404,11 @@ export default function AdminOverview() {
       // Build an "active" set: only profiles that exist AND are not archived
       const activeCanvasserIds = new Set<string>(
         canvasserProfilesData?.filter(p => !p.is_archived).map(p => p.id) || []
+      );
+
+      // Build a name map from canvasser profiles for fallback
+      const canvasserProfilesMap = new Map<string, string>(
+        canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
       );
 
       // Build a set of users who currently hold the canvasser role
@@ -417,7 +422,7 @@ export default function AdminOverview() {
         return {
           metricId: data.metricId,
           realUserId: data.realUserId,
-          name: data.displayName || 'Unknown Canvasser',
+          name: data.displayName || (data.realUserId ? canvasserProfilesMap.get(data.realUserId) : null) || 'Unknown Canvasser',
           leadsSet: data.leadsSet,
           leadsClosed: data.leadsClosed,
           leadsWithDamage: data.leadsWithDamage,
