@@ -1,71 +1,60 @@
 
 
-## Fix Deleted/Archived Users Showing on Overview and Leaderboards
+## Fix Archived/Removed Users Showing + Alphabetical Sorting
 
-### Problem 1: Deleted User "Da Man" Still Appears on Master Overview
-"Da Man" was fully deleted (no profile exists), but their `canvasser_metrics` row remains. The current filtering only checks for `is_archived` in profiles -- a user with **no profile at all** slips through because they are not in the archived set.
-
-### Problem 2: Archived Users Still Appear on Leaderboards
-The Sales Rep Leaderboard (`Leaderboard.tsx`) and Admin Leaderboards (`AdminLeaderboards.tsx`) do not filter out archived users. Only the Canvasser Leaderboard (`CanvasserLeaderboard.tsx`) currently does this correctly.
+### Problem Summary
+1. **Kara and Adam** were removed as canvassers but still appear in Weekly Updates and Master Overview canvasser sections because their `canvasser_metrics` rows still exist. The current code only checks archive status, not whether users still hold the canvasser role.
+2. **Da Man** (deleted user) still appears in Master Overview despite having no profile -- need to ensure the active-set filtering also cross-references current roles.
+3. Users are not sorted alphabetically in the Overview and User Roles pages.
 
 ---
 
-### Fix 1: AdminOverview.tsx -- Handle Deleted Users (No Profile)
+### Fix 1: WeeklyUpdates.tsx -- Filter canvassers by current role
 
-**Current logic:** Filter out users whose ID is in `archivedIds`. Users with no profile are not caught.
+**Current behavior (line 157):** Only checks `archivedUserIds` when filtering canvasser_metrics.
 
-**New logic:** Instead of building an "archived" set, build an "active" set from profiles where `is_archived = false`. Only show users whose ID exists in the active set. Aggregates still include all users.
-
-Changes:
-- Sales reps section (around line 337): Change from `!archivedIds.has(...)` to `activeIds.has(...)` -- this excludes both archived AND deleted users
-- Canvasser section (around line 442): Same pattern -- filter to only users present in active profiles
-
-### Fix 2: Leaderboard.tsx (Sales Rep Portal) -- Filter Archived Users
-
-Three places need updating (YTD, Weekly, Monthly fetches):
-
-- **YTD fetch (line 120-126):** Already fetches `hidden_from_leaderboard`. Add `is_archived` to the profiles query and include archived users in the `hiddenUserIds` set (or a separate set). Stats still count toward team totals in the footer.
-- **Weekly fetch (line 332-338):** Same -- add archived filtering.
-- **Monthly fetch (line 436-442):** Same -- add archived filtering.
-
-### Fix 3: AdminLeaderboards.tsx -- Filter Archived Users
-
-Same pattern across all fetch functions:
-
-- **Sales YTD (line 144-150):** Add `is_archived` to profiles query, exclude archived from display.
-- **Sales Weekly/Monthly (line 252-258):** Same.
-- **Canvasser YTD (line 395-401):** Already checks `hidden_from_leaderboard` but not `is_archived`. Add archived check.
-- **Canvasser Weekly/Monthly:** These fetch from `weekly_canvasser_metrics` -- need to add archived filtering here too.
-
-### Implementation Pattern
-
-For all leaderboard pages, the profiles query changes from:
+**Fix:** Also check that the user currently has the `canvasser` role by cross-referencing the `canvasserUserIds` set (already built on line 99). Change the canvasser filter to:
 ```
-.select('id, hidden_from_leaderboard')
-```
-to:
-```
-.select('id, hidden_from_leaderboard, is_archived')
+if (item.user_id && !uniqueCanvassers.has(item.user_id) 
+    && !archivedUserIds.has(item.user_id) 
+    && canvasserUserIds.has(item.user_id))
 ```
 
-And the hidden set becomes:
+This ensures only users who currently hold the canvasser role appear in the canvasser weekly updates section.
+
+### Fix 2: AdminOverview.tsx -- Filter canvassers by current role
+
+**Current behavior:** Queries all `canvasser_metrics` rows and only filters by active profile status. Users who no longer have the canvasser role (or have no profile at all) can slip through.
+
+**Fix:** Fetch `user_roles` for canvasser users and build a set of current canvasser role holders. Add an additional filter so only users with an active canvasser role appear:
+- Fetch roles for canvasser user IDs
+- Build `currentCanvasserRoleIds` set from users who have role = 'canvasser'
+- Filter: `c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId)`
+
+This handles both Da Man (no profile = not in active set) and Kara/Adam (no canvasser role = not in role set).
+
+### Fix 3: Alphabetical Sorting
+
+**UserRoles.tsx (lines 130-136):** Change sorting from "admins first, then alphabetical" to pure alphabetical:
 ```
-const hiddenUserIds = new Set(
-  profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
-);
+combined.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
 ```
 
-For AdminOverview, the logic flips to an "active set" approach to also catch fully deleted users (no profile row at all).
+**AdminOverview.tsx (line 339):** Change sales reps sort from revenue-based to alphabetical:
+```
+activeSalesReps.sort((a, b) => a.name.localeCompare(b.name))
+```
 
-### Important: Team Totals Preserved
-
-All leaderboard table components (`LeaderboardTable`, `WeeklyLeaderboardTable`, `CanvasserLeaderboardTable`, `WeeklyCanvasserLeaderboardTable`) calculate their "Team Totals" footer from the `entries` prop they receive. Since archived/deleted users will be filtered out before passing to these components, their stats will NOT appear in team totals on leaderboards. This matches the requirement that archived users should not be visible -- their historical contribution is preserved in the database and in the Company Goals/Overview aggregate calculations.
+**AdminOverview.tsx (line 445):** Change canvassers sort from points-based to alphabetical:
+```
+activeCanvassers.sort((a, b) => a.name.localeCompare(b.name))
+```
 
 ### Summary of Files
 
 | File | Change |
 |---|---|
-| `src/pages/dashboard/AdminOverview.tsx` | Switch from "archived set" to "active set" filtering for both sales reps and canvassers |
-| `src/pages/dashboard/Leaderboard.tsx` | Add `is_archived` to profiles query; exclude archived from all 3 timeframes |
-| `src/pages/admin/AdminLeaderboards.tsx` | Add `is_archived` to profiles query; exclude archived from all sales and canvasser timeframes |
+| `src/pages/admin/WeeklyUpdates.tsx` | Add `canvasserUserIds.has()` check to canvasser filtering (line 157) |
+| `src/pages/dashboard/AdminOverview.tsx` | Add current-role check for canvassers; sort both tables alphabetically |
+| `src/pages/admin/UserRoles.tsx` | Sort users alphabetically instead of admins-first |
 
