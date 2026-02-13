@@ -132,6 +132,13 @@ export default function AdminOverview() {
     fiscalYearEnd: string;
   } | null>(null);
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
+  const [selectedHoursWeek, setSelectedHoursWeek] = useState<Date>(() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.getFullYear(), d.getMonth(), diff);
+  });
+  const [canvasserHoursData, setCanvasserHoursData] = useState<any[]>([]);
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -495,6 +502,26 @@ export default function AdminOverview() {
     fetchAdminData();
   }, []);
 
+  // Fetch canvasser hours for the selected week
+  useEffect(() => {
+    const fetchCanvasserHours = async () => {
+      const weekStart = selectedHoursWeek;
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const { data, error } = await supabase
+        .from('daily_canvasser_metric_entries')
+        .select('user_id, entry_date, hours_worked_delta')
+        .gte('entry_date', weekStart.toISOString().split('T')[0])
+        .lte('entry_date', weekEnd.toISOString().split('T')[0]);
+
+      if (!error) {
+        setCanvasserHoursData(data || []);
+      }
+    };
+    fetchCanvasserHours();
+  }, [selectedHoursWeek]);
+
   const handleViewUser = (user: UserDetail) => {
     setSelectedUser(user);
     setViewModalOpen(true);
@@ -597,6 +624,7 @@ export default function AdminOverview() {
             leadsClosed: c.leadsClosed,
             leadsWithDamage: c.leadsWithDamage,
             hoursWorked: c.hoursWorked,
+            doorsKnocked: c.doorsKnocked,
             points: c.points,
             income: c.income,
             conversionRate: c.conversionRate,
@@ -969,6 +997,93 @@ export default function AdminOverview() {
                             <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
                               <Pencil className="h-4 w-4" />
                             </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Canvasser Hours Tracker */}
+          <div className="bg-card border border-border rounded-lg overflow-hidden mt-6">
+            <div className="p-4 border-b border-border">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h3 className="text-lg font-heading text-foreground">Canvasser Hours Tracker</h3>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newWeek = new Date(selectedHoursWeek);
+                      newWeek.setDate(newWeek.getDate() - 7);
+                      setSelectedHoursWeek(newWeek);
+                    }}
+                  >
+                    ← Prev
+                  </Button>
+                  <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                    {selectedHoursWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(selectedHoursWeek.getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newWeek = new Date(selectedHoursWeek);
+                      newWeek.setDate(newWeek.getDate() + 7);
+                      setSelectedHoursWeek(newWeek);
+                    }}
+                  >
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            </div>
+            {canvasserDetails.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-muted-foreground">No canvasser data available yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                        <th key={day} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">{day}</th>
+                      ))}
+                      <th className="text-center py-3 px-4 text-sm font-bold text-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {canvasserDetails.map((canvasser) => {
+                      const weekDays = Array.from({ length: 7 }, (_, i) => {
+                        const date = new Date(selectedHoursWeek);
+                        date.setDate(date.getDate() + i);
+                        return date.toISOString().split('T')[0];
+                      });
+
+                      const dailyHours = weekDays.map(date => {
+                        const entries = canvasserHoursData.filter(
+                          e => e.user_id === canvasser.realUserId && e.entry_date === date
+                        );
+                        return entries.reduce((sum: number, e: any) => sum + (Number(e.hours_worked_delta) || 0), 0);
+                      });
+
+                      const weekTotal = dailyHours.reduce((sum, h) => sum + h, 0);
+
+                      return (
+                        <tr key={canvasser.metricId} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="py-3 px-4 text-foreground font-medium">{canvasser.name}</td>
+                          {dailyHours.map((hours, i) => (
+                            <td key={i} className="text-center py-3 px-4 text-foreground">
+                              {hours > 0 ? hours.toFixed(1) : '-'}
+                            </td>
+                          ))}
+                          <td className="text-center py-3 px-4 font-bold text-foreground">
+                            {weekTotal > 0 ? weekTotal.toFixed(1) : '-'}
                           </td>
                         </tr>
                       );
