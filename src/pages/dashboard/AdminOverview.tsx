@@ -248,7 +248,7 @@ export default function AdminOverview() {
         .filter((id): id is string => id !== null);
       
       const { data: profilesData } = realUserIds.length > 0
-        ? await supabase.from('profiles').select('id, full_name').in('id', realUserIds)
+        ? await supabase.from('profiles').select('id, full_name, is_archived').in('id', realUserIds)
         : { data: [] };
 
       const { data: rolesData } = realUserIds.length > 0
@@ -257,6 +257,10 @@ export default function AdminOverview() {
 
       const profilesMap = new Map<string, string | null>(
         profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
+      );
+
+      const archivedIds = new Set<string>(
+        profilesData?.filter(p => p.is_archived).map(p => p.id) || []
       );
 
       // Use role priority: admin > user > canvasser
@@ -312,6 +316,7 @@ export default function AdminOverview() {
       // Filter out canvassers from sales rep list
       const salesReps = users.filter(user => user.role !== 'canvasser');
 
+      // Aggregates include ALL sales reps (including archived) for accurate totals
       const totals = salesReps.reduce(
         (acc, user) => ({
           totalApprovedRevenue: acc.totalApprovedRevenue + user.approvedRevenue,
@@ -328,7 +333,9 @@ export default function AdminOverview() {
       );
 
       setAggregates(totals);
-      setUserDetails(salesReps.sort((a, b) => b.approvedRevenue - a.approvedRevenue));
+      // Only show non-archived users in the table
+      const activeSalesReps = salesReps.filter(user => !user.realUserId || !archivedIds.has(user.realUserId));
+      setUserDetails(activeSalesReps.sort((a, b) => b.approvedRevenue - a.approvedRevenue));
     }
 
     // Process canvasser data
@@ -371,6 +378,19 @@ export default function AdminOverview() {
           });
         }
       }
+
+      // Fetch canvasser profiles to check archived status
+      const canvasserUserIds = Array.from(latestByCanvasser.values())
+        .map(v => v.realUserId)
+        .filter((id): id is string => id !== null);
+      
+      const { data: canvasserProfilesData } = canvasserUserIds.length > 0
+        ? await supabase.from('profiles').select('id, is_archived').in('id', canvasserUserIds)
+        : { data: [] };
+
+      const archivedCanvasserIds = new Set<string>(
+        canvasserProfilesData?.filter(p => p.is_archived).map(p => p.id) || []
+      );
 
       const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
         const conversionRate = data.leadsSet > 0 ? (data.leadsClosed / data.leadsSet) * 100 : 0;
@@ -416,8 +436,11 @@ export default function AdminOverview() {
 
       const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
       setTotalCanvasserIncome(totalIncome);
+      // Aggregates include all canvassers (including archived) for accurate totals
       setCanvasserAggregates(canvasserTotals);
-      setCanvasserDetails(canvassers.sort((a, b) => b.points - a.points));
+      // Only show non-archived canvassers in the table
+      const activeCanvassers = canvassers.filter(c => !c.realUserId || !archivedCanvasserIds.has(c.realUserId));
+      setCanvasserDetails(activeCanvassers.sort((a, b) => b.points - a.points));
     }
 
     setLoading(false);
