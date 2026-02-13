@@ -1,40 +1,114 @@
 
 
-## Fix Lead-to-Close % Calculation and Contract Source Breakdown
+## Company Goals Page Enhancements
 
-### Problem
-The "Lead Close %" shows **2000.0%** because the formula uses `totalClosedDeals` (which includes Self-Gen) divided by `totalLeads` (Canvass + Internet only). Self-Gen contracts inflate the numerator with no matching denominator. The Contract Sources card also omits Internet contracts.
+### Overview
+Three main changes: (1) Apply the Target Cost Per Contract goal to both Canvass and Internet cost-per-contract cards, (2) Make Ad Spend a cumulative YTD tracker with per-month entries, and (3) Add Internet Contracts Progress + Total Contracts Progress cards alongside the existing Canvasser Contracts Progress card. Also update the goal form with new fields.
 
-### Changes (1 file: `src/pages/dashboard/AdminOverview.tsx`)
+---
 
-**1. Expand the AggregateMetrics interface and reduce function (lines 21-27, 307-316)**
-- Add `totalSelfGen`, `totalCanvassClosedDeals`, `totalInternetClosedDeals`, and `totalClosedForLtC` to the interface and the `reduce` call
-- `totalClosedForLtC` = canvass closed + internet closed (excludes Self-Gen)
+### 1. Database Migration
 
-**2. Fix Lead Close % StatsCard (line 621)**
-- Change formula from `totalClosedDeals / totalLeads` to `totalClosedForLtC / totalLeads`
-- Expected result with current data: (0 + 1) / (0 + 1) = **100.0%** instead of 2000%
+Add new columns to `company_goals`:
 
-**3. Update "Total Leads" label (line 617)**
-- Rename to "Total Leads (Close %)" or add subtitle clarifying it only includes Canvass + Internet
+- `internet_contracts_goal` (integer, default 0) -- target for internet contracts
+- `total_contracts_goal` (integer, default 0) -- combined target for Self-Gen + Canvass + Internet contracts
 
-**4. Add Internet Contracts to Contract Sources card (lines 626-664)**
-- Add a third row for Internet Contracts with progress bar
-- Update total to include all three: Self-Gen + Canvass + Internet
-- Add helper text under each row: "Does not count toward Close %" for Self-Gen, "Counts toward Close %" for Canvass and Internet
-- Use a distinct color for the Internet progress bar (e.g., `bg-blue-500`)
+The existing `target_cost_per_lead` column is already being used as "Target Cost per Contract" and will be reused for both Canvass and Internet cost-per-contract comparisons. No rename needed.
 
-### Metrics Reference
+The existing `canvasser_leads_goal` will continue as the Canvasser Contracts goal.
 
-| Metric | Formula | Counts Toward Close % |
+---
+
+### 2. Ad Spend: Cumulative YTD Tracker
+
+**Current state:** The page only shows a single "Ad Spend (This Month)" value from `ad_spend_tracking`.
+
+**New behavior:**
+- Fetch ALL rows from `ad_spend_tracking` for the current calendar year (Jan-Dec 2026)
+- Display a cumulative YTD total at the top (sum of all months)
+- Show a monthly breakdown table/list below it, with each month's spend and a pencil icon to edit that month
+- Months with no entry show $0
+- The existing `AdSpendDialog` will be extended to accept a month parameter so admins can set spend for any month (not just the current one)
+
+**UI Layout:**
+- Card header: "Ad Spend (YTD)" with cumulative total as the big number
+- Below: a compact list of months (Jan through current month), each showing amount and an edit button
+- Budget comparison uses `target_ad_spend_budget * months_elapsed` vs cumulative spend
+
+---
+
+### 3. Progress Cards Update
+
+Replace the current 3-card grid (Sales Revenue, Canvasser Contracts, Collections) with a layout that includes:
+
+**Row 1 (existing, kept as-is):**
+- Sales Revenue Progress
+- Total Collections YTD
+
+**Row 2 (contract progress cards):**
+- **Canvasser Contracts Progress** (existing, uses `canvasser_leads_goal`)
+- **Internet Contracts Progress** (NEW, uses `internet_contracts_goal`)
+  - Current: sum of `internet_leads_closed` from `user_metrics`
+  - Goal: `internet_contracts_goal` from `company_goals`
+- **Total Contracts Progress** (NEW, uses `total_contracts_goal`)
+  - Current: Self-Gen deals + Canvass deals closed + Internet leads closed (all from `user_metrics`)
+  - Goal: `total_contracts_goal` from `company_goals`
+
+---
+
+### 4. Cost Per Contract Goal Applied to Both Sections
+
+The existing `target_cost_per_lead` value (labeled "Target Cost per Contract" in the form) will be used as the goal comparison in:
+- **Canvass Cost Per Contract card** (already working)
+- **Internet Cost Per Contract card** (currently compares against ad spend budget; will change to compare against `target_cost_per_lead`)
+
+---
+
+### 5. Goal Form Updates
+
+Add two new input fields to the Fiscal Year Goals form:
+
+| Field | Label | Helper Text |
 |---|---|---|
-| Self-Gen Contracts | `self_generated_deals` | No |
-| Canvass Contracts | `canvass_deals_closed` | Yes |
-| Internet Contracts | `internet_leads_closed` | Yes |
-| Lead Close % | (canvass closed + internet closed) / (canvass leads + internet leads) | -- |
+| `internet_contracts_goal` | Internet Contracts Goal | Target internet contracts closed for the year |
+| `total_contracts_goal` | Total Contracts Goal (All Sources) | Combined target: Self-Gen + Canvass + Internet |
 
-### Expected Result
-- Before: Lead Close % = 20 / 1 = 2000.0%
-- After: Lead Close % = (0 + 1) / (0 + 1) = 100.0%
-- Contract Sources: Self-Gen 18 (90%), Canvass 0 (0%), Internet 1 (5%), Total 19
+Update the existing "Company Contracts Goal" label/helper to clarify it's specifically for Canvasser contracts.
+
+---
+
+### Technical Details
+
+**File: Database migration (new)**
+- `ALTER TABLE company_goals ADD COLUMN internet_contracts_goal integer DEFAULT 0;`
+- `ALTER TABLE company_goals ADD COLUMN total_contracts_goal integer DEFAULT 0;`
+
+**File: `src/pages/admin/CompanyGoals.tsx`**
+
+1. **State and interface updates:**
+   - Add `internetContractsGoal` and `totalContractsGoal` form state
+   - Update `CompanyProgress` interface to include `totalSelfGenDeals`, `totalInternetClosed`
+   - Fetch `self_generated_deals` and `internet_leads_closed` in the sales metrics query (already partially done)
+
+2. **Ad Spend YTD query:**
+   - New query fetching all `ad_spend_tracking` rows where month >= '2026-01-01' and month <= '2026-12-01'
+   - Compute cumulative total
+   - Render monthly breakdown with per-month edit capability
+
+3. **AdSpendDialog update** (`src/components/admin/AdSpendDialog.tsx`):
+   - Accept optional `month` prop to allow editing any specific month
+   - Default to current month if not provided
+
+4. **Progress cards:**
+   - Keep Sales Revenue and Collections cards
+   - Keep Canvasser Contracts Progress
+   - Add Internet Contracts Progress card (same layout pattern)
+   - Add Total Contracts Progress card summing all three sources
+
+5. **Internet Cost Per Contract card:**
+   - Change comparison from ad spend budget to `target_cost_per_lead` (the shared cost-per-contract goal)
+
+6. **handleSave:**
+   - Include `internet_contracts_goal` and `total_contracts_goal` in the save payload
 
