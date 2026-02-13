@@ -1181,7 +1181,7 @@ export default function CompanyGoals() {
             <CardContent className="space-y-3">
               {(() => {
                 const currentCost = internetData.internetContractsWon > 0
-                  ? internetData.currentMonthAdSpend / internetData.internetContractsWon
+                  ? internetData.adSpend / internetData.internetContractsWon
                   : 0;
                 const targetCost = parseFloat(targetCostPerLead) || 0;
                 const variance = targetCost - currentCost;
@@ -1195,7 +1195,7 @@ export default function CompanyGoals() {
                           {internetData.internetContractsWon > 0 ? formatCurrency(currentCost) : 'N/A'}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {formatCurrency(internetData.currentMonthAdSpend)} spent / {internetData.internetContractsWon} contracts
+                          {formatCurrency(internetData.adSpend)} YTD spent / {internetData.internetContractsWon} contracts
                         </p>
                       </div>
                       {targetCost > 0 && (
@@ -1234,10 +1234,10 @@ export default function CompanyGoals() {
             <CardContent className="space-y-3">
               {(() => {
                 const costPerLead = internetData.internetLeadCount > 0
-                  ? internetData.currentMonthAdSpend / internetData.internetLeadCount
+                  ? internetData.adSpend / internetData.internetLeadCount
                   : 0;
                 const costPerContract = internetData.internetContractsWon > 0
-                  ? internetData.currentMonthAdSpend / internetData.internetContractsWon
+                  ? internetData.adSpend / internetData.internetContractsWon
                   : 0;
 
                 return (
@@ -1247,7 +1247,7 @@ export default function CompanyGoals() {
                         {internetData.internetLeadCount > 0 ? formatCurrency(costPerLead) : 'N/A'}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {formatCurrency(internetData.currentMonthAdSpend)} spent / {internetData.internetLeadCount} leads
+                        {formatCurrency(internetData.adSpend)} YTD spent / {internetData.internetLeadCount} leads
                       </p>
                     </div>
                     {internetData.internetContractsWon > 0 && internetData.internetLeadCount > 0 && (
