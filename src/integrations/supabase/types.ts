@@ -188,10 +188,12 @@ export type Database = {
           fiscal_year_end: string
           fiscal_year_start: string
           id: string
+          internet_contracts_goal: number | null
           sales_revenue_goal: number | null
           target_ad_spend_budget: number | null
           target_cost_per_lead: number | null
           target_lead_to_close_ratio: number | null
+          total_contracts_goal: number | null
           updated_at: string | null
         }
         Insert: {
@@ -202,10 +204,12 @@ export type Database = {
           fiscal_year_end: string
           fiscal_year_start: string
           id?: string
+          internet_contracts_goal?: number | null
           sales_revenue_goal?: number | null
           target_ad_spend_budget?: number | null
           target_cost_per_lead?: number | null
           target_lead_to_close_ratio?: number | null
+          total_contracts_goal?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -216,10 +220,12 @@ export type Database = {
           fiscal_year_end?: string
           fiscal_year_start?: string
           id?: string
+          internet_contracts_goal?: number | null
           sales_revenue_goal?: number | null
           target_ad_spend_budget?: number | null
           target_cost_per_lead?: number | null
           target_lead_to_close_ratio?: number | null
+          total_contracts_goal?: number | null
           updated_at?: string | null
         }
         Relationships: []

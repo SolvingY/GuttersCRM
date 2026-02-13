@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download, Globe, Pencil } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { format, addMonths, startOfMonth } from 'date-fns';
+import { format, addMonths, startOfMonth, subMonths } from 'date-fns';
 import { AdSpendDialog } from '@/components/admin/AdSpendDialog';
 
 interface CompanyGoal {
@@ -34,10 +34,14 @@ interface CompanyProgress {
   totalSalesLeads: number;
   totalSalesClosedDeals: number;
   totalCanvasserIncome: number;
+  totalSelfGenDeals: number;
+  totalInternetClosed: number;
+  totalCanvassDeals: number;
 }
 
 export default function CompanyGoals() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [goal, setGoal] = useState<CompanyGoal | null>(null);
@@ -51,16 +55,22 @@ export default function CompanyGoals() {
     totalSalesLeads: 0,
     totalSalesClosedDeals: 0,
     totalCanvasserIncome: 0,
+    totalSelfGenDeals: 0,
+    totalInternetClosed: 0,
+    totalCanvassDeals: 0,
   });
 
   // Form state
   const [salesGoal, setSalesGoal] = useState('');
   const [leadsGoal, setLeadsGoal] = useState('');
+  const [internetContractsGoal, setInternetContractsGoal] = useState('');
+  const [totalContractsGoal, setTotalContractsGoal] = useState('');
   const [description, setDescription] = useState('');
   const [targetLeadToCloseRatio, setTargetLeadToCloseRatio] = useState('');
   const [targetCostPerLead, setTargetCostPerLead] = useState('');
   const [targetAdSpendBudget, setTargetAdSpendBudget] = useState('');
   const [adSpendDialogOpen, setAdSpendDialogOpen] = useState(false);
+  const [adSpendEditMonth, setAdSpendEditMonth] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
@@ -69,20 +79,42 @@ export default function CompanyGoals() {
   const fiscalEnd = new Date(2026, 11, 15);
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-  // Internet metrics queries
-  const { data: adSpendData } = useQuery({
-    queryKey: ['ad-spend-current'],
+  // YTD Ad Spend query - fetch all months for the current calendar year
+  const currentYear = new Date().getFullYear();
+  const yearStart = `${currentYear}-01-01`;
+  const yearEnd = `${currentYear}-12-01`;
+
+  const { data: adSpendYTD = [] } = useQuery({
+    queryKey: ['ad-spend-ytd', currentYear],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ad_spend_tracking')
-        .select('ad_spend')
-        .eq('month', monthStart)
-        .maybeSingle();
+        .select('*')
+        .gte('month', yearStart)
+        .lte('month', yearEnd)
+        .order('month', { ascending: true });
       if (error) throw error;
-      return Number(data?.ad_spend) || 0;
+      return data || [];
     },
   });
 
+  // Build monthly breakdown for Jan through current month
+  const currentMonthIndex = new Date().getMonth(); // 0-based
+  const monthlyBreakdown = Array.from({ length: currentMonthIndex + 1 }, (_, i) => {
+    const monthDate = new Date(currentYear, i, 1);
+    const monthKey = format(monthDate, 'yyyy-MM-dd');
+    const entry = adSpendYTD.find(e => e.month === monthKey);
+    return {
+      month: monthKey,
+      label: format(monthDate, 'MMMM yyyy'),
+      shortLabel: format(monthDate, 'MMM'),
+      amount: Number(entry?.ad_spend) || 0,
+    };
+  });
+
+  const ytdTotal = monthlyBreakdown.reduce((sum, m) => sum + m.amount, 0);
+
+  // Internet metrics queries
   const { data: internetLeadCount } = useQuery({
     queryKey: ['internet-leads-month'],
     queryFn: async () => {
@@ -133,7 +165,8 @@ export default function CompanyGoals() {
   });
 
   const internetData = {
-    adSpend: adSpendData || 0,
+    adSpend: ytdTotal,
+    currentMonthAdSpend: monthlyBreakdown[currentMonthIndex]?.amount || 0,
     internetLeadCount: internetLeadCount || 0,
     internetContractsWon: internetContractsWon || 0,
     internetClosedCount: internetClosedFromMetrics?.totalClosed || 0,
@@ -163,6 +196,8 @@ export default function CompanyGoals() {
         setTargetLeadToCloseRatio(String(goalData.target_lead_to_close_ratio || ''));
         setTargetCostPerLead(String(goalData.target_cost_per_lead || ''));
         setTargetAdSpendBudget(String((goalData as any).target_ad_spend_budget || ''));
+        setInternetContractsGoal(String((goalData as any).internet_contracts_goal || ''));
+        setTotalContractsGoal(String((goalData as any).total_contracts_goal || ''));
       }
 
       // Fetch sales rep metrics
@@ -177,7 +212,7 @@ export default function CompanyGoals() {
       const { data: salesData } = salesRepIds.length > 0
         ? await supabase
             .from('user_metrics')
-            .select('user_id, approved_revenue, collections, leads, closed_deals, display_name, sales_rank, earnings_ytd, points, yearly_goal, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed')
+            .select('user_id, approved_revenue, collections, leads, closed_deals, display_name, sales_rank, earnings_ytd, points, yearly_goal, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed, internet_leads_closed')
             .in('user_id', salesRepIds)
             .order('metric_date', { ascending: false })
         : { data: [] };
@@ -195,6 +230,7 @@ export default function CompanyGoals() {
         canvassLeads: number;
         selfGeneratedDeals: number;
         canvassDealsClose: number;
+        internetLeadsClosed: number;
       }>();
       salesData?.forEach(s => {
         if (!salesByUser.has(s.user_id)) {
@@ -210,15 +246,17 @@ export default function CompanyGoals() {
             canvassLeads: Number(s.canvass_leads) || 0,
             selfGeneratedDeals: Number(s.self_generated_deals) || 0,
             canvassDealsClose: Number(s.canvass_deals_closed) || 0,
+            internetLeadsClosed: Number(s.internet_leads_closed) || 0,
           });
         }
       });
       const totalSales = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.approvedRevenue, 0);
       const totalCollections = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.collections, 0);
-      // Calculate Total Leads = Self-Gen Leads + Canvass Leads
       const totalSalesLeads = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.selfGeneratedLeads + s.canvassLeads, 0);
-      // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
       const totalSalesClosedDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.selfGeneratedDeals + s.canvassDealsClose, 0);
+      const totalSelfGenDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.selfGeneratedDeals, 0);
+      const totalCanvassDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.canvassDealsClose, 0);
+      const totalInternetClosed = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.internetLeadsClosed, 0);
 
       // Fetch total leads and income from canvassers
       const { data: canvasserData } = canvasserIds.length > 0
@@ -251,7 +289,6 @@ export default function CompanyGoals() {
 
       // Build salesReps array for exports
       const salesRepsData: SalesRepData[] = Array.from(salesByUser.entries()).map(([_, s]) => {
-        // Calculate totals from sub-components
         const calculatedLeads = s.selfGeneratedLeads + s.canvassLeads;
         const calculatedClosedDeals = s.selfGeneratedDeals + s.canvassDealsClose;
         
@@ -295,6 +332,9 @@ export default function CompanyGoals() {
         totalSalesLeads,
         totalSalesClosedDeals,
         totalCanvasserIncome,
+        totalSelfGenDeals,
+        totalInternetClosed,
+        totalCanvassDeals,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -345,10 +385,11 @@ export default function CompanyGoals() {
         target_lead_to_close_ratio: parseFloat(targetLeadToCloseRatio) || 0,
         target_cost_per_lead: parseFloat(targetCostPerLead) || 0,
         target_ad_spend_budget: parseFloat(targetAdSpendBudget) || 0,
+        internet_contracts_goal: parseInt(internetContractsGoal) || 0,
+        total_contracts_goal: parseInt(totalContractsGoal) || 0,
       } as any;
 
       if (goal?.id) {
-        // Update existing goal
         const { error } = await supabase
           .from('company_goals')
           .update(goalData)
@@ -356,7 +397,6 @@ export default function CompanyGoals() {
 
         if (error) throw error;
       } else {
-        // Insert new goal
         const { error } = await supabase
           .from('company_goals')
           .insert(goalData);
@@ -393,8 +433,13 @@ export default function CompanyGoals() {
 
   const salesGoalNum = parseFloat(salesGoal) || 0;
   const leadsGoalNum = parseInt(leadsGoal) || 0;
+  const internetContractsGoalNum = parseInt(internetContractsGoal) || 0;
+  const totalContractsGoalNum = parseInt(totalContractsGoal) || 0;
   const salesProgress = salesGoalNum > 0 ? (progress.totalSales / salesGoalNum) * 100 : 0;
   const leadsProgress = leadsGoalNum > 0 ? (progress.totalLeadsClosed / leadsGoalNum) * 100 : 0;
+  const internetContractsProgress = internetContractsGoalNum > 0 ? (progress.totalInternetClosed / internetContractsGoalNum) * 100 : 0;
+  const totalAllContracts = progress.totalSelfGenDeals + progress.totalCanvassDeals + progress.totalInternetClosed;
+  const totalContractsProgress = totalContractsGoalNum > 0 ? (totalAllContracts / totalContractsGoalNum) * 100 : 0;
 
   if (loading) {
     return (
@@ -445,18 +490,15 @@ export default function CompanyGoals() {
             totalLeadsWithDamage: canvassers.reduce((sum, c) => sum + c.leadsWithDamage, 0),
             totalHoursWorked: canvassers.reduce((sum, c) => sum + c.hoursWorked, 0),
             totalCanvasserIncome: progress.totalCanvasserIncome,
-            // Company Goals
             salesRevenueGoal: parseFloat(salesGoal) || 0,
             canvasserLeadsGoal: parseInt(leadsGoal) || 0,
             targetLeadToCloseRatio: parseFloat(targetLeadToCloseRatio) || 0,
             targetCostPerLead: parseFloat(targetCostPerLead) || 0,
             fiscalYearStart: format(fiscalStart, 'yyyy-MM-dd'),
             fiscalYearEnd: format(fiscalEnd, 'yyyy-MM-dd'),
-            // Progress calculations
             salesProgressPercent: salesGoalNum > 0 ? (progress.totalSales / salesGoalNum) * 100 : 0,
             leadsProgressPercent: leadsGoalNum > 0 ? (progress.totalLeadsClosed / leadsGoalNum) * 100 : 0,
             actualCostPerLead: actualCostPerLead,
-            // Monthly Progress for Graph
             monthlyProgress: monthlyProgress,
           };
           
@@ -499,7 +541,7 @@ export default function CompanyGoals() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="leadsGoal">Company Contracts Goal</Label>
+              <Label htmlFor="leadsGoal">Canvasser Contracts Goal</Label>
               <Input
                 id="leadsGoal"
                 type="number"
@@ -509,7 +551,37 @@ export default function CompanyGoals() {
                 onChange={(e) => setLeadsGoal(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Combined target for all canvassers (closed contracts)
+                Target canvasser contracts closed for the year
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="internetContractsGoal">Internet Contracts Goal</Label>
+              <Input
+                id="internetContractsGoal"
+                type="number"
+                min="0"
+                placeholder="e.g., 100"
+                value={internetContractsGoal}
+                onChange={(e) => setInternetContractsGoal(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Target internet contracts closed for the year
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="totalContractsGoal">Total Contracts Goal (All Sources)</Label>
+              <Input
+                id="totalContractsGoal"
+                type="number"
+                min="0"
+                placeholder="e.g., 1200"
+                value={totalContractsGoal}
+                onChange={(e) => setTotalContractsGoal(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Combined target: Self-Gen + Canvass + Internet
               </p>
             </div>
           </div>
@@ -542,7 +614,7 @@ export default function CompanyGoals() {
                 onChange={(e) => setTargetCostPerLead(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Target cost to acquire a closed contract
+                Target cost to acquire a closed contract (applies to both Canvass &amp; Internet)
               </p>
             </div>
           </div>
@@ -583,8 +655,8 @@ export default function CompanyGoals() {
         </CardContent>
       </Card>
 
-      {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Progress Cards - Row 1: Revenue + Collections */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Sales Progress */}
         <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
           <CardHeader className="pb-2">
@@ -618,45 +690,6 @@ export default function CompanyGoals() {
                 <p className="text-xs text-muted-foreground">Remaining to goal</p>
                 <p className="text-lg font-semibold text-foreground">
                   {formatCurrency(Math.max(0, salesGoalNum - progress.totalSales))}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Leads Progress */}
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-primary" />
-              Canvasser Contracts Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap justify-between items-end gap-2">
-              <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">Current</p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{progress.totalLeadsClosed.toLocaleString()}</p>
-              </div>
-              <div className="text-right min-w-0">
-                <p className="text-sm text-muted-foreground">Goal</p>
-                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{leadsGoalNum.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Progress value={Math.min(leadsProgress, 100)} className="h-3" />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{progress.canvassersCount} canvassers</span>
-                <span className={leadsProgress >= 100 ? 'text-green-500 font-semibold' : 'text-foreground font-semibold'}>
-                  {leadsProgress.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-            {leadsGoalNum > 0 && (
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Remaining to goal</p>
-                <p className="text-lg font-semibold text-foreground">
-                  {Math.max(0, leadsGoalNum - progress.totalLeadsClosed).toLocaleString()} contracts
                 </p>
               </div>
             )}
@@ -706,6 +739,132 @@ export default function CompanyGoals() {
                 </>
               );
             })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Progress Cards - Row 2: Contract Progress Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Canvasser Contracts Progress */}
+        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-5 w-5 text-primary" />
+              Canvasser Contracts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Current</p>
+                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{progress.totalLeadsClosed.toLocaleString()}</p>
+              </div>
+              <div className="text-right min-w-0">
+                <p className="text-sm text-muted-foreground">Goal</p>
+                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{leadsGoalNum.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Progress value={Math.min(leadsProgress, 100)} className="h-3" />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{progress.canvassersCount} canvassers</span>
+                <span className={leadsProgress >= 100 ? 'text-green-500 font-semibold' : 'text-foreground font-semibold'}>
+                  {leadsProgress.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            {leadsGoalNum > 0 && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">Remaining</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {Math.max(0, leadsGoalNum - progress.totalLeadsClosed).toLocaleString()} contracts
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Internet Contracts Progress */}
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Globe className="h-5 w-5 text-blue-500" />
+              Internet Contracts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Current</p>
+                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{progress.totalInternetClosed.toLocaleString()}</p>
+              </div>
+              <div className="text-right min-w-0">
+                <p className="text-sm text-muted-foreground">Goal</p>
+                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{internetContractsGoalNum.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Progress value={Math.min(internetContractsProgress, 100)} className="h-3" />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">From user metrics</span>
+                <span className={internetContractsProgress >= 100 ? 'text-green-500 font-semibold' : 'text-foreground font-semibold'}>
+                  {internetContractsProgress.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            {internetContractsGoalNum > 0 && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">Remaining</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {Math.max(0, internetContractsGoalNum - progress.totalInternetClosed).toLocaleString()} contracts
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Total Contracts Progress */}
+        <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Target className="h-5 w-5 text-accent" />
+              Total Contracts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Current</p>
+                <p className="text-2xl lg:text-3xl font-bold text-foreground break-words">{totalAllContracts.toLocaleString()}</p>
+              </div>
+              <div className="text-right min-w-0">
+                <p className="text-sm text-muted-foreground">Goal</p>
+                <p className="text-lg lg:text-xl font-semibold text-foreground break-words">{totalContractsGoalNum.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Progress value={Math.min(totalContractsProgress, 100)} className="h-3" />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Self-Gen + Canvass + Internet</span>
+                <span className={totalContractsProgress >= 100 ? 'text-green-500 font-semibold' : 'text-foreground font-semibold'}>
+                  {totalContractsProgress.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Self-Gen</span>
+                <span className="font-medium text-foreground">{progress.totalSelfGenDeals}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Canvass</span>
+                <span className="font-medium text-foreground">{progress.totalCanvassDeals}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Internet</span>
+                <span className="font-medium text-foreground">{progress.totalInternetClosed}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -765,12 +924,12 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
 
-        {/* Cost Per Contract (was Cost per Lead) */}
+        {/* Cost Per Contract (Canvass) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Calculator className="h-5 w-5 text-primary" />
-              Cost Per Contract
+              Canvass Cost Per Contract
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -779,7 +938,7 @@ export default function CompanyGoals() {
                 ? progress.totalCanvasserIncome / progress.totalLeadsClosed 
                 : 0;
               const targetCost = parseFloat(targetCostPerLead) || 0;
-              const variance = targetCost - currentCost; // Positive = under budget (good)
+              const variance = targetCost - currentCost;
               const isOnTarget = targetCost === 0 || currentCost <= targetCost;
               
               return (
@@ -818,7 +977,7 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
 
-        {/* NEW: Cost Per Lead (based on leads set, not closed) */}
+        {/* Cost Per Lead (based on leads set) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -869,33 +1028,51 @@ export default function CompanyGoals() {
           </p>
         </div>
 
-        {/* Ad Spend Entry Card */}
+        {/* Ad Spend YTD Card */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5 text-accent" />
-                Ad Spend (This Month)
-              </span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAdSpendDialogOpen(true)}>
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <DollarSign className="h-5 w-5 text-accent" />
+              Ad Spend (YTD)
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-foreground">
-              {internetData.adSpend > 0 ? formatCurrency(internetData.adSpend) : '$0'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {internetData.internetLeadCount} internet leads this month
-            </p>
+          <CardContent className="space-y-4">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {ytdTotal > 0 ? formatCurrency(ytdTotal) : '$0'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Cumulative spend Jan–{format(new Date(), 'MMM yyyy')}
+                </p>
+              </div>
+              {(() => {
+                const budget = parseFloat(targetAdSpendBudget) || 0;
+                const monthsElapsed = currentMonthIndex + 1;
+                const expectedBudget = budget * monthsElapsed;
+                if (budget > 0 && ytdTotal > 0) {
+                  const variance = expectedBudget - ytdTotal;
+                  const isUnder = variance >= 0;
+                  return (
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Budget (YTD)</p>
+                      <p className="text-xl font-semibold text-foreground">{formatCurrency(expectedBudget)}</p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
             {(() => {
               const budget = parseFloat(targetAdSpendBudget) || 0;
-              if (budget > 0 && internetData.adSpend > 0) {
-                const variance = budget - internetData.adSpend;
+              const monthsElapsed = currentMonthIndex + 1;
+              const expectedBudget = budget * monthsElapsed;
+              if (budget > 0 && ytdTotal > 0) {
+                const variance = expectedBudget - ytdTotal;
                 const isUnder = variance >= 0;
                 return (
-                  <div className={`rounded-lg p-3 mt-3 ${isUnder ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                  <div className={`rounded-lg p-3 ${isUnder ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-medium ${isUnder ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {isUnder ? '✓ Under budget' : '⚠ Over budget'}
@@ -909,10 +1086,36 @@ export default function CompanyGoals() {
               }
               return null;
             })()}
+
+            {/* Monthly breakdown */}
+            <div className="border-t border-border pt-3">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Monthly Breakdown</p>
+              <div className="space-y-1.5">
+                {monthlyBreakdown.map((m) => (
+                  <div key={m.month} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{m.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{formatCurrency(m.amount)}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          setAdSpendEditMonth(m.month);
+                          setAdSpendDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* 3 Internet Metric Cards matching canvass layout */}
+        {/* 3 Internet Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Internet Lead-to-Close Rate */}
           <Card>
@@ -967,7 +1170,7 @@ export default function CompanyGoals() {
             </CardContent>
           </Card>
 
-          {/* Internet Cost Per Contract */}
+          {/* Internet Cost Per Contract - now compares against target_cost_per_lead */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -978,12 +1181,11 @@ export default function CompanyGoals() {
             <CardContent className="space-y-3">
               {(() => {
                 const currentCost = internetData.internetContractsWon > 0
-                  ? internetData.adSpend / internetData.internetContractsWon
+                  ? internetData.currentMonthAdSpend / internetData.internetContractsWon
                   : 0;
-                const budget = parseFloat(targetAdSpendBudget) || 0;
-                const targetCostPerContract = budget > 0 && internetData.internetContractsWon > 0
-                  ? budget / internetData.internetContractsWon
-                  : 0;
+                const targetCost = parseFloat(targetCostPerLead) || 0;
+                const variance = targetCost - currentCost;
+                const isOnTarget = targetCost === 0 || currentCost <= targetCost;
 
                 return (
                   <>
@@ -993,24 +1195,24 @@ export default function CompanyGoals() {
                           {internetData.internetContractsWon > 0 ? formatCurrency(currentCost) : 'N/A'}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {formatCurrency(internetData.adSpend)} spent / {internetData.internetContractsWon} contracts
+                          {formatCurrency(internetData.currentMonthAdSpend)} spent / {internetData.internetContractsWon} contracts
                         </p>
                       </div>
-                      {budget > 0 && (
+                      {targetCost > 0 && (
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Budget</p>
-                          <p className="text-xl font-semibold text-foreground">{formatCurrency(budget)}</p>
+                          <p className="text-sm text-muted-foreground">Goal</p>
+                          <p className="text-xl font-semibold text-foreground">{formatCurrency(targetCost)}</p>
                         </div>
                       )}
                     </div>
-                    {budget > 0 && internetData.adSpend > 0 && (
-                      <div className={`rounded-lg p-3 ${internetData.adSpend <= budget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                    {targetCost > 0 && internetData.internetContractsWon > 0 && (
+                      <div className={`rounded-lg p-3 ${isOnTarget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${internetData.adSpend <= budget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {internetData.adSpend <= budget ? '✓ Under budget' : '⚠ Over budget'}
+                          <span className={`text-sm font-medium ${isOnTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {isOnTarget ? '✓ Under target' : '⚠ Over target'}
                           </span>
-                          <span className={`text-sm font-semibold ${internetData.adSpend <= budget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {internetData.adSpend <= budget ? '-' : '+'}{formatCurrency(Math.abs(budget - internetData.adSpend))}
+                          <span className={`text-sm font-semibold ${variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {variance >= 0 ? '-' : '+'}{formatCurrency(Math.abs(variance))}
                           </span>
                         </div>
                       </div>
@@ -1032,10 +1234,10 @@ export default function CompanyGoals() {
             <CardContent className="space-y-3">
               {(() => {
                 const costPerLead = internetData.internetLeadCount > 0
-                  ? internetData.adSpend / internetData.internetLeadCount
+                  ? internetData.currentMonthAdSpend / internetData.internetLeadCount
                   : 0;
                 const costPerContract = internetData.internetContractsWon > 0
-                  ? internetData.adSpend / internetData.internetContractsWon
+                  ? internetData.currentMonthAdSpend / internetData.internetContractsWon
                   : 0;
 
                 return (
@@ -1045,7 +1247,7 @@ export default function CompanyGoals() {
                         {internetData.internetLeadCount > 0 ? formatCurrency(costPerLead) : 'N/A'}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {formatCurrency(internetData.adSpend)} spent / {internetData.internetLeadCount} leads
+                        {formatCurrency(internetData.currentMonthAdSpend)} spent / {internetData.internetLeadCount} leads
                       </p>
                     </div>
                     {internetData.internetContractsWon > 0 && internetData.internetLeadCount > 0 && (
@@ -1064,7 +1266,14 @@ export default function CompanyGoals() {
         </div>
       </div>
 
-      <AdSpendDialog open={adSpendDialogOpen} onOpenChange={setAdSpendDialogOpen} />
+      <AdSpendDialog
+        open={adSpendDialogOpen}
+        onOpenChange={(open) => {
+          setAdSpendDialogOpen(open);
+          if (!open) setAdSpendEditMonth(null);
+        }}
+        initialMonth={adSpendEditMonth || undefined}
+      />
 
       <Card className="bg-accent/5 border-accent/20">
         <CardContent className="pt-6">
@@ -1077,7 +1286,8 @@ export default function CompanyGoals() {
                 <li>Progress is automatically calculated from all team members' metrics</li>
                 <li>Sales reps contribute to the revenue goal, canvassers contribute to the contracts goal</li>
                 <li>Track company-wide performance against targets in real-time</li>
-                <li>Cost Per Lead shows acquisition cost; Cost Per Contract shows closed sale cost</li>
+                <li>Cost Per Contract goal applies to both Canvass and Internet contracts</li>
+                <li>Ad Spend tracks cumulative YTD spending with monthly breakdowns</li>
               </ul>
             </div>
           </div>
