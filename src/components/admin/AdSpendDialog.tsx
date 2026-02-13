@@ -13,14 +13,24 @@ import { format, subMonths, startOfMonth } from "date-fns";
 interface AdSpendDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialMonth?: string;
 }
 
-export function AdSpendDialog({ open, onOpenChange }: AdSpendDialogProps) {
+export function AdSpendDialog({ open, onOpenChange, initialMonth }: AdSpendDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [amount, setAmount] = useState("");
+
+  // Set initial month when dialog opens
+  useEffect(() => {
+    if (open && initialMonth) {
+      setSelectedMonth(initialMonth);
+    } else if (open) {
+      setSelectedMonth(format(startOfMonth(new Date()), "yyyy-MM-dd"));
+    }
+  }, [open, initialMonth]);
 
   const months = Array.from({ length: 12 }, (_, i) => {
     const date = startOfMonth(subMonths(new Date(), i));
@@ -34,7 +44,7 @@ export function AdSpendDialog({ open, onOpenChange }: AdSpendDialogProps) {
         .from("ad_spend_tracking")
         .select("*")
         .order("month", { ascending: false })
-        .limit(6);
+        .limit(12);
       if (error) throw error;
       return data;
     },
@@ -60,6 +70,7 @@ export function AdSpendDialog({ open, onOpenChange }: AdSpendDialogProps) {
       toast({ title: "Ad spend saved" });
       queryClient.invalidateQueries({ queryKey: ["ad-spend-history"] });
       queryClient.invalidateQueries({ queryKey: ["ad-spend-current"] });
+      queryClient.invalidateQueries({ queryKey: ["ad-spend-ytd"] });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
