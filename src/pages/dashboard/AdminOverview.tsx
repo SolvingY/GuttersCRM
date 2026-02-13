@@ -259,8 +259,9 @@ export default function AdminOverview() {
         profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
       );
 
-      const archivedIds = new Set<string>(
-        profilesData?.filter(p => p.is_archived).map(p => p.id) || []
+      // Build an "active" set: only profiles that exist AND are not archived
+      const activeIds = new Set<string>(
+        profilesData?.filter(p => !p.is_archived).map(p => p.id) || []
       );
 
       // Use role priority: admin > user > canvasser
@@ -334,7 +335,7 @@ export default function AdminOverview() {
 
       setAggregates(totals);
       // Only show non-archived users in the table
-      const activeSalesReps = salesReps.filter(user => !user.realUserId || !archivedIds.has(user.realUserId));
+      const activeSalesReps = salesReps.filter(user => user.realUserId && activeIds.has(user.realUserId));
       setUserDetails(activeSalesReps.sort((a, b) => b.approvedRevenue - a.approvedRevenue));
     }
 
@@ -388,8 +389,9 @@ export default function AdminOverview() {
         ? await supabase.from('profiles').select('id, is_archived').in('id', canvasserUserIds)
         : { data: [] };
 
-      const archivedCanvasserIds = new Set<string>(
-        canvasserProfilesData?.filter(p => p.is_archived).map(p => p.id) || []
+      // Build an "active" set: only profiles that exist AND are not archived
+      const activeCanvasserIds = new Set<string>(
+        canvasserProfilesData?.filter(p => !p.is_archived).map(p => p.id) || []
       );
 
       const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
@@ -439,7 +441,7 @@ export default function AdminOverview() {
       // Aggregates include all canvassers (including archived) for accurate totals
       setCanvasserAggregates(canvasserTotals);
       // Only show non-archived canvassers in the table
-      const activeCanvassers = canvassers.filter(c => !c.realUserId || !archivedCanvasserIds.has(c.realUserId));
+      const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId));
       setCanvasserDetails(activeCanvassers.sort((a, b) => b.points - a.points));
     }
 
