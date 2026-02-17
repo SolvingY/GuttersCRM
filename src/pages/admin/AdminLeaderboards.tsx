@@ -552,7 +552,7 @@ export default function AdminLeaderboards() {
             entry.doorsKnocked > 0 || 
             entry.pointsEarned > 0
           )
-          .sort((a, b) => b.leadsClosed - a.leadsClosed)
+          .sort((a, b) => b.pointsEarned - a.pointsEarned)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
         setCanvasserWeeklyEntries(sorted);
@@ -644,7 +644,7 @@ export default function AdminLeaderboards() {
             entry.doorsKnocked > 0 || 
             entry.pointsEarned > 0
           )
-          .sort((a, b) => b.leadsClosed - a.leadsClosed)
+          .sort((a, b) => b.pointsEarned - a.pointsEarned)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
         setCanvasserWeeklyEntries(sorted);

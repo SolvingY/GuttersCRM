@@ -306,15 +306,29 @@ export default function ApplicantDetail() {
                       const isB = ans === "B";
                       const weight = getQuestionWeight(qId);
                       return (
-                        <div key={qId} className="flex items-start gap-2 text-xs">
-                          <span className={`mt-0.5 ${isB ? "text-green-600" : "text-red-500"}`}>{isB ? "✓" : "✗"}</span>
-                          <span className="text-muted-foreground">Q{q.number}:</span>
-                          <span>{isB ? q.optionB : q.optionA} ({ans})</span>
-                          {weight >= 2 && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-semibold ml-1">
-                              {getQuestionWeightLabel(qId)}
+                        <div key={qId} className="border border-border rounded p-2 text-xs space-y-1">
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span>Q{q.number}</span>
+                            {weight >= 2 && (
+                              <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                                {getQuestionWeightLabel(qId)}
+                              </span>
+                            )}
+                            <span className={`ml-auto ${isB ? "text-green-600" : "text-red-500"}`}>
+                              Selected: {ans}
                             </span>
-                          )}
+                          </div>
+                          <div className={`flex items-start gap-2 p-1.5 rounded ${ans === "A" ? "bg-red-50 border border-red-200" : "bg-muted/50"}`}>
+                            <span className="font-semibold text-muted-foreground shrink-0">A:</span>
+                            <span>{q.optionA}</span>
+                            {ans === "A" && <span className="ml-auto shrink-0 text-red-600 font-semibold">← Selected</span>}
+                          </div>
+                          <div className={`flex items-start gap-2 p-1.5 rounded ${ans === "B" ? "bg-green-50 border border-green-200" : "bg-muted/50"}`}>
+                            <span className="font-semibold text-muted-foreground shrink-0">B:</span>
+                            <span>{q.optionB}</span>
+                            {ans === "B" && <span className="ml-auto shrink-0 text-green-600 font-semibold">✓ Selected</span>}
+                            {ans !== "B" && <span className="ml-auto shrink-0 text-muted-foreground italic">Correct answer</span>}
+                          </div>
                         </div>
                       );
                     })}
