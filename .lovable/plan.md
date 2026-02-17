@@ -1,50 +1,70 @@
 
 
-## Fix Canvasser Leaderboard Ranking + DNA Assessment Answer Key
+## Fix Canvasser Hours Tracker Display + Add Edit Capability
 
-### Issue 1: Canvasser Weekly/Monthly Leaderboards Sorted Wrong
+### Root Cause
 
-Both the weekly and monthly canvasser leaderboards are currently sorting by `leadsClosed` instead of `pointsEarned`. The YTD leaderboard correctly sorts by points.
+The "Canvasser Hours Tracker" reads hours from `daily_canvasser_metric_entries`, but the "Daily Updates" (WeeklyUpdates.tsx) page never writes to that table when saving canvasser data. It only writes to `canvasser_metrics` (YTD totals) and `weekly_canvasser_metrics` (weekly aggregates). That is why all hours show as dashes.
 
-**File: `src/pages/admin/AdminLeaderboards.tsx`**
+### Plan
 
-- **Line 555 (weekly sort):** Change `.sort((a, b) => b.leadsClosed - a.leadsClosed)` to `.sort((a, b) => b.pointsEarned - a.pointsEarned)`
-- **Line 647 (monthly sort):** Change `.sort((a, b) => b.leadsClosed - a.leadsClosed)` to `.sort((a, b) => b.pointsEarned - a.pointsEarned)`
+#### 1. Write daily entries when saving canvasser data (WeeklyUpdates.tsx)
 
-This ensures ranking is based on highest points, matching the YTD behavior.
+After saving canvasser metrics (around line 441), add a step to upsert into `daily_canvasser_metric_entries` for the selected date. This records per-day granular data including `hours_worked_delta` along with all other daily metrics (leads, doors, etc.).
 
----
+The upsert will use `user_id` + `entry_date` as the conflict key so re-saving on the same day overwrites rather than duplicates.
 
-### Issue 2: DNA Assessment -- Show Answer Key
+#### 2. Make hours cells editable in the Hours Tracker (AdminOverview.tsx)
 
-Currently (line 312 in `ApplicantDetail.tsx`), each question only shows the answer the applicant selected. Managers need to see both options so they can understand the full context.
+Convert each hour cell from a read-only display into a clickable/editable input:
+- Clicking a cell opens an inline input or small input field
+- Manager can type a new hours value
+- On blur or Enter, the value is saved (upserted) to `daily_canvasser_metric_entries` for that user + date
+- The totals column updates automatically
+- A toast confirms the save
 
-**File: `src/pages/admin/ApplicantDetail.tsx`**
+#### Technical Details
 
-Update the DNA breakdown section (lines 308-319) to show both options for each question:
-- Display **Option A** and **Option B** labels
-- Highlight which one the applicant chose (green for correct B, red for incorrect A)
-- Show the "correct" answer (B) clearly so the manager can compare
+**File: `src/pages/admin/WeeklyUpdates.tsx`**
 
-The layout will change from:
+In the canvasser save loop (after line 440, before `successCount++`), add:
+
+```typescript
+// Also save to daily_canvasser_metric_entries for the hours tracker
+await supabase
+  .from('daily_canvasser_metric_entries')
+  .upsert({
+    user_id: entry.userId,
+    entry_date: format(selectedDate, 'yyyy-MM-dd'),
+    hours_worked_delta: weeklyHoursWorked,
+    leads_set_delta: weeklyLeadsSet,
+    leads_closed_delta: weeklyLeadsClosed,
+    leads_with_damage_delta: weeklyLeadsWithDamage,
+    leads_without_damage_delta: weeklyLeadsWithoutDamage,
+    conversations_had_delta: weeklyConversationsHad,
+    not_interested_delta: weeklyNotInterested,
+    doors_knocked_delta: weeklyDoorsKnocked,
+    income_delta: weeklyIncome,
+    entered_by: (await supabase.auth.getUser()).data.user?.id,
+    updated_at: new Date().toISOString(),
+  }, {
+    onConflict: 'user_id,entry_date',
+  });
 ```
-[check] Q1: I thrive in a high-speed environment... (B)
-```
 
-To something like:
-```
-Q1: On Performance
-  A: I prefer a steady, predictable environment...     [selected - incorrect]
-  B: I thrive in a high-speed environment...            [correct answer]
-```
+**File: `src/pages/dashboard/AdminOverview.tsx`**
 
-Each question will show both options with clear visual indicators for which was selected and which is the "correct" (B) answer.
-
----
+Update the Hours Tracker table cells (lines 1085-1089) to be editable:
+- Add state to track editing (which cell is being edited)
+- Each cell becomes an input when clicked
+- On save, upsert to `daily_canvasser_metric_entries` with the new hours value
+- Refresh the hours data after save
+- Show visual feedback (highlight) for edited cells
 
 ### Summary
 
 | File | Change |
 |---|---|
-| `src/pages/admin/AdminLeaderboards.tsx` | Fix weekly sort (line 555) and monthly sort (line 647) to use `pointsEarned` |
-| `src/pages/admin/ApplicantDetail.tsx` | Show both Option A and Option B in DNA breakdown with answer key indicators |
+| `src/pages/admin/WeeklyUpdates.tsx` | Insert into `daily_canvasser_metric_entries` when saving canvasser daily data |
+| `src/pages/dashboard/AdminOverview.tsx` | Make hours cells editable with inline save to the database |
+
