@@ -139,6 +139,38 @@ export default function AdminOverview() {
     return new Date(d.getFullYear(), d.getMonth(), diff);
   });
   const [canvasserHoursData, setCanvasserHoursData] = useState<any[]>([]);
+  const [editingHoursCell, setEditingHoursCell] = useState<string | null>(null);
+
+  const handleSaveHoursCell = async (userId: string, date: string, hours: number) => {
+    setEditingHoursCell(null);
+    try {
+      const { error } = await supabase
+        .from('daily_canvasser_metric_entries')
+        .upsert({
+          user_id: userId,
+          entry_date: date,
+          hours_worked_delta: hours,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,entry_date',
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      setCanvasserHoursData(prev => {
+        const filtered = prev.filter(e => !(e.user_id === userId && e.entry_date === date));
+        if (hours > 0) {
+          filtered.push({ user_id: userId, entry_date: date, hours_worked_delta: hours });
+        }
+        return filtered;
+      });
+      toast.success('Hours updated');
+    } catch (err) {
+      console.error('Error saving hours:', err);
+      toast.error('Failed to save hours');
+    }
+  };
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -1082,11 +1114,45 @@ export default function AdminOverview() {
                       return (
                         <tr key={canvasser.metricId} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-4 text-foreground font-medium">{canvasser.name}</td>
-                          {dailyHours.map((hours, i) => (
-                            <td key={i} className="text-center py-3 px-4 text-foreground">
-                              {hours > 0 ? hours.toFixed(1) : '-'}
-                            </td>
-                          ))}
+                          {dailyHours.map((hours, i) => {
+                            const cellKey = `${canvasser.realUserId}-${weekDays[i]}`;
+                            const isEditing = editingHoursCell === cellKey;
+                            return (
+                              <td key={i} className="text-center py-1 px-1">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    max="24"
+                                    autoFocus
+                                    defaultValue={hours > 0 ? hours : ''}
+                                    className="w-16 h-8 text-center text-sm border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    onBlur={(e) => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      handleSaveHoursCell(canvasser.realUserId!, weekDays[i], val);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const val = parseFloat((e.target as HTMLInputElement).value) || 0;
+                                        handleSaveHoursCell(canvasser.realUserId!, weekDays[i], val);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingHoursCell(null);
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <button
+                                    onClick={() => setEditingHoursCell(cellKey)}
+                                    className="w-full py-2 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm text-foreground transition-colors"
+                                    title="Click to edit"
+                                  >
+                                    {hours > 0 ? hours.toFixed(1) : '-'}
+                                  </button>
+                                )}
+                              </td>
+                            );
+                          })}
                           <td className="text-center py-3 px-4 font-bold text-foreground">
                             {weekTotal > 0 ? weekTotal.toFixed(1) : '-'}
                           </td>
