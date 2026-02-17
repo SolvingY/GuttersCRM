@@ -49,6 +49,7 @@ const adminNavItems = [
   { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
   { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
   { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
+  { icon: Users, label: 'Contractor Mgmt', path: '/admin/team' },
   { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
 ];
 

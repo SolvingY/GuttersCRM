@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Eye, CheckCircle, Phone, Star, AlertTriangle } from "lucide-react";
+import { Download, Eye, CheckCircle, Phone, Star, AlertTriangle, Archive, ArchiveRestore } from "lucide-react";
 import { getAlignmentStars, getScoreColor, desiredPositions } from "@/lib/dnaAssessment";
 import { format } from "date-fns";
 import type { AlignmentCategory } from "@/lib/dnaAssessment";
@@ -27,14 +28,15 @@ export default function FutureTeamMates() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [alignmentFilter, setAlignmentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date-desc");
+  const [tab, setTab] = useState<"active" | "archived">("active");
 
   const { data: applications = [], isLoading } = useQuery({
-    queryKey: ["job-applications"],
+    queryKey: ["job-applications", tab],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("job_applications")
         .select("*")
-        .eq("archived", false)
+        .eq("archived", tab === "archived")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as any[];
@@ -59,6 +61,24 @@ export default function FutureTeamMates() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job-applications"] });
       toast({ title: "Status updated" });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ id, archive }: { id: string; archive: boolean }) => {
+      const { error } = await supabase
+        .from("job_applications")
+        .update({
+          archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+        } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ["job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["new-applicants-count"] });
+      toast({ title: archive ? "Application archived" : "Application restored" });
     },
   });
 
@@ -117,15 +137,25 @@ export default function FutureTeamMates() {
         </div>
       </div>
 
+      {/* Active / Archived tabs */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "archived")}>
+        <TabsList>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {(["new", "reviewed", "contacted", "hired"] as const).map((s) => (
-          <div key={s} className="bg-card border border-border rounded-lg p-4 text-center">
-            <p className="text-2xl font-heading">{stats[s]}</p>
-            <p className="text-xs text-muted-foreground uppercase">{s}</p>
-          </div>
-        ))}
-      </div>
+      {tab === "active" && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(["new", "reviewed", "contacted", "hired"] as const).map((s) => (
+            <div key={s} className="bg-card border border-border rounded-lg p-4 text-center">
+              <p className="text-2xl font-heading">{stats[s]}</p>
+              <p className="text-xs text-muted-foreground uppercase">{s}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -200,18 +230,39 @@ export default function FutureTeamMates() {
                       <span className="text-xs text-muted-foreground ml-1">{app.alignment_category}</span>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => navigate(`/admin/applicants/${app.id}`)}>
                       <Eye className="w-4 h-4 mr-1" /> View
                     </Button>
-                    {app.status === "new" && (
-                      <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: app.id, status: "reviewed" })}>
-                        <CheckCircle className="w-4 h-4 mr-1" /> Reviewed
-                      </Button>
+                    {tab === "active" && (
+                      <>
+                        {app.status === "new" && (
+                          <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: app.id, status: "reviewed" })}>
+                            <CheckCircle className="w-4 h-4 mr-1" /> Reviewed
+                          </Button>
+                        )}
+                        {(app.status === "new" || app.status === "reviewed") && (
+                          <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: app.id, status: "contacted" })}>
+                            <Phone className="w-4 h-4 mr-1" /> Contact
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => archiveMutation.mutate({ id: app.id, archive: true })}
+                          className="text-muted-foreground"
+                        >
+                          <Archive className="w-4 h-4 mr-1" /> Archive
+                        </Button>
+                      </>
                     )}
-                    {(app.status === "new" || app.status === "reviewed") && (
-                      <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: app.id, status: "contacted" })}>
-                        <Phone className="w-4 h-4 mr-1" /> Contact
+                    {tab === "archived" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => archiveMutation.mutate({ id: app.id, archive: false })}
+                      >
+                        <ArchiveRestore className="w-4 h-4 mr-1" /> Restore
                       </Button>
                     )}
                   </div>
