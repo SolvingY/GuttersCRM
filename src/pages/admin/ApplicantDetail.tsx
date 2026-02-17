@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle } from "lucide-react";
+import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle, Archive, ArchiveRestore } from "lucide-react";
 import { format } from "date-fns";
 import {
   dnaQuestions,
@@ -393,6 +393,26 @@ export default function ApplicantDetail() {
         <Button variant="outline" onClick={() => setShowHireDialog(true)} className="border-blue-500 text-blue-600 hover:bg-blue-50">
           <UserCheck className="w-4 h-4 mr-1" /> Move to Hired
         </Button>
+        {!app.archived ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              updateApp.mutate({ archived: true, archived_at: new Date().toISOString() });
+            }}
+            className="text-muted-foreground"
+          >
+            <Archive className="w-4 h-4 mr-1" /> Archive
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => {
+              updateApp.mutate({ archived: false, archived_at: null });
+            }}
+          >
+            <ArchiveRestore className="w-4 h-4 mr-1" /> Restore
+          </Button>
+        )}
         <Button variant="outline" onClick={() => changeStatus("rejected")} className="border-destructive text-destructive hover:bg-destructive/10">
           <XCircle className="w-4 h-4 mr-1" /> Reject
         </Button>

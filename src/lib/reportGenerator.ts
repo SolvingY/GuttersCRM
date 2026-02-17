@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+// xlsx removed - using native CSV export
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
@@ -101,175 +101,85 @@ const getDateRangeString = (options?: ReportOptions): string => {
   return 'All Time';
 };
 
+function escapeCSV(value: string | number | null | undefined): string {
+  const str = String(value ?? '');
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function downloadCSV(rows: (string | number | null | undefined)[][], filename: string): void {
+  const csv = rows.map(r => r.map(escapeCSV).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function exportToExcel(
   salesReps: SalesRepData[],
   canvassers: CanvasserData[],
   companySummary: CompanySummary,
   options?: ReportOptions
 ): void {
-  const wb = XLSX.utils.book_new();
   const today = format(new Date(), 'MM/dd/yyyy');
   const dateRange = getDateRangeString(options);
 
-  // Company Summary Sheet
-  const summaryData: (string | number | null)[][] = [
+  const rows: (string | number | null)[][] = [
     ['Company Performance Report'],
     ['Generated:', today],
     ['Date Range:', dateRange],
     [],
-    ['COMPANY GOALS'],
-    ['Metric', 'Current', 'Goal', '% Progress'],
-  ];
-
-  // Sales Revenue Goal
-  if (companySummary.salesRevenueGoal) {
-    const salesProgress = (companySummary.totalApprovedRevenue / companySummary.salesRevenueGoal) * 100;
-    summaryData.push([
-      'Sales Revenue',
-      formatCurrency(companySummary.totalApprovedRevenue),
-      formatCurrency(companySummary.salesRevenueGoal),
-      `${salesProgress.toFixed(1)}%`
-    ]);
-  }
-
-  // Canvasser Leads Goal
-  if (companySummary.canvasserLeadsGoal) {
-    const leadsProgress = ((companySummary.totalLeadsClosed || 0) / companySummary.canvasserLeadsGoal) * 100;
-    summaryData.push([
-      'Canvasser Leads Closed',
-      companySummary.totalLeadsClosed || 0,
-      companySummary.canvasserLeadsGoal,
-      `${leadsProgress.toFixed(1)}%`
-    ]);
-  }
-
-  // Target Ratios
-  if (companySummary.targetLeadToCloseRatio) {
-    summaryData.push([
-      'Lead-to-Close Ratio',
-      `${companySummary.companyLeadCloseRate.toFixed(1)}%`,
-      `${companySummary.targetLeadToCloseRatio}%`,
-      companySummary.companyLeadCloseRate >= companySummary.targetLeadToCloseRatio ? 'On Track' : 'Below Target'
-    ]);
-  }
-
-  if (companySummary.targetCostPerLead && companySummary.actualCostPerLead) {
-    summaryData.push([
-      'Cost per Lead',
-      formatCurrency(companySummary.actualCostPerLead),
-      formatCurrency(companySummary.targetCostPerLead),
-      companySummary.actualCostPerLead <= companySummary.targetCostPerLead ? 'On Track' : 'Above Target'
-    ]);
-  }
-
-  summaryData.push(
-    [],
     ['SALES TEAM SUMMARY'],
-    ['Metric', 'Value'],
     ['Total Sales Reps', companySummary.salesRepCount],
     ['Total Approved Revenue', formatCurrency(companySummary.totalApprovedRevenue)],
     ['Total Collections', formatCurrency(companySummary.totalCollections)],
-    ['Total Points', companySummary.totalPoints.toLocaleString()],
+    ['Total Points', companySummary.totalPoints],
     ['Total Leads', companySummary.totalLeads],
     ['Total Contracts', companySummary.totalClosedDeals],
     ['Lead-to-Close Rate', `${companySummary.companyLeadCloseRate.toFixed(1)}%`],
     [],
     ['CANVASSER TEAM SUMMARY'],
-    ['Metric', 'Value'],
     ['Total Canvassers', companySummary.canvasserCount],
     ['Total Leads Set', companySummary.totalLeadsSet || 0],
     ['Total Leads Closed', companySummary.totalLeadsClosed || 0],
-    ['Total Leads with Damage', companySummary.totalLeadsWithDamage || 0],
     ['Total Hours Worked', companySummary.totalHoursWorked || 0],
     ['Total Doors Knocked', companySummary.totalDoorsKnocked || 0],
-    ['Total Canvasser Income', formatCurrency(companySummary.totalCanvasserIncome || 0)],
-  );
+    [],
+  ];
 
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-  summarySheet['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 15 }];
-  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
-
-  // Sales Reps Sheet - All metrics
   if (salesReps.length > 0) {
-    const salesHeaders = [
-      'Name', 'Rank', 'Approved Revenue', 'Collections', 'YTD Earnings', 
-      'Points', 'Leads', 'Total Contracts', 'Avg Job Size', 'Close %', 'Yearly Goal',
-      'Self-Gen Leads', 'Self-Gen Contracts', 'Canvass Leads', 'Canvass Contracts', 'Contest Pts', 'Wager Pts'
-    ];
-    const salesData = salesReps.map(rep => [
-      rep.name,
-      rep.salesRank,
-      formatCurrency(rep.approvedRevenue),
-      formatCurrency(rep.collections),
-      formatCurrency(rep.earningsYtd),
-      rep.points.toLocaleString(),
-      rep.leads,
-      rep.closedDeals,
-      formatCurrency(rep.avgJobSize),
-      `${rep.leadToClosePercent.toFixed(1)}%`,
-      formatCurrency(rep.yearlyGoal),
-      rep.selfGeneratedLeads || 0,
-      rep.selfGeneratedDeals || 0,
-      rep.canvassLeads || 0,
-      rep.canvassDealsClose || 0,
-      rep.contestPoints || 0,
-      rep.wagerPoints || 0,
-    ]);
-    
-    const salesSheet = XLSX.utils.aoa_to_sheet([salesHeaders, ...salesData]);
-    salesSheet['!cols'] = salesHeaders.map(() => ({ wch: 15 }));
-    XLSX.utils.book_append_sheet(wb, salesSheet, 'Sales Reps');
+    rows.push(['SALES REPS']);
+    rows.push(['Name', 'Rank', 'Approved Revenue', 'Collections', 'YTD Earnings', 'Points', 'Leads', 'Contracts', 'Avg Job Size', 'Close %', 'Yearly Goal']);
+    salesReps.forEach(rep => {
+      rows.push([
+        rep.name, rep.salesRank, formatCurrency(rep.approvedRevenue), formatCurrency(rep.collections),
+        formatCurrency(rep.earningsYtd), rep.points, rep.leads, rep.closedDeals,
+        formatCurrency(rep.avgJobSize), `${rep.leadToClosePercent.toFixed(1)}%`, formatCurrency(rep.yearlyGoal),
+      ]);
+    });
+    rows.push([]);
   }
 
-  // Canvassers Sheet - All metrics
   if (canvassers.length > 0) {
-    const canvasserHeaders = [
-      'Name', 'Leads Set', 'Leads Closed', 'Leads w/ Damage', 
-      'Hours Worked', 'Points', 'Income', 'Conversion %',
-      'Doors Knocked', 'Yearly Goal', 'Contest Pts', 'Wager Pts'
-    ];
-    const canvasserData = canvassers.map(c => [
-      c.name,
-      c.leadsSet,
-      c.leadsClosed,
-      c.leadsWithDamage,
-      c.hoursWorked,
-      c.points.toLocaleString(),
-      formatCurrency(c.income),
-      `${c.conversionRate.toFixed(1)}%`,
-      c.doorsKnocked || 0,
-      c.yearlyGoal || 0,
-      c.contestPoints || 0,
-      c.wagerPoints || 0,
-    ]);
-
-    const canvasserSheet = XLSX.utils.aoa_to_sheet([canvasserHeaders, ...canvasserData]);
-    canvasserSheet['!cols'] = canvasserHeaders.map(() => ({ wch: 15 }));
-    XLSX.utils.book_append_sheet(wb, canvasserSheet, 'Canvassers');
+    rows.push(['CANVASSERS']);
+    rows.push(['Name', 'Leads Set', 'Leads Closed', 'Leads w/ Damage', 'Hours Worked', 'Points', 'Income', 'Conversion %', 'Doors Knocked']);
+    canvassers.forEach(c => {
+      rows.push([
+        c.name, c.leadsSet, c.leadsClosed, c.leadsWithDamage, c.hoursWorked,
+        c.points, formatCurrency(c.income), `${c.conversionRate.toFixed(1)}%`, c.doorsKnocked || 0,
+      ]);
+    });
   }
 
-  // Monthly Progress Sheet (if available)
-  if (companySummary.monthlyProgress && companySummary.monthlyProgress.length > 0) {
-    const progressHeaders = ['Month', 'Revenue', 'Revenue Goal', 'Leads', 'Leads Goal'];
-    const progressData = companySummary.monthlyProgress.map(m => [
-      m.month,
-      formatCurrency(m.revenue),
-      m.revenueGoal ? formatCurrency(m.revenueGoal) : '-',
-      m.leads,
-      m.leadsGoal || '-',
-    ]);
-
-    const progressSheet = XLSX.utils.aoa_to_sheet([progressHeaders, ...progressData]);
-    progressSheet['!cols'] = progressHeaders.map(() => ({ wch: 18 }));
-    XLSX.utils.book_append_sheet(wb, progressSheet, 'Monthly Progress');
-  }
-
-  // Download file
-  const dateStr = options?.startDate 
+  const dateStr = options?.startDate
     ? `${format(options.startDate, 'yyyy-MM-dd')}_to_${format(options.endDate!, 'yyyy-MM-dd')}`
     : format(new Date(), 'yyyy-MM-dd');
-  const filename = `company-report-${dateStr}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  downloadCSV(rows, `company-report-${dateStr}.csv`);
 }
 
 function drawProgressGraph(doc: jsPDF, companySummary: CompanySummary, startY: number): number {
