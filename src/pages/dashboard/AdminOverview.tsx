@@ -6,7 +6,7 @@ import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserM
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -141,21 +141,80 @@ export default function AdminOverview() {
   const [canvasserHoursData, setCanvasserHoursData] = useState<any[]>([]);
   const [editingHoursCell, setEditingHoursCell] = useState<string | null>(null);
 
-  const handleSaveHoursCell = async (userId: string, date: string, hours: number) => {
-    setEditingHoursCell(null);
-    try {
-      const { error } = await supabase
-        .from('daily_canvasser_metric_entries')
-        .upsert({
-          user_id: userId,
-          entry_date: date,
-          hours_worked_delta: hours,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,entry_date',
-        });
+  const getWeekStartForDate = (dateStr: string): string => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.getFullYear(), d.getMonth(), diff);
+    return monday.toISOString().split('T')[0];
+  };
 
-      if (error) throw error;
+  const getWeekEndForDate = (weekStartStr: string): string => {
+    const d = new Date(weekStartStr + 'T00:00:00');
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().split('T')[0];
+  };
+
+  const handleSaveHoursCell = async (userId: string, date: string, hours: number, oldHours: number) => {
+    setEditingHoursCell(null);
+    const delta = hours - oldHours;
+    if (delta === 0) return;
+
+    try {
+      // 1. Upsert daily entry (or delete if 0)
+      if (hours > 0) {
+        const { error } = await supabase
+          .from('daily_canvasser_metric_entries')
+          .upsert({
+            user_id: userId,
+            entry_date: date,
+            hours_worked_delta: hours,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,entry_date' });
+        if (error) throw error;
+      } else {
+        // Delete the entry when hours = 0
+        await supabase
+          .from('daily_canvasser_metric_entries')
+          .delete()
+          .eq('user_id', userId)
+          .eq('entry_date', date);
+      }
+
+      // 2. Sync weekly_canvasser_metrics
+      const weekStart = getWeekStartForDate(date);
+      const weekEnd = getWeekEndForDate(weekStart);
+      const { data: weeklyRow } = await supabase
+        .from('weekly_canvasser_metrics')
+        .select('id, hours_worked')
+        .eq('user_id', userId)
+        .eq('week_start', weekStart)
+        .maybeSingle();
+
+      if (weeklyRow) {
+        await supabase
+          .from('weekly_canvasser_metrics')
+          .update({ hours_worked: Math.max(0, (Number(weeklyRow.hours_worked) || 0) + delta) })
+          .eq('id', weeklyRow.id);
+      } else if (hours > 0) {
+        await supabase
+          .from('weekly_canvasser_metrics')
+          .insert({ user_id: userId, week_start: weekStart, week_end: weekEnd, hours_worked: hours });
+      }
+
+      // 3. Sync canvasser_metrics (YTD)
+      const { data: ytdRow } = await supabase
+        .from('canvasser_metrics')
+        .select('id, hours_worked')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (ytdRow) {
+        await supabase
+          .from('canvasser_metrics')
+          .update({ hours_worked: Math.max(0, (Number(ytdRow.hours_worked) || 0) + delta) })
+          .eq('id', ytdRow.id);
+      }
 
       // Update local state
       setCanvasserHoursData(prev => {
@@ -169,6 +228,84 @@ export default function AdminOverview() {
     } catch (err) {
       console.error('Error saving hours:', err);
       toast.error('Failed to save hours');
+    }
+  };
+
+  const handleMoveHoursDay = async (userId: string, oldDate: string, newDate: string, hours: number) => {
+    if (oldDate === newDate) return;
+    setEditingHoursCell(null);
+
+    try {
+      // 1. Delete old daily entry
+      await supabase
+        .from('daily_canvasser_metric_entries')
+        .delete()
+        .eq('user_id', userId)
+        .eq('entry_date', oldDate);
+
+      // 2. Upsert new daily entry
+      const { error } = await supabase
+        .from('daily_canvasser_metric_entries')
+        .upsert({
+          user_id: userId,
+          entry_date: newDate,
+          hours_worked_delta: hours,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,entry_date' });
+      if (error) throw error;
+
+      // 3. Update weekly metrics if weeks differ
+      const oldWeekStart = getWeekStartForDate(oldDate);
+      const newWeekStart = getWeekStartForDate(newDate);
+
+      if (oldWeekStart !== newWeekStart) {
+        // Subtract from old week
+        const { data: oldWeekRow } = await supabase
+          .from('weekly_canvasser_metrics')
+          .select('id, hours_worked')
+          .eq('user_id', userId)
+          .eq('week_start', oldWeekStart)
+          .maybeSingle();
+
+        if (oldWeekRow) {
+          await supabase
+            .from('weekly_canvasser_metrics')
+            .update({ hours_worked: Math.max(0, (Number(oldWeekRow.hours_worked) || 0) - hours) })
+            .eq('id', oldWeekRow.id);
+        }
+
+        // Add to new week
+        const newWeekEnd = getWeekEndForDate(newWeekStart);
+        const { data: newWeekRow } = await supabase
+          .from('weekly_canvasser_metrics')
+          .select('id, hours_worked')
+          .eq('user_id', userId)
+          .eq('week_start', newWeekStart)
+          .maybeSingle();
+
+        if (newWeekRow) {
+          await supabase
+            .from('weekly_canvasser_metrics')
+            .update({ hours_worked: (Number(newWeekRow.hours_worked) || 0) + hours })
+            .eq('id', newWeekRow.id);
+        } else {
+          await supabase
+            .from('weekly_canvasser_metrics')
+            .insert({ user_id: userId, week_start: newWeekStart, week_end: newWeekEnd, hours_worked: hours });
+        }
+      }
+      // If same week, no weekly update needed since total stays the same
+
+      // Update local state
+      setCanvasserHoursData(prev => {
+        const filtered = prev.filter(e => !(e.user_id === userId && (e.entry_date === oldDate || e.entry_date === newDate)));
+        filtered.push({ user_id: userId, entry_date: newDate, hours_worked_delta: hours });
+        return filtered;
+      });
+      toast.success(`Hours moved to ${new Date(newDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`);
+    } catch (err) {
+      console.error('Error moving hours:', err);
+      toast.error('Failed to move hours');
     }
   };
 
@@ -1120,27 +1257,46 @@ export default function AdminOverview() {
                             return (
                               <td key={i} className="text-center py-1 px-1">
                                 {isEditing ? (
-                                  <input
-                                    type="number"
-                                    step="0.5"
-                                    min="0"
-                                    max="24"
-                                    autoFocus
-                                    defaultValue={hours > 0 ? hours : ''}
-                                    className="w-16 h-8 text-center text-sm border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                    onBlur={(e) => {
-                                      const val = parseFloat(e.target.value) || 0;
-                                      handleSaveHoursCell(canvasser.realUserId!, weekDays[i], val);
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const val = parseFloat((e.target as HTMLInputElement).value) || 0;
-                                        handleSaveHoursCell(canvasser.realUserId!, weekDays[i], val);
-                                      } else if (e.key === 'Escape') {
-                                        setEditingHoursCell(null);
-                                      }
-                                    }}
-                                  />
+                                  <div className="flex flex-col items-center gap-1">
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      min="0"
+                                      max="24"
+                                      autoFocus
+                                      defaultValue={hours > 0 ? hours : ''}
+                                      className="w-16 h-8 text-center text-sm border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                      onBlur={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        handleSaveHoursCell(canvasser.realUserId!, weekDays[i], val, hours);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const val = parseFloat((e.target as HTMLInputElement).value) || 0;
+                                          handleSaveHoursCell(canvasser.realUserId!, weekDays[i], val, hours);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingHoursCell(null);
+                                        }
+                                      }}
+                                    />
+                                    {hours > 0 && (
+                                      <div className="flex gap-0.5 flex-wrap justify-center">
+                                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayLabel, dayIdx) => {
+                                          if (dayIdx === i) return null;
+                                          return (
+                                            <button
+                                              key={dayIdx}
+                                              onClick={() => handleMoveHoursDay(canvasser.realUserId!, weekDays[i], weekDays[dayIdx], hours)}
+                                              className="w-5 h-5 text-[10px] rounded bg-muted hover:bg-primary hover:text-primary-foreground transition-colors text-muted-foreground"
+                                              title={`Move to ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIdx]}`}
+                                            >
+                                              {dayLabel}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
                                 ) : (
                                   <button
                                     onClick={() => setEditingHoursCell(cellKey)}
