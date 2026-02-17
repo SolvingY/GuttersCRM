@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import * as XLSX from "xlsx";
 
 interface LeadExportButtonProps {
   leads: any[];
@@ -10,31 +9,49 @@ interface LeadExportButtonProps {
 export function LeadExportButton({ leads, salesReps = [] }: LeadExportButtonProps) {
   const repMap = Object.fromEntries(salesReps.map((r) => [r.user_id, r.display_name || "Unknown"]));
 
-  const handleExport = () => {
-    const rows = leads.map((l) => ({
-      "Reference Number": l.reference_number || "",
-      "Date Submitted": new Date(l.created_at).toLocaleDateString(),
-      "Service Type": l.service_type,
-      Name: l.full_name,
-      Email: l.email,
-      Phone: l.phone,
-      Address: l.street_address,
-      City: l.city,
-      State: l.state,
-      Zip: l.zip_code,
-      Status: l.status,
-      Priority: l.priority,
-      "Assigned To": l.assigned_to ? repMap[l.assigned_to] || l.assigned_to : "Unassigned",
-      "Quote Amount": l.quote_amount || "",
-      "Quote Status": l.quote_status || "",
-      "Referral Source": l.referral_source || "",
-      "Follow-up Count": l.followup_count || 0,
-    }));
+  const escapeCsvField = (value: string | number | null | undefined): string => {
+    const str = String(value ?? "");
+    if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Leads");
-    XLSX.writeFile(wb, `NGR-Leads-${new Date().toISOString().split("T")[0]}.xlsx`);
+  const handleExport = () => {
+    const headers = [
+      "Reference Number", "Date Submitted", "Service Type", "Name", "Email",
+      "Phone", "Address", "City", "State", "Zip", "Status", "Priority",
+      "Assigned To", "Quote Amount", "Quote Status", "Referral Source", "Follow-up Count",
+    ];
+
+    const csvRows = leads.map((l) => [
+      l.reference_number || "",
+      new Date(l.created_at).toLocaleDateString(),
+      l.service_type,
+      l.full_name,
+      l.email,
+      l.phone,
+      l.street_address,
+      l.city,
+      l.state,
+      l.zip_code,
+      l.status,
+      l.priority,
+      l.assigned_to ? repMap[l.assigned_to] || l.assigned_to : "Unassigned",
+      l.quote_amount || "",
+      l.quote_status || "",
+      l.referral_source || "",
+      l.followup_count || 0,
+    ].map(escapeCsvField).join(","));
+
+    const csv = [headers.map(escapeCsvField).join(","), ...csvRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `NGR-Leads-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
