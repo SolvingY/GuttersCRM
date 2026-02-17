@@ -1,60 +1,76 @@
 
 
-## Fix: Day-Move Buttons Not Working (Blur Race Condition)
+## Contractor Management CRM - Phase 1
 
-### Problem Found
+This plan covers three major pieces: (1) fix the current build error, (2) add archive functionality to job applications, and (3) create a new "Contractor Management" page that serves as the foundation for a full Hire/Onboard/Train/Review CRM.
 
-When testing the Hours Tracker, I confirmed the following:
+---
 
-**Editing hours works correctly:**
-- Changed Chloe Cooper's Tuesday hours from 4.0 to 6.0
-- Database confirmed: `daily_canvasser_metric_entries` updated to 6
-- `weekly_canvasser_metrics.hours_worked` updated to 6
-- `canvasser_metrics.hours_worked` (YTD) updated to 6
-- Toast notification "Hours updated" appeared
+### 1. Fix Build Error (Critical - Blocking)
 
-**Moving hours between days does NOT work:**
-- Clicking the "F" (Friday) button does nothing -- hours stay on Tuesday
-- No network requests are made for the move
+The `xlsx` package was removed from dependencies but `src/lib/reportGenerator.ts` still imports it. Replace the XLSX export in `reportGenerator.ts` with native CSV generation (same approach used for LeadExportButton).
 
-### Root Cause
+Also fix the CSS `@import` order issue in `src/index.css` by moving the `@import` statements above the `@tailwind` directives.
 
-This is a blur-before-click race condition. The input field has an `onBlur` handler that calls `handleSaveHoursCell`, which sets `setEditingHoursCell(null)`. When the user clicks a day-move button:
+---
 
-1. The input loses focus, triggering `onBlur`
-2. `onBlur` calls `handleSaveHoursCell`, which sets `setEditingHoursCell(null)`
-3. React re-renders, removing the day-move buttons from the DOM
-4. The click event on the day-move button never fires
+### 2. Archive Applications
 
-### Fix
+Add an "Archive" button to the FutureTeamMates list and ApplicantDetail page:
 
-**File: `src/pages/dashboard/AdminOverview.tsx`**
+- **FutureTeamMates.tsx**: Add an archive button per application card, and add an "Archived" tab to toggle between active and archived applications
+- **ApplicantDetail.tsx**: Add an "Archive" action button
+- Both use the existing `archived` and `archived_at` columns already on the `job_applications` table
 
-Use `onMouseDown` with `e.preventDefault()` on the day-move buttons. This prevents the input from losing focus when the button is pressed, allowing the `onClick` to fire normally.
+---
 
-Change the day-move buttons from:
-```tsx
-<button
-  onClick={() => handleMoveHoursDay(...)}
->
-```
-to:
-```tsx
-<button
-  onMouseDown={(e) => {
-    e.preventDefault();
-    handleMoveHoursDay(...);
-  }}
->
-```
+### 3. Contractor Management Page (New CRM Foundation)
 
-### Cleanup
+Create a new admin page at `/admin/team` called "Contractor Management" that displays a profile card for every user in the system.
 
-After the fix, revert Chloe Cooper's test data back to the original 4 hours (or keep at 6 if acceptable).
+**What each profile shows:**
+- Name, role(s), rank(s), current status (active/archived)
+- Key performance stats pulled from `user_metrics` (for sales reps) or `canvasser_metrics` (for canvassers)
+- Hire date (from `job_applications` if they were hired through the system)
+- DNA Assessment score and alignment (if they have a linked job application)
+- For users who never took the DNA assessment: a "Send DNA Assessment" button that copies a link to the `/apply` page
 
-### Summary
+**Page sections/tabs:**
+- **All Team** - Every user with their profile card
+- **Onboarding** - Users hired within the last 30 days
+- **Active Team** - All non-archived users
+- **Archived** - Archived users
 
-| Issue | Fix |
-|---|---|
-| Day-move buttons don't fire due to blur race condition | Use `onMouseDown` + `preventDefault()` instead of `onClick` |
+**Profile card details:**
+- Name, roles (badges), ranks
+- Hire date and start date (if available from job_applications)
+- DNA score with alignment category (linked from job_applications by email match)
+- YTD performance summary (revenue/points for sales, leads/points for canvassers)
+- Quick actions: View full stats, Send DNA Assessment link
+
+**No new database tables needed** - this page aggregates existing data from `profiles`, `user_roles`, `user_metrics`, `canvasser_metrics`, and `job_applications`.
+
+---
+
+### Technical Details
+
+**Files to create:**
+- `src/pages/admin/ContractorManagement.tsx` - The new CRM page
+
+**Files to modify:**
+- `src/index.css` - Fix @import order (move imports before @tailwind)
+- `src/lib/reportGenerator.ts` - Replace `xlsx` import with native CSV
+- `src/App.tsx` - Add route for `/admin/team`
+- `src/pages/admin/AdminLayout.tsx` - Add "Contractor Management" nav item (with Users icon)
+- `src/pages/admin/FutureTeamMates.tsx` - Add archive button and archived tab
+- `src/pages/admin/ApplicantDetail.tsx` - Add archive action button
+
+**Data flow for Contractor Management page:**
+1. Fetch all profiles (with archive status)
+2. Fetch all user_roles (to determine role badges)
+3. Fetch user_metrics and canvasser_metrics (for performance stats)
+4. Fetch job_applications where status = 'hired' (to match hire info to users via `created_user_id` column)
+5. For users without a matching job application, show "Send DNA Assessment" option
+
+This creates the foundation. Future phases would add: onboarding checklists, training modules, and quarterly review forms.
 
