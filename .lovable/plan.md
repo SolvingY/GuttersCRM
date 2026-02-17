@@ -1,43 +1,33 @@
 
 
-## Fix: Canvasser Hours Not Displaying in Hours Tracker
+## Backfill Daily Canvasser Entries from Today's Saves
 
-### Root Cause
+### Problem
+The manager entered canvasser hours earlier today, but that happened before the code change that writes to `daily_canvasser_metric_entries` was deployed. The data exists in `weekly_canvasser_metrics` but the Hours Tracker reads from `daily_canvasser_metric_entries`, which is empty.
 
-The `daily_canvasser_metric_entries` table has a regular (non-unique) index on `(user_id, entry_date)`, but the code uses `onConflict: 'user_id,entry_date'` in the upsert call. PostgreSQL requires a **unique constraint** for upsert conflict resolution to work. Without it, the upsert silently fails, resulting in zero rows being written to the table. This is why the Hours Tracker always shows dashes.
+### Solution
+Insert the missing daily entries directly into the database for the 3 canvassers who had hours saved today (Feb 17, 2026):
 
-### Fix
+| User ID | Hours |
+|---------|-------|
+| 35458922-... (Blake/Gerard/etc) | 4 |
+| 9bc0a97e-... | 5 |
+| a466f804-... | 5 |
 
-#### 1. Database Migration: Add unique constraint
+We will insert records into `daily_canvasser_metric_entries` with `entry_date = '2026-02-17'` for each of these users, pulling the hours from the `weekly_canvasser_metrics` data.
 
-Add a unique constraint on `(user_id, entry_date)` to the `daily_canvasser_metric_entries` table. This allows the upsert's `onConflict` clause to function correctly.
+### Technical Details
 
+**Database insert** (using the insert tool):
 ```sql
-ALTER TABLE public.daily_canvasser_metric_entries
-  ADD CONSTRAINT daily_canvasser_metric_entries_user_date_unique
-  UNIQUE (user_id, entry_date);
+INSERT INTO daily_canvasser_metric_entries (user_id, entry_date, hours_worked_delta)
+SELECT user_id, '2026-02-17', hours_worked
+FROM weekly_canvasser_metrics
+WHERE week_start = '2026-02-16' AND hours_worked > 0
+ON CONFLICT (user_id, entry_date)
+DO UPDATE SET hours_worked_delta = EXCLUDED.hours_worked_delta, updated_at = now();
 ```
 
-#### 2. Code Fix: Add error logging (WeeklyUpdates.tsx)
+This is a one-time backfill. Going forward, the code change from earlier will automatically write daily entries whenever the manager saves new data.
 
-Capture and log the upsert result so errors are not silently swallowed. This helps with future debugging.
-
-```typescript
-const { error: dailyError } = await supabase
-  .from('daily_canvasser_metric_entries')
-  .upsert({...}, { onConflict: 'user_id,entry_date' });
-
-if (dailyError) {
-  console.error('Error saving daily canvasser entry:', dailyError);
-}
-```
-
-### Summary
-
-| Change | Details |
-|---|---|
-| Database migration | Add unique constraint on `(user_id, entry_date)` |
-| `src/pages/admin/WeeklyUpdates.tsx` | Add error handling for the daily entries upsert |
-
-After this fix, when a manager saves canvasser data on the Weekly Updates page, the hours will be written to the database and immediately appear in the Hours Tracker on the Admin Overview.
-
+No code changes needed -- just the data insert.
