@@ -1286,7 +1286,10 @@ export default function AdminOverview() {
                                           return (
                                             <button
                                               key={dayIdx}
-                                              onClick={() => handleMoveHoursDay(canvasser.realUserId!, weekDays[i], weekDays[dayIdx], hours)}
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                handleMoveHoursDay(canvasser.realUserId!, weekDays[i], weekDays[dayIdx], hours);
+                                              }}
                                               className="w-5 h-5 text-[10px] rounded bg-muted hover:bg-primary hover:text-primary-foreground transition-colors text-muted-foreground"
                                               title={`Move to ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIdx]}`}
                                             >
