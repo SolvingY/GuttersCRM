@@ -438,6 +438,28 @@ export default function WeeklyUpdates() {
           console.error('Error saving weekly canvasser metrics:', weeklyError);
         }
 
+        // Also save to daily_canvasser_metric_entries for the hours tracker
+        const { data: authUser } = await supabase.auth.getUser();
+        await supabase
+          .from('daily_canvasser_metric_entries')
+          .upsert({
+            user_id: entry.userId,
+            entry_date: format(selectedDate, 'yyyy-MM-dd'),
+            hours_worked_delta: weeklyHoursWorked,
+            leads_set_delta: weeklyLeadsSet,
+            leads_closed_delta: weeklyLeadsClosed,
+            leads_with_damage_delta: weeklyLeadsWithDamage,
+            leads_without_damage_delta: weeklyLeadsWithoutDamage,
+            conversations_had_delta: weeklyConversationsHad,
+            not_interested_delta: weeklyNotInterested,
+            doors_knocked_delta: weeklyDoorsKnocked,
+            income_delta: weeklyIncome,
+            entered_by: authUser.user?.id,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,entry_date',
+          });
+
         successCount++;
       }
 
