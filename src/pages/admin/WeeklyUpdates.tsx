@@ -440,7 +440,7 @@ export default function WeeklyUpdates() {
 
         // Also save to daily_canvasser_metric_entries for the hours tracker
         const { data: authUser } = await supabase.auth.getUser();
-        await supabase
+        const { error: dailyError } = await supabase
           .from('daily_canvasser_metric_entries')
           .upsert({
             user_id: entry.userId,
@@ -459,6 +459,10 @@ export default function WeeklyUpdates() {
           }, {
             onConflict: 'user_id,entry_date',
           });
+
+        if (dailyError) {
+          console.error('Error saving daily canvasser entry:', dailyError);
+        }
 
         successCount++;
       }
