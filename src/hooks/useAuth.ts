@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'user' | 'canvasser';
+type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer';
 
 interface AuthState {
   user: User | null;
@@ -182,10 +182,12 @@ export function useAuth() {
   const isAdmin = authState.roles.includes('admin');
   const hasSalesRole = authState.roles.includes('user') || authState.roles.includes('admin');
   const hasCanvasserRole = authState.roles.includes('canvasser');
-  const isDualRole = hasSalesRole && hasCanvasserRole;
+  const hasSupplementerRole = authState.roles.includes('supplementer');
+  const isDualRole = (hasSalesRole && hasCanvasserRole) || (hasSalesRole && hasSupplementerRole) || (hasCanvasserRole && hasSupplementerRole);
+  const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !isAdmin;
   
   // Legacy compatibility - primary role for routing decisions
-  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : 'user';
+  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : 'user';
   const isCanvasser = hasCanvasserRole && !hasSalesRole && !isAdmin;
 
   return {
@@ -198,6 +200,8 @@ export function useAuth() {
     isCanvasser,
     hasSalesRole,
     hasCanvasserRole,
+    hasSupplementerRole,
+    isSupplementerOnly,
     isDualRole,
     activeView: authState.activeView,
     setActiveView,

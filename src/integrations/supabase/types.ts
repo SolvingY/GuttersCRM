@@ -190,6 +190,7 @@ export type Database = {
           id: string
           internet_contracts_goal: number | null
           sales_revenue_goal: number | null
+          supplementer_rcv_goal: number | null
           target_ad_spend_budget: number | null
           target_cost_per_lead: number | null
           target_lead_to_close_ratio: number | null
@@ -206,6 +207,7 @@ export type Database = {
           id?: string
           internet_contracts_goal?: number | null
           sales_revenue_goal?: number | null
+          supplementer_rcv_goal?: number | null
           target_ad_spend_budget?: number | null
           target_cost_per_lead?: number | null
           target_lead_to_close_ratio?: number | null
@@ -222,6 +224,7 @@ export type Database = {
           id?: string
           internet_contracts_goal?: number | null
           sales_revenue_goal?: number | null
+          supplementer_rcv_goal?: number | null
           target_ad_spend_budget?: number | null
           target_cost_per_lead?: number | null
           target_lead_to_close_ratio?: number | null
@@ -1212,6 +1215,198 @@ export type Database = {
         }
         Relationships: []
       }
+      supplement_jobs: {
+        Row: {
+          assigned_at: string | null
+          claim_number: string | null
+          client_name: string
+          coc_bonus_points: number | null
+          coc_completed_at: string | null
+          coc_completion_days: number | null
+          code_release_days: number | null
+          code_released_at: string | null
+          code_upgrade_amount: number | null
+          collection_date: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          depreciation_amount: number | null
+          depreciation_release_days: number | null
+          depreciation_released_at: string | null
+          external_claim_id: string | null
+          external_job_id: string | null
+          external_sync_status: string | null
+          id: string
+          insurance_carrier: string | null
+          job_number: string | null
+          last_modified_by: string | null
+          last_synced_at: string | null
+          money_collected: number | null
+          notes: string | null
+          original_rcv: number | null
+          property_address: string | null
+          rcv_increase: number | null
+          revised_scope_days: number | null
+          revised_scope_received_at: string | null
+          statement_of_loss_rcv: number | null
+          status: string | null
+          supplementer_id: string
+          sync_error: string | null
+          updated_at: string | null
+          updated_via: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          claim_number?: string | null
+          client_name: string
+          coc_bonus_points?: number | null
+          coc_completed_at?: string | null
+          coc_completion_days?: number | null
+          code_release_days?: number | null
+          code_released_at?: string | null
+          code_upgrade_amount?: number | null
+          collection_date?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          depreciation_amount?: number | null
+          depreciation_release_days?: number | null
+          depreciation_released_at?: string | null
+          external_claim_id?: string | null
+          external_job_id?: string | null
+          external_sync_status?: string | null
+          id?: string
+          insurance_carrier?: string | null
+          job_number?: string | null
+          last_modified_by?: string | null
+          last_synced_at?: string | null
+          money_collected?: number | null
+          notes?: string | null
+          original_rcv?: number | null
+          property_address?: string | null
+          rcv_increase?: number | null
+          revised_scope_days?: number | null
+          revised_scope_received_at?: string | null
+          statement_of_loss_rcv?: number | null
+          status?: string | null
+          supplementer_id: string
+          sync_error?: string | null
+          updated_at?: string | null
+          updated_via?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          claim_number?: string | null
+          client_name?: string
+          coc_bonus_points?: number | null
+          coc_completed_at?: string | null
+          coc_completion_days?: number | null
+          code_release_days?: number | null
+          code_released_at?: string | null
+          code_upgrade_amount?: number | null
+          collection_date?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          depreciation_amount?: number | null
+          depreciation_release_days?: number | null
+          depreciation_released_at?: string | null
+          external_claim_id?: string | null
+          external_job_id?: string | null
+          external_sync_status?: string | null
+          id?: string
+          insurance_carrier?: string | null
+          job_number?: string | null
+          last_modified_by?: string | null
+          last_synced_at?: string | null
+          money_collected?: number | null
+          notes?: string | null
+          original_rcv?: number | null
+          property_address?: string | null
+          rcv_increase?: number | null
+          revised_scope_days?: number | null
+          revised_scope_received_at?: string | null
+          statement_of_loss_rcv?: number | null
+          status?: string | null
+          supplementer_id?: string
+          sync_error?: string | null
+          updated_at?: string | null
+          updated_via?: string | null
+        }
+        Relationships: []
+      }
+      supplementer_metrics: {
+        Row: {
+          avg_coc_completion_days: number | null
+          avg_code_release_days: number | null
+          avg_depreciation_release_days: number | null
+          avg_revised_scope_days: number | null
+          coc_bonus_points: number | null
+          collection_rate: number | null
+          created_at: string | null
+          display_name: string | null
+          efficiency_score: number | null
+          id: string
+          last_weekly_reset: string | null
+          money_collected_this_week: number | null
+          points: number | null
+          rcv_increased_this_week: number | null
+          supplements_this_week: number | null
+          total_money_collected: number | null
+          total_rcv_increased: number | null
+          total_supplements_processed: number | null
+          updated_at: string | null
+          user_id: string
+          yearly_goal: number | null
+        }
+        Insert: {
+          avg_coc_completion_days?: number | null
+          avg_code_release_days?: number | null
+          avg_depreciation_release_days?: number | null
+          avg_revised_scope_days?: number | null
+          coc_bonus_points?: number | null
+          collection_rate?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          efficiency_score?: number | null
+          id?: string
+          last_weekly_reset?: string | null
+          money_collected_this_week?: number | null
+          points?: number | null
+          rcv_increased_this_week?: number | null
+          supplements_this_week?: number | null
+          total_money_collected?: number | null
+          total_rcv_increased?: number | null
+          total_supplements_processed?: number | null
+          updated_at?: string | null
+          user_id: string
+          yearly_goal?: number | null
+        }
+        Update: {
+          avg_coc_completion_days?: number | null
+          avg_code_release_days?: number | null
+          avg_depreciation_release_days?: number | null
+          avg_revised_scope_days?: number | null
+          coc_bonus_points?: number | null
+          collection_rate?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          efficiency_score?: number | null
+          id?: string
+          last_weekly_reset?: string | null
+          money_collected_this_week?: number | null
+          points?: number | null
+          rcv_increased_this_week?: number | null
+          supplements_this_week?: number | null
+          total_money_collected?: number | null
+          total_rcv_increased?: number | null
+          total_supplements_processed?: number | null
+          updated_at?: string | null
+          user_id?: string
+          yearly_goal?: number | null
+        }
+        Relationships: []
+      }
       user_announcement_reads: {
         Row: {
           announcement_id: string | null
@@ -1394,6 +1589,57 @@ export type Database = {
           points_earned?: number | null
           shifts_worked?: number | null
           updated_at?: string
+          user_id?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      weekly_supplementer_metrics: {
+        Row: {
+          avg_coc_days: number | null
+          avg_code_days: number | null
+          avg_depreciation_days: number | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          money_collected: number | null
+          points_earned: number | null
+          rcv_increased: number | null
+          supplements_completed: number | null
+          updated_at: string | null
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          avg_coc_days?: number | null
+          avg_code_days?: number | null
+          avg_depreciation_days?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          money_collected?: number | null
+          points_earned?: number | null
+          rcv_increased?: number | null
+          supplements_completed?: number | null
+          updated_at?: string | null
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          avg_coc_days?: number | null
+          avg_code_days?: number | null
+          avg_depreciation_days?: number | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          money_collected?: number | null
+          points_earned?: number | null
+          rcv_increased?: number | null
+          supplements_completed?: number | null
+          updated_at?: string | null
           user_id?: string
           week_end?: string
           week_start?: string
@@ -1672,7 +1918,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "canvasser"
+      app_role: "admin" | "user" | "canvasser" | "supplementer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1800,7 +2046,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "canvasser"],
+      app_role: ["admin", "user", "canvasser", "supplementer"],
     },
   },
 } as const

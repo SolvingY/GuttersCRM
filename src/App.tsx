@@ -40,6 +40,12 @@ import CanvasserContests from "./pages/canvasser/CanvasserContests";
 import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
 import CanvasserPit from "./pages/canvasser/CanvasserPit";
 import CanvasserPointsHistory from "./pages/canvasser/CanvasserPointsHistory";
+import SupplementerLayout from "./pages/supplementer/SupplementerLayout";
+import SupplementerDashboard from "./pages/supplementer/SupplementerDashboard";
+import SupplementerLeaderboard from "./pages/supplementer/SupplementerLeaderboard";
+import SupplementerJobsList from "./pages/supplementer/SupplementerJobsList";
+import SupplementerJobDetail from "./pages/supplementer/SupplementerJobDetail";
+import SupplementerSettings from "./pages/supplementer/SupplementerSettings";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import InternalAssessment from "./pages/dashboard/InternalAssessment";
 
@@ -96,6 +102,23 @@ const App = () => (
             <Route path="points-history" element={<CanvasserPointsHistory />} />
             <Route path="settings" element={<CanvasserSettings />} />
             <Route path="assessment" element={<InternalAssessment />} />
+          </Route>
+
+          {/* Supplementer Portal Routes */}
+          <Route
+            path="/supplementer"
+            element={
+              <ProtectedRoute requireSupplementer>
+                <SupplementerLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/supplementer/stats" replace />} />
+            <Route path="stats" element={<SupplementerDashboard />} />
+            <Route path="leaderboard" element={<SupplementerLeaderboard />} />
+            <Route path="jobs" element={<SupplementerJobsList />} />
+            <Route path="jobs/:id" element={<SupplementerJobDetail />} />
+            <Route path="settings" element={<SupplementerSettings />} />
           </Route>
 
           {/* Admin Portal Routes */}
