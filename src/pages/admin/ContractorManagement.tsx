@@ -171,18 +171,21 @@ export default function ContractorManagement() {
   }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps]);
 
   const filteredUsers = useMemo(() => {
+    let list: typeof users;
     switch (tab) {
       case "active":
-        // Active = not archived AND has assessment (fully onboarded)
-        return users.filter((u) => !u.isArchived && u.hasAssessment && !u.dnaPending);
+        list = users.filter((u) => !u.isArchived && u.hasAssessment && !u.dnaPending);
+        break;
       case "onboarding":
-        // Onboarding = not archived AND (no assessment OR assessment pending)
-        return users.filter((u) => !u.isArchived && (!u.hasAssessment || u.dnaPending));
+        list = users.filter((u) => !u.isArchived && (!u.hasAssessment || u.dnaPending));
+        break;
       case "archived":
-        return users.filter((u) => u.isArchived);
+        list = users.filter((u) => u.isArchived);
+        break;
       default:
-        return users;
+        list = users;
     }
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
   }, [users, tab]);
 
   const stats = useMemo(() => ({
