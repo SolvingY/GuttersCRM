@@ -6,6 +6,7 @@ import { GoalSettingModal } from '@/components/dashboard/GoalSettingModal';
 import { VictoryNotification } from '@/components/dashboard/VictoryNotification';
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { GuidedTour } from '@/components/dashboard/GuidedTour';
+import { DNAAssessmentPromptModal } from '@/components/dashboard/DNAAssessmentPromptModal';
 import { useAuth } from '@/hooks/useAuth';
 import nextGenLogo from '@/assets/next-gen-logo.png';
 
@@ -52,6 +53,7 @@ export default function DashboardLayout() {
       <WelcomeModal />
       <GuidedTour isOpen={showTour} onClose={() => setShowTour(false)} />
       <VictoryNotification />
+      <DNAAssessmentPromptModal assessmentRoute="/dashboard/assessment" />
     </div>
   );
 }

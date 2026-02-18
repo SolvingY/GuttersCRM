@@ -7,6 +7,7 @@ import { VictoryNotification } from "@/components/dashboard/VictoryNotification"
 import { CanvasserGoalModal } from "@/components/canvasser/CanvasserGoalModal";
 import { CanvasserWelcomeModal } from "@/components/canvasser/CanvasserWelcomeModal";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
+import { DNAAssessmentPromptModal } from "@/components/dashboard/DNAAssessmentPromptModal";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function CanvasserLayout() {
@@ -51,6 +52,7 @@ export default function CanvasserLayout() {
       <CanvasserGoalModal onGoalSet={handleGoalSet} />
       <CanvasserWelcomeModal />
       <GuidedTour isOpen={showTour} onClose={() => setShowTour(false)} />
+      <DNAAssessmentPromptModal assessmentRoute="/canvasser/assessment" />
     </div>
   );
 }

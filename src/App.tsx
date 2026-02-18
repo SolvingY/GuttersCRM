@@ -41,6 +41,7 @@ import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
 import CanvasserPit from "./pages/canvasser/CanvasserPit";
 import CanvasserPointsHistory from "./pages/canvasser/CanvasserPointsHistory";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import InternalAssessment from "./pages/dashboard/InternalAssessment";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="my-leads" element={<MyLeads />} />
             <Route path="leads/:id" element={<LeadDetailView />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="assessment" element={<InternalAssessment />} />
           </Route>
 
           {/* Canvasser Portal Routes */}
@@ -93,6 +95,7 @@ const App = () => (
             <Route path="pit" element={<CanvasserPit />} />
             <Route path="points-history" element={<CanvasserPointsHistory />} />
             <Route path="settings" element={<CanvasserSettings />} />
+            <Route path="assessment" element={<InternalAssessment />} />
           </Route>
 
           {/* Admin Portal Routes */}

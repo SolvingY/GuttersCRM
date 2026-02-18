@@ -355,6 +355,39 @@ export type Database = {
         }
         Relationships: []
       }
+      contractor_files: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_canvasser_metric_entries: {
         Row: {
           conversations_had_delta: number | null
@@ -915,6 +948,7 @@ export type Database = {
           archived_by: string | null
           avatar_url: string | null
           created_at: string
+          dna_assessment_pending: boolean | null
           full_name: string | null
           hidden_from_leaderboard: boolean | null
           id: string
@@ -928,6 +962,7 @@ export type Database = {
           archived_by?: string | null
           avatar_url?: string | null
           created_at?: string
+          dna_assessment_pending?: boolean | null
           full_name?: string | null
           hidden_from_leaderboard?: boolean | null
           id: string
@@ -941,6 +976,7 @@ export type Database = {
           archived_by?: string | null
           avatar_url?: string | null
           created_at?: string
+          dna_assessment_pending?: boolean | null
           full_name?: string | null
           hidden_from_leaderboard?: boolean | null
           id?: string
