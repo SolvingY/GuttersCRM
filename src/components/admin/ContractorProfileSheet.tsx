@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -121,18 +121,22 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     },
   });
 
-  // Load admin notes once hire app loads
-  if (hireApp && !notesLoaded) {
-    setAdminNotes(hireApp.admin_notes || "");
-    setNotesLoaded(true);
-  }
+  // Load admin notes when hire app data arrives
+  useEffect(() => {
+    if (hireApp && !notesLoaded) {
+      setAdminNotes(hireApp.admin_notes || "");
+      setNotesLoaded(true);
+    }
+  }, [hireApp, notesLoaded]);
 
-  // Reset notes when user changes
-  if (!open && notesLoaded) {
-    setNotesLoaded(false);
-    setAdminNotes("");
-    setDnaOpen(false);
-  }
+  // Reset state when sheet closes
+  useEffect(() => {
+    if (!open) {
+      setNotesLoaded(false);
+      setAdminNotes("");
+      setDnaOpen(false);
+    }
+  }, [open]);
 
   const saveNotesMutation = useMutation({
     mutationFn: async (notes: string) => {
