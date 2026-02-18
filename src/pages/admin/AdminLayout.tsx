@@ -65,7 +65,8 @@ export default function AdminLayout() {
   // Track login on mount — sessionStorage guard prevents duplicate counts on auth refresh
   useEffect(() => {
     if (!user) return;
-    const sessionKey = `login_counted_${user.id}`;
+    const today = new Date().toISOString().slice(0, 10);
+    const sessionKey = `login_counted_${user.id}_${today}`;
     if (sessionStorage.getItem(sessionKey)) return;
     sessionStorage.setItem(sessionKey, '1');
     void supabase.rpc('increment_login_count', { uid: user.id });
