@@ -2,6 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface CommercialQuestionsProps {
@@ -12,6 +13,8 @@ interface CommercialQuestionsProps {
 const buildingTypes = ["Office Building", "Warehouse", "Retail Store", "Industrial Facility", "Multi-Family Complex", "Other"];
 const sqFootageOptions = ["Less than 5,000 sq ft", "5,000 - 10,000 sq ft", "10,000 - 25,000 sq ft", "25,000 - 50,000 sq ft", "50,000+ sq ft"];
 const roofTypes = ["TPO (Thermoplastic Polyolefin)", "EPDM (Rubber)", "Modified Bitumen", "Built-Up Roof (BUR)", "Metal", "Shingle", "Don't Know"];
+const jobTypeOptions = ["Retail (Out of Pocket)", "Insurance Claim"];
+const roofAgeOptions = ["Less than 5 years", "5-10 years", "10-15 years", "15-20 years", "20+ years", "Don't Know"];
 const needOptions = ["New Roof Installation", "Roof Replacement", "Roof Repair", "Inspection/Assessment", "Maintenance Plan"];
 const timelineOptions = ["Urgent (within 1 week)", "Soon (1-4 weeks)", "Flexible (1-3 months)", "Planning ahead (3+ months)"];
 
@@ -59,6 +62,66 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
             {roofTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Retail or Insurance */}
+      <div className="space-y-2">
+        <Label>Retail or Insurance Job?</Label>
+        <div className="flex gap-3">
+          {jobTypeOptions.map((opt) => (
+            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.jobType === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="jobType" className="sr-only" checked={data.jobType === opt} onChange={() => update("jobType", opt)} />
+              {opt}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Active Insurance Claim — shown when Insurance Claim selected */}
+      {data.jobType === "Insurance Claim" && (
+        <div className="space-y-2">
+          <Label>Do you have an active insurance claim?</Label>
+          <div className="flex gap-3">
+            {["Yes", "No"].map((opt) => (
+              <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.activeClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+                <input type="radio" name="activeClaim" className="sr-only" checked={data.activeClaim === opt} onChange={() => update("activeClaim", opt)} />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Insurance Company — shown when Insurance Claim selected */}
+      {data.jobType === "Insurance Claim" && (
+        <div className="space-y-2">
+          <Label>Insurance Company</Label>
+          <Input placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
+        </div>
+      )}
+
+      {/* Roof Age */}
+      <div className="space-y-2">
+        <Label>Roof Age</Label>
+        <Select value={data.roofAge || ""} onValueChange={(v) => update("roofAge", v)}>
+          <SelectTrigger><SelectValue placeholder="Select roof age" /></SelectTrigger>
+          <SelectContent>
+            {roofAgeOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Routine Maintenance */}
+      <div className="space-y-2">
+        <Label>Has routine maintenance been done on this roof?</Label>
+        <div className="flex gap-3">
+          {["Yes", "No", "Not Sure"].map((opt) => (
+            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.routineMaintenance === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="routineMaintenance" className="sr-only" checked={data.routineMaintenance === opt} onChange={() => update("routineMaintenance", opt)} />
+              {opt}
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-2">
