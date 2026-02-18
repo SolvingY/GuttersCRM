@@ -23,7 +23,10 @@ export default function CanvasserLayout() {
     const sessionKey = `login_counted_${user.id}_${today}`;
     if (sessionStorage.getItem(sessionKey)) return;
     sessionStorage.setItem(sessionKey, '1');
-    void supabase.rpc('increment_login_count', { uid: user.id });
+    supabase.rpc('increment_login_count', { uid: user.id }).then(({ error }) => {
+      if (error) console.error('[LoginTrack] RPC error:', error);
+      else console.log('[LoginTrack] Login count incremented for', user.id);
+    });
   }, [user?.id]);
 
   // Check if user has completed tour

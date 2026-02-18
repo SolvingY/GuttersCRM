@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,6 +91,18 @@ export default function ContractorManagement() {
         .eq("status", "hired");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: allReviews = [] } = useQuery({
+    queryKey: ["cm-all-reviews"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_reviews")
+        .select("*")
+        .order("review_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -217,6 +230,34 @@ export default function ContractorManagement() {
     return { avg, distribution, members, total: members.length, avgCategory };
   }, [users]);
 
+  // Quarterly review stats
+  const reviewStats = useMemo(() => {
+    if (allReviews.length === 0) return null;
+    const ratings = allReviews.filter((r) => r.overall_rating != null).map((r) => r.overall_rating as number);
+    const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+
+    // Group by quarter
+    const quarterMap = new Map<string, { total: number; count: number }>();
+    allReviews.forEach((r) => {
+      if (r.overall_rating == null) return;
+      const existing = quarterMap.get(r.quarter) || { total: 0, count: 0 };
+      existing.total += r.overall_rating;
+      existing.count += 1;
+      quarterMap.set(r.quarter, existing);
+    });
+    const quarters = Array.from(quarterMap.entries())
+      .map(([q, { total, count }]) => ({ quarter: q, count, avg: total / count }))
+      .sort((a, b) => b.quarter.localeCompare(a.quarter));
+
+    // Latest review per user
+    const userLatest = new Map<string, typeof allReviews[0]>();
+    allReviews.forEach((r) => {
+      if (!userLatest.has(r.user_id)) userLatest.set(r.user_id, r);
+    });
+
+    return { avg, total: ratings.length, quarters, userLatest: Array.from(userLatest.values()) };
+  }, [allReviews]);
+
   const handleOpenProfile = (user: any) => {
     setSelectedUser(user);
     setSheetOpen(true);
@@ -278,7 +319,7 @@ export default function ContractorManagement() {
 
       {/* DNA Heat Map — Active tab only */}
       {tab === "active" && teamDNAStats && (
-        <Collapsible defaultOpen>
+        <Collapsible>
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors">
               <div className="flex items-center gap-3">
@@ -361,7 +402,82 @@ export default function ContractorManagement() {
         </Collapsible>
       )}
 
-      {/* User cards */}
+      {/* Quarterly Reviews — Active tab only */}
+      {tab === "active" && reviewStats && (
+        <Collapsible>
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 rounded-full bg-primary" />
+                <div className="text-left">
+                  <p className="font-heading text-sm uppercase tracking-wide">Quarterly Reviews</p>
+                  <p className="text-xs text-muted-foreground">
+                    Avg Rating: <span className="font-bold text-foreground">{reviewStats.avg.toFixed(1)}/5</span>
+                    {" — "}{reviewStats.total} review{reviewStats.total !== 1 ? "s" : ""} total
+                  </p>
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+
+                {/* Quarter breakdown */}
+                <div>
+                  <p className="text-xs font-heading uppercase text-muted-foreground mb-2">By Quarter</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {reviewStats.quarters.map(({ quarter, count, avg }) => (
+                      <div key={quarter} className="bg-muted/40 rounded-md p-3 text-center">
+                        <p className="text-xs font-heading uppercase text-muted-foreground">{quarter}</p>
+                        <div className="flex items-center justify-center gap-1 mt-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3.5 h-3.5 ${s <= Math.round(avg) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-sm font-heading font-bold mt-0.5">{avg.toFixed(1)}/5</p>
+                        <p className="text-[10px] text-muted-foreground">{count} review{count !== 1 ? "s" : ""}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Member latest ratings */}
+                <div>
+                  <p className="text-xs font-heading uppercase text-muted-foreground mb-2">Latest Member Ratings</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {reviewStats.userLatest.map((review) => {
+                      const member = users.find((u) => u.id === review.user_id);
+                      return (
+                        <div
+                          key={review.id}
+                          className="bg-muted/40 rounded-md p-2 text-center cursor-pointer hover:bg-muted/60 transition-colors"
+                          onClick={() => member && handleOpenProfile(member)}
+                        >
+                          <p className="text-[10px] font-bold truncate leading-tight">{member?.name || "Unknown"}</p>
+                          <div className="flex items-center justify-center gap-0.5 mt-1">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-3 h-3 ${s <= (review.overall_rating ?? 0) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{review.quarter}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
       {filteredUsers.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
