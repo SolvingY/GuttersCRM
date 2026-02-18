@@ -16,9 +16,12 @@ export default function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
-  // Track login on mount
+  // Track login on mount — sessionStorage guard prevents duplicate counts on auth refresh
   useEffect(() => {
     if (!user) return;
+    const sessionKey = `login_counted_${user.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, '1');
     void supabase.rpc('increment_login_count', { uid: user.id });
   }, [user?.id]);
 
