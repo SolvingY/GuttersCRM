@@ -753,6 +753,48 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_reviews: {
+        Row: {
+          action_items: string | null
+          created_at: string
+          goals_set: string | null
+          id: string
+          overall_rating: number | null
+          quarter: string
+          review_date: string
+          review_notes: string | null
+          reviewed_by: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_items?: string | null
+          created_at?: string
+          goals_set?: string | null
+          id?: string
+          overall_rating?: number | null
+          quarter: string
+          review_date?: string
+          review_notes?: string | null
+          reviewed_by: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_items?: string | null
+          created_at?: string
+          goals_set?: string | null
+          id?: string
+          overall_rating?: number | null
+          quarter?: string
+          review_date?: string
+          review_notes?: string | null
+          reviewed_by?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pit_point_transactions: {
         Row: {
           balance_after: number

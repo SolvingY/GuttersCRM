@@ -10,8 +10,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts";
 import {
   dnaQuestions,
   dnaCategories,
@@ -37,6 +41,9 @@ import {
   Save,
   Loader2,
   ClipboardList,
+  TrendingUp,
+  PlusCircle,
+  ClipboardCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -47,6 +54,12 @@ const roleColors: Record<string, string> = {
   admin: "bg-accent text-accent-foreground",
   user: "bg-primary text-primary-foreground",
   canvasser: "bg-green-600 text-white",
+};
+
+const getCurrentQuarter = () => {
+  const now = new Date();
+  const q = Math.ceil((now.getMonth() + 1) / 3);
+  return `Q${q} ${now.getFullYear()}`;
 };
 
 interface ContractorUser {
@@ -83,6 +96,40 @@ interface Props {
   onAssignAssessment: (userId: string) => void;
 }
 
+interface ReviewForm {
+  quarter: string;
+  overall_rating: number;
+  review_notes: string;
+  goals_set: string;
+  action_items: string;
+}
+
+const defaultReviewForm = (): ReviewForm => ({
+  quarter: getCurrentQuarter(),
+  overall_rating: 3,
+  review_notes: "",
+  goals_set: "",
+  action_items: "",
+});
+
+const chartConfig = {
+  avg: { label: "Team Avg DNA Score", color: "hsl(var(--primary))" },
+};
+
+function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`w-5 h-5 ${i < value ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"} ${onChange ? "cursor-pointer hover:text-yellow-400" : ""}`}
+          onClick={() => onChange?.(i + 1)}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -91,6 +138,9 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
   const [adminNotes, setAdminNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewForm, setReviewForm] = useState<ReviewForm>(defaultReviewForm());
+  const [savingReview, setSavingReview] = useState(false);
 
   // Fetch full DNA assessment data for this user
   const { data: hireApp } = useQuery({
@@ -105,6 +155,36 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch all hired team members for DNA trend chart
+  const { data: allHiredApps = [] } = useQuery({
+    queryKey: ["team-trend-apps"],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("job_applications")
+        .select("dna_score, hired_at, full_name, created_user_id")
+        .eq("status", "hired")
+        .not("created_user_id", "is", null)
+        .not("dna_score", "is", null)
+        .order("hired_at", { ascending: true });
+      return data ?? [];
+    },
+  });
+
+  // Fetch performance reviews for this user
+  const { data: reviews = [], refetch: refetchReviews } = useQuery({
+    queryKey: ["performance-reviews", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("performance_reviews" as any)
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("review_date", { ascending: false });
+      return (data ?? []) as any[];
     },
   });
 
@@ -137,8 +217,23 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
       setNotesLoaded(false);
       setAdminNotes("");
       setDnaOpen(false);
+      setShowReviewForm(false);
+      setReviewForm(defaultReviewForm());
     }
   }, [open]);
+
+  // Compute DNA trend data
+  const trendData = allHiredApps
+    .filter((a) => a.hired_at && a.dna_score != null)
+    .map((entry, idx, arr) => {
+      const runningScores = arr.slice(0, idx + 1).map((e) => Number(e.dna_score));
+      const avg = runningScores.reduce((s, v) => s + v, 0) / runningScores.length;
+      return {
+        date: format(new Date(entry.hired_at!), "MMM ''yy"),
+        avg: Math.round(avg * 10) / 10,
+        memberName: entry.full_name,
+      };
+    });
 
   const saveNotesMutation = useMutation({
     mutationFn: async (notes: string) => {
@@ -215,6 +310,42 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     a.click();
   };
 
+  const handleSaveReview = async () => {
+    if (!user) return;
+    setSavingReview(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("performance_reviews" as any).insert({
+        user_id: user.id,
+        reviewed_by: authUser?.id,
+        quarter: reviewForm.quarter,
+        overall_rating: reviewForm.overall_rating,
+        review_notes: reviewForm.review_notes || null,
+        goals_set: reviewForm.goals_set || null,
+        action_items: reviewForm.action_items || null,
+      });
+      if (error) throw error;
+      refetchReviews();
+      setShowReviewForm(false);
+      setReviewForm(defaultReviewForm());
+      toast({ title: "Review saved" });
+    } catch (err: any) {
+      toast({ title: "Failed to save review", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    const { error } = await supabase.from("performance_reviews" as any).delete().eq("id", reviewId);
+    if (error) {
+      toast({ title: "Failed to delete review", variant: "destructive" });
+      return;
+    }
+    refetchReviews();
+    toast({ title: "Review deleted" });
+  };
+
   if (!user) return null;
 
   const answers = hireApp ? (hireApp.dna_answers as Record<string, "A" | "B">) : {};
@@ -223,6 +354,9 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
   const dnaScore = hireApp?.dna_score ?? null;
   const scorePercent = dnaScore !== null ? Math.round((dnaScore / MAX_SCORE) * 100) : 0;
   const stars = hireApp ? getAlignmentStars(hireApp.alignment_category as AlignmentCategory) : 0;
+
+  // Current member's score for reference line on chart
+  const memberDnaScore = dnaScore;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -454,6 +588,228 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                     Assign DNA Assessment
                   </Button>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Team DNA Score Trend Chart */}
+          {trendData.length >= 2 && (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="bg-muted/30 px-4 py-3">
+                <h3 className="font-heading uppercase text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Team DNA Score Trend
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Running team average as members completed assessments
+                </p>
+              </div>
+              <div className="p-4">
+                <ChartContainer config={chartConfig} className="h-[180px] w-full">
+                  <LineChart data={trendData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={[0, MAX_SCORE]}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value, name) => [
+                            <span key="val" className="font-mono font-bold">{value}/{MAX_SCORE}</span>,
+                            "Team Avg",
+                          ]}
+                          labelFormatter={(label, payload) => {
+                            const item = payload?.[0]?.payload;
+                            return item ? `${item.memberName} joined` : label;
+                          }}
+                        />
+                      }
+                    />
+                    {memberDnaScore !== null && (
+                      <ReferenceLine
+                        y={memberDnaScore}
+                        stroke="hsl(var(--accent))"
+                        strokeDasharray="4 2"
+                        label={{ value: `${user.name.split(" ")[0]}: ${memberDnaScore}`, position: "insideTopRight", fontSize: 9, fill: "hsl(var(--accent))" }}
+                      />
+                    )}
+                    <Line
+                      type="monotone"
+                      dataKey="avg"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "hsl(var(--primary))" }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>{trendData.length} data points</span>
+                  <span>
+                    Latest avg: <strong className="text-foreground">{trendData[trendData.length - 1]?.avg}/{MAX_SCORE}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quarterly Performance Reviews */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
+              <h3 className="font-heading uppercase text-sm flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4" />
+                Quarterly Performance Reviews
+              </h3>
+              {!showReviewForm && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1 text-xs"
+                  onClick={() => setShowReviewForm(true)}
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  Add Review
+                </Button>
+              )}
+            </div>
+
+            {/* Inline Add Review Form */}
+            {showReviewForm && (
+              <div className="p-4 border-b border-border bg-muted/10 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Quarter</Label>
+                    <Input
+                      value={reviewForm.quarter}
+                      onChange={(e) => setReviewForm((f) => ({ ...f, quarter: e.target.value }))}
+                      placeholder="Q1 2026"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Overall Rating</Label>
+                    <StarRating
+                      value={reviewForm.overall_rating}
+                      onChange={(v) => setReviewForm((f) => ({ ...f, overall_rating: v }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Performance Notes</Label>
+                  <Textarea
+                    value={reviewForm.review_notes}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, review_notes: e.target.value }))}
+                    placeholder="How did this team member perform this quarter?"
+                    rows={3}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Goals Set</Label>
+                  <Textarea
+                    value={reviewForm.goals_set}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, goals_set: e.target.value }))}
+                    placeholder="Goals for next quarter..."
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Action Items</Label>
+                  <Textarea
+                    value={reviewForm.action_items}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, action_items: e.target.value }))}
+                    placeholder="Follow-up items and action steps..."
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveReview} disabled={savingReview || !reviewForm.quarter}>
+                    {savingReview ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                    Save Review
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowReviewForm(false);
+                      setReviewForm(defaultReviewForm());
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Review History */}
+            {reviews.length === 0 && !showReviewForm ? (
+              <div className="p-6 text-center">
+                <ClipboardCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No reviews on file yet.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => setShowReviewForm(true)}
+                >
+                  <PlusCircle className="w-3.5 h-3.5 mr-1" />
+                  Add First Review
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {reviews.map((review: any) => (
+                  <div key={review.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-heading font-bold text-sm">{review.quarter}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(review.review_date), "MMM d, yyyy")}
+                        </span>
+                        {review.overall_rating && (
+                          <StarRating value={review.overall_rating} />
+                        )}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteReview(review.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    {review.review_notes && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Notes</p>
+                        <p className="text-sm">{review.review_notes}</p>
+                      </div>
+                    )}
+                    {review.goals_set && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Goals Set</p>
+                        <p className="text-sm">{review.goals_set}</p>
+                      </div>
+                    )}
+                    {review.action_items && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Action Items</p>
+                        <p className="text-sm">{review.action_items}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
