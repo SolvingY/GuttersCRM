@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { getScoreColor } from "@/lib/dnaAssessment";
 import { format } from "date-fns";
-import { ClipboardList, ExternalLink, UserCheck, Users } from "lucide-react";
+import { ChevronDown, ClipboardList, ExternalLink, UserCheck, Users } from "lucide-react";
 import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
 
 type TabValue = "active" | "onboarding" | "archived";
@@ -20,6 +21,21 @@ const roleColors: Record<string, string> = {
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+
+function getHeatTileClass(score: number): string {
+  if (score >= 24) return "bg-green-600";
+  if (score >= 18) return "bg-yellow-500";
+  if (score >= 12) return "bg-orange-500";
+  return "bg-red-600";
+}
+
+const DNA_CATEGORIES = [
+  { key: "excellent", label: "Excellent Fit", barClass: "bg-green-600", range: "24–30" },
+  { key: "strong",    label: "Strong Fit",    barClass: "bg-yellow-500", range: "18–23" },
+  { key: "moderate",  label: "Moderate Fit",  barClass: "bg-orange-500", range: "12–17" },
+  { key: "marginal",  label: "Marginal Fit",  barClass: "bg-red-400",    range: "6–11"  },
+  { key: "low",       label: "Low Fit",       barClass: "bg-red-700",    range: "0–5"   },
+] as const;
 
 export default function ContractorManagement() {
   const { toast } = useToast();
@@ -175,6 +191,29 @@ export default function ContractorManagement() {
     archived: users.filter((u) => u.isArchived).length,
   }), [users]);
 
+  // Team DNA heat map stats (Active tab only)
+  const teamDNAStats = useMemo(() => {
+    const members = users.filter(
+      (u) => !u.isArchived && u.hasAssessment && !u.dnaPending && u.dnaScore !== null
+    );
+    if (members.length === 0) return null;
+    const scores = members.map((u) => u.dnaScore as number);
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const distribution = {
+      excellent: members.filter((u) => (u.dnaScore ?? 0) >= 24).length,
+      strong: members.filter((u) => (u.dnaScore ?? 0) >= 18 && (u.dnaScore ?? 0) < 24).length,
+      moderate: members.filter((u) => (u.dnaScore ?? 0) >= 12 && (u.dnaScore ?? 0) < 18).length,
+      marginal: members.filter((u) => (u.dnaScore ?? 0) >= 6 && (u.dnaScore ?? 0) < 12).length,
+      low: members.filter((u) => (u.dnaScore ?? 0) < 6).length,
+    };
+    const avgCategory =
+      avg >= 24 ? "Excellent Fit" :
+      avg >= 18 ? "Strong Fit" :
+      avg >= 12 ? "Moderate Fit" :
+      avg >= 6  ? "Marginal Fit" : "Low Fit";
+    return { avg, distribution, members, total: members.length, avgCategory };
+  }, [users]);
+
   const handleOpenProfile = (user: any) => {
     setSelectedUser(user);
     setSheetOpen(true);
@@ -233,6 +272,91 @@ export default function ContractorManagement() {
         {tab === "onboarding" && "Team members who haven't yet completed their DNA assessment."}
         {tab === "archived" && "Former team members no longer active."}
       </p>
+
+      {/* DNA Heat Map — Active tab only */}
+      {tab === "active" && teamDNAStats && (
+        <Collapsible defaultOpen>
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 rounded-full bg-accent" />
+                <div className="text-left">
+                  <p className="font-heading text-sm uppercase tracking-wide">Team DNA Intelligence</p>
+                  <p className="text-xs text-muted-foreground">
+                    Avg Score: <span className="font-bold text-foreground">{teamDNAStats.avg.toFixed(1)}/30</span>
+                    {" — "}{teamDNAStats.avgCategory} &bull; {teamDNAStats.total} assessed
+                  </p>
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+
+                {/* Heat tile grid */}
+                <div>
+                  <p className="text-xs font-heading uppercase text-muted-foreground mb-2">Team Score Map</p>
+                  <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
+                    {teamDNAStats.members.map((member) => (
+                      <button
+                        key={member.id}
+                        onClick={() => handleOpenProfile(member)}
+                        title={`${member.name}: ${member.dnaScore}/30`}
+                        className={`rounded-md p-2 text-white text-center cursor-pointer transition-opacity hover:opacity-80 ${getHeatTileClass(member.dnaScore as number)}`}
+                      >
+                        <p className="text-[10px] font-bold truncate leading-tight">{member.name.split(" ")[0]}</p>
+                        <p className="text-base font-heading font-black leading-tight">{member.dnaScore}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stacked distribution bar */}
+                <div>
+                  <p className="text-xs font-heading uppercase text-muted-foreground mb-1.5">Score Distribution</p>
+                  <div className="flex h-5 rounded-full overflow-hidden w-full gap-px">
+                    {DNA_CATEGORIES.map(({ key, barClass }) => {
+                      const count = teamDNAStats.distribution[key];
+                      const pct = teamDNAStats.total > 0 ? (count / teamDNAStats.total) * 100 : 0;
+                      if (pct === 0) return null;
+                      return (
+                        <div
+                          key={key}
+                          className={`${barClass} flex items-center justify-center`}
+                          style={{ width: `${pct}%` }}
+                          title={`${count} member${count !== 1 ? "s" : ""} — ${pct.toFixed(0)}%`}
+                        >
+                          {pct >= 12 && (
+                            <span className="text-[10px] font-bold text-white">{count}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Category breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {DNA_CATEGORIES.map(({ key, label, barClass, range }) => {
+                    const count = teamDNAStats.distribution[key];
+                    const pct = teamDNAStats.total > 0 ? Math.round((count / teamDNAStats.total) * 100) : 0;
+                    return (
+                      <div key={key} className="text-center bg-muted/40 rounded-md p-2">
+                        <div className={`w-3 h-3 rounded-full ${barClass} mx-auto mb-1`} />
+                        <p className="text-lg font-heading font-black leading-none">{count}</p>
+                        <p className="text-[10px] font-heading uppercase text-muted-foreground mt-0.5">{label}</p>
+                        <p className="text-[10px] text-muted-foreground">{range} pts</p>
+                        <p className="text-[10px] text-muted-foreground">{pct}%</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
 
       {/* User cards */}
       {filteredUsers.length === 0 ? (
