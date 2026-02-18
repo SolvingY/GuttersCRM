@@ -1,15 +1,16 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Star, Copy, ExternalLink, TrendingUp, DollarSign, Target } from "lucide-react";
-import { format, subDays } from "date-fns";
 import { getScoreColor } from "@/lib/dnaAssessment";
+import { format } from "date-fns";
+import { ClipboardList, ExternalLink, UserCheck, Users } from "lucide-react";
+import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
 
-type TabValue = "all" | "active" | "onboarding" | "archived";
+type TabValue = "active" | "onboarding" | "archived";
 
 const roleColors: Record<string, string> = {
   admin: "bg-accent text-accent-foreground",
@@ -22,7 +23,10 @@ const formatCurrency = (v: number) =>
 
 export default function ContractorManagement() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabValue>("active");
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Fetch all data in parallel
   const { data: profiles = [] } = useQuery({
@@ -73,6 +77,20 @@ export default function ContractorManagement() {
     },
   });
 
+  const assignAssessmentMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ dna_assessment_pending: true } as any)
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cm-profiles"] });
+      toast({ title: "DNA Assessment assigned", description: "The user will be prompted on their next login." });
+    },
+  });
+
   // Build enriched user list
   const users = useMemo(() => {
     const rolesMap = new Map<string, string[]>();
@@ -98,6 +116,7 @@ export default function ContractorManagement() {
       const sales = salesMap.get(p.id);
       const canvasser = canvasserMap.get(p.id);
       const hireApp = hiredMap.get(p.id);
+      const dnaPending = (p as any).dna_assessment_pending ?? false;
 
       return {
         id: p.id,
@@ -117,7 +136,6 @@ export default function ContractorManagement() {
         leadsSet: canvasser?.leads_set ?? 0,
         leadsClosed: canvasser?.leads_closed ?? 0,
         canvasserPoints: canvasser?.points ?? 0,
-        canvasserIncome: canvasser?.income ?? 0,
         // Hire info
         hireDate: hireApp?.hired_at,
         startDate: hireApp?.start_date,
@@ -126,118 +144,132 @@ export default function ContractorManagement() {
         hasAssessment: !!hireApp,
         hasSalesMetrics: !!sales,
         hasCanvasserMetrics: !!canvasser,
+        dnaPending,
       };
     });
   }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps]);
 
-  const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
-
   const filteredUsers = useMemo(() => {
     switch (tab) {
       case "active":
-        return users.filter((u) => !u.isArchived);
+        // Active = not archived AND has assessment (fully onboarded)
+        return users.filter((u) => !u.isArchived && u.hasAssessment && !u.dnaPending);
+      case "onboarding":
+        // Onboarding = not archived AND (no assessment OR assessment pending)
+        return users.filter((u) => !u.isArchived && (!u.hasAssessment || u.dnaPending));
       case "archived":
         return users.filter((u) => u.isArchived);
-      case "onboarding":
-        return users.filter((u) => !u.isArchived && u.hireDate && u.hireDate >= thirtyDaysAgo);
       default:
         return users;
     }
-  }, [users, tab, thirtyDaysAgo]);
-
-  const copyAssessmentLink = () => {
-    const url = `${window.location.origin}/apply`;
-    navigator.clipboard.writeText(url);
-    toast({ title: "DNA Assessment link copied!" });
-  };
+  }, [users, tab]);
 
   const stats = useMemo(() => ({
-    total: users.length,
-    active: users.filter((u) => !u.isArchived).length,
-    onboarding: users.filter((u) => !u.isArchived && u.hireDate && u.hireDate >= thirtyDaysAgo).length,
+    active: users.filter((u) => !u.isArchived && u.hasAssessment && !u.dnaPending).length,
+    onboarding: users.filter((u) => !u.isArchived && (!u.hasAssessment || u.dnaPending)).length,
     archived: users.filter((u) => u.isArchived).length,
-  }), [users, thirtyDaysAgo]);
+  }), [users]);
+
+  const handleOpenProfile = (user: any) => {
+    setSelectedUser(user);
+    setSheetOpen(true);
+  };
+
+  const handleAssignAssessment = (userId: string) => {
+    assignAssessmentMutation.mutate(userId);
+    // Update local selected user state too
+    if (selectedUser?.id === userId) {
+      setSelectedUser((prev: any) => prev ? { ...prev, dnaPending: true } : prev);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-heading uppercase">Contractor Management</h1>
-          <p className="text-sm text-muted-foreground">Team profiles, performance & onboarding CRM</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-heading uppercase">Contractor Management</h1>
+        <p className="text-sm text-muted-foreground">Team profiles, performance & onboarding CRM</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-lg p-4 text-center">
-          <p className="text-2xl font-heading">{stats.total}</p>
-          <p className="text-xs text-muted-foreground uppercase">Total</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 text-center">
-          <p className="text-2xl font-heading">{stats.active}</p>
-          <p className="text-xs text-muted-foreground uppercase">Active</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 text-center">
-          <p className="text-2xl font-heading">{stats.onboarding}</p>
-          <p className="text-xs text-muted-foreground uppercase">Onboarding</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 text-center">
-          <p className="text-2xl font-heading">{stats.archived}</p>
-          <p className="text-xs text-muted-foreground uppercase">Archived</p>
-        </div>
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Active", value: stats.active, color: "text-green-600" },
+          { label: "Onboarding", value: stats.onboarding, color: "text-yellow-600" },
+          { label: "Archived", value: stats.archived, color: "text-muted-foreground" },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-card border border-border rounded-lg p-4 text-center">
+            <p className={`text-2xl font-heading ${color}`}>{value}</p>
+            <p className="text-xs text-muted-foreground uppercase">{label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>
         <TabsList>
-          <TabsTrigger value="all">All Team</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
+          <TabsTrigger value="active">
+            <UserCheck className="w-3.5 h-3.5 mr-1.5" />
+            Active ({stats.active})
+          </TabsTrigger>
+          <TabsTrigger value="onboarding">
+            <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
+            Onboarding ({stats.onboarding})
+          </TabsTrigger>
+          <TabsTrigger value="archived">
+            <Users className="w-3.5 h-3.5 mr-1.5" />
+            Archived ({stats.archived})
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
+      {/* Tab description */}
+      <p className="text-sm text-muted-foreground -mt-2">
+        {tab === "active" && "Team members with accounts and completed DNA assessments."}
+        {tab === "onboarding" && "Team members who haven't yet completed their DNA assessment."}
+        {tab === "archived" && "Former team members no longer active."}
+      </p>
+
       {/* User cards */}
       {filteredUsers.length === 0 ? (
-        <p className="text-muted-foreground text-center py-8">No team members found in this category.</p>
+        <div className="text-center py-16 text-muted-foreground">
+          <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <p>No team members in this category.</p>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {filteredUsers.map((user) => (
             <div key={user.id} className="bg-card border border-border rounded-lg p-5 space-y-3">
               {/* Header */}
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-heading text-lg uppercase">{user.name}</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-heading text-lg uppercase truncate">{user.name}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {user.roles.map((role) => (
                       <Badge key={role} className={`text-xs ${roleColors[role] || "bg-muted"}`}>
                         {role}
                       </Badge>
                     ))}
-                    {user.salesRank && (
-                      <Badge variant="outline" className="text-xs">{user.salesRank}</Badge>
-                    )}
-                    {user.canvasserRank && (
-                      <Badge variant="outline" className="text-xs">{user.canvasserRank}</Badge>
-                    )}
-                    {user.isArchived && (
-                      <Badge variant="secondary" className="text-xs">Archived</Badge>
+                    {user.salesRank && <Badge variant="outline" className="text-xs">{user.salesRank}</Badge>}
+                    {user.canvasserRank && <Badge variant="outline" className="text-xs">{user.canvasserRank}</Badge>}
+                    {user.isArchived && <Badge variant="secondary" className="text-xs">Archived</Badge>}
+                    {user.dnaPending && (
+                      <Badge className="text-xs bg-yellow-100 text-yellow-800">Assessment Pending</Badge>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Hire & DNA info */}
+              {/* Hire info */}
               {user.hireDate && (
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p>Hired: {format(new Date(user.hireDate), "MMM d, yyyy")}</p>
-                  {user.startDate && <p>Start Date: {format(new Date(user.startDate), "MMM d, yyyy")}</p>}
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Hired: {format(new Date(user.hireDate), "MMM d, yyyy")}
+                </p>
               )}
 
+              {/* DNA Score */}
               {user.dnaScore !== null && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">DNA Score:</span>
+                  <span className="text-muted-foreground text-xs">DNA:</span>
                   <span className={`font-heading font-bold ${getScoreColor(user.dnaScore)}`}>
                     {user.dnaScore}/30
                   </span>
@@ -282,9 +314,22 @@ export default function ContractorManagement() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-1">
-                {!user.hasAssessment && (
-                  <Button size="sm" variant="outline" onClick={copyAssessmentLink}>
-                    <Copy className="w-3 h-3 mr-1" /> Send DNA Assessment
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleOpenProfile(user)}
+                >
+                  <ExternalLink className="w-3 h-3 mr-1" /> Open Profile
+                </Button>
+                {!user.hasAssessment && !user.dnaPending && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleAssignAssessment(user.id)}
+                    disabled={assignAssessmentMutation.isPending}
+                  >
+                    <ClipboardList className="w-3 h-3 mr-1" /> Assign Assessment
                   </Button>
                 )}
               </div>
@@ -292,6 +337,14 @@ export default function ContractorManagement() {
           ))}
         </div>
       )}
+
+      {/* Profile Sheet */}
+      <ContractorProfileSheet
+        user={selectedUser}
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onAssignAssessment={handleAssignAssessment}
+      />
     </div>
   );
 }
