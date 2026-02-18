@@ -1,87 +1,81 @@
 
-## Fix: Login Tracking Never Fires for Any User
 
-### Root Cause (Confirmed)
+## Fix Login Tracking + Contractor Management UI Improvements
 
-After thorough investigation, two compounding issues explain why `login_count` and `last_login_at` are `0` / `null` for **every single user** in the system:
+### 1. Fix Login Tracking (Still Showing 0)
 
-**Issue 1 — Stale sessionStorage keys block all calls**
+**Root Cause**: The `increment_login_count` RPC is confirmed working (function exists, has PUBLIC execute permission, SECURITY DEFINER). The problem is that the user's browser already has the sessionStorage key set from the current session. The fix (date-scoped key) is correct but requires a **fresh browser session** (close and reopen the tab, or clear sessionStorage) for it to take effect.
 
-The `sessionStorage` guard key `login_counted_<user_id>` was written to every browser that ever visited the dashboard — even before the login-tracking code existed (any prior page visit sets it). Since `sessionStorage` persists for the entire browser tab session, every subsequent visit sees the key already set and skips the RPC call entirely. This is why no user has ever had their count increment.
+**Additional Fix**: Add a `console.log` temporarily to confirm the RPC fires, and also add error handling so failures are visible. The current code silently discards errors via `void`. We should also ensure the RPC call isn't silently failing by adding `.then()` error logging.
 
-**Issue 2 — The tracking key never resets**
+**Changes to `AdminLayout.tsx`, `DashboardLayout.tsx`, `CanvasserLayout.tsx`:**
+- Add error logging to the RPC call so any failures are visible in the console
+- The date-scoped key logic is already correct
 
-Even for brand-new logins, once a user logs in and the key is set, it stays set for the entire browser session. If the same browser tab is reused across days, the count never goes up again.
+### 2. Team DNA Intelligence — Default to Collapsed
 
-**Issue 3 — The RPC approach is unnecessary complexity**
+**File**: `src/pages/admin/ContractorManagement.tsx` (line 281)
 
-The `increment_login_count` database function works correctly. However, since each layout already has the Supabase client available, a direct `UPDATE` on `profiles` is simpler and avoids any potential RPC permission edge cases.
+Change `<Collapsible defaultOpen>` to `<Collapsible>` (removes `defaultOpen` prop so it starts collapsed).
 
----
+### 3. New "Quarterly Reviews" Collapsible Section
 
-### The Fix
+Add a new collapsible dropdown on the Contractor Management page (Active tab), placed below the Team DNA Intelligence section. This section will show:
 
-**Strategy:** Replace the `sessionStorage` guard with a **date-based session key** that resets daily, AND switch from RPC to a direct table update. The key format becomes `login_counted_<user_id>_<YYYY-MM-DD>` — this ensures:
+- **Average review rating** across all team members (as stars out of 5)
+- **Breakdown by quarter** showing how many reviews were done and the average rating per quarter
+- **Team member review summary** — each member's latest review rating
 
-- Each calendar day counts as a new session
-- The stale old keys (format `login_counted_<uuid>`) are simply ignored
-- No manual cleanup needed
+**Data source**: The `performance_reviews` table already exists with `user_id`, `quarter`, `overall_rating` (1-5), `review_notes`, `goals_set`, `action_items`, and `review_date`.
 
-**New logic in all 3 layout files:**
+**File**: `src/pages/admin/ContractorManagement.tsx`
 
-```typescript
-useEffect(() => {
-  if (!user) return;
-  const today = new Date().toISOString().slice(0, 10); // "2026-02-18"
-  const sessionKey = `login_counted_${user.id}_${today}`;
-  if (sessionStorage.getItem(sessionKey)) return;
-  sessionStorage.setItem(sessionKey, '1');
-  // Direct update — simpler than RPC, same result
-  void supabase
-    .from('profiles')
-    .update({
-      login_count: (/* handled server-side */ undefined as any),
-      last_login_at: new Date().toISOString(),
-    })
-    .eq('id', user.id);
-}, [user?.id]);
+**Design:**
+```
+[Collapsible - starts collapsed]
+QUARTERLY REVIEWS
+Avg Rating: 4.2/5 (stars) -- X reviews total
+
+  [Expanded content:]
+  Quarter breakdown grid:
+  | Q1 2026 | 3 reviews | Avg 4.3/5 (stars) |
+  | Q4 2025 | 5 reviews | Avg 3.8/5 (stars) |
+  ...
+
+  Member latest ratings:
+  | Name | Latest Quarter | Rating (stars) |
 ```
 
-Wait — direct `UPDATE` with increment requires knowing the current value. The RPC is actually the right approach for `login_count` increment. So the plan is:
-
-- Keep `supabase.rpc('increment_login_count', { uid: user.id })` 
-- Just fix the session key to be date-scoped: `login_counted_${user.id}_${today}`
-
-This means the old keys (`login_counted_<uuid>` without date) are automatically abandoned, breaking the stale-guard cycle.
-
 ---
 
-### Files to Modify
+### Technical Details
 
-| File | Change |
+**Files to modify:**
+| File | Changes |
 |---|---|
-| `src/pages/admin/AdminLayout.tsx` | Update session key to include date |
-| `src/pages/dashboard/DashboardLayout.tsx` | Update session key to include date |
-| `src/pages/canvasser/CanvasserLayout.tsx` | Update session key to include date |
+| `src/pages/admin/AdminLayout.tsx` | Add `.then`/`.catch` logging to RPC call |
+| `src/pages/dashboard/DashboardLayout.tsx` | Add `.then`/`.catch` logging to RPC call |
+| `src/pages/canvasser/CanvasserLayout.tsx` | Add `.then`/`.catch` logging to RPC call |
+| `src/pages/admin/ContractorManagement.tsx` | (1) Remove `defaultOpen` from DNA Collapsible, (2) Add new Quarterly Reviews collapsible section with review data query and summary UI |
 
-### Code Change (identical in all 3 files)
-
-**Before:**
+**New query in ContractorManagement.tsx:**
 ```typescript
-const sessionKey = `login_counted_${user.id}`;
+const { data: allReviews = [] } = useQuery({
+  queryKey: ["cm-all-reviews"],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from("performance_reviews")
+      .select("*")
+      .order("review_date", { ascending: false });
+    return (data ?? []) as any[];
+  },
+});
 ```
 
-**After:**
-```typescript
-const today = new Date().toISOString().slice(0, 10);
-const sessionKey = `login_counted_${user.id}_${today}`;
-```
+**Computed stats:**
+- Overall average rating across all reviews
+- Group by quarter, count reviews per quarter, average rating per quarter
+- Map each user to their most recent review rating
 
-This single-line change per file:
-- Abandons all stale old keys that were preventing the RPC from ever firing
-- Allows the count to increment once per calendar day per user
-- Requires no database changes, no new migrations, no new functions
+No database changes needed.
 
-### Why This Works Immediately
-
-After this fix is deployed, the next time Adam (or any user) loads the admin/dashboard/canvasser layout, the new date-scoped key `login_counted_<uuid>_2026-02-18` won't exist in sessionStorage (only the old keyless version does), so the RPC fires and updates `login_count` and `last_login_at` for the first time.
