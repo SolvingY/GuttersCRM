@@ -6,10 +6,11 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
   requireCanvasser?: boolean;
+  requireSupplementer?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, activeView } = useAuth();
+export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false, requireSupplementer = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, hasSupplementerRole, isSupplementerOnly, activeView } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -32,10 +33,21 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Handle dual-role users - they can access both portals
+  if (requireSupplementer && !hasSupplementerRole && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Handle multi-role users - they can access portals they have roles for
   if (isDualRole) {
-    // Let them access whatever portal they're on
     return <>{children}</>;
+  }
+
+  // Redirect supplementer-only users away from sales/canvasser dashboards
+  if (isSupplementerOnly && location.pathname.startsWith('/dashboard')) {
+    return <Navigate to="/supplementer" replace />;
+  }
+  if (isSupplementerOnly && location.pathname.startsWith('/canvasser')) {
+    return <Navigate to="/supplementer" replace />;
   }
 
   // Redirect canvasser-only users away from sales dashboard to canvasser dashboard
@@ -45,6 +57,11 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
 
   // Redirect sales-only users away from canvasser portal
   if (!hasCanvasserRole && location.pathname.startsWith('/canvasser')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Redirect non-supplementer users away from supplementer portal
+  if (!hasSupplementerRole && location.pathname.startsWith('/supplementer')) {
     return <Navigate to="/dashboard" replace />;
   }
 
