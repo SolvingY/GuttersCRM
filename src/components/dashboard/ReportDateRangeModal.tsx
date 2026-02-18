@@ -7,10 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { CalendarIcon, FileSpreadsheet, FileText } from 'lucide-react';
 
+export type ReportType = 'combined' | 'sales' | 'canvassers';
+
 interface ReportDateRangeModalProps {
   open: boolean;
   onClose: () => void;
-  onExport: (startDate: Date, endDate: Date, format: 'excel' | 'pdf') => void;
+  onExport: (startDate: Date, endDate: Date, format: 'excel' | 'pdf', reportType: ReportType) => void;
 }
 
 type PresetOption = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-quarter' | 'last-quarter' | 'ytd' | 'custom';
@@ -26,10 +28,17 @@ const presets: { value: PresetOption; label: string }[] = [
   { value: 'custom', label: 'Custom Range' },
 ];
 
+const reportTypeOptions: { value: ReportType; label: string; description: string }[] = [
+  { value: 'combined', label: 'Combined', description: 'Both sales reps & canvassers' },
+  { value: 'sales', label: 'Sales Team Only', description: 'Exclude canvasser data' },
+  { value: 'canvassers', label: 'Canvassers Only', description: 'Exclude sales rep data' },
+];
+
 export function ReportDateRangeModal({ open, onClose, onExport }: ReportDateRangeModalProps) {
   const [selectedPreset, setSelectedPreset] = useState<PresetOption>('this-month');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [reportType, setReportType] = useState<ReportType>('combined');
 
   const getDateRange = (): { start: Date; end: Date } => {
     const now = new Date();
@@ -64,7 +73,7 @@ export function ReportDateRangeModal({ open, onClose, onExport }: ReportDateRang
 
   const handleExport = (exportFormat: 'excel' | 'pdf') => {
     const { start, end } = getDateRange();
-    onExport(start, end, exportFormat);
+    onExport(start, end, exportFormat, reportType);
     onClose();
   };
 
@@ -81,6 +90,30 @@ export function ReportDateRangeModal({ open, onClose, onExport }: ReportDateRang
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Report Type Selector */}
+          <div>
+            <p className="text-sm font-medium mb-2">Report Type</p>
+            <div className="grid grid-cols-3 gap-2">
+              {reportTypeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setReportType(opt.value)}
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 rounded-lg border px-2 py-2.5 text-center transition-colors',
+                    reportType === opt.value
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background hover:bg-muted'
+                  )}
+                >
+                  <span className="text-xs font-medium leading-tight">{opt.label}</span>
+                  <span className={cn('text-[10px] leading-tight', reportType === opt.value ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    {opt.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Preset Selection */}
           <div className="grid grid-cols-2 gap-2">
             {presets.map((preset) => (

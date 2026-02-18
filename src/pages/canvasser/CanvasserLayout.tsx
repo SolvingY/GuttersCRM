@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Outlet } from "react-router-dom";
 import { CanvasserSidebar } from "@/components/canvasser/CanvasserSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -14,6 +15,12 @@ export default function CanvasserLayout() {
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showTour, setShowTour] = useState(false);
+
+  // Track login on mount
+  useEffect(() => {
+    if (!user) return;
+    void supabase.rpc('increment_login_count', { uid: user.id });
+  }, [user?.id]);
 
   // Check if user has completed tour
   const handleGoalSet = () => {
