@@ -1,91 +1,119 @@
 
-## Two Fixes: Report Type Selection + Login Tracking in Contractor Management
+## Contractor Management: DNA Heat Map + Login Fix + Assessment Routing Clarification
+
+### Summary of Changes
+
+Three distinct problems to fix, plus one new feature:
+
+1. **Fix login tracking** — The RPC fires on every render cycle because the `useEffect` dependency `user?.id` triggers whenever auth state refreshes. Add a `sessionStorage` guard so the increment only fires once per browser session per user.
+
+2. **DNA Heat Map** — Add a team-wide DNA intelligence panel at the top of the Active tab in Contractor Management, showing score distribution as a color-coded heat display.
+
+3. **Assessment routing is already correct** — The `FutureTeamMates` page receives applications from `/apply` (external candidates). The `InternalAssessment` page (via the login prompt) creates a `job_applications` record with `created_user_id` set, which is how the system links assessments to existing users. The Active tab in Contractor Management already shows DNA scores pulled from `job_applications` via `created_user_id` matching. No routing changes needed — just need to confirm the InternalAssessment page correctly creates the record with `status = 'hired'` and `created_user_id`. We'll verify this file.
+
+4. **Minor UX** — Ensure the "Assign Assessment" button is also available on users who are in Onboarding (even if they already have `dnaPending = true` shown as a badge, admins should be able to re-assign).
 
 ---
 
-### Fix 1: Report Type Selector in Export Modal
+### Fix 1: Login Count Deduplication (Critical)
 
-**Problem:** The `ReportDateRangeModal` only lets admins pick a date range and file format (Excel or PDF). There is no way to select *what type* of report to generate (Sales Team only, Canvassers only, or Combined). The export always includes both sales reps and canvassers regardless.
+**Root cause:** Both `DashboardLayout.tsx` and `CanvasserLayout.tsx` call `supabase.rpc('increment_login_count', { uid: user.id })` inside a `useEffect` with `[user?.id]` as the dependency. Auth state can update multiple times per session (token refresh, role fetch completion), causing `user?.id` to re-trigger the effect many times.
 
-**Solution:** Add a "Report Type" toggle to `ReportDateRangeModal` with three options:
-- **Combined** (default) — both sales reps and canvassers
-- **Sales Team Only** — filters out canvasser data
-- **Canvassers Only** — filters out sales rep data
+**Fix:** Use `sessionStorage` to set a flag `login_counted_{userId}` after the first increment. If the flag already exists for this session, skip the RPC call.
 
-The `onExport` callback signature gets extended with a `reportType` parameter. Both `AdminOverview.tsx` and `CompanyGoals.tsx` will use this to conditionally pass empty arrays to `exportToExcel` / `exportToPDF`.
-
-**Files modified:**
-- `src/components/dashboard/ReportDateRangeModal.tsx` — add `reportType` state and UI selector
-- `src/pages/dashboard/AdminOverview.tsx` — handle `reportType` in `onExport`
-- `src/pages/admin/CompanyGoals.tsx` — handle `reportType` in `onExport`
-
----
-
-### Fix 2: Login Tracking in Contractor Management
-
-**Problem:** Supabase's auth data (`last_sign_in_at`, login counts) lives in the protected `auth.users` table which cannot be queried by the JavaScript client. The Contractor Management page has no way to show "Most Recent Login" or "Times Logged Into The System."
-
-**Solution:** Add two new columns to the `profiles` table:
-- `last_login_at` (timestamptz, nullable) — updated each time a user's session is detected
-- `login_count` (integer, default 0) — incremented each time
-
-These are updated from the `DashboardLayout` and `CanvasserLayout` on mount (when `user` is confirmed), using a simple upsert to `profiles`. This piggybacks on the existing session-load pattern used for `WelcomeModal`, `GoalSettingModal`, and `DNAAssessmentPromptModal`.
-
-The `ContractorManagement` page will fetch and display this data on each user card and in the `ContractorProfileSheet`.
-
-**Database change:**
-```sql
-ALTER TABLE public.profiles
-  ADD COLUMN last_login_at timestamptz,
-  ADD COLUMN login_count integer DEFAULT 0;
+```typescript
+useEffect(() => {
+  if (!user) return;
+  const sessionKey = `login_counted_${user.id}`;
+  if (sessionStorage.getItem(sessionKey)) return; // already counted this session
+  sessionStorage.setItem(sessionKey, '1');
+  void supabase.rpc('increment_login_count', { uid: user.id });
+}, [user?.id]);
 ```
 
-No new RLS needed — the existing `profiles` policies already allow users to update their own record and admins to read all.
+**Files modified:**
+- `src/pages/dashboard/DashboardLayout.tsx`
+- `src/pages/canvasser/CanvasserLayout.tsx`
+
+---
+
+### Fix 2: DNA Heat Map Display
+
+Add a new collapsible "Team DNA Intelligence" panel above the user cards grid on the Active tab. It shows:
+
+**Panel header:** "Team DNA Intelligence" with a summary stat (e.g., "Average Score: 22.4/30 — Strong Fit")
+
+**Heat map grid:** Each active team member who has a DNA assessment gets a colored tile showing their name and score. Color coding follows the existing `getScoreBarColor` function:
+- Green (`bg-green-500`) = Excellent Fit (24–30)
+- Yellow (`bg-yellow-500`) = Strong Fit (18–23)
+- Orange (`bg-orange-500`) = Moderate Fit (12–17)
+- Red (`bg-red-500`) = Low/Marginal Fit (< 12)
+
+**Distribution bar:** Shows percentage breakdown of each alignment category (Excellent / Strong / Moderate / Marginal / Low) as a stacked horizontal bar.
+
+**Category breakdown table:** Shows count per alignment category with color indicators.
+
+This entire panel only renders when `tab === "active"` and there are users with DNA scores.
 
 **Files modified:**
-- `supabase/migrations/` — add new migration for the two columns
-- `src/pages/dashboard/DashboardLayout.tsx` — update `last_login_at` and increment `login_count` on mount
-- `src/pages/canvasser/CanvasserLayout.tsx` — same
-- `src/pages/admin/ContractorManagement.tsx` — display `lastLoginAt` and `loginCount` on cards; include in enriched user object
-- `src/components/admin/ContractorProfileSheet.tsx` — show login stats in the profile header section
+- `src/pages/admin/ContractorManagement.tsx` — add the heat map section inline (no new component needed, kept in same file for simplicity)
+
+---
+
+### Fix 3: Verify InternalAssessment Creates Correct Records
+
+Read `InternalAssessment.tsx` to confirm it saves with `status = 'hired'` and `created_user_id`. If not, fix it so assessments for existing users go into `job_applications` with the right status, which is what the Contractor Management page queries to display DNA scores.
 
 ---
 
 ### Technical Details
 
-**Login tracking update pattern (DashboardLayout & CanvasserLayout):**
+**Heat map data computation (added to existing `useMemo`):**
+
 ```typescript
-useEffect(() => {
-  if (!user) return;
-  // Fire-and-forget — no await needed, non-blocking
-  supabase.from('profiles').update({
-    last_login_at: new Date().toISOString(),
-    login_count: supabase.rpc('increment_login_count', { uid: user.id })
-    // simplified — actual impl uses raw SQL increment
-  }).eq('id', user.id);
-}, [user?.id]);
+const teamDNAStats = useMemo(() => {
+  const activeMembersWithDNA = users.filter(
+    u => !u.isArchived && u.hasAssessment && !u.dnaPending && u.dnaScore !== null
+  );
+  if (activeMembersWithDNA.length === 0) return null;
+  
+  const scores = activeMembersWithDNA.map(u => u.dnaScore as number);
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  
+  const distribution = {
+    excellent: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 24).length,
+    strong: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 18 && (u.dnaScore ?? 0) < 24).length,
+    moderate: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 12 && (u.dnaScore ?? 0) < 18).length,
+    marginal: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 6 && (u.dnaScore ?? 0) < 12).length,
+    low: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) < 6).length,
+  };
+  
+  return { avg, distribution, members: activeMembersWithDNA, total: activeMembersWithDNA.length };
+}, [users]);
 ```
 
-Since Supabase doesn't support `col + 1` increments through the JS client's `.update()`, a small database function `increment_login_count(uid uuid)` will be created to do `UPDATE profiles SET login_count = login_count + 1, last_login_at = now() WHERE id = uid`. This is called via `supabase.rpc('increment_login_count', { uid: user.id })`.
-
-**What displays on the Contractor card:**
-- "Last Login: Feb 18, 2026 at 3:24 PM" (or "Never" if null)
-- "Logins: 42"
-
-**What displays in the ContractorProfileSheet header:**
-- Same two fields, formatted more prominently in the profile header section alongside hire date.
+**Heat tile per member:**
+```tsx
+<div
+  key={member.id}
+  className={`rounded p-2 text-white text-center cursor-pointer ${getScoreBarColor(member.dnaScore)}`}
+  onClick={() => handleOpenProfile(member)}
+  title={`${member.name}: ${member.dnaScore}/30`}
+>
+  <p className="text-xs font-bold truncate">{member.name.split(' ')[0]}</p>
+  <p className="text-lg font-heading font-black">{member.dnaScore}</p>
+</div>
+```
 
 ---
 
-### Summary of Files Changed
+### Files to Modify
 
 | File | Change |
 |---|---|
-| `supabase/migrations/new_migration.sql` | Add `last_login_at`, `login_count` to `profiles`; add `increment_login_count` RPC |
-| `src/components/dashboard/ReportDateRangeModal.tsx` | Add report type selector (Combined / Sales Only / Canvassers Only) |
-| `src/pages/dashboard/AdminOverview.tsx` | Use `reportType` to filter data passed to exporters |
-| `src/pages/admin/CompanyGoals.tsx` | Same |
-| `src/pages/dashboard/DashboardLayout.tsx` | Call `increment_login_count` RPC on mount |
-| `src/pages/canvasser/CanvasserLayout.tsx` | Same |
-| `src/pages/admin/ContractorManagement.tsx` | Show last login + login count on cards |
-| `src/components/admin/ContractorProfileSheet.tsx` | Show login stats in sheet header |
+| `src/pages/dashboard/DashboardLayout.tsx` | Add `sessionStorage` guard to login tracking effect |
+| `src/pages/canvasser/CanvasserLayout.tsx` | Same sessionStorage guard |
+| `src/pages/admin/ContractorManagement.tsx` | Add DNA heat map panel above the cards grid (Active tab only) |
+| `src/pages/dashboard/InternalAssessment.tsx` | Verify/fix that submission creates `job_applications` with `status='hired'` and `created_user_id = user.id` |
+
+No database changes needed — all columns and functions already exist.
