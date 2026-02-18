@@ -1,6 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface GutterQuestionsProps {
@@ -9,6 +10,7 @@ interface GutterQuestionsProps {
 }
 
 const propertyTypes = ["Residential", "Commercial"];
+const gutterTypes = ["K-Style (Standard)", "Half-Round", "Box Gutters", "Fascia Gutters", "Don't Know / Not Sure"];
 const needOptions = ["New Gutter Installation", "Gutter Replacement", "Gutter Repair", "Gutter Protection/Guards", "Gutter Cleaning", "Downspout Work"];
 const footageOptions = ["Less than 100 ft", "100-200 ft", "200-300 ft", "300-500 ft", "500+ ft", "Not Sure"];
 const issueOptions = ["Overflowing gutters", "Sagging/pulling away from house", "Rust/corrosion", "Frequent clogging", "Leaking seams", "No gutters currently", "Other"];
@@ -36,6 +38,43 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
           ))}
         </div>
       </div>
+
+      {/* Gutter Type */}
+      <div className="space-y-2">
+        <Label>Gutter Type</Label>
+        <div className="space-y-2">
+          {gutterTypes.map((opt) => (
+            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.gutterType === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="gutterType" className="sr-only" checked={data.gutterType === opt} onChange={() => update("gutterType", opt)} />
+              <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.gutterType === opt ? "border-accent" : "border-muted-foreground")}>
+                {data.gutterType === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
+              </div>
+              <span className="text-sm">{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Insurance Claim */}
+      <div className="space-y-2">
+        <Label>Is this an insurance-related claim?</Label>
+        <div className="flex gap-3">
+          {["Yes", "No"].map((opt) => (
+            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.insuranceClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="insuranceClaim" className="sr-only" checked={data.insuranceClaim === opt} onChange={() => update("insuranceClaim", opt)} />
+              {opt}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Insurance Company — conditional */}
+      {data.insuranceClaim === "Yes" && (
+        <div className="space-y-2">
+          <Label>Insurance Company</Label>
+          <Input placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>What do you need? (select all that apply)</Label>

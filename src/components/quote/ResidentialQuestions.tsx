@@ -2,6 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface ResidentialQuestionsProps {
@@ -13,6 +14,8 @@ const propertyTypes = ["Single Family Home", "Townhouse", "Duplex/Multi-Unit", "
 const homeAges = ["Less than 5 years", "5-10 years", "10-20 years", "20-30 years", "30+ years"];
 const roofTypes = ["Asphalt Shingles", "Metal", "Tile", "Slate", "Wood Shake", "Flat Roof", "Don't Know"];
 const stories = ["1 Story", "2 Stories", "3+ Stories"];
+const roofAgeOptions = ["Less than 5 years", "5-10 years", "10-15 years", "15-20 years", "20+ years", "Don't Know"];
+const homeSqftOptions = ["Under 1,000 sq ft", "1,000-1,500 sq ft", "1,500-2,000 sq ft", "2,000-2,500 sq ft", "2,500-3,000 sq ft", "3,000-4,000 sq ft", "4,000+ sq ft"];
 const needOptions = ["Full Roof Replacement", "Partial Replacement", "Repair", "Inspection", "Storm Damage Assessment"];
 const issueOptions = ["Active Leaks", "Missing Shingles", "Storm Damage", "Sagging Areas", "Mold/Moisture Concerns", "Age/Wear", "None - Just Want Assessment"];
 const timelineOptions = ["Urgent (within 1 week)", "Soon (1-4 weeks)", "Flexible (1-3 months)", "Planning ahead (3+ months)"];
@@ -74,6 +77,67 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
           ))}
         </div>
       </div>
+
+      {/* Roof Age */}
+      <div className="space-y-2">
+        <Label>Roof Age</Label>
+        <Select value={data.roofAge || ""} onValueChange={(v) => update("roofAge", v)}>
+          <SelectTrigger><SelectValue placeholder="Select roof age" /></SelectTrigger>
+          <SelectContent>
+            {roofAgeOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Home Square Footage */}
+      <div className="space-y-2">
+        <Label>Approximate Square Footage of Home</Label>
+        <div className="space-y-2">
+          {homeSqftOptions.map((opt) => (
+            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.homeSqft === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="homeSqft" className="sr-only" checked={data.homeSqft === opt} onChange={() => update("homeSqft", opt)} />
+              <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.homeSqft === opt ? "border-accent" : "border-muted-foreground")}>
+                {data.homeSqft === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
+              </div>
+              <span className="text-sm">{opt}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Mortgage */}
+      <div className="space-y-2">
+        <Label>Do you have a mortgage on this property?</Label>
+        <div className="flex gap-3">
+          {["Yes", "No"].map((opt) => (
+            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.hasMortgage === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="hasMortgage" className="sr-only" checked={data.hasMortgage === opt} onChange={() => update("hasMortgage", opt)} />
+              {opt}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Active Insurance Claim */}
+      <div className="space-y-2">
+        <Label>Do you have an active insurance claim?</Label>
+        <div className="flex gap-3">
+          {["Yes", "No"].map((opt) => (
+            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.activeClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+              <input type="radio" name="activeClaim" className="sr-only" checked={data.activeClaim === opt} onChange={() => update("activeClaim", opt)} />
+              {opt}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Insurance Company — conditional */}
+      {data.activeClaim === "Yes" && (
+        <div className="space-y-2">
+          <Label>Insurance Company</Label>
+          <Input placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>What do you need? (select all that apply)</Label>
