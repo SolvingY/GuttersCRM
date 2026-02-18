@@ -778,8 +778,8 @@ export default function AdminOverview() {
       <ReportDateRangeModal
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
-        onExport={(startDate, endDate, exportFormat) => {
-        const salesRepsData: SalesRepData[] = userDetails.map(u => ({
+        onExport={(startDate, endDate, exportFormat, reportType) => {
+        const salesRepsData: SalesRepData[] = reportType === 'canvassers' ? [] : userDetails.map(u => ({
             name: u.name,
             salesRank: u.salesRank,
             approvedRevenue: u.approvedRevenue,
@@ -792,7 +792,7 @@ export default function AdminOverview() {
             avgJobSize: u.avgJobSize,
             leadToClosePercent: u.leadToClosePercent,
           }));
-          const canvassersData: CanvasserData[] = canvasserDetails.map(c => ({
+          const canvassersData: CanvasserData[] = reportType === 'sales' ? [] : canvasserDetails.map(c => ({
             name: c.name,
             leadsSet: c.leadsSet,
             leadsClosed: c.leadsClosed,
@@ -816,8 +816,8 @@ export default function AdminOverview() {
             totalPoints: aggregates.totalPoints,
             totalLeads: aggregates.totalLeads,
             totalClosedDeals: aggregates.totalClosedDeals,
-            salesRepCount: aggregates.totalUsers,
-            canvasserCount: canvasserAggregates.totalCanvassers,
+            salesRepCount: reportType === 'canvassers' ? 0 : aggregates.totalUsers,
+            canvasserCount: reportType === 'sales' ? 0 : canvasserAggregates.totalCanvassers,
             companyLeadCloseRate: aggregates.totalLeads > 0 ? (aggregates.totalClosedDeals / aggregates.totalLeads) * 100 : 0,
             totalLeadsSet: canvasserAggregates.totalLeadsSet,
             totalLeadsClosed: canvasserAggregates.totalLeadsClosed,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
@@ -8,12 +8,19 @@ import { WelcomeModal } from '@/components/dashboard/WelcomeModal';
 import { GuidedTour } from '@/components/dashboard/GuidedTour';
 import { DNAAssessmentPromptModal } from '@/components/dashboard/DNAAssessmentPromptModal';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import nextGenLogo from '@/assets/next-gen-logo.png';
 
 export default function DashboardLayout() {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTour, setShowTour] = useState(false);
+
+  // Track login on mount
+  useEffect(() => {
+    if (!user) return;
+    void supabase.rpc('increment_login_count', { uid: user.id });
+  }, [user?.id]);
 
   // Check if user has completed tour
   const handleGoalSet = () => {

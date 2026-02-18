@@ -32,7 +32,7 @@ export default function ContractorManagement() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["cm-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*");
+      const { data, error } = await supabase.from("profiles").select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count");
       if (error) throw error;
       return data;
     },
@@ -117,6 +117,8 @@ export default function ContractorManagement() {
       const canvasser = canvasserMap.get(p.id);
       const hireApp = hiredMap.get(p.id);
       const dnaPending = (p as any).dna_assessment_pending ?? false;
+      const lastLoginAt = (p as any).last_login_at ?? null;
+      const loginCount = (p as any).login_count ?? 0;
 
       return {
         id: p.id,
@@ -124,6 +126,9 @@ export default function ContractorManagement() {
         roles,
         isArchived: p.is_archived ?? false,
         createdAt: p.created_at,
+        // Login tracking
+        lastLoginAt,
+        loginCount,
         // Sales data
         salesRank: sales?.sales_rank,
         approvedRevenue: sales?.approved_revenue ?? 0,
@@ -259,12 +264,20 @@ export default function ContractorManagement() {
                 </div>
               </div>
 
-              {/* Hire info */}
-              {user.hireDate && (
+              {/* Hire & Login info */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {user.hireDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Hired: {format(new Date(user.hireDate), "MMM d, yyyy")}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Hired: {format(new Date(user.hireDate), "MMM d, yyyy")}
+                  Last Login: {user.lastLoginAt ? format(new Date(user.lastLoginAt), "MMM d, yyyy 'at' h:mm a") : "Never"}
                 </p>
-              )}
+                <p className="text-xs text-muted-foreground">
+                  Logins: {user.loginCount}
+                </p>
+              </div>
 
               {/* DNA Score */}
               {user.dnaScore !== null && (

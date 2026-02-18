@@ -470,20 +470,23 @@ export default function CompanyGoals() {
       <ReportDateRangeModal
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
-        onExport={(startDate, endDate, exportFormat) => {
+        onExport={(startDate, endDate, exportFormat, reportType) => {
           const monthlyProgress = generateMonthlyProgress();
           const actualCostPerLead = progress.totalLeadsClosed > 0 
             ? progress.totalCanvasserIncome / progress.totalLeadsClosed 
             : 0;
           
+          const filteredSalesReps = reportType === 'canvassers' ? [] : salesReps;
+          const filteredCanvassers = reportType === 'sales' ? [] : canvassers;
+
           const summary: CompanySummary = {
             totalApprovedRevenue: progress.totalSales,
             totalCollections: progress.totalCollections,
             totalPoints: salesReps.reduce((sum, s) => sum + s.points, 0),
             totalLeads: progress.totalSalesLeads,
             totalClosedDeals: progress.totalSalesClosedDeals,
-            salesRepCount: progress.salesRepsCount,
-            canvasserCount: progress.canvassersCount,
+            salesRepCount: reportType === 'canvassers' ? 0 : progress.salesRepsCount,
+            canvasserCount: reportType === 'sales' ? 0 : progress.canvassersCount,
             companyLeadCloseRate: progress.totalSalesLeads > 0 ? (progress.totalSalesClosedDeals / progress.totalSalesLeads) * 100 : 0,
             totalLeadsSet: canvassers.reduce((sum, c) => sum + c.leadsSet, 0),
             totalLeadsClosed: progress.totalLeadsClosed,
@@ -503,10 +506,10 @@ export default function CompanyGoals() {
           };
           
           if (exportFormat === 'excel') {
-            exportToExcel(salesReps, canvassers, summary, { startDate, endDate });
+            exportToExcel(filteredSalesReps, filteredCanvassers, summary, { startDate, endDate });
             toast({ title: 'Excel report downloaded' });
           } else {
-            exportToPDF(salesReps, canvassers, summary, { startDate, endDate, includeGraph: true });
+            exportToPDF(filteredSalesReps, filteredCanvassers, summary, { startDate, endDate, includeGraph: true });
             toast({ title: 'PDF report downloaded' });
           }
         }}

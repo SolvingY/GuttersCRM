@@ -72,6 +72,8 @@ interface ContractorUser {
   hasSalesMetrics: boolean;
   hasCanvasserMetrics: boolean;
   dnaPending?: boolean;
+  lastLoginAt?: string | null;
+  loginCount?: number;
 }
 
 interface Props {
@@ -251,6 +253,12 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
               <span>Start: {format(new Date(user.startDate), "MMM d, yyyy")}</span>
             )}
             <span>Member since: {format(new Date(user.createdAt), "MMM d, yyyy")}</span>
+          </div>
+          <div className="flex flex-wrap gap-4 mt-2 text-xs text-accent-foreground/70">
+            <span>
+              Last Login: {user.lastLoginAt ? format(new Date(user.lastLoginAt), "MMM d, yyyy 'at' h:mm a") : "Never"}
+            </span>
+            <span>Times Logged In: {user.loginCount ?? 0}</span>
           </div>
           {dnaScore !== null && (
             <div className="mt-3 flex items-center gap-2">

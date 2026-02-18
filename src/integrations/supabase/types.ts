@@ -953,6 +953,8 @@ export type Database = {
           hidden_from_leaderboard: boolean | null
           id: string
           is_archived: boolean | null
+          last_login_at: string | null
+          login_count: number | null
           preferred_view: string | null
           tour_completed: boolean | null
           updated_at: string
@@ -967,6 +969,8 @@ export type Database = {
           hidden_from_leaderboard?: boolean | null
           id: string
           is_archived?: boolean | null
+          last_login_at?: string | null
+          login_count?: number | null
           preferred_view?: string | null
           tour_completed?: boolean | null
           updated_at?: string
@@ -981,6 +985,8 @@ export type Database = {
           hidden_from_leaderboard?: boolean | null
           id?: string
           is_archived?: boolean | null
+          last_login_at?: string | null
+          login_count?: number | null
           preferred_view?: string | null
           tour_completed?: boolean | null
           updated_at?: string
@@ -1589,6 +1595,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_login_count: { Args: { uid: string }; Returns: undefined }
       submit_quote_request: {
         Args: {
           p_best_contact_time?: string[]
