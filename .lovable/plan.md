@@ -1,119 +1,169 @@
 
-## Contractor Management: DNA Heat Map + Login Fix + Assessment Routing Clarification
-
-### Summary of Changes
-
-Three distinct problems to fix, plus one new feature:
-
-1. **Fix login tracking** — The RPC fires on every render cycle because the `useEffect` dependency `user?.id` triggers whenever auth state refreshes. Add a `sessionStorage` guard so the increment only fires once per browser session per user.
-
-2. **DNA Heat Map** — Add a team-wide DNA intelligence panel at the top of the Active tab in Contractor Management, showing score distribution as a color-coded heat display.
-
-3. **Assessment routing is already correct** — The `FutureTeamMates` page receives applications from `/apply` (external candidates). The `InternalAssessment` page (via the login prompt) creates a `job_applications` record with `created_user_id` set, which is how the system links assessments to existing users. The Active tab in Contractor Management already shows DNA scores pulled from `job_applications` via `created_user_id` matching. No routing changes needed — just need to confirm the InternalAssessment page correctly creates the record with `status = 'hired'` and `created_user_id`. We'll verify this file.
-
-4. **Minor UX** — Ensure the "Assign Assessment" button is also available on users who are in Onboarding (even if they already have `dnaPending = true` shown as a badge, admins should be able to re-assign).
+## Two New Features: DNA Score Trend Chart + Quarterly Performance Review Log
 
 ---
 
-### Fix 1: Login Count Deduplication (Critical)
+### Feature 1: Team DNA Score Trend Chart (ContractorProfileSheet)
 
-**Root cause:** Both `DashboardLayout.tsx` and `CanvasserLayout.tsx` call `supabase.rpc('increment_login_count', { uid: user.id })` inside a `useEffect` with `[user?.id]` as the dependency. Auth state can update multiple times per session (token refresh, role fetch completion), causing `user?.id` to re-trigger the effect many times.
+**What it does:** Shows a line chart of how the *team's overall average DNA alignment score* has trended over time as new members completed their assessments. Each data point represents a moment in time when a member completed their assessment, with the running team average recalculated at each point.
 
-**Fix:** Use `sessionStorage` to set a flag `login_counted_{userId}` after the first increment. If the flag already exists for this session, skip the RPC call.
+**Data source:** The `job_applications` table already has `dna_score`, `alignment_category`, `hired_at`, and `created_user_id` for all active team members. We fetch all `status = 'hired'` records with non-null `created_user_id`, sort by `hired_at` date, and compute a running average at each point in time.
 
+**Chart type:** A Recharts `LineChart` using the existing `ChartContainer` / `ChartTooltip` components already installed in the project. Displayed inside a new collapsible section called "Team DNA Score Trend."
+
+**Where it lives:** Inside `ContractorProfileSheet.tsx`. Since this is team-wide data (not user-specific), it makes sense to show it here as a secondary informational panel — visible for all active team members when viewing their profile. It contextualizes their individual score against the team's historical trajectory.
+
+**Running average logic (frontend):**
 ```typescript
-useEffect(() => {
-  if (!user) return;
-  const sessionKey = `login_counted_${user.id}`;
-  if (sessionStorage.getItem(sessionKey)) return; // already counted this session
-  sessionStorage.setItem(sessionKey, '1');
-  void supabase.rpc('increment_login_count', { uid: user.id });
-}, [user?.id]);
+// Sort all team assessments by hire_at date
+// Compute running average at each point
+const trendData = assessments
+  .sort((a, b) => new Date(a.hired_at).getTime() - new Date(b.hired_at).getTime())
+  .map((entry, idx, arr) => {
+    const runningScores = arr.slice(0, idx + 1).map(e => e.dna_score);
+    const avg = runningScores.reduce((s, v) => s + v, 0) / runningScores.length;
+    return {
+      date: format(new Date(entry.hired_at), "MMM ''yy"),
+      avg: Math.round(avg * 10) / 10,
+      memberName: entry.full_name,
+    };
+  });
 ```
 
-**Files modified:**
-- `src/pages/dashboard/DashboardLayout.tsx`
-- `src/pages/canvasser/CanvasserLayout.tsx`
+**No new database query needed** — the sheet already queries `job_applications` for the current user. We add a second query inside the sheet for all hired team members (just `dna_score`, `hired_at`, `full_name`, `created_user_id`) to build the trend.
 
 ---
 
-### Fix 2: DNA Heat Map Display
+### Feature 2: Quarterly Performance Review Log
 
-Add a new collapsible "Team DNA Intelligence" panel above the user cards grid on the Active tab. It shows:
+**Database change needed:** Create a new `performance_reviews` table:
 
-**Panel header:** "Team DNA Intelligence" with a summary stat (e.g., "Average Score: 22.4/30 — Strong Fit")
+```sql
+CREATE TABLE public.performance_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,           -- the team member being reviewed
+  reviewed_by uuid NOT NULL,       -- the admin who wrote the review
+  review_date date NOT NULL DEFAULT CURRENT_DATE,
+  quarter text NOT NULL,           -- e.g. "Q1 2026"
+  overall_rating integer,          -- 1-5 stars
+  review_notes text,               -- general performance notes
+  goals_set text,                  -- goals set in this review
+  action_items text,               -- action items / follow-ups
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-**Heat map grid:** Each active team member who has a DNA assessment gets a colored tile showing their name and score. Color coding follows the existing `getScoreBarColor` function:
-- Green (`bg-green-500`) = Excellent Fit (24–30)
-- Yellow (`bg-yellow-500`) = Strong Fit (18–23)
-- Orange (`bg-orange-500`) = Moderate Fit (12–17)
-- Red (`bg-red-500`) = Low/Marginal Fit (< 12)
+-- RLS: Admins only can insert/update/delete; admins can read all
+ALTER TABLE public.performance_reviews ENABLE ROW LEVEL SECURITY;
 
-**Distribution bar:** Shows percentage breakdown of each alignment category (Excellent / Strong / Moderate / Marginal / Low) as a stacked horizontal bar.
+CREATE POLICY "Admins can manage reviews"
+  ON public.performance_reviews FOR ALL
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+```
 
-**Category breakdown table:** Shows count per alignment category with color indicators.
+**UI in ContractorProfileSheet:**
+A new "Quarterly Performance Reviews" section appears below the Admin Notes section. It contains:
 
-This entire panel only renders when `tab === "active"` and there are users with DNA scores.
+- **Review history log** — Existing reviews listed in reverse chronological order. Each review card shows:
+  - Quarter label (e.g. "Q1 2026") + review date
+  - Star rating (1–5)
+  - Review notes, goals set, action items (collapsible if long)
 
-**Files modified:**
-- `src/pages/admin/ContractorManagement.tsx` — add the heat map section inline (no new component needed, kept in same file for simplicity)
+- **"Add Review" button** — Opens an inline form (not a modal, stays in the sheet) with:
+  - Quarter selector (auto-suggests current quarter, e.g. "Q2 2026")
+  - Star rating (1–5 clickable stars)
+  - Textarea: "Performance Notes"
+  - Textarea: "Goals Set"
+  - Textarea: "Action Items"
+  - Save / Cancel buttons
 
----
-
-### Fix 3: Verify InternalAssessment Creates Correct Records
-
-Read `InternalAssessment.tsx` to confirm it saves with `status = 'hired'` and `created_user_id`. If not, fix it so assessments for existing users go into `job_applications` with the right status, which is what the Contractor Management page queries to display DNA scores.
-
----
-
-### Technical Details
-
-**Heat map data computation (added to existing `useMemo`):**
-
+**Quarter auto-detection logic:**
 ```typescript
-const teamDNAStats = useMemo(() => {
-  const activeMembersWithDNA = users.filter(
-    u => !u.isArchived && u.hasAssessment && !u.dnaPending && u.dnaScore !== null
-  );
-  if (activeMembersWithDNA.length === 0) return null;
-  
-  const scores = activeMembersWithDNA.map(u => u.dnaScore as number);
-  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  
-  const distribution = {
-    excellent: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 24).length,
-    strong: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 18 && (u.dnaScore ?? 0) < 24).length,
-    moderate: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 12 && (u.dnaScore ?? 0) < 18).length,
-    marginal: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) >= 6 && (u.dnaScore ?? 0) < 12).length,
-    low: activeMembersWithDNA.filter(u => (u.dnaScore ?? 0) < 6).length,
-  };
-  
-  return { avg, distribution, members: activeMembersWithDNA, total: activeMembersWithDNA.length };
-}, [users]);
-```
-
-**Heat tile per member:**
-```tsx
-<div
-  key={member.id}
-  className={`rounded p-2 text-white text-center cursor-pointer ${getScoreBarColor(member.dnaScore)}`}
-  onClick={() => handleOpenProfile(member)}
-  title={`${member.name}: ${member.dnaScore}/30`}
->
-  <p className="text-xs font-bold truncate">{member.name.split(' ')[0]}</p>
-  <p className="text-lg font-heading font-black">{member.dnaScore}</p>
-</div>
+const getCurrentQuarter = () => {
+  const now = new Date();
+  const q = Math.ceil((now.getMonth() + 1) / 3);
+  return `Q${q} ${now.getFullYear()}`;
+};
 ```
 
 ---
 
-### Files to Modify
+### Files to Create/Modify
 
 | File | Change |
 |---|---|
-| `src/pages/dashboard/DashboardLayout.tsx` | Add `sessionStorage` guard to login tracking effect |
-| `src/pages/canvasser/CanvasserLayout.tsx` | Same sessionStorage guard |
-| `src/pages/admin/ContractorManagement.tsx` | Add DNA heat map panel above the cards grid (Active tab only) |
-| `src/pages/dashboard/InternalAssessment.tsx` | Verify/fix that submission creates `job_applications` with `status='hired'` and `created_user_id = user.id` |
+| `supabase/migrations/TIMESTAMP_performance_reviews.sql` | New table + RLS |
+| `src/components/admin/ContractorProfileSheet.tsx` | Add DNA trend chart section + performance review CRUD section |
 
-No database changes needed — all columns and functions already exist.
+**New imports needed in ContractorProfileSheet:**
+- `LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer` from `recharts` (already installed)
+- `ChartContainer, ChartTooltip, ChartTooltipContent` from `@/components/ui/chart`
+- `PlusCircle, Star` icons (Star already imported)
+- `Input` from `@/components/ui/input`
+
+---
+
+### Technical Architecture
+
+**DNA Trend Chart query (added to ContractorProfileSheet):**
+```typescript
+const { data: allHiredApps = [] } = useQuery({
+  queryKey: ["team-trend-apps"],
+  enabled: !!user?.id,
+  queryFn: async () => {
+    const { data } = await supabase
+      .from("job_applications")
+      .select("dna_score, hired_at, full_name, created_user_id")
+      .eq("status", "hired")
+      .not("created_user_id", "is", null)
+      .not("dna_score", "is", null)
+      .order("hired_at", { ascending: true });
+    return data ?? [];
+  },
+});
+```
+
+**Performance reviews query:**
+```typescript
+const { data: reviews = [], refetch: refetchReviews } = useQuery({
+  queryKey: ["performance-reviews", user?.id],
+  enabled: !!user?.id,
+  queryFn: async () => {
+    const { data } = await supabase
+      .from("performance_reviews")
+      .select("*")
+      .eq("user_id", user!.id)
+      .order("review_date", { ascending: false });
+    return data ?? [];
+  },
+});
+```
+
+**RLS note:** The `profiles` table already has a policy for users to update their own profile. The new `performance_reviews` table is admin-only. No end-user access is required.
+
+---
+
+### Visual Layout Summary
+
+Inside `ContractorProfileSheet`, after the DNA Assessment section and before Files:
+
+```text
+┌─────────────────────────────────────────────────┐
+│  📈  Team DNA Score Trend                        │
+│  Running avg as members completed assessments    │
+│  [Line chart: date → avg score, 0-30 scale]     │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│  📋  Quarterly Performance Reviews    [+ Add]   │
+│  ─────────────────────────────────────────────  │
+│  Q1 2026 · Feb 18, 2026 · ★★★★☆               │
+│  Notes: Strong quarter, closed 12 deals...      │
+│  Goals: $180k revenue target for Q2             │
+│  Actions: Complete advanced sales training       │
+│  ─────────────────────────────────────────────  │
+│  Q4 2025 · Dec 15, 2025 · ★★★☆☆               │
+│  Notes: Needed coaching on follow-ups...        │
+└─────────────────────────────────────────────────┘
+```
