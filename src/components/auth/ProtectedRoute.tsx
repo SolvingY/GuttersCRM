@@ -42,16 +42,19 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     return <>{children}</>;
   }
 
-  // Redirect supplementer-only users away from sales/canvasser dashboards
-  if (isSupplementerOnly && location.pathname.startsWith('/dashboard')) {
+  // Allow all roles to access /dashboard/tools
+  const isToolsRoute = location.pathname.startsWith('/dashboard/tools');
+
+  // Redirect supplementer-only users away from sales/canvasser dashboards (except tools)
+  if (isSupplementerOnly && location.pathname.startsWith('/dashboard') && !isToolsRoute) {
     return <Navigate to="/supplementer" replace />;
   }
   if (isSupplementerOnly && location.pathname.startsWith('/canvasser')) {
     return <Navigate to="/supplementer" replace />;
   }
 
-  // Redirect canvasser-only users away from sales dashboard to canvasser dashboard
-  if (isCanvasser && location.pathname.startsWith('/dashboard')) {
+  // Redirect canvasser-only users away from sales dashboard to canvasser dashboard (except tools)
+  if (isCanvasser && location.pathname.startsWith('/dashboard') && !isToolsRoute) {
     return <Navigate to="/canvasser" replace />;
   }
 

@@ -18,6 +18,7 @@ import PointsHistory from "./pages/dashboard/PointsHistory";
 import MyLeads from "./pages/dashboard/MyLeads";
 import LeadDetailView from "./pages/dashboard/LeadDetailView";
 import GutterEstimator from "./pages/dashboard/GutterEstimator";
+import ToolsHub from "./pages/dashboard/ToolsHub";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/dashboard/AdminOverview";
 import InviteUsers from "./pages/dashboard/InviteUsers";
@@ -83,7 +84,8 @@ const App = () => (
             <Route path="pit" element={<ThePit />} />
             <Route path="points-history" element={<PointsHistory />} />
             <Route path="my-leads" element={<MyLeads />} />
-            <Route path="estimator" element={<GutterEstimator />} />
+            <Route path="tools" element={<ToolsHub />} />
+            <Route path="tools/estimator" element={<GutterEstimator />} />
             <Route path="leads/:id" element={<LeadDetailView />} />
             <Route path="settings" element={<Settings />} />
             <Route path="assessment" element={<InternalAssessment />} />
