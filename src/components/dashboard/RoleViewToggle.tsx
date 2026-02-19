@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -7,6 +8,18 @@ export function RoleViewToggle() {
   const { isDualRole, activeView, setActiveView, hasSalesRole, hasCanvasserRole, hasSupplementerRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Sync activeView with current URL to prevent dead-click on already-selected toggle
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith('/supplementer') && activeView !== 'supplementer') {
+      setActiveView('supplementer');
+    } else if (path.startsWith('/canvasser') && activeView !== 'canvasser') {
+      setActiveView('canvasser');
+    } else if (path.startsWith('/dashboard') && activeView !== 'sales') {
+      setActiveView('sales');
+    }
+  }, [location.pathname]);
 
   if (!isDualRole) return null;
 
