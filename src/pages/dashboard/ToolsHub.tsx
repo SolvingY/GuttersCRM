@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Calculator } from "lucide-react";
+import { Calculator, FileText } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 const tools = [
@@ -8,6 +8,12 @@ const tools = [
     description: "Calculate gutter protection, gutters, downspouts & add-ons with live commission tracking",
     icon: Calculator,
     path: "/dashboard/tools/estimator",
+  },
+  {
+    title: "My Estimates",
+    description: "View and edit your previously saved standalone estimates",
+    icon: FileText,
+    path: "/dashboard/tools/my-estimates",
   },
 ];
 

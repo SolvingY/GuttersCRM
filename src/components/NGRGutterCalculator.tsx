@@ -1,4 +1,4 @@
-import { useState, useMemo, CSSProperties } from "react";
+import { useState, useMemo, useEffect, CSSProperties } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -63,6 +63,7 @@ interface LeadProp {
 interface NGRGutterCalculatorProps {
   lead?: LeadProp | null;
   onSave?: (estimate: Record<string, unknown>) => void;
+  existingEstimate?: any;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -215,7 +216,7 @@ function SummaryRow({ label, retail, floor, quoted, commission, muted, bold }: {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
-export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCalculatorProps) {
+export default function NGRGutterCalculator({ lead = null, onSave, existingEstimate }: NGRGutterCalculatorProps) {
   const { user } = useAuth();
 
   const [jobInfo, setJobInfo] = useState({
@@ -236,6 +237,29 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
   const [addons,      setAddons]      = useState(emptyAddons());
   const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
   const [saving,      setSaving]      = useState(false);
+  const [estimateId,  setEstimateId]  = useState<string | null>(existingEstimate?.id || null);
+
+  // Restore state from existingEstimate
+  useEffect(() => {
+    if (!existingEstimate) return;
+    const d = existingEstimate.measurement_data as any;
+    if (d?.protProduct) setProtProduct(d.protProduct);
+    if (d?.protRows) setProtRows(d.protRows);
+    if (d?.gutterSize) setGutterSize(d.gutterSize);
+    if (d?.gutterColor) setGutterColor(d.gutterColor);
+    if (d?.gutterRows) setGutterRows(d.gutterRows);
+    if (d?.downspouts) setDownspouts(d.downspouts);
+    if (d?.elbows) setElbows(d.elbows);
+    if (d?.addons) setAddons(d.addons);
+    if (d?.quotedTotal !== undefined) setQuotedTotal(d.quotedTotal);
+    if (d?.dsType) setDsType(d.dsType);
+    setJobInfo({
+      customer: existingEstimate.customer_name || "",
+      city: existingEstimate.city || "",
+      state: existingEstimate.state || "",
+      jobNumber: existingEstimate.job_number || "",
+    });
+  }, [existingEstimate?.id]);
 
   // ── Calculations ───────────────────────────────────────────────────────
   const protPrices = PRICES.protection[protProduct];
@@ -315,17 +339,21 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
         total_floor:        totalFloor,
         quoted_price:       clampedQuoted,
         commission:         totalCommission,
-        measurement_data:   JSON.stringify({ protRows, gutterRows, downspouts, elbows, addons }),
+        measurement_data:   JSON.stringify({ protProduct, protRows, gutterSize, gutterColor, gutterRows, downspouts, elbows, addons, quotedTotal, dsType }),
         created_by:         user?.id,
       };
 
-      const { error } = await supabase
+      const payload = { ...estimatePayload, ...(estimateId ? { id: estimateId } : {}) };
+      const { data, error } = await supabase
         .from("gutter_estimates")
-        .insert(estimatePayload as any);
+        .upsert(payload as any, { onConflict: "id" })
+        .select("id")
+        .single();
 
       if (error) throw error;
+      if (data?.id) setEstimateId(data.id);
 
-      toast.success("Estimate saved successfully!");
+      toast.success(estimateId ? "Estimate updated!" : "Estimate saved successfully!");
       if (onSave) onSave(estimatePayload);
     } catch (err: any) {
       console.error("Save failed:", err);
@@ -434,6 +462,11 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
           <div style={{ marginBottom: 16 }}>
             <SubHeader label="Product" />
             <SelectPill options={Object.keys(PRICES.protection)} value={protProduct} onChange={setProtProduct} />
+            <div style={{ background: "#0a1120", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", gap: 24, flexWrap: "wrap" }}>
+              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Retail/ft: </span><span style={{ color: "#e8eaf0", fontWeight: 700 }}>${protPrices.retail}</span></div>
+              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Floor/ft: </span><span style={{ color: "#ffa726", fontWeight: 700 }}>${protPrices.floor}</span></div>
+              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Commission/ft: </span><span style={{ color: "#66bb6a", fontWeight: 700 }}>${protPrices.retail - protPrices.floor}</span></div>
+            </div>
           </div>
           <div style={{ marginBottom: 16 }}>
             <SubHeader label="Measurements" />
@@ -462,6 +495,11 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
               <SubHeader label="Color" />
               <SelectPill options={["Standard", "Premium (+$2/ft)"]} value={gutterColor} onChange={setGutterColor} />
             </div>
+          </div>
+          <div style={{ background: "#0a1120", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <div><span style={{ color: "#4a5878", fontSize: 12 }}>Retail/ft: </span><span style={{ color: "#e8eaf0", fontWeight: 700 }}>${gutterEffRetail}</span></div>
+            <div><span style={{ color: "#4a5878", fontSize: 12 }}>Floor/ft: </span><span style={{ color: "#ffa726", fontWeight: 700 }}>${gutterEffFloor}</span></div>
+            <div><span style={{ color: "#4a5878", fontSize: 12 }}>Commission/ft: </span><span style={{ color: "#66bb6a", fontWeight: 700 }}>${gutterEffRetail - gutterEffFloor}</span></div>
           </div>
           <div style={{ marginBottom: 16 }}>
             <SubHeader label="Gutter Measurements" />
@@ -653,7 +691,7 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
             disabled={saving}
             style={{ flex: 2, padding: "14px 24px", borderRadius: 10, border: "none", background: "#e53935", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: saving ? "wait" : "pointer", transition: "background 0.3s" }}
           >
-            {saving ? "⏳ Saving..." : "💾 Save to Job Record"}
+            {saving ? "⏳ Saving..." : estimateId ? "💾 Update Estimate" : "💾 Save Estimate"}
           </button>
           <button onClick={() => window.print()} style={{ flex: 1, padding: "14px 24px", borderRadius: 10, border: "2px solid #1e2d45", background: "transparent", color: "#e8eaf0", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>
             🖨️ Print Customer Quote
