@@ -1,79 +1,172 @@
 
+# Gutter Calculator Enhancements - 7 Changes + Role Visibility
 
-# Gutter Estimating Calculator - Full Implementation Plan
+## Overview
 
-## Step 1: Database Migration
+Apply 7 enhancements to the calculator component plus add Tools tab visibility for all dashboard roles (canvassers, sales reps, supplementers, admins).
 
-Create the `gutter_estimates` table with RLS policies:
-- References `quote_requests(id)` via `lead_id` foreign key
-- `created_by` defaults to `auth.uid()`
-- RLS: users see/insert/update own estimates, admins manage all
-- Columns for all pricing sections (protection, gutters, downspouts, add-ons) plus totals, quoted price, and commission
-- `measurement_data` JSONB column stores raw row/elbow/addon data
+---
 
-## Step 2: Create NGRGutterCalculator Component
+## 1. Color Scheme Update
 
-**New file:** `src/components/NGRGutterCalculator.tsx`
+**File:** `src/components/NGRGutterCalculator.tsx`
 
-Full TypeScript conversion of the provided calculator with:
-- `lead` prop typed as `{ id?: string; full_name?: string; city?: string; state?: string; reference_number?: string; ... } | null`
-- `onSave` prop typed as `(estimate: Record<string, unknown>) => void`
-- All pricing constants, calculation functions (`calcRowTotals`, `calcSection`, story upcharges, corner adders, premium surcharge) preserved exactly
-- Three tabs: Protection, Gutters & Downspouts, Add-Ons
-- Measurement tables, downspout/elbow grids, add-on grid
-- Summary with retail/floor/quoted/commission breakdown and slider
-- Save uses `supabase.from("gutter_estimates").insert()` with `created_by` set to `user.id` from `useAuth()`
-- Print and Clear buttons
-- Inline styles for self-contained dark theme
+Replace all `#4fc3f7` (teal) references throughout:
+- Job Info section header accent: `#e53935`
+- Auto-filled lead banner: `#e53935` tint
+- Gutters section header accent: `#e53935`
+- Gutter Size / Color pill accent props: remove `accent="#4fc3f7"`, use default `#e53935`
+- Row totals footage color (line 173): `#4fc3f7` -> `#e53935`
+- Downspout footage column header/values: `#4fc3f7` -> `#e53935`
+- DS TOTAL footage: `#4fc3f7` -> `#e53935`
+- Gutter section summary footage stat: `#4fc3f7` -> `#e53935`
+- Gutters Section Total footage stat: `#4fc3f7` -> `#e53935`
+- Summary header "Quoted" column: `#4fc3f7` -> `#ffffff`
+- SummaryRow quoted price color (line 194): `#4fc3f7` -> `#ffffff`
+- "ADJUST QUOTED PRICE" heading: `#4fc3f7` -> `#ffffff`
+- Quoted price input border and text: `#4fc3f7` -> `#ffffff`
+- Keep: Floor `#ffa726`, Commission `#66bb6a`, backgrounds unchanged
 
-## Step 3: Create Standalone Estimator Page
+---
 
-**New file:** `src/pages/dashboard/GutterEstimator.tsx`
+## 2. Real-Time Per-Row Pricing
 
-Simple wrapper rendering `<NGRGutterCalculator />` without a lead prop.
+**File:** `src/components/NGRGutterCalculator.tsx`
 
-## Step 4: Add Route and Sidebar Nav
+Modify `MeasurementTable` to accept `baseRetail` and `baseFloor` props. Add two columns after "Row Total":
+- **Row Retail**: Per-row calculation using `footage * baseRetail + weightedUp * STORY_UPCHARGE`
+- **Row Floor**: Same formula with `baseFloor`
 
-**Modified:** `src/App.tsx`
-- Import `GutterEstimator`
-- Add route `<Route path="estimator" element={<GutterEstimator />} />` under `/dashboard`
+Update callers of `MeasurementTable` in Protection and Gutters tabs to pass the appropriate base prices (including premium color upcharge for gutters).
 
-**Modified:** `src/components/dashboard/DashboardSidebar.tsx`
-- Import `Calculator` icon from lucide-react
-- Add nav item `{ icon: Calculator, label: 'Estimator', path: '/dashboard/estimator' }` after the "My Leads" item
+Add a Commission stat bar to section summaries: `sectionRetail - sectionFloor`.
 
-## Step 5: Integrate into Sales Rep Lead Detail
+---
 
-**Modified:** `src/pages/dashboard/LeadDetailView.tsx`
-- Add `showCalculator` state toggle
-- Add "Open Estimator" button near the header
-- Render `NGRGutterCalculator` in a collapsible section with close button, passing lead data mapped as:
-  - `lead.full_name` -> customer name
-  - `lead.city`, `lead.state` -> location
-  - `lead.reference_number` -> job number
-  - `lead.id` -> lead_id
-- Add "Past Estimates" section querying `gutter_estimates` where `lead_id = lead.id`
-- Show "No estimates yet" empty state when none exist
-- Format all currency with `$` and 2 decimal places
+## 3. Print Customer Quote - Hide Internal Pricing
 
-## Step 6: Add Estimates to Admin Lead Detail
+**File:** `src/components/NGRGutterCalculator.tsx`
 
-**Modified:** `src/pages/admin/LeadDetail.tsx`
-- Add read-only "Saved Estimates" section below the activity log
-- Query `gutter_estimates` by `lead_id`
-- Display table: Date, Quoted Price, Floor, Commission
-- Show "No estimates yet" empty state
-- All currency formatted with `$` and 2 decimals
+Expand `@media print` CSS:
+```css
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white !important; color: #111 !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+```
+
+Add `.print-only` block (hidden on screen, visible on print) with:
+- NGR logo at 100x100px centered
+- "Next Generation Guttering -- Estimate" heading
+- Customer name, city, state, job number
+
+Add `className="no-print"` to:
+- "Rep Estimating Calculator -- 2026 Pricing" subtitle
+- Floor column in summary header and SummaryRow
+- Commission column in summary header and SummaryRow  
+- The slider section (already has it)
+- Action buttons (already has it)
+- Floor stat bars in section summaries
+- Commission stat bars
+
+Modify `SummaryRow` to wrap floor and commission spans with `className="no-print"` spans, and adjust the print grid to hide those columns.
+
+---
+
+## 4. NGR Logo in Header
+
+**File:** `src/components/NGRGutterCalculator.tsx`
+
+Import the logo:
+```tsx
+import ngrLogo from "@/assets/ngr-logo-circle.jpg";
+```
+
+Replace the red "NG" circle div (line 358) with:
+```tsx
+<img src={ngrLogo} alt="NGR" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }} />
+```
+
+In the print-only header, show the logo at 100x100px centered.
+
+---
+
+## 5. Standalone Save + Toast Feedback
+
+**File:** `src/components/NGRGutterCalculator.tsx`
+
+- Import `toast` from `sonner`
+- Replace `alert("Save failed...")` with `toast.error("Save failed: " + err.message)`
+- Replace `setSaved(true)` success flow with `toast.success("Estimate saved successfully!")`
+- Ensure `lead_id: null` is explicitly set when no lead prop
+
+---
+
+## 6. Rename to "Tools" Tab
+
+### New file: `src/pages/dashboard/ToolsHub.tsx`
+
+A responsive card grid page. First card:
+- Title: "Gutter Estimator"
+- Description: "Calculate gutter protection, gutters, downspouts & add-ons with live commission tracking"
+- Icon: Calculator from lucide-react
+- Red accent border/highlight
+- Clicks navigate to `/dashboard/tools/estimator`
+- Uses Tailwind classes, responsive 1-2-3 column grid
+
+### Modified: `src/components/dashboard/DashboardSidebar.tsx`
+- Replace `Calculator` import with `Wrench`
+- Replace nav item: `{ icon: Wrench, label: 'Tools', path: '/dashboard/tools' }`
+- Update `isActive` to use `location.pathname.startsWith('/dashboard/tools')`
+
+### Modified: `src/components/canvasser/CanvasserSidebar.tsx`
+- Add `Wrench` import
+- Add nav item: `{ icon: Wrench, label: "Tools", path: "/dashboard/tools" }` -- canvassers navigate to the same dashboard tools routes
+
+### Modified: `src/App.tsx`
+- Replace `<Route path="estimator" ...>` with:
+  - `<Route path="tools" element={<ToolsHub />} />`
+  - `<Route path="tools/estimator" element={<GutterEstimator />} />`
+
+### Modified: `src/pages/dashboard/GutterEstimator.tsx`
+- Add a back link to `/dashboard/tools`
+
+### Role Access
+The `/dashboard` route uses `<ProtectedRoute>` without `requireAdmin`, `requireCanvasser`, or `requireSupplementer` -- it allows all authenticated users. The canvasser redirect in `ProtectedRoute` only fires for canvasser-ONLY users (line 54: `isCanvasser && location.pathname.startsWith('/dashboard')`). Since canvassers access the tools via `/dashboard/tools`, we need to ensure canvasser-only users are NOT redirected away from `/dashboard/tools/*`.
+
+**Modified: `src/components/auth/ProtectedRoute.tsx`**
+- Add exception: canvasser-only users can access `/dashboard/tools` routes without being redirected to `/canvasser`
+- Similarly, supplementer-only users can access `/dashboard/tools` without redirect
+
+---
+
+## 7. Summary Row Fix (Division by Zero)
+
+**File:** `src/components/NGRGutterCalculator.tsx`
+
+Fix operator precedence on lines 572-575. Change all instances of:
+```
+clampedQuoted / totalRetail || 0
+```
+to:
+```
+clampedQuoted / (totalRetail || 1)
+```
+
+This prevents `NaN` from division by zero and ensures proportional values display correctly as soon as footage is entered.
+
+---
 
 ## Files Summary
 
 | Type | File | Description |
 |---|---|---|
-| Migration | `gutter_estimates` table | Database table + RLS |
-| New | `src/components/NGRGutterCalculator.tsx` | Core calculator component |
-| New | `src/pages/dashboard/GutterEstimator.tsx` | Standalone page wrapper |
-| Modified | `src/App.tsx` | Add estimator route |
-| Modified | `src/components/dashboard/DashboardSidebar.tsx` | Add Estimator nav item |
-| Modified | `src/pages/dashboard/LeadDetailView.tsx` | Calculator integration + past estimates |
-| Modified | `src/pages/admin/LeadDetail.tsx` | Read-only estimates list |
-
+| New | `src/pages/dashboard/ToolsHub.tsx` | Tools hub page with card grid |
+| Modified | `src/components/NGRGutterCalculator.tsx` | Colors, per-row pricing, print CSS, logo, toast, summary fix |
+| Modified | `src/components/dashboard/DashboardSidebar.tsx` | Wrench icon, "Tools" nav item with startsWith active check |
+| Modified | `src/components/canvasser/CanvasserSidebar.tsx` | Add Tools nav item pointing to /dashboard/tools |
+| Modified | `src/components/auth/ProtectedRoute.tsx` | Allow canvasser/supplementer-only users to access /dashboard/tools |
+| Modified | `src/App.tsx` | Replace estimator route with tools + tools/estimator |
+| Modified | `src/pages/dashboard/GutterEstimator.tsx` | Add back link to Tools Hub |
