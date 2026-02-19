@@ -31,7 +31,7 @@ interface UserWithRole {
   id: string;
   email: string | null;
   fullName: string | null;
-  roles: ('admin' | 'user' | 'canvasser')[];
+  roles: ('admin' | 'user' | 'canvasser' | 'supplementer')[];
   salesRank: string | null;
   canvasserRank: string | null;
   isArchived: boolean;
@@ -100,10 +100,10 @@ export default function UserRoles() {
       .select('user_id, canvasser_rank');
 
     // Build a map of user_id -> array of roles
-    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser')[]>();
+    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser' | 'supplementer')[]>();
     for (const r of rolesData || []) {
       const existing = rolesMap.get(r.user_id) || [];
-      existing.push(r.role as 'admin' | 'user' | 'canvasser');
+      existing.push(r.role as 'admin' | 'user' | 'canvasser' | 'supplementer');
       rolesMap.set(r.user_id, existing);
     }
 
@@ -247,6 +247,9 @@ export default function UserRoles() {
         )}
         {roles.includes('canvasser') && (
           <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>
+        )}
+        {roles.includes('supplementer') && (
+          <Badge className="bg-accent text-accent-foreground">Supplementer</Badge>
         )}
       </div>
     );
