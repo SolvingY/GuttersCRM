@@ -49,40 +49,77 @@ export default function MyEstimates() {
           </Button>
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50 border-b border-border">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Customer Name</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Quoted Price</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Commission</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(estimates as any[]).map((est: any) => (
-                <tr key={est.id} className="border-b border-border hover:bg-muted/30">
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(est.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
-                  </td>
-                  <td className="px-4 py-3 font-medium">{est.customer_name || "—"}</td>
-                  <td className="px-4 py-3 text-right font-medium">${Number(est.quoted_price || 0).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-green-600">${Number(est.commission || 0).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate("/dashboard/tools/estimator", { state: { existingEstimate: est } })}
-                    >
-                      Open &amp; Edit
-                    </Button>
-                  </td>
+        <>
+          {/* Mobile card layout */}
+          <div className="sm:hidden space-y-3">
+            {(estimates as any[]).map((est: any) => (
+              <div key={est.id} className="border border-border rounded-lg p-4 bg-card">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="font-medium text-foreground">{est.customer_name || "—"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(est.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-4 mb-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Quoted Price</p>
+                    <p className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Commission</p>
+                    <p className="font-medium text-green-600">${Number(est.commission || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate("/dashboard/tools/estimator", { state: { existingEstimate: est } })}
+                >
+                  Open &amp; Edit
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table layout */}
+          <div className="hidden sm:block border border-border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Date</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Customer Name</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Quoted Price</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Commission</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {(estimates as any[]).map((est: any) => (
+                  <tr key={est.id} className="border-b border-border hover:bg-muted/30">
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(est.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+                    </td>
+                    <td className="px-4 py-3 font-medium">{est.customer_name || "—"}</td>
+                    <td className="px-4 py-3 text-right font-medium">${Number(est.quoted_price || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-green-600">${Number(est.commission || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate("/dashboard/tools/estimator", { state: { existingEstimate: est } })}
+                      >
+                        Open &amp; Edit
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
