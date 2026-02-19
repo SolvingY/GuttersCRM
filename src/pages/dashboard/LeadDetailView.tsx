@@ -34,6 +34,7 @@ export default function LeadDetailView() {
   const queryClient = useQueryClient();
   const [lostReason, setLostReason] = useState("");
   const [showCalculator, setShowCalculator] = useState(false);
+  const [editingEstimate, setEditingEstimate] = useState<any>(null);
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead-detail", id],
@@ -185,9 +186,17 @@ export default function LeadDetailView() {
       {/* Calculator Panel */}
       {showCalculator && (
         <div className="border border-border rounded-lg overflow-hidden">
+          {editingEstimate && (
+            <div className="p-3 bg-muted">
+              <Button variant="ghost" size="sm" onClick={() => { setShowCalculator(false); setEditingEstimate(null); }} className="gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back to Lead
+              </Button>
+            </div>
+          )}
           <NGRGutterCalculator
             lead={{ id: lead.id, full_name: lead.full_name, city: lead.city, state: lead.state, reference_number: lead.reference_number || "" }}
-            onSave={() => { setShowCalculator(false); refetchEstimates(); }}
+            existingEstimate={editingEstimate}
+            onSave={() => { setShowCalculator(false); setEditingEstimate(null); refetchEstimates(); }}
           />
         </div>
       )}
@@ -205,6 +214,9 @@ export default function LeadDetailView() {
                 <span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span>
                 <span className="text-muted-foreground">Floor: ${Number(est.total_floor || 0).toFixed(2)}</span>
                 <span className="text-green-600 font-medium">Commission: ${Number(est.commission || 0).toFixed(2)}</span>
+                <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
+                  Open &amp; Edit
+                </Button>
               </div>
             ))}
           </div>

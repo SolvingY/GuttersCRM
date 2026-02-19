@@ -1,8 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import NGRGutterCalculator from "@/components/NGRGutterCalculator";
 
 export default function GutterEstimator() {
+  const location = useLocation();
+  const existingEstimate = (location.state as any)?.existingEstimate || null;
+
   return (
     <div>
       <div className="p-4">
@@ -11,7 +14,7 @@ export default function GutterEstimator() {
           Back to Tools
         </Link>
       </div>
-      <NGRGutterCalculator />
+      <NGRGutterCalculator existingEstimate={existingEstimate} />
     </div>
   );
 }
