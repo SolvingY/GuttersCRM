@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Trophy, Settings, ChevronLeft, ChevronRight, Gift, X, Flame, History, ClipboardList, Calculator } from 'lucide-react';
+import { BarChart3, Trophy, Settings, ChevronLeft, ChevronRight, Gift, X, Flame, History, ClipboardList, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { icon: BarChart3, label: 'My Stats', path: '/dashboard/stats' },
   { icon: ClipboardList, label: 'My Leads', path: '/dashboard/my-leads' },
-  { icon: Calculator, label: 'Estimator', path: '/dashboard/estimator' },
+  { icon: Wrench, label: 'Tools', path: '/dashboard/tools' },
   { icon: Trophy, label: 'Leaderboard', path: '/dashboard/leaderboard' },
   { icon: Gift, label: 'Contests', path: '/dashboard/contests' },
   { icon: Flame, label: 'The Pit', path: '/dashboard/pit' },
@@ -71,7 +71,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
 
         <nav className="flex-1 p-2 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = item.path === '/dashboard/tools' ? location.pathname.startsWith('/dashboard/tools') : location.pathname === item.path;
             return (
               <NavLink
                 key={item.path}
@@ -112,7 +112,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
 
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = item.path === '/dashboard/tools' ? location.pathname.startsWith('/dashboard/tools') : location.pathname === item.path;
             return (
               <NavLink
                 key={item.path}

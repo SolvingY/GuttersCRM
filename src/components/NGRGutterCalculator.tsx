@@ -1,6 +1,8 @@
 import { useState, useMemo, CSSProperties } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import ngrLogo from "@/assets/ngr-logo-circle.jpg";
 
 // ── Pricing Constants (DO NOT MODIFY) ──────────────────────────────────────
 const PRICES = {
@@ -132,13 +134,14 @@ function SelectPill({ options, value, onChange, accent = "#e53935" }: { options:
   );
 }
 
-function StatBar({ label, value, color = "#e8eaf0" }: { label: string; value: string; color?: string }) {
-  return <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "#7b8bb2" }}>{label}</span><span style={{ color, fontWeight: 700 }}>{value}</span></div>;
+function StatBar({ label, value, color = "#e8eaf0", className }: { label: string; value: string; color?: string; className?: string }) {
+  return <div className={className} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "#7b8bb2" }}>{label}</span><span style={{ color, fontWeight: 700 }}>{value}</span></div>;
 }
 
-function MeasurementTable({ rows, onChange }: { rows: MeasurementRow[]; onChange: (rows: MeasurementRow[]) => void }) {
+function MeasurementTable({ rows, onChange, baseRetail, baseFloor }: { rows: MeasurementRow[]; onChange: (rows: MeasurementRow[]) => void; baseRetail?: number; baseFloor?: number }) {
   const update = (idx: number, field: string, val: string) => onChange(rows.map((r, i) => i === idx ? { ...r, [field]: val } : r));
   const th: CSSProperties = { color: "#7b8bb2", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, padding: "8px 8px", textAlign: "center" };
+  const showPricing = baseRetail != null && baseFloor != null;
   return (
     <div style={{ overflowX: "auto", marginBottom: 16 }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -151,11 +154,15 @@ function MeasurementTable({ rows, onChange }: { rows: MeasurementRow[]; onChange
             <th style={th}><span>Inside</span><br /><span style={{ fontSize: 9, color: "#4a5878" }}>Corners</span></th>
             <th style={th}><span>Outside</span><br /><span style={{ fontSize: 9, color: "#4a5878" }}>Corners</span></th>
             <th style={{ ...th, minWidth: 70 }}>Row Total</th>
+            {showPricing && <th style={{ ...th, minWidth: 80 }}>Row Retail</th>}
+            {showPricing && <th style={{ ...th, minWidth: 80 }} className="no-print">Row Floor</th>}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, idx) => {
-            const { footage } = calcRowTotals(row);
+            const { footage, weightedUp } = calcRowTotals(row);
+            const rowRetail = showPricing ? footage * baseRetail! + weightedUp * STORY_UPCHARGE : 0;
+            const rowFloor = showPricing ? footage * baseFloor! + weightedUp * STORY_UPCHARGE : 0;
             return (
               <tr key={idx} style={{ background: idx % 2 === 0 ? "#111827" : "transparent" }}>
                 <td style={{ padding: "6px 8px", fontSize: 13, fontWeight: 600, color: "#e8eaf0" }}>{row.side}</td>
@@ -170,9 +177,19 @@ function MeasurementTable({ rows, onChange }: { rows: MeasurementRow[]; onChange
                 <td style={{ padding: "4px 4px" }}>
                   <input type="number" placeholder="0" value={row.outsideCorners} onChange={e => update(idx, "outsideCorners", e.target.value)} style={{ ...cellInput, borderColor: "#2a3d5a" }} />
                 </td>
-                <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: footage > 0 ? "#4fc3f7" : "#2d3a52", fontSize: 13 }}>
+                <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: footage > 0 ? "#e53935" : "#2d3a52", fontSize: 13 }}>
                   {footage > 0 ? `${footage} ft` : "—"}
                 </td>
+                {showPricing && (
+                  <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: footage > 0 ? "#e8eaf0" : "#2d3a52", fontSize: 13 }}>
+                    {footage > 0 ? fmt(rowRetail) : "—"}
+                  </td>
+                )}
+                {showPricing && (
+                  <td className="no-print" style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: footage > 0 ? "#ffa726" : "#2d3a52", fontSize: 13 }}>
+                    {footage > 0 ? fmt(rowFloor) : "—"}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -190,9 +207,9 @@ function SummaryRow({ label, retail, floor, quoted, commission, muted, bold }: {
     <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid #1e2d45", opacity: muted ? 0.5 : 1 }}>
       <span style={{ ...s, color: "#e8eaf0" }}>{label}</span>
       <span style={{ ...s, textAlign: "right", color: "#e8eaf0" }}>{retail > 0 || bold ? fmt(retail) : "—"}</span>
-      <span style={{ ...s, textAlign: "right", color: "#ffa726" }}>{floor > 0 || bold ? fmt(floor) : "—"}</span>
-      <span style={{ ...s, textAlign: "right", color: "#4fc3f7" }}>{quoted != null ? fmt(quoted) : "—"}</span>
-      <span style={{ ...s, color: (commission ?? 0) > 0 ? "#66bb6a" : "#4a5878", textAlign: "right" }}>{commission != null ? fmt(commission) : "—"}</span>
+      <span className="no-print" style={{ ...s, textAlign: "right", color: "#ffa726" }}>{floor > 0 || bold ? fmt(floor) : "—"}</span>
+      <span style={{ ...s, textAlign: "right", color: "#ffffff" }}>{quoted != null ? fmt(quoted) : "—"}</span>
+      <span className="no-print" style={{ ...s, color: (commission ?? 0) > 0 ? "#66bb6a" : "#4a5878", textAlign: "right" }}>{commission != null ? fmt(commission) : "—"}</span>
     </div>
   );
 }
@@ -219,7 +236,6 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
   const [addons,      setAddons]      = useState(emptyAddons());
   const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
   const [saving,      setSaving]      = useState(false);
-  const [saved,       setSaved]       = useState(false);
 
   // ── Calculations ───────────────────────────────────────────────────────
   const protPrices = PRICES.protection[protProduct];
@@ -266,6 +282,10 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
   const ratio         = totalRetail > totalFloor ? (clampedQuoted - totalFloor) / (totalRetail - totalFloor) : 1;
   const sliderPct     = Math.round(ratio * 100);
 
+  // Effective retail/floor for gutters (including premium)
+  const gutterEffRetail = gutterPrices.retail + (isPremium ? PREMIUM_UPCHARGE : 0);
+  const gutterEffFloor  = gutterPrices.floor  + (isPremium ? PREMIUM_UPCHARGE : 0);
+
   // ── Save ───────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
@@ -305,12 +325,11 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
 
       if (error) throw error;
 
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      toast.success("Estimate saved successfully!");
       if (onSave) onSave(estimatePayload);
     } catch (err: any) {
       console.error("Save failed:", err);
-      alert("Save failed — check console for details.");
+      toast.error("Save failed: " + (err?.message || "Check console for details."));
     } finally {
       setSaving(false);
     }
@@ -345,20 +364,33 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
         ::-webkit-scrollbar-track { background: #070e1a; }
         ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
         input[type=range] { accent-color: #e53935; }
+        .print-only { display: none !important; }
         @media print {
           .no-print { display: none !important; }
           .print-only { display: block !important; }
-          body { background: white; color: black; }
+          body { background: white !important; color: #111 !important; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; color: #111 !important; border-color: #ccc !important; }
         }
       `}</style>
 
+      {/* PRINT-ONLY HEADER */}
+      <div className="print-only" style={{ textAlign: "center", marginBottom: 24 }}>
+        <img src={ngrLogo} alt="Next Generation Guttering" style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", margin: "0 auto 12px" }} />
+        <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 26, letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>Next Generation Guttering — Estimate</h1>
+        <p style={{ fontSize: 14, margin: "8px 0 0" }}>
+          {jobInfo.customer && <span>{jobInfo.customer}</span>}
+          {jobInfo.city && <span> • {jobInfo.city}{jobInfo.state ? `, ${jobInfo.state}` : ""}</span>}
+          {jobInfo.jobNumber && <span> • Job #{jobInfo.jobNumber}</span>}
+        </p>
+      </div>
+
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
+      <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#e53935", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: "#fff" }}>NG</div>
+          <img src={ngrLogo} alt="NGR" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }} />
           <div>
             <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: 2, textTransform: "uppercase", color: "#e8eaf0", margin: 0 }}>NEXT GENERATION GUTTERING</h1>
-            <p style={{ fontSize: 12, color: "#4a5878", margin: 0 }}>Rep Estimating Calculator — 2026 Pricing</p>
+            <p className="no-print" style={{ fontSize: 12, color: "#4a5878", margin: 0 }}>Rep Estimating Calculator — 2026 Pricing</p>
           </div>
         </div>
         {lead && (
@@ -372,9 +404,9 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
 
       {/* JOB INFO */}
       <div style={card}>
-        <SectionHeader label="Job Information" icon="📋" accent="#4fc3f7" />
+        <SectionHeader label="Job Information" icon="📋" accent="#e53935" />
         {lead && (
-          <div style={{ background: "#1a2744", border: "1px solid #2d4a7a", borderRadius: 8, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "#4fc3f7" }}>
+          <div style={{ background: "#2a1215", border: "1px solid #e5393540", borderRadius: 8, padding: "8px 14px", marginBottom: 14, fontSize: 12, color: "#e53935" }}>
             ✅ Auto-filled from assigned lead — edit below if needed
           </div>
         )}
@@ -405,13 +437,14 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
           </div>
           <div style={{ marginBottom: 16 }}>
             <SubHeader label="Measurements" />
-            <MeasurementTable rows={protRows} onChange={setProtRows} />
+            <MeasurementTable rows={protRows} onChange={setProtRows} baseRetail={protPrices.retail} baseFloor={protPrices.floor} />
           </div>
           <SubHeader label="Section Summary" />
           <div style={statRow}>
-            <StatBar label="Total Footage" value={`${protCalc.footage} ft`} color="#4fc3f7" />
+            <StatBar label="Total Footage" value={`${protCalc.footage} ft`} color="#e53935" />
             <StatBar label="Retail" value={fmt(protCalc.retail)} />
-            <StatBar label="Floor" value={fmt(protCalc.floor)} color="#ffa726" />
+            <StatBar label="Floor" value={fmt(protCalc.floor)} color="#ffa726" className="no-print" />
+            <StatBar label="Commission" value={fmt(protCalc.retail - protCalc.floor)} color="#66bb6a" className="no-print" />
           </div>
         </div>
       )}
@@ -419,34 +452,35 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
       {/* GUTTERS + DOWNSPOUTS TAB */}
       {tab === "gutters" && (
         <div style={card}>
-          <SectionHeader label="Gutters" icon="🏠" accent="#4fc3f7" />
+          <SectionHeader label="Gutters" icon="🏠" accent="#e53935" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <SubHeader label="Gutter Size" />
-              <SelectPill options={Object.keys(PRICES.gutters)} value={gutterSize} onChange={setGutterSize} accent="#4fc3f7" />
+              <SelectPill options={Object.keys(PRICES.gutters)} value={gutterSize} onChange={setGutterSize} />
             </div>
             <div>
               <SubHeader label="Color" />
-              <SelectPill options={["Standard", "Premium (+$2/ft)"]} value={gutterColor} onChange={setGutterColor} accent="#4fc3f7" />
+              <SelectPill options={["Standard", "Premium (+$2/ft)"]} value={gutterColor} onChange={setGutterColor} />
             </div>
           </div>
           <div style={{ marginBottom: 16 }}>
             <SubHeader label="Gutter Measurements" />
-            <MeasurementTable rows={gutterRows} onChange={setGutterRows} />
+            <MeasurementTable rows={gutterRows} onChange={setGutterRows} baseRetail={gutterEffRetail} baseFloor={gutterEffFloor} />
             {isPremium && <StatBar label="Premium Color Upcharge" value="+$2/ft" color="#ffa726" />}
           </div>
           <SubHeader label="Gutter Section Summary" />
           <div style={statRow}>
-            <StatBar label="Total Footage" value={`${gutterCalc.footage} ft`} color="#4fc3f7" />
+            <StatBar label="Total Footage" value={`${gutterCalc.footage} ft`} color="#e53935" />
             <StatBar label="Retail" value={fmt(gutterCalc.retail)} />
-            <StatBar label="Floor" value={fmt(gutterCalc.floor)} color="#ffa726" />
+            <StatBar label="Floor" value={fmt(gutterCalc.floor)} color="#ffa726" className="no-print" />
+            <StatBar label="Commission" value={fmt(gutterCalc.retail - gutterCalc.floor)} color="#66bb6a" className="no-print" />
           </div>
 
           {/* DOWNSPOUTS */}
           <SectionHeader label="Downspouts" icon="⬇️" accent="#ab47bc" />
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, alignItems: "center", marginBottom: 8 }}>
-              {[{ label: "Type" }, { label: "Qty" }, { label: "Footage", color: "#4fc3f7" }, { label: "Rate/ft" }, { label: "Retail" }, { label: "Floor", color: "#ffa726" }].map(h => (
+              {[{ label: "Type" }, { label: "Qty" }, { label: "Footage", color: "#e53935" }, { label: "Rate/ft" }, { label: "Retail" }, { label: "Floor", color: "#ffa726" }].map(h => (
                 <div key={h.label} style={{ fontSize: 10, color: h.color || "#4a5878", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>{h.label}</div>
               ))}
               {downspouts.map((ds, idx) => {
@@ -458,14 +492,14 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
                   <div key={`q${idx}`} style={{ background: bg, padding: "4px", display: "flex", alignItems: "center" }}>
                     <input type="number" placeholder="0" value={ds.qty} onChange={e => updateDs(idx, e.target.value)} style={{ ...cellInput, width: 60 }} />
                   </div>,
-                  <div key={`f${idx}`} style={{ background: bg, padding: "6px 8px", fontSize: 13, color: qty > 0 ? "#4fc3f7" : "#2d3a52", fontWeight: 700, display: "flex", alignItems: "center" }}>{qty > 0 ? `${qty} ft` : "—"}</div>,
+                  <div key={`f${idx}`} style={{ background: bg, padding: "6px 8px", fontSize: 13, color: qty > 0 ? "#e53935" : "#2d3a52", fontWeight: 700, display: "flex", alignItems: "center" }}>{qty > 0 ? `${qty} ft` : "—"}</div>,
                   <div key={`r${idx}`} style={{ background: bg, padding: "6px 8px", fontSize: 12, color: "#4a5878", display: "flex", alignItems: "center" }}>${p.retail}/ft</div>,
                   <div key={`re${idx}`} style={{ background: bg, padding: "6px 8px", fontSize: 13, color: qty > 0 ? "#e8eaf0" : "#2d3a52", fontWeight: qty > 0 ? 700 : 400, display: "flex", alignItems: "center" }}>{qty > 0 ? fmt(qty * p.retail) : "—"}</div>,
                   <div key={`fl${idx}`} style={{ background: bg, padding: "6px 8px", fontSize: 13, color: qty > 0 ? "#ffa726" : "#2d3a52", fontWeight: qty > 0 ? 700 : 400, display: "flex", alignItems: "center" }}>{qty > 0 ? fmt(qty * p.floor) : "—"}</div>,
                 ];
               })}
               <div style={{ gridColumn: "1 / 3", padding: "8px 8px", fontWeight: 800, fontSize: 12, color: "#7b8bb2", textTransform: "uppercase" }}>DS TOTAL</div>
-              <div style={{ padding: "8px 8px", fontWeight: 700, fontSize: 13, color: "#4fc3f7" }}>{dsCalc.footage > 0 ? `${dsCalc.footage} ft` : "—"}</div>
+              <div style={{ padding: "8px 8px", fontWeight: 700, fontSize: 13, color: "#e53935" }}>{dsCalc.footage > 0 ? `${dsCalc.footage} ft` : "—"}</div>
               <div />
               <div style={{ padding: "8px 8px", fontWeight: 700, fontSize: 13, color: "#e8eaf0" }}>{dsCalc.retail > 0 ? fmt(dsCalc.retail) : "—"}</div>
               <div style={{ padding: "8px 8px", fontWeight: 700, fontSize: 13, color: "#ffa726" }}>{dsCalc.floor > 0 ? fmt(dsCalc.floor) : "—"}</div>
@@ -513,7 +547,7 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
             <div style={statRow}>
               <StatBar label="Total Footage" value={`${dsTotal.footage} ft`} color="#ab47bc" />
               <StatBar label="Retail" value={fmt(dsTotal.retail)} />
-              <StatBar label="Floor" value={fmt(dsTotal.floor)} color="#ffa726" />
+              <StatBar label="Floor" value={fmt(dsTotal.floor)} color="#ffa726" className="no-print" />
             </div>
           </div>
 
@@ -521,9 +555,9 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
           <div style={{ background: "#0a1628", borderRadius: 8, padding: 16, border: "1px solid #1e2d45" }}>
             <SubHeader label="Gutters Section Total" />
             <div style={statRow}>
-              <StatBar label="Gutter Footage" value={`${gutterCalc.footage} ft`} color="#4fc3f7" />
+              <StatBar label="Gutter Footage" value={`${gutterCalc.footage} ft`} color="#e53935" />
               <StatBar label="Retail" value={fmt(gutterCalc.retail + dsTotal.retail)} />
-              <StatBar label="Floor" value={fmt(gutterCalc.floor + dsTotal.floor)} color="#ffa726" />
+              <StatBar label="Floor" value={fmt(gutterCalc.floor + dsTotal.floor)} color="#ffa726" className="no-print" />
             </div>
           </div>
         </div>
@@ -556,7 +590,7 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
           </div>
           <div style={statRow}>
             <StatBar label="Add-On Retail" value={fmt(addonCalc.retail)} />
-            <StatBar label="Add-On Floor" value={fmt(addonCalc.floor)} color="#ffa726" />
+            <StatBar label="Add-On Floor" value={fmt(addonCalc.floor)} color="#ffa726" className="no-print" />
           </div>
         </div>
       )}
@@ -565,28 +599,30 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
       <div style={card}>
         <SectionHeader label="Estimate Summary" icon="📊" accent="#e53935" />
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
-          {([["Section", "#4a5878"], ["Retail", "#e8eaf0"], ["Floor", "#ffa726"], ["Quoted", "#4fc3f7"], ["Commission", "#66bb6a"]] as const).map(([h, c]) => (
-            <span key={h} style={{ fontSize: 10, color: c, textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: h === "Section" ? "left" : "right" }}>{h}</span>
-          ))}
+          <span style={{ fontSize: 10, color: "#4a5878", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "left" }}>Section</span>
+          <span style={{ fontSize: 10, color: "#e8eaf0", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "right" }}>Retail</span>
+          <span className="no-print" style={{ fontSize: 10, color: "#ffa726", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "right" }}>Floor</span>
+          <span style={{ fontSize: 10, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "right" }}>Quoted</span>
+          <span className="no-print" style={{ fontSize: 10, color: "#66bb6a", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "right" }}>Commission</span>
         </div>
-        <SummaryRow label="🛡️ Protection" retail={protCalc.retail} floor={protCalc.floor} quoted={protCalc.retail > 0 ? protCalc.retail * (clampedQuoted / totalRetail || 0) : undefined} commission={protCalc.retail > 0 ? (protCalc.retail * (clampedQuoted / totalRetail || 0)) - protCalc.floor : undefined} muted={protCalc.retail === 0} />
-        <SummaryRow label="🏠 Gutters" retail={gutterCalc.retail} floor={gutterCalc.floor} quoted={gutterCalc.retail > 0 ? gutterCalc.retail * (clampedQuoted / totalRetail || 0) : undefined} commission={gutterCalc.retail > 0 ? (gutterCalc.retail * (clampedQuoted / totalRetail || 0)) - gutterCalc.floor : undefined} muted={gutterCalc.retail === 0} />
-        <SummaryRow label="⬇️ DS + Elbows" retail={dsTotal.retail} floor={dsTotal.floor} quoted={dsTotal.retail > 0 ? dsTotal.retail * (clampedQuoted / totalRetail || 0) : undefined} commission={dsTotal.retail > 0 ? (dsTotal.retail * (clampedQuoted / totalRetail || 0)) - dsTotal.floor : undefined} muted={dsTotal.retail === 0} />
-        <SummaryRow label="➕ Add-Ons" retail={addonCalc.retail} floor={addonCalc.floor} quoted={addonCalc.retail > 0 ? addonCalc.retail * (clampedQuoted / totalRetail || 0) : undefined} commission={addonCalc.retail > 0 ? (addonCalc.retail * (clampedQuoted / totalRetail || 0)) - addonCalc.floor : undefined} muted={addonCalc.retail === 0} />
+        <SummaryRow label="🛡️ Protection" retail={protCalc.retail} floor={protCalc.floor} quoted={protCalc.retail > 0 ? protCalc.retail * (clampedQuoted / (totalRetail || 1)) : undefined} commission={protCalc.retail > 0 ? (protCalc.retail * (clampedQuoted / (totalRetail || 1))) - protCalc.floor : undefined} muted={protCalc.retail === 0} />
+        <SummaryRow label="🏠 Gutters" retail={gutterCalc.retail} floor={gutterCalc.floor} quoted={gutterCalc.retail > 0 ? gutterCalc.retail * (clampedQuoted / (totalRetail || 1)) : undefined} commission={gutterCalc.retail > 0 ? (gutterCalc.retail * (clampedQuoted / (totalRetail || 1))) - gutterCalc.floor : undefined} muted={gutterCalc.retail === 0} />
+        <SummaryRow label="⬇️ DS + Elbows" retail={dsTotal.retail} floor={dsTotal.floor} quoted={dsTotal.retail > 0 ? dsTotal.retail * (clampedQuoted / (totalRetail || 1)) : undefined} commission={dsTotal.retail > 0 ? (dsTotal.retail * (clampedQuoted / (totalRetail || 1))) - dsTotal.floor : undefined} muted={dsTotal.retail === 0} />
+        <SummaryRow label="➕ Add-Ons" retail={addonCalc.retail} floor={addonCalc.floor} quoted={addonCalc.retail > 0 ? addonCalc.retail * (clampedQuoted / (totalRetail || 1)) : undefined} commission={addonCalc.retail > 0 ? (addonCalc.retail * (clampedQuoted / (totalRetail || 1))) - addonCalc.floor : undefined} muted={addonCalc.retail === 0} />
         <div style={{ height: 8 }} />
         <SummaryRow label="GRAND TOTAL" retail={totalRetail} floor={totalFloor} quoted={clampedQuoted} commission={totalCommission} bold />
 
         {/* SLIDER */}
         <div style={{ marginTop: 24, padding: "20px 24px", background: "#111827", borderRadius: 12, border: "1px solid #1e2d45" }} className="no-print">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-            <h3 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, letterSpacing: 1, textTransform: "uppercase", color: "#4fc3f7", margin: 0 }}>ADJUST QUOTED PRICE</h3>
+            <h3 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, letterSpacing: 1, textTransform: "uppercase", color: "#ffffff", margin: 0 }}>ADJUST QUOTED PRICE</h3>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: "#4a5878", fontSize: 20 }}>$</span>
               <input
                 type="number"
                 value={quotedTotal ?? totalRetail}
                 onChange={e => setQuotedTotal(parseFloat(e.target.value) || totalFloor)}
-                style={{ background: "#111827", border: "1px solid #4fc3f7", borderRadius: 8, color: "#4fc3f7", padding: "8px 12px", fontSize: 22, fontWeight: 800, width: 160, outline: "none", textAlign: "right" }}
+                style={{ background: "#111827", border: "1px solid #ffffff40", borderRadius: 8, color: "#ffffff", padding: "8px 12px", fontSize: 22, fontWeight: 800, width: 160, outline: "none", textAlign: "right" }}
               />
             </div>
           </div>
@@ -615,9 +651,9 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ flex: 2, padding: "14px 24px", borderRadius: 10, border: "none", background: saved ? "#2e7d32" : "#e53935", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: saving ? "wait" : "pointer", transition: "background 0.3s" }}
+            style={{ flex: 2, padding: "14px 24px", borderRadius: 10, border: "none", background: "#e53935", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: saving ? "wait" : "pointer", transition: "background 0.3s" }}
           >
-            {saving ? "⏳ Saving..." : saved ? "✅ Saved!" : "💾 Save to Job Record"}
+            {saving ? "⏳ Saving..." : "💾 Save to Job Record"}
           </button>
           <button onClick={() => window.print()} style={{ flex: 1, padding: "14px 24px", borderRadius: 10, border: "2px solid #1e2d45", background: "transparent", color: "#e8eaf0", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>
             🖨️ Print Customer Quote
@@ -625,7 +661,7 @@ export default function NGRGutterCalculator({ lead = null, onSave }: NGRGutterCa
           <button
             onClick={() => {
               setJobInfo({ customer: lead?.full_name || "", city: lead?.city || "", state: lead?.state || "", jobNumber: lead?.reference_number || "" });
-              setProtRows(emptyRows()); setGutterRows(emptyRows()); setDownspouts(emptyDownspouts()); setElbows(emptyElbows()); setAddons(emptyAddons()); setQuotedTotal(null); setSaved(false);
+              setProtRows(emptyRows()); setGutterRows(emptyRows()); setDownspouts(emptyDownspouts()); setElbows(emptyElbows()); setAddons(emptyAddons()); setQuotedTotal(null);
             }}
             style={{ padding: "14px 24px", borderRadius: 10, border: "2px solid #1e2d45", background: "transparent", color: "#4a5878", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}
           >
