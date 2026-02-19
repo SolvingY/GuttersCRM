@@ -20,13 +20,13 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield, Users, UserCheck, EyeOff } from 'lucide-react';
+import { Loader2, Shield, Users, UserCheck, EyeOff, FileText } from 'lucide-react';
 import { RANK_OPTIONS, CANVASSER_RANK_OPTIONS } from '@/lib/constants';
 
 interface UserWithRole {
   id: string;
   fullName: string | null;
-  roles: ('admin' | 'user' | 'canvasser')[];
+  roles: ('admin' | 'user' | 'canvasser' | 'supplementer')[];
   salesRank: string | null;
   canvasserRank: string | null;
   isArchived: boolean;
@@ -47,6 +47,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSalesRep, setIsSalesRep] = useState(false);
   const [isCanvasser, setIsCanvasser] = useState(false);
+  const [isSupplementer, setIsSupplementer] = useState(false);
   const [salesRank, setSalesRank] = useState<string>('SR1');
   const [canvasserRank, setCanvasserRank] = useState<string>('C1');
   const [hiddenFromLeaderboard, setHiddenFromLeaderboard] = useState(false);
@@ -56,6 +57,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       setIsAdmin(user.roles.includes('admin'));
       setIsSalesRep(user.roles.includes('user'));
       setIsCanvasser(user.roles.includes('canvasser'));
+      setIsSupplementer(user.roles.includes('supplementer'));
       setSalesRank(user.salesRank || 'SR1');
       setCanvasserRank(user.canvasserRank || 'C1');
       setHiddenFromLeaderboard(user.hiddenFromLeaderboard || false);
@@ -67,7 +69,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
     if (!user) return;
 
     // Validate at least one role is selected
-    if (!isAdmin && !isSalesRep && !isCanvasser) {
+    if (!isAdmin && !isSalesRep && !isCanvasser && !isSupplementer) {
       toast({
         title: 'Error',
         description: 'Please select at least one role',
@@ -83,9 +85,10 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       if (isAdmin) roles.push('admin');
       if (isSalesRep) roles.push('user');
       if (isCanvasser) roles.push('canvasser');
+      if (isSupplementer) roles.push('supplementer');
 
       // Determine if this is admin-only (admin checked but no operational roles)
-      const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser;
+      const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer;
 
       const response = await supabase.functions.invoke('admin-set-user-role', {
         body: { 
@@ -94,7 +97,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
           salesRank: isSalesRep ? salesRank : undefined,
           canvasserRank: isCanvasser ? canvasserRank : undefined,
           isAdminOnly,
-          hiddenFromLeaderboard: (isSalesRep || isCanvasser) ? hiddenFromLeaderboard : false,
+          hiddenFromLeaderboard: (isSalesRep || isCanvasser || isSupplementer) ? hiddenFromLeaderboard : false,
         },
       });
 
@@ -104,7 +107,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
 
       // Build success message
       const roleNames: string[] = [];
-      if (isAdmin && !isSalesRep && !isCanvasser) {
+      if (isAdmin && !isSalesRep && !isCanvasser && !isSupplementer) {
         roleNames.push('Admin Only');
       } else {
         if (isAdmin) roleNames.push('Admin');
@@ -130,9 +133,9 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
     }
   };
 
-  const isValid = isAdmin || isSalesRep || isCanvasser;
-  const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser;
-  const isSuperAdmin = isAdmin && (isSalesRep || isCanvasser);
+  const isValid = isAdmin || isSalesRep || isCanvasser || isSupplementer;
+  const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer;
+  const isSuperAdmin = isAdmin && (isSalesRep || isCanvasser || isSupplementer);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -242,10 +245,25 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
                   </div>
                 )}
               </div>
+
+              {/* Supplementer Role */}
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="supplementer"
+                    checked={isSupplementer}
+                    onCheckedChange={(checked) => setIsSupplementer(checked === true)}
+                  />
+                  <Label htmlFor="supplementer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Supplementer
+                  </Label>
+                </div>
+              </div>
             </div>
 
             {/* Hide from Leaderboard Toggle - only show for operational roles */}
-            {(isSalesRep || isCanvasser) && (
+            {(isSalesRep || isCanvasser || isSupplementer) && (
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">

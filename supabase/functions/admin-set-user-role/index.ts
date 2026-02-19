@@ -83,12 +83,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate roles - now including 'admin' as valid
-    const validRoles = ['user', 'canvasser', 'admin'];
+    // Validate roles - now including 'admin' and 'supplementer' as valid
+    const validRoles = ['user', 'canvasser', 'admin', 'supplementer'];
     for (const role of rolesToSet) {
       if (!validRoles.includes(role)) {
         return new Response(
-          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', or 'admin'` }),
+          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', or 'supplementer'` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -173,9 +173,10 @@ Deno.serve(async (req) => {
     const hasSalesRole = rolesToSet.includes('user');
     const hasCanvasserRole = rolesToSet.includes('canvasser');
     const hasAdminRole = rolesToSet.includes('admin');
+    const hasSupplementerRole = rolesToSet.includes('supplementer');
 
-    // For admin-only users (admin but no sales/canvasser), we don't create any metrics
-    if (isAdminOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole)) {
+    // For admin-only users (admin but no operational roles), we don't create any metrics
+    if (isAdminOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole)) {
       console.log("Admin-only user, skipping metrics creation");
       return new Response(
         JSON.stringify({ success: true, roles: rolesToSet, adminOnly: true }),
@@ -252,6 +253,30 @@ Deno.serve(async (req) => {
         
         if (updateError) {
           console.error("Failed to update sales rank:", updateError);
+        }
+      }
+    }
+
+    if (hasSupplementerRole) {
+      // Check if supplementer metrics exist
+      const { data: existingSupplementerMetrics } = await supabaseAdmin
+        .from("supplementer_metrics")
+        .select("id")
+        .eq("user_id", targetUserId)
+        .limit(1);
+
+      if (!existingSupplementerMetrics || existingSupplementerMetrics.length === 0) {
+        const { error: insertError } = await supabaseAdmin
+          .from("supplementer_metrics")
+          .insert({
+            user_id: targetUserId,
+            display_name: displayName,
+          });
+
+        if (insertError) {
+          console.error("Failed to create supplementer metrics:", insertError);
+        } else {
+          console.log("Created supplementer metrics for user:", targetUserId);
         }
       }
     }
