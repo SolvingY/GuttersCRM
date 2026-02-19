@@ -4,10 +4,15 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Star, DollarSign, TrendingUp, Clock, FileCheck, Percent, Info, Trophy, Plus } from "lucide-react";
+import { Loader2, Star, DollarSign, TrendingUp, Clock, FileCheck, Percent, Info, Trophy, Plus, ChevronDown, ChevronRight, Calendar, Target } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Bar } from 'recharts';
+import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from "@/lib/constants";
+import { format } from "date-fns";
 
 interface SupplementerMetrics {
   display_name: string | null;
@@ -33,12 +38,23 @@ interface RecentJob {
   assigned_at: string;
 }
 
+interface WeeklyData {
+  week: string;
+  rcv_increased: number;
+  cumulative_rcv: number;
+  goal_pace: number;
+}
+
 export default function SupplementerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<SupplementerMetrics | null>(null);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fiscalOpen, setFiscalOpen] = useState(true);
+  const [goalOpen, setGoalOpen] = useState(true);
+  const [chartOpen, setChartOpen] = useState(true);
 
   useEffect(() => {
     if (user) fetchData();
@@ -47,19 +63,10 @@ export default function SupplementerDashboard() {
   const fetchData = async () => {
     if (!user) return;
 
-    const [metricsRes, jobsRes] = await Promise.all([
-      supabase
-        .from("supplementer_metrics")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("supplement_jobs")
-        .select("id, job_number, client_name, status, rcv_increase, assigned_at")
-        .eq("supplementer_id", user.id)
-        .in("status", ["active", "coc_pending", "depreciation_pending"])
-        .order("assigned_at", { ascending: false })
-        .limit(5),
+    const [metricsRes, jobsRes, weeklyRes] = await Promise.all([
+      supabase.from("supplementer_metrics").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("supplement_jobs").select("id, job_number, client_name, status, rcv_increase, assigned_at").eq("supplementer_id", user.id).in("status", ["active", "coc_pending", "depreciation_pending"]).order("assigned_at", { ascending: false }).limit(5),
+      supabase.from("weekly_supplementer_metrics").select("week_start, rcv_increased, points_earned").eq("user_id", user.id).gte("week_start", format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd')).order("week_start", { ascending: true }),
     ]);
 
     if (metricsRes.error) console.error("Error fetching metrics:", metricsRes.error);
@@ -67,6 +74,21 @@ export default function SupplementerDashboard() {
 
     if (jobsRes.error) console.error("Error fetching jobs:", jobsRes.error);
     else setRecentJobs(jobsRes.data || []);
+
+    // Build 52-week chart data
+    const yearlyGoal = Number(metricsRes.data?.yearly_goal) || 100000;
+    const weeklyGoalPace = yearlyGoal / 52;
+    let cumulative = 0;
+    const chartData: WeeklyData[] = (weeklyRes.data || []).map((w, i) => {
+      cumulative += Number(w.rcv_increased) || 0;
+      return {
+        week: format(new Date(w.week_start), 'M/d'),
+        rcv_increased: Number(w.rcv_increased) || 0,
+        cumulative_rcv: cumulative,
+        goal_pace: Math.round(weeklyGoalPace * (i + 1)),
+      };
+    });
+    setWeeklyData(chartData);
 
     setLoading(false);
   };
@@ -85,6 +107,12 @@ export default function SupplementerDashboard() {
   const rcvPoints = Math.floor((metrics?.total_rcv_increased || 0) / 1000);
   const collectionPoints = Math.floor((metrics?.total_money_collected || 0) / 2000);
   const cocBonus = metrics?.coc_bonus_points || 0;
+
+  const fiscalProgress = getFiscalYearProgress();
+  const daysRemaining = getDaysRemainingInFiscalYear();
+  const yearlyGoal = metrics?.yearly_goal || 100000;
+  const totalRcv = metrics?.total_rcv_increased || 0;
+  const goalProgress = yearlyGoal > 0 ? Math.min((totalRcv / yearlyGoal) * 100, 100) : 0;
 
   const statusColors: Record<string, string> = {
     active: "bg-blue-100 text-blue-800",
@@ -148,6 +176,106 @@ export default function SupplementerDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Fiscal Year Progress */}
+      <Collapsible open={fiscalOpen} onOpenChange={setFiscalOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Fiscal Year Progress
+                </div>
+                {fiscalOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>{format(FISCAL_YEAR.CURRENT_YEAR_START, 'MMM d, yyyy')}</span>
+                  <span>{format(FISCAL_YEAR.CURRENT_YEAR_END, 'MMM d, yyyy')}</span>
+                </div>
+                <Progress value={fiscalProgress} className="h-3" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{fiscalProgress.toFixed(1)}% complete</span>
+                  <span className="font-medium text-primary">{daysRemaining} days remaining</span>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* RCV Goal Progress */}
+      <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  RCV Goal Progress
+                </div>
+                {goalOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{formatCurrency(totalRcv)} of {formatCurrency(yearlyGoal)}</span>
+                  <span className="font-medium text-primary">{goalProgress.toFixed(1)}%</span>
+                </div>
+                <Progress value={goalProgress} className="h-3" />
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(yearlyGoal - totalRcv > 0 ? yearlyGoal - totalRcv : 0)} remaining to goal
+                </p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* 52-Week Progress Chart */}
+      <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  52-Week RCV Progress
+                </div>
+                {chartOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              {weeklyData.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No weekly data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                    <RechartsTooltip formatter={(value: number, name: string) => [formatCurrency(value), name === 'rcv_increased' ? 'Weekly RCV' : name === 'cumulative_rcv' ? 'Cumulative RCV' : 'Goal Pace']} />
+                    <Legend />
+                    <Bar dataKey="rcv_increased" name="Weekly RCV" fill="hsl(var(--primary))" opacity={0.7} />
+                    <Line type="monotone" dataKey="cumulative_rcv" name="Cumulative RCV" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="goal_pace" name="Goal Pace" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Secondary KPIs */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

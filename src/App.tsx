@@ -46,6 +46,8 @@ import SupplementerLeaderboard from "./pages/supplementer/SupplementerLeaderboar
 import SupplementerJobsList from "./pages/supplementer/SupplementerJobsList";
 import SupplementerJobDetail from "./pages/supplementer/SupplementerJobDetail";
 import SupplementerSettings from "./pages/supplementer/SupplementerSettings";
+import SupplementerPit from "./pages/supplementer/SupplementerPit";
+import SupplementerPointsHistory from "./pages/supplementer/SupplementerPointsHistory";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import InternalAssessment from "./pages/dashboard/InternalAssessment";
 
@@ -118,6 +120,8 @@ const App = () => (
             <Route path="leaderboard" element={<SupplementerLeaderboard />} />
             <Route path="jobs" element={<SupplementerJobsList />} />
             <Route path="jobs/:id" element={<SupplementerJobDetail />} />
+            <Route path="pit" element={<SupplementerPit />} />
+            <Route path="points-history" element={<SupplementerPointsHistory />} />
             <Route path="settings" element={<SupplementerSettings />} />
           </Route>
 
