@@ -18,7 +18,7 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
-  const { user, signOut, isAdmin, isCanvasser, role } = useAuth();
+  const { user, signOut, isAdmin, isCanvasser, hasSupplementerRole, role } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -41,6 +41,9 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     if (location.pathname.startsWith('/canvasser')) {
       return 'Canvasser Portal';
     }
+    if (location.pathname.startsWith('/supplementer')) {
+      return 'Supplementer Portal';
+    }
     if (location.pathname.startsWith('/admin')) {
       return 'Admin Portal';
     }
@@ -54,6 +57,9 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     }
     if (isCanvasser) {
       return <Badge className="bg-primary text-primary-foreground text-xs">Canvasser</Badge>;
+    }
+    if (hasSupplementerRole && !isAdmin) {
+      return <Badge className="bg-accent text-accent-foreground text-xs">Supplementer</Badge>;
     }
     return <Badge variant="secondary" className="text-xs">Sales Rep</Badge>;
   };
