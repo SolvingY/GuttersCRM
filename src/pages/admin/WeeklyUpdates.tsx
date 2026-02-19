@@ -63,12 +63,29 @@ interface CanvasserWeeklyEntry {
   weeklyDoorsKnocked: string;
 }
 
+interface SupplementerMetricEntry {
+  user_id: string;
+  display_name: string | null;
+}
+
+interface SupplementerWeeklyEntry {
+  userId: string;
+  displayName: string;
+  weeklySupplementsCompleted: string;
+  weeklyRcvIncreased: string;
+  weeklyMoneyCollected: string;
+}
+
 // Calculate points: 10 points per $10,000 in revenue + 10 points per closed deal + 15 points per $10,000 collections
 const calculatePoints = (revenue: number, closedDeals: number, collections: number): number => {
   const revenuePoints = Math.floor(revenue / 10000) * 10;
   const closedDealPoints = closedDeals * 10;
   const collectionsPoints = Math.floor(collections / 10000) * 15;
   return revenuePoints + closedDealPoints + collectionsPoints;
+};
+
+const calculateSupplementerPoints = (rcv: number, collected: number, cocBonus: number): number => {
+  return Math.floor(rcv / 1000) + Math.floor(collected / 2000) + cocBonus;
 };
 
 export default function WeeklyUpdates() {
@@ -79,6 +96,8 @@ export default function WeeklyUpdates() {
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserMetric[]>([]);
   const [canvasserEntries, setCanvasserEntries] = useState<CanvasserWeeklyEntry[]>([]);
+  const [supplementers, setSupplementers] = useState<SupplementerMetricEntry[]>([]);
+  const [supplementerEntries, setSupplementerEntries] = useState<SupplementerWeeklyEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState<string>('sales-reps');
 
@@ -177,6 +196,33 @@ export default function WeeklyUpdates() {
           weeklyDoorsKnocked: '',
         }))
       );
+      // Fetch supplementers
+      const { data: suppRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'supplementer');
+      const suppUserIds = new Set(suppRoles?.map(r => r.user_id) || []);
+
+      const { data: suppData } = await supabase
+        .from('supplementer_metrics')
+        .select('user_id, display_name')
+        .order('display_name', { ascending: true });
+
+      const uniqueSupps = new Map<string, SupplementerMetricEntry>();
+      (suppData || []).forEach((item) => {
+        if (item.user_id && !uniqueSupps.has(item.user_id) && !archivedUserIds.has(item.user_id) && suppUserIds.has(item.user_id)) {
+          uniqueSupps.set(item.user_id, item);
+        }
+      });
+
+      const suppList = Array.from(uniqueSupps.values());
+      setSupplementers(suppList);
+      setSupplementerEntries(
+        suppList.map((s) => ({
+          userId: s.user_id,
+          displayName: s.display_name || 'Unknown',
+          weeklySupplementsCompleted: '',
+          weeklyRcvIncreased: '',
+          weeklyMoneyCollected: '',
+        }))
+      );
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -203,6 +249,14 @@ export default function WeeklyUpdates() {
 
   const updateCanvasserEntry = (userId: string, field: keyof CanvasserWeeklyEntry, value: string) => {
     setCanvasserEntries((prev) =>
+      prev.map((entry) =>
+        entry.userId === userId ? { ...entry, [field]: value } : entry
+      )
+    );
+  };
+
+  const updateSupplementerEntry = (userId: string, field: keyof SupplementerWeeklyEntry, value: string) => {
+    setSupplementerEntries((prev) =>
       prev.map((entry) =>
         entry.userId === userId ? { ...entry, [field]: value } : entry
       )
@@ -463,6 +517,82 @@ export default function WeeklyUpdates() {
         if (dailyError) {
           console.error('Error saving daily canvasser entry:', dailyError);
         }
+
+        successCount++;
+      }
+
+      // Save Supplementer entries
+      for (const entry of supplementerEntries) {
+        const weeklyRcv = parseFloat(entry.weeklyRcvIncreased) || 0;
+        const weeklyCollected = parseFloat(entry.weeklyMoneyCollected) || 0;
+        const weeklySuppsDone = parseInt(entry.weeklySupplementsCompleted) || 0;
+
+        if (weeklyRcv === 0 && weeklyCollected === 0 && weeklySuppsDone === 0) continue;
+
+        const { data: currentMetrics, error: fetchError } = await supabase
+          .from('supplementer_metrics')
+          .select('*')
+          .eq('user_id', entry.userId)
+          .maybeSingle();
+
+        if (fetchError || !currentMetrics) {
+          console.error('Error fetching supplementer metrics:', entry.userId, fetchError);
+          errorCount++;
+          continue;
+        }
+
+        const newRcv = (Number(currentMetrics.total_rcv_increased) || 0) + weeklyRcv;
+        const newCollected = (Number(currentMetrics.total_money_collected) || 0) + weeklyCollected;
+        const newSupps = (Number(currentMetrics.total_supplements_processed) || 0) + weeklySuppsDone;
+        const cocBonus = Number(currentMetrics.coc_bonus_points) || 0;
+        const newPoints = calculateSupplementerPoints(newRcv, newCollected, cocBonus);
+
+        const { error: updateError } = await supabase
+          .from('supplementer_metrics')
+          .update({
+            total_rcv_increased: newRcv,
+            total_money_collected: newCollected,
+            total_supplements_processed: newSupps,
+            points: newPoints,
+            collection_rate: newRcv > 0 ? Math.round((newCollected / newRcv) * 10000) / 100 : 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', entry.userId);
+
+        if (updateError) {
+          console.error('Error updating supplementer metrics:', entry.userId, updateError);
+          errorCount++;
+          continue;
+        }
+
+        // Upsert weekly supplementer metrics
+        const { data: existingWeekly } = await supabase
+          .from('weekly_supplementer_metrics')
+          .select('*')
+          .eq('user_id', entry.userId)
+          .eq('week_start', weekStartStr)
+          .maybeSingle();
+
+        const compoundedRcv = (Number(existingWeekly?.rcv_increased) || 0) + weeklyRcv;
+        const compoundedCollected = (Number(existingWeekly?.money_collected) || 0) + weeklyCollected;
+        const compoundedSupps = (Number(existingWeekly?.supplements_completed) || 0) + weeklySuppsDone;
+        const weeklyPoints = Math.floor(compoundedRcv / 1000) + Math.floor(compoundedCollected / 2000);
+
+        const { error: weeklyError } = await supabase
+          .from('weekly_supplementer_metrics')
+          .upsert({
+            user_id: entry.userId,
+            week_start: weekStartStr,
+            week_end: weekEndStr,
+            display_name: entry.displayName,
+            rcv_increased: compoundedRcv,
+            money_collected: compoundedCollected,
+            supplements_completed: compoundedSupps,
+            points_earned: weeklyPoints,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,week_start' });
+
+        if (weeklyError) console.error('Error saving weekly supplementer metrics:', weeklyError);
 
         successCount++;
       }
