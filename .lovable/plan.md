@@ -1,262 +1,131 @@
 
 
-# Supplementer Profile & Tracking System - Full Implementation Plan
+# Phases 4-5: Admin Integration & System Integration
 
-This is a major feature adding a new "Supplementer" role for insurance supplement specialists, with a dedicated portal, job tracking, points-based leaderboard, and admin integration. It follows all existing patterns for Sales Reps and Canvassers.
-
----
-
-## Phase 1: Database Migration
-
-A single migration will create all tables, triggers, RLS policies, and enum extension.
-
-### 1A. Extend `app_role` enum
-Add `'supplementer'` to the existing enum used by `user_roles`.
-
-### 1B. Create `supplementer_metrics` table
-Cumulative/YTD metrics per supplementer:
-- `user_id` (unique), `display_name`, `yearly_goal` (NUMERIC, default 100000)
-- Financial: `total_rcv_increased`, `total_money_collected`, `total_supplements_processed`
-- Timing averages: `avg_coc_completion_days`, `avg_depreciation_release_days`, `avg_code_release_days`, `avg_revised_scope_days`
-- Calculated: `efficiency_score`, `collection_rate`
-- Points: `points` (INTEGER), `coc_bonus_points` (INTEGER)
-- Weekly tracking: `supplements_this_week`, `rcv_increased_this_week`, `money_collected_this_week`
-- Weekly reset: `last_weekly_reset` (TIMESTAMPTZ)
-
-### 1C. Create `supplement_jobs` table
-Individual job tracking with API-ready fields:
-- Job info: `job_number`, `client_name`, `property_address`, `insurance_carrier`, `claim_number`
-- Assignment: `supplementer_id`, `assigned_at`
-- Financials: `original_rcv`, `statement_of_loss_rcv`, `rcv_increase` (computed column: `statement_of_loss_rcv - original_rcv`), `depreciation_amount`, `code_upgrade_amount`, `money_collected`, `collection_date`
-- Timing milestones: `coc_completed_at`, `depreciation_released_at`, `code_released_at`, `revised_scope_received_at` with auto-calculated day counts
-- Points: `coc_bonus_points` (INTEGER, per-job speed bonus)
-- Status: `active`, `coc_pending`, `depreciation_pending`, `completed`, `closed`
-- API-ready fields: `external_job_id`, `external_claim_id`, `external_sync_status`, `last_synced_at`, `sync_error`, `updated_via` (default 'manual')
-- Audit: `notes`, `created_by`, `last_modified_by`
-
-### 1D. Create `weekly_supplementer_metrics` table
-Weekly snapshots for leaderboard:
-- `user_id`, `week_start`, `week_end`
-- `supplements_completed`, `rcv_increased`, `money_collected`
-- Timing averages, `display_name`
-- `points_earned` (INTEGER)
-
-### 1E. Database Triggers
-
-1. **`calculate_supplement_days`** (BEFORE UPDATE on `supplement_jobs`):
-   - Auto-calculates day counts when milestone dates are entered
-   - Calculates COC bonus points: 5 pts for <=7 days, 3 pts for 8-10, 1 pt for 11-14, 0 for 15+
-
-2. **`update_supplementer_metrics`** (AFTER UPDATE on `supplement_jobs`):
-   - When job marked `completed`, updates cumulative totals
-   - Recalculates total points: `floor(total_rcv / 1000) + floor(total_collected / 2000) + total_coc_bonus`
-   - Updates timing averages and collection rate
-
-3. **`create_supplementer_metrics`** (AFTER INSERT on `user_roles`):
-   - Auto-creates `supplementer_metrics` row when user gets the supplementer role
-
-### 1F. RLS Policies
-- **Admins**: full ALL access on all 3 new tables
-- **Supplementers**: SELECT own data, INSERT/UPDATE own jobs
-- **Leaderboard**: public SELECT on metrics tables (authenticated users)
-
-### 1G. Add `supplementer_rcv_goal` column to `company_goals`
-New NUMERIC(12,2) column with default 500000.
-
-### 1H. Data Validation Constraints
-- Positive RCV amounts: `original_rcv >= 0 AND statement_of_loss_rcv >= 0`
-- Non-empty carrier: `insurance_carrier IS NULL OR insurance_carrier != ''`
-
----
-
-## Phase 2: Auth & Routing Updates
-
-### 2A. Update `src/hooks/useAuth.ts`
-- Extend `AppRole` type union: `'admin' | 'user' | 'canvasser' | 'supplementer'`
-- Add computed properties:
-  - `hasSupplementerRole`: `roles.includes('supplementer')`
-  - `isSupplementerOnly`: has supplementer but not user/canvasser/admin roles
-
-### 2B. Update `src/components/auth/ProtectedRoute.tsx`
-- Add `requireSupplementer` prop
-- Redirect supplementer-only users from `/dashboard` and `/canvasser` to `/supplementer`
-- Allow dual-role users to access multiple portals
-
-### 2C. Update `src/App.tsx`
-Add new route group (following canvasser pattern):
-```
-/supplementer              -> SupplementerLayout
-  /supplementer/stats      -> SupplementerDashboard
-  /supplementer/leaderboard
-  /supplementer/jobs
-  /supplementer/jobs/:id
-  /supplementer/settings
-```
-
----
-
-## Phase 3: Supplementer Portal (8 New Files)
-
-### 3A. `src/pages/supplementer/SupplementerLayout.tsx`
-Following `CanvasserLayout.tsx` pattern exactly: sidebar + DashboardHeader + Outlet + login tracking + watermark logo.
-
-### 3B. `src/components/supplementer/SupplementerSidebar.tsx`
-Following `CanvasserSidebar.tsx` pattern with nav items:
-- My Stats (`/supplementer/stats`)
-- Leaderboard (`/supplementer/leaderboard`)
-- Jobs (`/supplementer/jobs`)
-- Settings (`/supplementer/settings`)
-
-### 3C. `src/pages/supplementer/SupplementerDashboard.tsx`
-- **Primary KPI: Total Points** (large, prominent) with breakdown: RCV Points + Collection Points + Speed Bonus
-- Secondary KPIs: Total RCV Increased, Supplements Processed, Money Collected, Collection Rate
-- Timing cards: Avg COC Days, Avg Depreciation Days, Avg Code Release Days
-- Active jobs list (5 most recent)
-- "Add New Supplement Job" button
-
-### 3D. `src/pages/supplementer/SupplementerLeaderboard.tsx`
-- Weekly/Monthly/YTD tabs
-- Sorted by Points (descending) with tiebreakers: RCV Increased, Collection Rate, Avg COC Days
-- Columns: Rank, Name, Points (bold), RCV Increased, Collected, Avg COC Days
-- Points explanation tooltip showing the formula
-
-### 3E. `src/pages/supplementer/SupplementerJobsList.tsx`
-Table of all jobs with status filters, date range, click-to-detail.
-
-### 3F. `src/pages/supplementer/SupplementerJobDetail.tsx`
-Full job editing form:
-- Job info (client, property, insurance, claim number)
-- Financial metrics (original RCV, statement RCV, auto-calculated increase)
-- Timing milestones with date pickers
-- COC Speed Bonus display: shows bonus points earned with trophy icon
-- Notes, Save button
-
-### 3G. `src/pages/supplementer/SupplementerSettings.tsx`
-Display name update (following `CanvasserSettings.tsx` pattern).
-
-### 3H. `src/components/admin/EditSupplementerMetricsModal.tsx`
-Admin modal: yearly goal editable, points breakdown read-only (RCV Points + Collection Points + Speed Bonus = Total).
+Implementing the Supplementers tab in admin views, report exports, company goals, hire dialog, create-user edge function, and invite users.
 
 ---
 
 ## Phase 4: Admin Integration
 
-### 4A. `src/pages/admin/AdminLeaderboards.tsx`
-- Change inner TabsList from `grid-cols-2` to `grid-cols-3`
-- Add "Supplementers" TabsTrigger
-- Add supplementer state variables and data fetching (YTD from `supplementer_metrics`, weekly/monthly from `weekly_supplementer_metrics`)
-- Subscribe to realtime changes on `supplementer_metrics` and `weekly_supplementer_metrics`
-- Sort by points descending; columns: Rank, Name, Points, RCV Increased, Collected, Avg COC Days
+### 4A. AdminLeaderboards.tsx - Add Supplementers Tab
 
-### 4B. `src/pages/dashboard/AdminOverview.tsx`
-- Change TabsList from 2 to 3 columns
-- Add "Supplementers" tab with:
-  - Aggregate stats cards (Total RCV, Total Collected, Avg Collection Rate, Avg COC Days)
-  - Table of all supplementers with edit button
-- Wire up `EditSupplementerMetricsModal`
+**Changes:**
+- Add `SupplementerEntry` and `WeeklySupplementerEntry` interfaces
+- Add state variables for supplementer data (`supplementerYtdEntries`, `supplementerWeeklyEntries`, `supplementerLoading`)
+- Subscribe to realtime changes on `supplementer_metrics` and `weekly_supplementer_metrics` tables
+- Add YTD fetch: query `supplementer_metrics` table, filter by active supplementer role holders, sort by `points DESC`
+- Add weekly/monthly fetch: query `weekly_supplementer_metrics`, aggregate for monthly, sort by `points_earned DESC`
+- Change inner `TabsList` from `grid-cols-2` to `grid-cols-3`, add "Supplementers" TabsTrigger
+- Add `TabsContent value="supplementers"` with a new table showing: Rank, Name, Points (bold), RCV Increased, Money Collected, Collection Rate, Avg COC Days
+- Include Team Totals footer row (consistent with sales/canvasser patterns)
 
-### 4C. `src/components/dashboard/RoleViewToggle.tsx`
-Extend for users who may have supplementer + other roles. Add supplementer portal toggle option.
+### 4B. AdminOverview.tsx - Add Supplementers Tab
+
+**Changes:**
+- Add `SupplementerAggregates` interface and `SupplementerDetail` interface
+- Add state for supplementer data and `EditSupplementerMetricsModal`
+- In `fetchAdminData`, add query for `supplementer_metrics` joined with role/profile checks
+- Change `TabsList` from `grid-cols-2` to `grid-cols-3`, add "Supplementers" tab
+- Add Supplementers `TabsContent` with:
+  - Stats cards: Total Supplementers, Total RCV Increased, Total Collected, Avg Collection Rate, Avg COC Days, Total Points
+  - Performance table: Name, Points, RCV Increased, Collected, Collection Rate, Avg COC Days, Edit button
+- Wire up `EditSupplementerMetricsModal` for editing yearly goal
+
+### 4C. Create EditSupplementerMetricsModal.tsx
+
+**New file:** `src/components/admin/EditSupplementerMetricsModal.tsx`
+
+A dialog with:
+- Read-only points breakdown (RCV Points + Collection Points + Speed Bonus = Total)
+- Editable yearly goal input
+- Read-only display of: Total RCV, Total Collected, Supplements Processed, Avg COC Days, Avg Depreciation Days, Avg Code Days, Collection Rate
+- Save button updates only `yearly_goal` in `supplementer_metrics`
+
+### 4D. RoleViewToggle.tsx - Support Supplementer Portal
+
+**Changes:**
+- Import `FileText` icon from lucide-react for supplementer
+- Extend `activeView` type handling to include `'supplementer'`
+- Show toggle when user has supplementer + other roles
+- Add supplementer toggle option that navigates to `/supplementer`
+- Handle 3-way toggle when user has sales + canvasser + supplementer
 
 ---
 
 ## Phase 5: System Integration
 
-### 5A. Report Export (`src/lib/reportGenerator.ts`)
-- Add `SupplementerData` interface with `points` field
-- Add supplementer section to both CSV and PDF exports
-- Update `CompanySummary` with supplementer aggregates
-- Column order: Name, Points, RCV Increased, Money Collected, Collection Rate, Supplements Processed, Avg COC Days
+### 5A. Report Export (reportGenerator.ts)
 
-### 5B. Company Goals (`src/pages/admin/CompanyGoals.tsx`)
-- Add `supplementer_rcv_goal` to `CompanyGoal` interface
-- Add supplementer RCV goal input field in the goals form
-- Display progress against goal
+**Changes:**
+- Add `SupplementerData` interface: `{ name, points, rcvIncreased, supplementsProcessed, moneyCollected, collectionRate, avgCocDays, avgDepreciationDays, avgCodeDays }`
+- Update `CompanySummary` with supplementer aggregates: `supplementerCount`, `totalRcvIncreased`, `totalMoneyCollected`
+- Update `exportToExcel` signature to accept optional `supplementerData` parameter
+  - Add "SUPPLEMENTER TEAM SUMMARY" section to CSV
+  - Add supplementer table with columns: Name, Points, RCV Increased, Collected, Collection Rate, Supplements, Avg COC Days
+- Update `exportToPDF` similarly with a Supplementers section in the PDF
+- Update `generateEmailReportHTML` to include supplementer summary
 
-### 5C. Job Application (`src/components/admin/HireApplicantDialog.tsx`)
+### 5B. Company Goals (CompanyGoals.tsx)
+
+**Changes:**
+- Add `supplementerRcvGoal` state variable
+- Load `supplementer_rcv_goal` from company_goals query (already exists in DB)
+- Add a new input field in the goals form: "Supplementer RCV Goal ($)"
+- Save `supplementer_rcv_goal` in the `handleSave` function
+- Fetch supplementer RCV progress from `supplementer_metrics` (sum of `total_rcv_increased`)
+- Add a progress card showing Supplementer RCV progress vs goal
+
+### 5C. HireApplicantDialog.tsx
+
+**Changes:**
 - Add `'Supplementer': 'supplementer'` and `'Insurance Specialist': 'supplementer'` to `ROLE_MAPPING`
+- Add `<SelectItem value="supplementer">Supplementer</SelectItem>` to the role dropdown
 
-### 5D. `supabase/functions/create-user/index.ts`
-- Add `'supplementer'` case to `getRoleConfig`:
+### 5D. create-user Edge Function
+
+**Changes to `supabase/functions/create-user/index.ts`:**
+- Update `RoleConfig` interface to add `createSupplementerMetrics: boolean`
+- Add supplementer case to `getRoleConfig`:
   ```
   case 'supplementer':
-    return { roles: ['supplementer'], createSalesMetrics: false, createCanvasserMetrics: false };
+    return { roles: ['supplementer'], createSalesMetrics: false, createCanvasserMetrics: false, createSupplementerMetrics: true };
   ```
-- Add supplementer metrics creation logic (following canvasser pattern): check if `config.createSupplementerMetrics`, then upsert into `supplementer_metrics`
+- Update `super_admin` case to also set `createSupplementerMetrics: false` (or true if desired)
+- Add supplementer metrics creation block after canvasser metrics: check/upsert `supplementer_metrics` with `user_id`, `display_name`
+- Redeploy the edge function
 
-### 5E. Invite Users (`src/pages/dashboard/InviteUsers.tsx`)
-- Add `'supplementer'` as a role option in the invite role dropdown
-- Add supplementer option to manual user creation role type select
+### 5E. Invite Users (InviteUsers.tsx)
 
----
+**Changes:**
+- Add `'supplementer'` as an option in the invite role dropdown (`inviteRole` select)
+- Add `'supplementer'` as an option in the manual create role type dropdown (`manualRoleType` select)
+- When `inviteRole === 'supplementer'`, hide rank/goal fields (supplementers don't have sales ranks)
 
-## Points System Summary
+### 5F. AdminOverview Report Export Integration
 
-**Formula:**
-```
-Total Points = floor(total_rcv_increased / 1000)
-             + floor(total_money_collected / 2000)
-             + sum(coc_bonus_points)
-```
-
-**COC Speed Bonus (per job):**
-- 7 days or less = 5 bonus points
-- 8-10 days = 3 bonus points
-- 11-14 days = 1 bonus point
-- 15+ days = 0 bonus points
-
-**Ranking:** Primary: Points DESC. Tiebreakers: RCV Increased DESC, Collection Rate DESC, Avg COC Days ASC.
+**Changes:**
+- In the `onExport` callback, fetch supplementer data from state and pass to `exportToExcel`/`exportToPDF`
+- Add supplementer data to the `CompanySummary` object
 
 ---
 
 ## Files Summary
 
-### New Files (8)
+### New Files (1)
 | File | Description |
 |---|---|
-| `src/pages/supplementer/SupplementerLayout.tsx` | Layout with sidebar, header, outlet, login tracking |
-| `src/pages/supplementer/SupplementerDashboard.tsx` | Stats dashboard with points as primary KPI |
-| `src/pages/supplementer/SupplementerLeaderboard.tsx` | Points-ranked leaderboard with weekly/monthly/YTD |
-| `src/pages/supplementer/SupplementerJobsList.tsx` | Jobs list with status filters |
-| `src/pages/supplementer/SupplementerJobDetail.tsx` | Job detail/edit with COC bonus display |
-| `src/pages/supplementer/SupplementerSettings.tsx` | Display name settings |
-| `src/components/supplementer/SupplementerSidebar.tsx` | Sidebar navigation |
-| `src/components/admin/EditSupplementerMetricsModal.tsx` | Admin edit modal with points breakdown |
+| `src/components/admin/EditSupplementerMetricsModal.tsx` | Admin modal for editing supplementer yearly goal with points breakdown |
 
-### Modified Files (10)
+### Modified Files (8)
 | File | Changes |
 |---|---|
-| `src/hooks/useAuth.ts` | Add supplementer role type and checks |
-| `src/components/auth/ProtectedRoute.tsx` | Add supplementer routing logic |
-| `src/App.tsx` | Add supplementer route group |
-| `src/pages/admin/AdminLeaderboards.tsx` | Add Supplementers tab (3-col grid), data fetching, realtime |
-| `src/pages/dashboard/AdminOverview.tsx` | Add Supplementers tab + data fetching |
-| `src/lib/reportGenerator.ts` | Add SupplementerData interface + export section |
-| `src/pages/admin/CompanyGoals.tsx` | Add supplementer RCV goal field |
-| `src/components/admin/HireApplicantDialog.tsx` | Add supplementer role mapping |
+| `src/pages/admin/AdminLeaderboards.tsx` | Add Supplementers tab with YTD/weekly/monthly data fetching and realtime |
+| `src/pages/dashboard/AdminOverview.tsx` | Add Supplementers tab with stats cards and performance table |
+| `src/components/dashboard/RoleViewToggle.tsx` | Support supplementer portal toggle for dual/triple-role users |
+| `src/lib/reportGenerator.ts` | Add SupplementerData interface, update CSV/PDF/email exports |
+| `src/pages/admin/CompanyGoals.tsx` | Add supplementer RCV goal field and progress card |
+| `src/components/admin/HireApplicantDialog.tsx` | Add supplementer to role mapping and dropdown |
+| `supabase/functions/create-user/index.ts` | Add supplementer role config and metrics creation |
 | `src/pages/dashboard/InviteUsers.tsx` | Add supplementer as invite/create role option |
-| `supabase/functions/create-user/index.ts` | Add supplementer role config + metrics creation |
-
-### Database Migration
-1. `ALTER TYPE app_role ADD VALUE 'supplementer'`
-2. `CREATE TABLE supplementer_metrics` (with points columns + RLS)
-3. `CREATE TABLE supplement_jobs` (with API-ready fields, computed column, RLS, triggers)
-4. `CREATE TABLE weekly_supplementer_metrics` (with points_earned + RLS)
-5. `ALTER TABLE company_goals ADD COLUMN supplementer_rcv_goal`
-6. Create 3 triggers (timing calc with COC bonus, metrics update with points calc, auto-create metrics)
-7. Validation constraints on supplement_jobs
-8. Indexes for performance
-
----
-
-## Implementation Order
-
-Due to the size, this will be implemented in stages within a single approval:
-
-1. Database migration (all tables, triggers, RLS, constraints)
-2. Auth updates (useAuth, ProtectedRoute)
-3. Routing (App.tsx)
-4. Supplementer portal UI (Layout, Sidebar, Dashboard, Leaderboard, Jobs, JobDetail, Settings)
-5. Admin integration (Leaderboards tab, Overview tab, EditSupplementerMetricsModal)
-6. System integration (create-user edge function, report export, company goals, hire dialog, invite users)
 
