@@ -8,7 +8,7 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
-  activeView: 'sales' | 'canvasser';
+  activeView: 'sales' | 'canvasser' | 'supplementer';
   sessionLoading: boolean;
   roleLoading: boolean;
 }
@@ -42,7 +42,7 @@ export function useAuth() {
     return data.map(r => r.role as AppRole);
   }, []);
 
-  const fetchPreferredView = useCallback(async (userId: string): Promise<'sales' | 'canvasser'> => {
+  const fetchPreferredView = useCallback(async (userId: string): Promise<'sales' | 'canvasser' | 'supplementer'> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('preferred_view')
@@ -53,7 +53,7 @@ export function useAuth() {
       return 'sales';
     }
 
-    return data.preferred_view as 'sales' | 'canvasser';
+    return data.preferred_view as 'sales' | 'canvasser' | 'supplementer';
   }, []);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export function useAuth() {
     return { error: null };
   };
 
-  const setActiveView = async (view: 'sales' | 'canvasser') => {
+  const setActiveView = async (view: 'sales' | 'canvasser' | 'supplementer') => {
     setAuthState(prev => ({ ...prev, activeView: view }));
     
     // Save preference to database

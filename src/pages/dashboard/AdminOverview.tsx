@@ -852,9 +852,10 @@ export default function AdminOverview() {
       />
 
       <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="sales">Sales Reps ({aggregates.totalUsers})</TabsTrigger>
           <TabsTrigger value="canvassers">Canvassers ({canvasserAggregates.totalCanvassers})</TabsTrigger>
+          <TabsTrigger value="supplementers">Supplementers</TabsTrigger>
         </TabsList>
 
         {/* Sales Reps Tab */}
