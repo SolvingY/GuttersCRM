@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { QuoteApprovalSection } from "@/components/admin/QuoteApprovalSection";
 import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
 import { Badge } from "@/components/ui/badge";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
+import NGRGutterCalculator from "@/components/NGRGutterCalculator";
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -32,6 +33,7 @@ export default function LeadDetailView() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [lostReason, setLostReason] = useState("");
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead-detail", id],
@@ -42,6 +44,20 @@ export default function LeadDetailView() {
         .eq("id", id)
         .eq("assigned_to", user!.id)
         .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && !!user,
+  });
+
+  const { data: estimates = [], refetch: refetchEstimates } = useQuery({
+    queryKey: ["lead-estimates", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("gutter_estimates")
+        .select("*")
+        .eq("lead_id", id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -147,18 +163,52 @@ export default function LeadDetailView() {
             <p className="text-sm text-muted-foreground">{serviceLabels[lead.service_type]} • {lead.reference_number}</p>
           </div>
         </div>
-        <Select value={lead.status} onValueChange={(v) => {
-          const updates: Record<string, any> = { status: v };
-          if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
-          if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
-          if (v === "won") updates.won_at = new Date().toISOString();
-          updateLead.mutate(updates);
-        }}>
-          <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={lead.status} onValueChange={(v) => {
+            const updates: Record<string, any> = { status: v };
+            if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
+            if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
+            if (v === "won") updates.won_at = new Date().toISOString();
+            updateLead.mutate(updates);
+          }}>
+            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowCalculator(!showCalculator)} className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+            <Calculator className="w-4 h-4" /> {showCalculator ? "Close Estimator" : "📐 Open Estimator"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Calculator Panel */}
+      {showCalculator && (
+        <div className="border border-border rounded-lg overflow-hidden">
+          <NGRGutterCalculator
+            lead={{ id: lead.id, full_name: lead.full_name, city: lead.city, state: lead.state, reference_number: lead.reference_number || "" }}
+            onSave={() => { setShowCalculator(false); refetchEstimates(); }}
+          />
+        </div>
+      )}
+
+      {/* Past Estimates */}
+      <div className="border border-border rounded-lg p-5">
+        <h2 className="font-heading text-lg uppercase mb-4">Past Estimates</h2>
+        {estimates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No estimates yet</p>
+        ) : (
+          <div className="space-y-2">
+            {(estimates as any[]).map((est: any) => (
+              <div key={est.id} className="flex justify-between items-center text-sm border-b border-border pb-2">
+                <span className="text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
+                <span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span>
+                <span className="text-muted-foreground">Floor: ${Number(est.total_floor || 0).toFixed(2)}</span>
+                <span className="text-green-600 font-medium">Commission: ${Number(est.commission || 0).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

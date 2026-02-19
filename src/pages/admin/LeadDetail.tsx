@@ -15,6 +15,37 @@ import { cn } from "@/lib/utils";
 import { QuoteApprovalSection } from "@/components/admin/QuoteApprovalSection";
 import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
+import { useQuery as useRQQuery } from "@tanstack/react-query";
+
+function AdminEstimatesSection({ leadId }: { leadId: string }) {
+  const { data: estimates = [] } = useRQQuery({
+    queryKey: ["admin-lead-estimates", leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("gutter_estimates").select("*").eq("lead_id", leadId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+  return (
+    <div className="border border-border rounded-lg p-5">
+      <h2 className="font-heading text-lg uppercase mb-4">Saved Estimates</h2>
+      {(estimates as any[]).length === 0 ? (
+        <p className="text-sm text-muted-foreground">No estimates yet</p>
+      ) : (
+        <div className="space-y-2">
+          {(estimates as any[]).map((est: any) => (
+            <div key={est.id} className="flex justify-between items-center text-sm border-b border-border pb-2">
+              <span className="text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
+              <span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span>
+              <span className="text-muted-foreground">Floor: ${Number(est.total_floor || 0).toFixed(2)}</span>
+              <span className="font-medium" style={{ color: "hsl(var(--chart-2))" }}>Commission: ${Number(est.commission || 0).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -275,6 +306,9 @@ export default function LeadDetail() {
 
           {/* Activity Log */}
           <LeadActivityLog leadId={lead.id} />
+
+          {/* Saved Estimates (read-only) */}
+          <AdminEstimatesSection leadId={lead.id} />
         </div>
 
         {/* Right column */}

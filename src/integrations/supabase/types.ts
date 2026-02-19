@@ -517,6 +517,107 @@ export type Database = {
         }
         Relationships: []
       }
+      gutter_estimates: {
+        Row: {
+          addon_floor: number | null
+          addon_retail: number | null
+          city: string | null
+          commission: number | null
+          created_at: string | null
+          created_by: string | null
+          customer_name: string | null
+          downspout_footage: number | null
+          ds_elbow_floor: number | null
+          ds_elbow_retail: number | null
+          elbow_footage: number | null
+          gutter_color: string | null
+          gutter_floor: number | null
+          gutter_footage: number | null
+          gutter_retail: number | null
+          gutter_size: string | null
+          id: string
+          job_number: string | null
+          lead_id: string | null
+          measurement_data: Json | null
+          protection_floor: number | null
+          protection_footage: number | null
+          protection_product: string | null
+          protection_retail: number | null
+          quoted_price: number | null
+          state: string | null
+          total_floor: number | null
+          total_retail: number | null
+        }
+        Insert: {
+          addon_floor?: number | null
+          addon_retail?: number | null
+          city?: string | null
+          commission?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_name?: string | null
+          downspout_footage?: number | null
+          ds_elbow_floor?: number | null
+          ds_elbow_retail?: number | null
+          elbow_footage?: number | null
+          gutter_color?: string | null
+          gutter_floor?: number | null
+          gutter_footage?: number | null
+          gutter_retail?: number | null
+          gutter_size?: string | null
+          id?: string
+          job_number?: string | null
+          lead_id?: string | null
+          measurement_data?: Json | null
+          protection_floor?: number | null
+          protection_footage?: number | null
+          protection_product?: string | null
+          protection_retail?: number | null
+          quoted_price?: number | null
+          state?: string | null
+          total_floor?: number | null
+          total_retail?: number | null
+        }
+        Update: {
+          addon_floor?: number | null
+          addon_retail?: number | null
+          city?: string | null
+          commission?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_name?: string | null
+          downspout_footage?: number | null
+          ds_elbow_floor?: number | null
+          ds_elbow_retail?: number | null
+          elbow_footage?: number | null
+          gutter_color?: string | null
+          gutter_floor?: number | null
+          gutter_footage?: number | null
+          gutter_retail?: number | null
+          gutter_size?: string | null
+          id?: string
+          job_number?: string | null
+          lead_id?: string | null
+          measurement_data?: Json | null
+          protection_floor?: number | null
+          protection_footage?: number | null
+          protection_product?: string | null
+          protection_retail?: number | null
+          quoted_price?: number | null
+          state?: string | null
+          total_floor?: number | null
+          total_retail?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gutter_estimates_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string
