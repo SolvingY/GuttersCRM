@@ -92,6 +92,21 @@ export default function AdminLeaderboards() {
   const [canvasserWeeklyEntries, setCanvasserWeeklyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [canvasserLoading, setCanvasserLoading] = useState(true);
 
+  // Supplementer states
+  interface SupplementerLeaderboardEntry {
+    rank: number;
+    name: string;
+    userId: string;
+    points: number;
+    rcvIncreased: number;
+    moneyCollected: number;
+    collectionRate: number;
+    avgCocDays: number;
+  }
+  const [supplementerYtdEntries, setSupplementerYtdEntries] = useState<SupplementerLeaderboardEntry[]>([]);
+  const [supplementerWeeklyEntries, setSupplementerWeeklyEntries] = useState<SupplementerLeaderboardEntry[]>([]);
+  const [supplementerLoading, setSupplementerLoading] = useState(true);
+
   // Subscribe to realtime changes on user_metrics and weekly_user_metrics
   useEffect(() => {
     const channel = supabase
@@ -106,6 +121,12 @@ export default function AdminLeaderboards() {
         setRefreshKey(prev => prev + 1);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_canvasser_metrics' }, () => {
+        setRefreshKey(prev => prev + 1);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'supplementer_metrics' }, () => {
+        setRefreshKey(prev => prev + 1);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_supplementer_metrics' }, () => {
         setRefreshKey(prev => prev + 1);
       })
       .subscribe();
@@ -481,6 +502,158 @@ export default function AdminLeaderboards() {
     }
   }, [timeFrame, refreshKey]);
 
+  // Fetch YTD supplementer leaderboard
+  useEffect(() => {
+    const fetchSupplementerYtd = async () => {
+      setSupplementerLoading(true);
+
+      const { data: profilesForHidden } = await supabase
+        .from('profiles')
+        .select('id, hidden_from_leaderboard, is_archived');
+      const hiddenUserIds = new Set(
+        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
+      );
+
+      const { data: suppRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'supplementer');
+      const suppRoleIds = new Set(suppRoles?.map(r => r.user_id) || []);
+
+      const { data } = await supabase
+        .from('supplementer_metrics')
+        .select('user_id, display_name, points, total_rcv_increased, total_money_collected, collection_rate, avg_coc_completion_days')
+        .order('points', { ascending: false });
+
+      if (!data || data.length === 0) {
+        setSupplementerYtdEntries([]);
+        setSupplementerLoading(false);
+        return;
+      }
+
+      const sorted = data
+        .filter(e => suppRoleIds.has(e.user_id) && !hiddenUserIds.has(e.user_id))
+        .map((e, i) => ({
+          rank: i + 1,
+          userId: e.user_id,
+          name: e.display_name || 'Unknown',
+          points: Number(e.points) || 0,
+          rcvIncreased: Number(e.total_rcv_increased) || 0,
+          moneyCollected: Number(e.total_money_collected) || 0,
+          collectionRate: Number(e.collection_rate) || 0,
+          avgCocDays: Number(e.avg_coc_completion_days) || 0,
+        }));
+
+      setSupplementerYtdEntries(sorted);
+      setSupplementerLoading(false);
+    };
+
+    if (timeFrame === 'yearly') {
+      fetchSupplementerYtd();
+    }
+  }, [timeFrame, refreshKey]);
+
+  // Fetch weekly/monthly supplementer leaderboard
+  useEffect(() => {
+    const fetchSupplementerWeekly = async () => {
+      setSupplementerLoading(true);
+
+      const { data: profilesForHidden } = await supabase
+        .from('profiles')
+        .select('id, hidden_from_leaderboard, is_archived');
+      const hiddenUserIds = new Set(
+        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
+      );
+
+      if (timeFrame === 'weekly') {
+        const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+        const { data } = await supabase
+          .from('weekly_supplementer_metrics')
+          .select('user_id, display_name, points_earned, rcv_increased, money_collected, avg_coc_days')
+          .eq('week_start', weekStartStr);
+
+        if (!data || data.length === 0) {
+          setSupplementerWeeklyEntries([]);
+          setSupplementerLoading(false);
+          return;
+        }
+
+        const sorted = data
+          .filter(e => !hiddenUserIds.has(e.user_id))
+          .filter(e => (Number(e.points_earned) || 0) > 0 || (Number(e.rcv_increased) || 0) > 0)
+          .sort((a, b) => (Number(b.points_earned) || 0) - (Number(a.points_earned) || 0))
+          .map((e, i) => {
+            const rcv = Number(e.rcv_increased) || 0;
+            const collected = Number(e.money_collected) || 0;
+            return {
+              rank: i + 1,
+              userId: e.user_id,
+              name: e.display_name || 'Unknown',
+              points: Number(e.points_earned) || 0,
+              rcvIncreased: rcv,
+              moneyCollected: collected,
+              collectionRate: rcv > 0 ? (collected / rcv) * 100 : 0,
+              avgCocDays: Number(e.avg_coc_days) || 0,
+            };
+          });
+
+        setSupplementerWeeklyEntries(sorted);
+      } else if (timeFrame === 'monthly') {
+        const monthStartStr = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+        const monthEndStr = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+
+        const { data } = await supabase
+          .from('weekly_supplementer_metrics')
+          .select('user_id, display_name, points_earned, rcv_increased, money_collected, avg_coc_days')
+          .gte('week_start', monthStartStr)
+          .lte('week_start', monthEndStr);
+
+        if (!data || data.length === 0) {
+          setSupplementerWeeklyEntries([]);
+          setSupplementerLoading(false);
+          return;
+        }
+
+        const aggregated = new Map<string, { name: string; points: number; rcv: number; collected: number; cocDaysSum: number; cocDaysCount: number }>();
+        data.forEach(w => {
+          if (hiddenUserIds.has(w.user_id)) return;
+          const existing = aggregated.get(w.user_id) || { name: w.display_name || 'Unknown', points: 0, rcv: 0, collected: 0, cocDaysSum: 0, cocDaysCount: 0 };
+          const cocDays = Number(w.avg_coc_days) || 0;
+          aggregated.set(w.user_id, {
+            name: existing.name,
+            points: existing.points + (Number(w.points_earned) || 0),
+            rcv: existing.rcv + (Number(w.rcv_increased) || 0),
+            collected: existing.collected + (Number(w.money_collected) || 0),
+            cocDaysSum: existing.cocDaysSum + (cocDays > 0 ? cocDays : 0),
+            cocDaysCount: existing.cocDaysCount + (cocDays > 0 ? 1 : 0),
+          });
+        });
+
+        const sorted = Array.from(aggregated.entries())
+          .filter(([_, d]) => d.points > 0 || d.rcv > 0)
+          .sort((a, b) => b[1].points - a[1].points)
+          .map(([userId, d], i) => ({
+            rank: i + 1,
+            userId,
+            name: d.name,
+            points: d.points,
+            rcvIncreased: d.rcv,
+            moneyCollected: d.collected,
+            collectionRate: d.rcv > 0 ? (d.collected / d.rcv) * 100 : 0,
+            avgCocDays: d.cocDaysCount > 0 ? d.cocDaysSum / d.cocDaysCount : 0,
+          }));
+
+        setSupplementerWeeklyEntries(sorted);
+      }
+
+      setSupplementerLoading(false);
+    };
+
+    if (timeFrame === 'weekly' || timeFrame === 'monthly') {
+      fetchSupplementerWeekly();
+    }
+  }, [timeFrame, selectedDate, refreshKey]);
+
   // Fetch weekly/monthly canvasser leaderboard
   useEffect(() => {
     const fetchCanvasserWeekly = async () => {
@@ -742,11 +915,12 @@ export default function AdminLeaderboards() {
         <TabsContent value={timeFrame} className="mt-4">
           {renderDateSelector()}
 
-          {/* Sales Reps / Canvassers Tabs */}
+          {/* Sales Reps / Canvassers / Supplementers Tabs */}
           <Tabs defaultValue="sales" className="w-full">
-            <TabsList className="grid w-full max-w-xs grid-cols-2 mb-4">
+            <TabsList className="grid w-full max-w-md grid-cols-3 mb-4">
               <TabsTrigger value="sales">Sales Reps</TabsTrigger>
               <TabsTrigger value="canvassers">Canvassers</TabsTrigger>
+              <TabsTrigger value="supplementers">Supplementers</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sales">
@@ -770,6 +944,73 @@ export default function AdminLeaderboards() {
                 <CanvasserLeaderboardTable entries={canvasserYtdEntries} />
               ) : (
                 <WeeklyCanvasserLeaderboardTable entries={canvasserWeeklyEntries} showHours={true} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="supplementers">
+              {supplementerLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Rank</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground font-bold">Points</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">RCV Increased</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Collected</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Collection %</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Avg COC Days</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(timeFrame === 'yearly' ? supplementerYtdEntries : supplementerWeeklyEntries).length === 0 ? (
+                          <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No supplementer data available</td></tr>
+                        ) : (
+                          <>
+                            {(timeFrame === 'yearly' ? supplementerYtdEntries : supplementerWeeklyEntries).map((entry) => (
+                              <tr key={entry.userId} className="border-t border-border hover:bg-muted/30">
+                                <td className="py-3 px-4 text-foreground">{entry.rank}</td>
+                                <td className="py-3 px-4 text-foreground font-medium">{entry.name}</td>
+                                <td className="py-3 px-4 text-right text-foreground font-bold">{entry.points}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(entry.rcvIncreased)}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(entry.moneyCollected)}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{entry.collectionRate.toFixed(1)}%</td>
+                                <td className="py-3 px-4 text-right text-foreground">{entry.avgCocDays.toFixed(1)}</td>
+                              </tr>
+                            ))}
+                            {/* Team Totals */}
+                            {(() => {
+                              const entries = timeFrame === 'yearly' ? supplementerYtdEntries : supplementerWeeklyEntries;
+                              if (entries.length === 0) return null;
+                              const totals = entries.reduce((acc, e) => ({
+                                points: acc.points + e.points,
+                                rcv: acc.rcv + e.rcvIncreased,
+                                collected: acc.collected + e.moneyCollected,
+                              }), { points: 0, rcv: 0, collected: 0 });
+                              const avgRate = totals.rcv > 0 ? (totals.collected / totals.rcv) * 100 : 0;
+                              const avgCoc = entries.reduce((s, e) => s + e.avgCocDays, 0) / entries.length;
+                              return (
+                                <tr className="border-t-2 border-border bg-muted/30 font-semibold">
+                                  <td className="py-3 px-4" colSpan={2}>Team Totals</td>
+                                  <td className="py-3 px-4 text-right font-bold">{totals.points}</td>
+                                  <td className="py-3 px-4 text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(totals.rcv)}</td>
+                                  <td className="py-3 px-4 text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(totals.collected)}</td>
+                                  <td className="py-3 px-4 text-right">{avgRate.toFixed(1)}%</td>
+                                  <td className="py-3 px-4 text-right">{avgCoc.toFixed(1)}</td>
+                                </tr>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
             </TabsContent>
           </Tabs>

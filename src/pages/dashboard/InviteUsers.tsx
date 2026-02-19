@@ -46,7 +46,7 @@ export default function InviteUsers() {
   const [salesRank, setSalesRank] = useState('SR1');
   const [canvasserRank, setCanvasserRank] = useState('C1');
   const [yearlyGoal, setYearlyGoal] = useState('');
-  const [inviteRole, setInviteRole] = useState<'user' | 'canvasser'>('user');
+  const [inviteRole, setInviteRole] = useState<'user' | 'canvasser' | 'supplementer'>('user');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export default function InviteUsers() {
   const [manualSalesRank, setManualSalesRank] = useState('SR1');
   const [manualCanvasserRank, setManualCanvasserRank] = useState('C1');
   const [manualYearlyGoal, setManualYearlyGoal] = useState('');
-  const [manualRoleType, setManualRoleType] = useState<'admin_only' | 'sales_rep' | 'canvasser' | 'super_admin'>('sales_rep');
+  const [manualRoleType, setManualRoleType] = useState<'admin_only' | 'sales_rep' | 'canvasser' | 'supplementer' | 'super_admin'>('sales_rep');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
@@ -420,13 +420,14 @@ export default function InviteUsers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="inviteRole" className="text-sm">User Type *</Label>
-                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'user' | 'canvasser')} disabled={isSubmitting}>
+                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'user' | 'canvasser' | 'supplementer')} disabled={isSubmitting}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="user">Sales Rep</SelectItem>
                         <SelectItem value="canvasser">Canvasser</SelectItem>
+                        <SelectItem value="supplementer">Supplementer</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -641,7 +642,7 @@ export default function InviteUsers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="manualRoleType" className="text-sm">Account Type</Label>
-                    <Select value={manualRoleType} onValueChange={(val) => setManualRoleType(val as 'admin_only' | 'sales_rep' | 'canvasser' | 'super_admin')} disabled={isCreatingUser}>
+                    <Select value={manualRoleType} onValueChange={(val) => setManualRoleType(val as 'admin_only' | 'sales_rep' | 'canvasser' | 'supplementer' | 'super_admin')} disabled={isCreatingUser}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select account type" />
                       </SelectTrigger>
@@ -649,6 +650,7 @@ export default function InviteUsers() {
                         <SelectItem value="admin_only">Admin Only</SelectItem>
                         <SelectItem value="sales_rep">Sales Rep</SelectItem>
                         <SelectItem value="canvasser">Canvasser</SelectItem>
+                        <SelectItem value="supplementer">Supplementer</SelectItem>
                         <SelectItem value="super_admin">Super Admin (All Roles)</SelectItem>
                       </SelectContent>
                     </Select>

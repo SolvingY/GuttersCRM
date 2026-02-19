@@ -26,6 +26,8 @@ const ROLE_MAPPING: Record<string, string> = {
   "Sales - Commercial": "sales_rep",
   "Sales - Gutters": "sales_rep",
   "Canvassing": "canvasser",
+  "Supplementer": "supplementer",
+  "Insurance Specialist": "supplementer",
   "Admin": "admin_only",
   "Management": "super_admin",
   "Production": "sales_rep",
@@ -127,6 +129,7 @@ export function HireApplicantDialog({ isOpen, onClose, applicant, onSuccess }: H
               <SelectContent>
                 <SelectItem value="sales_rep">Sales Rep</SelectItem>
                 <SelectItem value="canvasser">Canvasser</SelectItem>
+                <SelectItem value="supplementer">Supplementer</SelectItem>
                 <SelectItem value="admin_only">Admin</SelectItem>
                 <SelectItem value="super_admin">Manager (Super Admin)</SelectItem>
               </SelectContent>

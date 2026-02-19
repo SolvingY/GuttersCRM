@@ -12,28 +12,29 @@ interface RoleConfig {
   roles: string[];
   createSalesMetrics: boolean;
   createCanvasserMetrics: boolean;
+  createSupplementerMetrics: boolean;
 }
 
 function getRoleConfig(roleType: string | undefined, legacyRole?: string): RoleConfig {
   // Handle new roleType parameter
   switch (roleType) {
     case 'admin_only':
-      return { roles: ['admin'], createSalesMetrics: false, createCanvasserMetrics: false };
+      return { roles: ['admin'], createSalesMetrics: false, createCanvasserMetrics: false, createSupplementerMetrics: false };
     case 'sales_rep':
-      return { roles: ['user'], createSalesMetrics: true, createCanvasserMetrics: false };
+      return { roles: ['user'], createSalesMetrics: true, createCanvasserMetrics: false, createSupplementerMetrics: false };
     case 'canvasser':
-      return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true };
+      return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true, createSupplementerMetrics: false };
+    case 'supplementer':
+      return { roles: ['supplementer'], createSalesMetrics: false, createCanvasserMetrics: false, createSupplementerMetrics: true };
     case 'super_admin':
-      return { roles: ['admin', 'user', 'canvasser'], createSalesMetrics: true, createCanvasserMetrics: true };
+      return { roles: ['admin', 'user', 'canvasser'], createSalesMetrics: true, createCanvasserMetrics: true, createSupplementerMetrics: false };
     default:
-      // Backward compatibility with old 'role' parameter
       if (legacyRole === 'admin') {
-        return { roles: ['admin'], createSalesMetrics: true, createCanvasserMetrics: false };
+        return { roles: ['admin'], createSalesMetrics: true, createCanvasserMetrics: false, createSupplementerMetrics: false };
       } else if (legacyRole === 'canvasser') {
-        return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true };
+        return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true, createSupplementerMetrics: false };
       }
-      // Default to sales rep
-      return { roles: ['user'], createSalesMetrics: true, createCanvasserMetrics: false };
+      return { roles: ['user'], createSalesMetrics: true, createCanvasserMetrics: false, createSupplementerMetrics: false };
   }
 }
 
@@ -295,6 +296,45 @@ serve(async (req) => {
           console.error("create-user: Error inserting canvasser metrics:", metricsInsertError);
         } else {
           console.log("create-user: Canvasser metrics inserted");
+        }
+      }
+    }
+
+    // Create supplementer metrics if needed
+    if (config.createSupplementerMetrics) {
+      console.log("create-user: Creating supplementer metrics...");
+      
+      const { data: existingSupplementerMetrics } = await adminClient
+        .from("supplementer_metrics")
+        .select("id")
+        .eq("user_id", newUser.user.id)
+        .single();
+
+      if (existingSupplementerMetrics) {
+        const { error: metricsUpdateError } = await adminClient
+          .from("supplementer_metrics")
+          .update({
+            display_name: displayName || null,
+          })
+          .eq("user_id", newUser.user.id);
+
+        if (metricsUpdateError) {
+          console.error("create-user: Error updating supplementer metrics:", metricsUpdateError);
+        } else {
+          console.log("create-user: Supplementer metrics updated");
+        }
+      } else {
+        const { error: metricsInsertError } = await adminClient
+          .from("supplementer_metrics")
+          .insert({
+            user_id: newUser.user.id,
+            display_name: displayName || null,
+          });
+
+        if (metricsInsertError) {
+          console.error("create-user: Error inserting supplementer metrics:", metricsInsertError);
+        } else {
+          console.log("create-user: Supplementer metrics inserted");
         }
       }
     }
