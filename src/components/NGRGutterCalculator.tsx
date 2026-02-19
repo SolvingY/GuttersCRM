@@ -236,23 +236,30 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
   const [elbows,      setElbows]      = useState(emptyElbows());
   const [addons,      setAddons]      = useState(emptyAddons());
   const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
+  const [discountPct, setDiscountPct] = useState<number>(0);
   const [saving,      setSaving]      = useState(false);
   const [estimateId,  setEstimateId]  = useState<string | null>(existingEstimate?.id || null);
 
   // Restore state from existingEstimate
   useEffect(() => {
     if (!existingEstimate) return;
-    const d = existingEstimate.measurement_data as any;
-    if (d?.protProduct) setProtProduct(d.protProduct);
-    if (d?.protRows) setProtRows(d.protRows);
-    if (d?.gutterSize) setGutterSize(d.gutterSize);
-    if (d?.gutterColor) setGutterColor(d.gutterColor);
-    if (d?.gutterRows) setGutterRows(d.gutterRows);
-    if (d?.downspouts) setDownspouts(d.downspouts);
-    if (d?.elbows) setElbows(d.elbows);
-    if (d?.addons) setAddons(d.addons);
-    if (d?.quotedTotal !== undefined) setQuotedTotal(d.quotedTotal);
-    if (d?.dsType) setDsType(d.dsType);
+    let d = existingEstimate.measurement_data as any;
+    // Handle previously double-encoded data
+    if (typeof d === "string") {
+      try { d = JSON.parse(d); } catch { return; }
+    }
+    if (!d) return;
+    if (d.protProduct) setProtProduct(d.protProduct);
+    if (d.protRows) setProtRows(d.protRows);
+    if (d.gutterSize) setGutterSize(d.gutterSize);
+    if (d.gutterColor) setGutterColor(d.gutterColor);
+    if (d.gutterRows) setGutterRows(d.gutterRows);
+    if (d.downspouts) setDownspouts(d.downspouts);
+    if (d.elbows) setElbows(d.elbows);
+    if (d.addons) setAddons(d.addons);
+    if (d.quotedTotal !== undefined) setQuotedTotal(d.quotedTotal);
+    if (d.dsType) setDsType(d.dsType);
+    if (d.discountPct !== undefined) setDiscountPct(d.discountPct);
     setJobInfo({
       customer: existingEstimate.customer_name || "",
       city: existingEstimate.city || "",
@@ -301,10 +308,13 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
   const dsTotal       = { retail: dsCalc.retail + elbowCalc.retail, floor: dsCalc.floor + elbowCalc.floor, footage: dsCalc.footage + elbowCalc.footage };
   const totalRetail   = protCalc.retail + gutterCalc.retail + dsTotal.retail + addonCalc.retail;
   const totalFloor    = protCalc.floor  + gutterCalc.floor  + dsTotal.floor  + addonCalc.floor;
-  const clampedQuoted = quotedTotal != null ? Math.max(totalFloor, Math.min(totalRetail, quotedTotal)) : totalRetail;
+  const preDiscountQuoted = quotedTotal != null ? Math.max(totalFloor, Math.min(totalRetail, quotedTotal)) : totalRetail;
+  const discountAmount = preDiscountQuoted * (discountPct / 100);
+  const clampedQuoted  = Math.max(totalFloor, preDiscountQuoted - discountAmount);
   const totalCommission = clampedQuoted - totalFloor;
   const ratio         = totalRetail > totalFloor ? (clampedQuoted - totalFloor) / (totalRetail - totalFloor) : 1;
   const sliderPct     = Math.round(ratio * 100);
+  const fullCommission = preDiscountQuoted - totalFloor;
 
   // Effective retail/floor for gutters (including premium)
   const gutterEffRetail = gutterPrices.retail + (isPremium ? PREMIUM_UPCHARGE : 0);
@@ -339,7 +349,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         total_floor:        totalFloor,
         quoted_price:       clampedQuoted,
         commission:         totalCommission,
-        measurement_data:   JSON.stringify({ protProduct, protRows, gutterSize, gutterColor, gutterRows, downspouts, elbows, addons, quotedTotal, dsType }),
+        measurement_data:   { protProduct, protRows, gutterSize, gutterColor, gutterRows, downspouts, elbows, addons, quotedTotal, dsType, discountPct },
         created_by:         user?.id,
       };
 
@@ -659,23 +669,61 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
               <input
                 type="number"
                 value={quotedTotal ?? totalRetail}
-                onChange={e => setQuotedTotal(parseFloat(e.target.value) || totalFloor)}
+                onChange={e => { setQuotedTotal(parseFloat(e.target.value) || totalFloor); setDiscountPct(0); }}
                 style={{ background: "#111827", border: "1px solid #ffffff40", borderRadius: 8, color: "#ffffff", padding: "8px 12px", fontSize: 22, fontWeight: 800, width: 160, outline: "none", textAlign: "right" }}
               />
             </div>
           </div>
-          <input type="range" min="0" max="100" value={sliderPct} onChange={e => setQuotedTotal(totalFloor + (parseInt(e.target.value) / 100) * (totalRetail - totalFloor))} style={{ width: "100%", marginBottom: 12 }} />
+          <input type="range" min="0" max="100" value={Math.round(totalRetail > totalFloor ? (preDiscountQuoted - totalFloor) / (totalRetail - totalFloor) * 100 : 100)} onChange={e => { setQuotedTotal(totalFloor + (parseInt(e.target.value) / 100) * (totalRetail - totalFloor)); setDiscountPct(0); }} style={{ width: "100%", marginBottom: 12 }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div><p style={{ fontSize: 10, color: "#4a5878", textTransform: "uppercase", margin: 0 }}>FLOOR (MIN)</p><p style={{ fontSize: 14, fontWeight: 700, color: "#ffa726", margin: 0 }}>{fmt(totalFloor)}</p></div>
             <div style={{ textAlign: "center" }}>
               <p style={{ fontSize: 10, color: "#4a5878", textTransform: "uppercase", margin: 0 }}>YOUR COMMISSION</p>
-              <p style={{ fontSize: 28, fontWeight: 800, color: "#66bb6a", fontFamily: "'Barlow Condensed', sans-serif", margin: 0 }}>{fmt(totalCommission)}</p>
+              <p style={{ fontSize: 28, fontWeight: 800, color: discountPct > 0 ? "#ffa726" : "#66bb6a", fontFamily: "'Barlow Condensed', sans-serif", margin: 0 }}>{fmt(totalCommission)}</p>
+              {discountPct > 0 && (
+                <p style={{ fontSize: 11, color: "#e53935", margin: 0 }}>
+                  was {fmt(fullCommission)} · −{fmt(fullCommission - totalCommission)} given up
+                </p>
+              )}
               <p style={{ fontSize: 11, color: "#4a5878", margin: 0 }}>{sliderPct}% of max captured</p>
             </div>
             <div style={{ textAlign: "right" }}><p style={{ fontSize: 10, color: "#4a5878", textTransform: "uppercase", margin: 0 }}>FULL RETAIL</p><p style={{ fontSize: 14, fontWeight: 700, color: "#e8eaf0", margin: 0 }}>{fmt(totalRetail)}</p></div>
           </div>
           <div style={{ marginTop: 8, height: 6, background: "#1e2d45", borderRadius: 5, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${sliderPct}%`, background: sliderPct > 60 ? "#66bb6a" : sliderPct > 30 ? "#ffa726" : "#e53935", borderRadius: 5, transition: "width 0.1s, background 0.3s" }} />
+          </div>
+
+          {/* DISCOUNT % */}
+          <div style={{ marginTop: 16, padding: "16px 20px", background: "#0d1424", borderRadius: 10, border: "1px solid #1e2d45" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <h4 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: "#e8eaf0", margin: 0 }}>DISCOUNT %</h4>
+                <p style={{ fontSize: 11, color: "#4a5878", margin: "2px 0 0" }}>Reduces quoted price — floor stays fixed, commission drops</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={discountPct || ""}
+                  placeholder="0"
+                  onChange={e => {
+                    const v = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                    setDiscountPct(v);
+                  }}
+                  style={{ background: "#111827", border: "1px solid #1e2d45", borderRadius: 8, color: "#e8eaf0", padding: "8px 12px", fontSize: 18, fontWeight: 700, width: 80, outline: "none", textAlign: "center" }}
+                />
+                <span style={{ color: "#4a5878", fontSize: 18, fontWeight: 700 }}>%</span>
+              </div>
+            </div>
+            {discountPct > 0 && (
+              <div style={{ marginTop: 12, display: "flex", gap: 24, flexWrap: "wrap" }}>
+                <div><span style={{ color: "#4a5878", fontSize: 12 }}>Pre-Discount: </span><span style={{ color: "#7b8bb2", fontWeight: 700, textDecoration: "line-through" }}>{fmt(preDiscountQuoted)}</span></div>
+                <div><span style={{ color: "#4a5878", fontSize: 12 }}>Discounted Price: </span><span style={{ color: "#e8eaf0", fontWeight: 700 }}>{fmt(clampedQuoted)}</span></div>
+                <div><span style={{ color: "#4a5878", fontSize: 12 }}>Discount Amt: </span><span style={{ color: "#e53935", fontWeight: 700 }}>−{fmt(preDiscountQuoted - clampedQuoted)}</span></div>
+                <div><span style={{ color: "#4a5878", fontSize: 12 }}>Commission Impact: </span><span style={{ color: "#e53935", fontWeight: 700 }}>−{fmt(fullCommission - totalCommission)}</span></div>
+              </div>
+            )}
           </div>
         </div>
 
