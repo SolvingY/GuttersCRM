@@ -407,7 +407,7 @@ const handler = async (req: Request): Promise<Response> => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: "Next Gen Roofing <onboarding@resend.dev>",
+            from: "Next Gen Roofing <reports@oknextgen.com>",
             to: [email],
             subject: `📊 ${frequency === 'weekly' ? 'Weekly' : 'Monthly'} Performance Report - ${new Date().toLocaleDateString()}`,
             html: emailHtml,

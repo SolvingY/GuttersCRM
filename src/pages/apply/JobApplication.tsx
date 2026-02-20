@@ -144,6 +144,20 @@ export default function JobApplication() {
       toast({ title: "Error submitting application", description: "Please try again later.", variant: "destructive" });
       return;
     }
+
+    // Fire-and-forget notification email to admins
+    supabase.functions.invoke('notify-new-application', {
+      body: {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        desiredPosition,
+        yearsExperience,
+        dnaScore: result.score,
+        alignmentCategory: result.alignmentCategory,
+      },
+    }).catch(() => {}); // silently ignore failures
+
     setSubmitted(true);
     setStep(3);
     setTimeout(() => navigate("/apply/thank-you"), 3000);

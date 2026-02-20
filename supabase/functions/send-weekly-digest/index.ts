@@ -306,7 +306,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const { error: emailError } = await resend.emails.send({
-          from: "Next Gen Roofing <onboarding@resend.dev>",
+          from: "Next Gen Roofing <reports@oknextgen.com>",
           to: [email],
           subject: "🏆 Your Weekly Performance Digest - The 6 Figure System",
           html: emailHtml,
