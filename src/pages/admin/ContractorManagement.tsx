@@ -49,7 +49,7 @@ export default function ContractorManagement() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["cm-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count");
+      const { data, error } = await supabase.from("profiles").select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count, start_date");
       if (error) throw error;
       return data;
     },
@@ -148,6 +148,7 @@ export default function ContractorManagement() {
       const dnaPending = (p as any).dna_assessment_pending ?? false;
       const lastLoginAt = (p as any).last_login_at ?? null;
       const loginCount = (p as any).login_count ?? 0;
+      const profileStartDate = (p as any).start_date ?? null;
 
       return {
         id: p.id,
@@ -170,9 +171,9 @@ export default function ContractorManagement() {
         leadsSet: canvasser?.leads_set ?? 0,
         leadsClosed: canvasser?.leads_closed ?? 0,
         canvasserPoints: canvasser?.points ?? 0,
-        // Hire info
+        // Contract info
         hireDate: hireApp?.hired_at,
-        startDate: hireApp?.start_date,
+        startDate: profileStartDate || hireApp?.start_date,
         dnaScore: hireApp?.dna_score ?? null,
         alignmentCategory: hireApp?.alignment_category ?? null,
         hasAssessment: !!hireApp,
@@ -509,9 +510,9 @@ export default function ContractorManagement() {
 
               {/* Hire & Login info */}
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {user.hireDate && (
+                {(user.startDate || user.hireDate) && (
                   <p className="text-xs text-muted-foreground">
-                    Hired: {format(new Date(user.hireDate), "MMM d, yyyy")}
+                    Contract Start: {format(new Date(user.startDate || user.hireDate!), "MMM d, yyyy")}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
