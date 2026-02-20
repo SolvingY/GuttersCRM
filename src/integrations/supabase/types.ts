@@ -358,38 +358,94 @@ export type Database = {
         }
         Relationships: []
       }
-      contractor_files: {
+      contractor_document_categories: {
         Row: {
           created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          requires_admin_upload: boolean | null
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          requires_admin_upload?: boolean | null
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          requires_admin_upload?: boolean | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      contractor_files: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          description: string | null
           file_name: string
           file_path: string
           file_size: number | null
           file_type: string | null
           id: string
+          is_sensitive: boolean | null
+          requires_signature: boolean | null
+          signed_at: string | null
+          signed_by: string | null
           uploaded_by: string | null
           user_id: string
         }
         Insert: {
+          category_id?: string | null
           created_at?: string | null
+          description?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
           file_type?: string | null
           id?: string
+          is_sensitive?: boolean | null
+          requires_signature?: boolean | null
+          signed_at?: string | null
+          signed_by?: string | null
           uploaded_by?: string | null
           user_id: string
         }
         Update: {
+          category_id?: string | null
           created_at?: string | null
+          description?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
+          is_sensitive?: boolean | null
+          requires_signature?: boolean | null
+          signed_at?: string | null
+          signed_by?: string | null
           uploaded_by?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contractor_files_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "contractor_document_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       daily_canvasser_metric_entries: {
         Row: {
@@ -860,40 +916,73 @@ export type Database = {
       performance_reviews: {
         Row: {
           action_items: string | null
+          areas_for_improvement: string | null
+          communication_score: number | null
+          contractor_acknowledged_at: string | null
+          contractor_signature: string | null
           created_at: string
+          customer_service_score: number | null
           goals_set: string | null
           id: string
+          manager_signature: string | null
           overall_rating: number | null
+          productivity_score: number | null
+          quality_score: number | null
           quarter: string
+          reliability_score: number | null
           review_date: string
           review_notes: string | null
           reviewed_by: string
+          strengths: string | null
+          teamwork_score: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           action_items?: string | null
+          areas_for_improvement?: string | null
+          communication_score?: number | null
+          contractor_acknowledged_at?: string | null
+          contractor_signature?: string | null
           created_at?: string
+          customer_service_score?: number | null
           goals_set?: string | null
           id?: string
+          manager_signature?: string | null
           overall_rating?: number | null
+          productivity_score?: number | null
+          quality_score?: number | null
           quarter: string
+          reliability_score?: number | null
           review_date?: string
           review_notes?: string | null
           reviewed_by: string
+          strengths?: string | null
+          teamwork_score?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           action_items?: string | null
+          areas_for_improvement?: string | null
+          communication_score?: number | null
+          contractor_acknowledged_at?: string | null
+          contractor_signature?: string | null
           created_at?: string
+          customer_service_score?: number | null
           goals_set?: string | null
           id?: string
+          manager_signature?: string | null
           overall_rating?: number | null
+          productivity_score?: number | null
+          quality_score?: number | null
           quarter?: string
+          reliability_score?: number | null
           review_date?: string
           review_notes?: string | null
           reviewed_by?: string
+          strengths?: string | null
+          teamwork_score?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -1093,49 +1182,97 @@ export type Database = {
           archived_at: string | null
           archived_by: string | null
           avatar_url: string | null
+          birthday: string | null
+          city: string | null
+          commission_percentage: number | null
+          compensation_type: string | null
           created_at: string
           dna_assessment_pending: boolean | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
           full_name: string | null
           hidden_from_leaderboard: boolean | null
+          hourly_rate: number | null
           id: string
           is_archived: boolean | null
           last_login_at: string | null
           login_count: number | null
+          manager_id: string | null
+          phone: string | null
           preferred_view: string | null
+          profit_split_percentage: number | null
+          retainer_annual: number | null
+          start_date: string | null
+          state: string | null
+          street_address: string | null
           tour_completed: boolean | null
           updated_at: string
+          zip_code: string | null
         }
         Insert: {
           archived_at?: string | null
           archived_by?: string | null
           avatar_url?: string | null
+          birthday?: string | null
+          city?: string | null
+          commission_percentage?: number | null
+          compensation_type?: string | null
           created_at?: string
           dna_assessment_pending?: boolean | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           full_name?: string | null
           hidden_from_leaderboard?: boolean | null
+          hourly_rate?: number | null
           id: string
           is_archived?: boolean | null
           last_login_at?: string | null
           login_count?: number | null
+          manager_id?: string | null
+          phone?: string | null
           preferred_view?: string | null
+          profit_split_percentage?: number | null
+          retainer_annual?: number | null
+          start_date?: string | null
+          state?: string | null
+          street_address?: string | null
           tour_completed?: boolean | null
           updated_at?: string
+          zip_code?: string | null
         }
         Update: {
           archived_at?: string | null
           archived_by?: string | null
           avatar_url?: string | null
+          birthday?: string | null
+          city?: string | null
+          commission_percentage?: number | null
+          compensation_type?: string | null
           created_at?: string
           dna_assessment_pending?: boolean | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           full_name?: string | null
           hidden_from_leaderboard?: boolean | null
+          hourly_rate?: number | null
           id?: string
           is_archived?: boolean | null
           last_login_at?: string | null
           login_count?: number | null
+          manager_id?: string | null
+          phone?: string | null
           preferred_view?: string | null
+          profit_split_percentage?: number | null
+          retainer_annual?: number | null
+          start_date?: string | null
+          state?: string | null
+          street_address?: string | null
           tour_completed?: boolean | null
           updated_at?: string
+          zip_code?: string | null
         }
         Relationships: []
       }

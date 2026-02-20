@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts";
@@ -44,8 +45,15 @@ import {
   TrendingUp,
   PlusCircle,
   ClipboardCheck,
+  User,
+  Briefcase,
+  Lock,
+  FolderOpen,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PerformanceReviewForm, ReviewScoreBreakdown, defaultReviewFormData } from "./PerformanceReviewForm";
+import type { ReviewFormData } from "./PerformanceReviewForm";
+import { ProfilePDFExport } from "./ProfilePDFExport";
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -56,13 +64,7 @@ const roleColors: Record<string, string> = {
   canvasser: "bg-green-600 text-white",
 };
 
-const getCurrentQuarter = () => {
-  const now = new Date();
-  const q = Math.ceil((now.getMonth() + 1) / 3);
-  return `Q${q} ${now.getFullYear()}`;
-};
-
-interface ContractorUser {
+export interface ContractorUser {
   id: string;
   name: string;
   roles: string[];
@@ -96,22 +98,6 @@ interface Props {
   onAssignAssessment: (userId: string) => void;
 }
 
-interface ReviewForm {
-  quarter: string;
-  overall_rating: number;
-  review_notes: string;
-  goals_set: string;
-  action_items: string;
-}
-
-const defaultReviewForm = (): ReviewForm => ({
-  quarter: getCurrentQuarter(),
-  overall_rating: 3,
-  review_notes: "",
-  goals_set: "",
-  action_items: "",
-});
-
 const chartConfig = {
   avg: { label: "Team Avg DNA Score", color: "hsl(var(--primary))" },
 };
@@ -130,6 +116,13 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
   );
 }
 
+const COMPENSATION_TYPES = [
+  { value: "hourly", label: "Hourly" },
+  { value: "retainer", label: "Retainer" },
+  { value: "commission", label: "Commission" },
+  { value: "profit_split", label: "Profit Split" },
+];
+
 export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -139,8 +132,56 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewForm, setReviewForm] = useState<ReviewForm>(defaultReviewForm());
+  const [reviewForm, setReviewForm] = useState<ReviewFormData>(defaultReviewFormData());
   const [savingReview, setSavingReview] = useState(false);
+  const [uploadCategoryId, setUploadCategoryId] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Personal/contract info state
+  const [personalInfo, setPersonalInfo] = useState<Record<string, any>>({});
+  const [savingPersonal, setSavingPersonal] = useState(false);
+
+  // Fetch profile extended fields
+  const { data: profileData, refetch: refetchProfile } = useQuery({
+    queryKey: ["contractor-profile-ext", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("phone, birthday, start_date, street_address, city, state, zip_code, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, compensation_type, hourly_rate, retainer_annual, commission_percentage, profit_split_percentage, manager_id")
+        .eq("id", user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch admins for manager dropdown
+  const { data: adminUsers = [] } = useQuery({
+    queryKey: ["admin-users-list"],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      if (!roles || roles.length === 0) return [];
+      const ids = roles.map((r) => r.user_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      return profiles ?? [];
+    },
+  });
+
+  // Fetch document categories
+  const { data: docCategories = [] } = useQuery({
+    queryKey: ["doc-categories"],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contractor_document_categories")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   // Fetch full DNA assessment data for this user
   const { data: hireApp } = useQuery({
@@ -203,6 +244,13 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     },
   });
 
+  // Load profile data into personal info state
+  useEffect(() => {
+    if (profileData) {
+      setPersonalInfo(profileData as any);
+    }
+  }, [profileData]);
+
   // Load admin notes when hire app data arrives
   useEffect(() => {
     if (hireApp && !notesLoaded) {
@@ -218,7 +266,9 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
       setAdminNotes("");
       setDnaOpen(false);
       setShowReviewForm(false);
-      setReviewForm(defaultReviewForm());
+      setReviewForm(defaultReviewFormData());
+      setCategoryFilter("all");
+      setUploadCategoryId("");
     }
   }, [open]);
 
@@ -234,6 +284,42 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         memberName: entry.full_name,
       };
     });
+
+  // Save personal/contract info
+  const handleSavePersonalInfo = async () => {
+    if (!user) return;
+    setSavingPersonal(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          phone: personalInfo.phone || null,
+          birthday: personalInfo.birthday || null,
+          start_date: personalInfo.start_date || null,
+          street_address: personalInfo.street_address || null,
+          city: personalInfo.city || null,
+          state: personalInfo.state || null,
+          zip_code: personalInfo.zip_code || null,
+          emergency_contact_name: personalInfo.emergency_contact_name || null,
+          emergency_contact_phone: personalInfo.emergency_contact_phone || null,
+          emergency_contact_relationship: personalInfo.emergency_contact_relationship || null,
+          compensation_type: personalInfo.compensation_type || null,
+          hourly_rate: personalInfo.hourly_rate || null,
+          retainer_annual: personalInfo.retainer_annual || null,
+          commission_percentage: personalInfo.commission_percentage || null,
+          profit_split_percentage: personalInfo.profit_split_percentage || null,
+          manager_id: personalInfo.manager_id || null,
+        } as any)
+        .eq("id", user.id);
+      if (error) throw error;
+      refetchProfile();
+      toast({ title: "Profile updated" });
+    } catch (err: any) {
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingPersonal(false);
+    }
+  };
 
   const saveNotesMutation = useMutation({
     mutationFn: async (notes: string) => {
@@ -283,6 +369,7 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         file_type: file.type,
         file_size: file.size,
         uploaded_by: authUser?.id,
+        category_id: uploadCategoryId || null,
       } as any);
 
       if (dbError) throw dbError;
@@ -319,15 +406,25 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         user_id: user.id,
         reviewed_by: authUser?.id,
         quarter: reviewForm.quarter,
-        overall_rating: reviewForm.overall_rating,
+        communication_score: reviewForm.communication_score,
+        productivity_score: reviewForm.productivity_score,
+        quality_score: reviewForm.quality_score,
+        teamwork_score: reviewForm.teamwork_score,
+        reliability_score: reviewForm.reliability_score,
+        customer_service_score: reviewForm.customer_service_score,
         review_notes: reviewForm.review_notes || null,
         goals_set: reviewForm.goals_set || null,
         action_items: reviewForm.action_items || null,
+        strengths: reviewForm.strengths || null,
+        areas_for_improvement: reviewForm.areas_for_improvement || null,
+        manager_signature: reviewForm.manager_signature || null,
+        contractor_signature: reviewForm.contractor_acknowledged ? (reviewForm.contractor_signature || null) : null,
+        contractor_acknowledged_at: reviewForm.contractor_acknowledged ? new Date().toISOString() : null,
       });
       if (error) throw error;
       refetchReviews();
       setShowReviewForm(false);
-      setReviewForm(defaultReviewForm());
+      setReviewForm(defaultReviewFormData());
       toast({ title: "Review saved" });
     } catch (err: any) {
       toast({ title: "Failed to save review", description: err.message, variant: "destructive" });
@@ -354,9 +451,62 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
   const dnaScore = hireApp?.dna_score ?? null;
   const scorePercent = dnaScore !== null ? Math.round((dnaScore / MAX_SCORE) * 100) : 0;
   const stars = hireApp ? getAlignmentStars(hireApp.alignment_category as AlignmentCategory) : 0;
-
-  // Current member's score for reference line on chart
   const memberDnaScore = dnaScore;
+
+  // Group files by category
+  const getCategoryName = (catId: string | null) => {
+    if (!catId) return "Uncategorized";
+    const cat = docCategories.find((c: any) => c.id === catId);
+    return cat ? cat.name : "Uncategorized";
+  };
+
+  const filteredFiles = categoryFilter === "all"
+    ? files
+    : files.filter((f: any) => (f as any).category_id === categoryFilter);
+
+  const filesGroupedByCategory = filteredFiles.reduce((acc: Record<string, any[]>, f: any) => {
+    const catName = getCategoryName((f as any).category_id);
+    if (!acc[catName]) acc[catName] = [];
+    acc[catName].push(f);
+    return acc;
+  }, {});
+
+  const managerName = personalInfo.manager_id
+    ? adminUsers.find((a: any) => a.id === personalInfo.manager_id)?.full_name || null
+    : null;
+
+  // Build PDF data
+  const pdfData = {
+    name: user.name,
+    roles: user.roles,
+    phone: personalInfo.phone,
+    birthday: personalInfo.birthday,
+    startDate: personalInfo.start_date,
+    streetAddress: personalInfo.street_address,
+    city: personalInfo.city,
+    state: personalInfo.state,
+    zipCode: personalInfo.zip_code,
+    emergencyContactName: personalInfo.emergency_contact_name,
+    emergencyContactPhone: personalInfo.emergency_contact_phone,
+    emergencyContactRelationship: personalInfo.emergency_contact_relationship,
+    compensationType: personalInfo.compensation_type,
+    hourlyRate: personalInfo.hourly_rate,
+    retainerAnnual: personalInfo.retainer_annual,
+    commissionPercentage: personalInfo.commission_percentage,
+    profitSplitPercentage: personalInfo.profit_split_percentage,
+    managerName,
+    approvedRevenue: user.approvedRevenue,
+    closedDeals: user.closedDeals,
+    leads: user.leads,
+    points: user.points,
+    leadsSet: user.leadsSet,
+    leadsClosed: user.leadsClosed,
+    canvasserPoints: user.canvasserPoints,
+    dnaScore: user.dnaScore,
+    alignmentCategory: user.alignmentCategory,
+    reviews,
+    files: files.map((f: any) => ({ ...f, category_name: getCategoryName((f as any).category_id) })),
+  };
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -364,9 +514,12 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         {/* Header */}
         <div className="bg-accent text-accent-foreground p-6">
           <SheetHeader>
-            <SheetTitle className="text-accent-foreground font-heading text-2xl uppercase text-left">
-              {user.name}
-            </SheetTitle>
+            <div className="flex items-start justify-between">
+              <SheetTitle className="text-accent-foreground font-heading text-2xl uppercase text-left">
+                {user.name}
+              </SheetTitle>
+              <ProfilePDFExport data={pdfData} />
+            </div>
           </SheetHeader>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {user.roles.map((role) => (
@@ -380,11 +533,11 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
             {user.dnaPending && <Badge className="text-xs bg-yellow-500 text-yellow-950">Assessment Pending</Badge>}
           </div>
           <div className="flex flex-wrap gap-4 mt-3 text-sm text-accent-foreground/80">
-            {user.hireDate && (
-              <span>Hired: {format(new Date(user.hireDate), "MMM d, yyyy")}</span>
+            {personalInfo.start_date && (
+              <span>Contract Start: {format(new Date(personalInfo.start_date), "MMM d, yyyy")}</span>
             )}
-            {user.startDate && (
-              <span>Start: {format(new Date(user.startDate), "MMM d, yyyy")}</span>
+            {!personalInfo.start_date && user.hireDate && (
+              <span>Contract Start: {format(new Date(user.hireDate), "MMM d, yyyy")}</span>
             )}
             <span>Member since: {format(new Date(user.createdAt), "MMM d, yyyy")}</span>
           </div>
@@ -405,6 +558,211 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Personal Information Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="bg-muted/30 px-4 py-3">
+              <h3 className="font-heading uppercase text-sm flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Personal Information
+              </h3>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone</Label>
+                  <Input
+                    value={personalInfo.phone || ""}
+                    onChange={(e) => setPersonalInfo((p) => ({ ...p, phone: e.target.value }))}
+                    placeholder="(555) 555-5555"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Birthday</Label>
+                  <Input
+                    type="date"
+                    value={personalInfo.birthday || ""}
+                    onChange={(e) => setPersonalInfo((p) => ({ ...p, birthday: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Street Address</Label>
+                <Input
+                  value={personalInfo.street_address || ""}
+                  onChange={(e) => setPersonalInfo((p) => ({ ...p, street_address: e.target.value }))}
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">City</Label>
+                  <Input
+                    value={personalInfo.city || ""}
+                    onChange={(e) => setPersonalInfo((p) => ({ ...p, city: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">State</Label>
+                  <Input
+                    value={personalInfo.state || "Oklahoma"}
+                    onChange={(e) => setPersonalInfo((p) => ({ ...p, state: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Zip Code</Label>
+                  <Input
+                    value={personalInfo.zip_code || ""}
+                    onChange={(e) => setPersonalInfo((p) => ({ ...p, zip_code: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="border-t border-border pt-3 mt-3">
+                <Label className="text-xs font-heading uppercase text-muted-foreground">Emergency Contact</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      value={personalInfo.emergency_contact_name || ""}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, emergency_contact_name: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Phone</Label>
+                    <Input
+                      value={personalInfo.emergency_contact_phone || ""}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, emergency_contact_phone: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Relationship</Label>
+                    <Input
+                      value={personalInfo.emergency_contact_relationship || ""}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, emergency_contact_relationship: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contract Information Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="bg-muted/30 px-4 py-3">
+              <h3 className="font-heading uppercase text-sm flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Contract Information
+              </h3>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Contract Start Date</Label>
+                  <Input
+                    type="date"
+                    value={personalInfo.start_date || ""}
+                    onChange={(e) => setPersonalInfo((p) => ({ ...p, start_date: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Manager</Label>
+                  <Select
+                    value={personalInfo.manager_id || ""}
+                    onValueChange={(v) => setPersonalInfo((p) => ({ ...p, manager_id: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {adminUsers.map((a: any) => (
+                        <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Compensation Type</Label>
+                  <Select
+                    value={personalInfo.compensation_type || ""}
+                    onValueChange={(v) => setPersonalInfo((p) => ({ ...p, compensation_type: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPENSATION_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  {personalInfo.compensation_type === "hourly" && (
+                    <>
+                      <Label className="text-xs">Hourly Rate ($)</Label>
+                      <Input
+                        type="number"
+                        value={personalInfo.hourly_rate || ""}
+                        onChange={(e) => setPersonalInfo((p) => ({ ...p, hourly_rate: e.target.value ? Number(e.target.value) : null }))}
+                        className="h-8 text-sm"
+                      />
+                    </>
+                  )}
+                  {personalInfo.compensation_type === "retainer" && (
+                    <>
+                      <Label className="text-xs">Annual Retainer ($)</Label>
+                      <Input
+                        type="number"
+                        value={personalInfo.retainer_annual || ""}
+                        onChange={(e) => setPersonalInfo((p) => ({ ...p, retainer_annual: e.target.value ? Number(e.target.value) : null }))}
+                        className="h-8 text-sm"
+                      />
+                    </>
+                  )}
+                  {personalInfo.compensation_type === "commission" && (
+                    <>
+                      <Label className="text-xs">Commission Percentage (%)</Label>
+                      <Input
+                        type="number"
+                        value={personalInfo.commission_percentage || ""}
+                        onChange={(e) => setPersonalInfo((p) => ({ ...p, commission_percentage: e.target.value ? Number(e.target.value) : null }))}
+                        className="h-8 text-sm"
+                      />
+                    </>
+                  )}
+                  {personalInfo.compensation_type === "profit_split" && (
+                    <>
+                      <Label className="text-xs">Profit Split Percentage (%)</Label>
+                      <Input
+                        type="number"
+                        value={personalInfo.profit_split_percentage || ""}
+                        onChange={(e) => setPersonalInfo((p) => ({ ...p, profit_split_percentage: e.target.value ? Number(e.target.value) : null }))}
+                        className="h-8 text-sm"
+                      />
+                    </>
+                  )}
+                  {!personalInfo.compensation_type && (
+                    <div className="h-8" />
+                  )}
+                </div>
+              </div>
+              <Button size="sm" onClick={handleSavePersonalInfo} disabled={savingPersonal}>
+                {savingPersonal ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                Save Profile
+              </Button>
+            </div>
+          </div>
+
           {/* Performance Stats */}
           {user.hasSalesMetrics && (
             <div>
@@ -682,74 +1040,18 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
               )}
             </div>
 
-            {/* Inline Add Review Form */}
+            {/* Enhanced Review Form */}
             {showReviewForm && (
-              <div className="p-4 border-b border-border bg-muted/10 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Quarter</Label>
-                    <Input
-                      value={reviewForm.quarter}
-                      onChange={(e) => setReviewForm((f) => ({ ...f, quarter: e.target.value }))}
-                      placeholder="Q1 2026"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Overall Rating</Label>
-                    <StarRating
-                      value={reviewForm.overall_rating}
-                      onChange={(v) => setReviewForm((f) => ({ ...f, overall_rating: v }))}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Performance Notes</Label>
-                  <Textarea
-                    value={reviewForm.review_notes}
-                    onChange={(e) => setReviewForm((f) => ({ ...f, review_notes: e.target.value }))}
-                    placeholder="How did this team member perform this quarter?"
-                    rows={3}
-                    className="text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Goals Set</Label>
-                  <Textarea
-                    value={reviewForm.goals_set}
-                    onChange={(e) => setReviewForm((f) => ({ ...f, goals_set: e.target.value }))}
-                    placeholder="Goals for next quarter..."
-                    rows={2}
-                    className="text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Action Items</Label>
-                  <Textarea
-                    value={reviewForm.action_items}
-                    onChange={(e) => setReviewForm((f) => ({ ...f, action_items: e.target.value }))}
-                    placeholder="Follow-up items and action steps..."
-                    rows={2}
-                    className="text-sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveReview} disabled={savingReview || !reviewForm.quarter}>
-                    {savingReview ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Save Review
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setShowReviewForm(false);
-                      setReviewForm(defaultReviewForm());
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
+              <PerformanceReviewForm
+                form={reviewForm}
+                onChange={setReviewForm}
+                onSave={handleSaveReview}
+                onCancel={() => {
+                  setShowReviewForm(false);
+                  setReviewForm(defaultReviewFormData());
+                }}
+                saving={savingReview}
+              />
             )}
 
             {/* Review History */}
@@ -790,6 +1092,20 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
+                    {/* Score breakdown */}
+                    <ReviewScoreBreakdown review={review} />
+                    {review.strengths && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Strengths</p>
+                        <p className="text-sm">{review.strengths}</p>
+                      </div>
+                    )}
+                    {review.areas_for_improvement && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Areas for Improvement</p>
+                        <p className="text-sm">{review.areas_for_improvement}</p>
+                      </div>
+                    )}
                     {review.review_notes && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground uppercase mb-0.5">Notes</p>
@@ -808,28 +1124,49 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                         <p className="text-sm">{review.action_items}</p>
                       </div>
                     )}
+                    {(review.manager_signature || review.contractor_signature) && (
+                      <div className="border-t border-border pt-2 mt-2 flex gap-4 text-xs text-muted-foreground">
+                        {review.manager_signature && <span>Manager: {review.manager_signature}</span>}
+                        {review.contractor_signature && (
+                          <span>Contractor: {review.contractor_signature} {review.contractor_acknowledged_at && `(${format(new Date(review.contractor_acknowledged_at), "MMM d, yyyy")})`}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Files Section */}
+          {/* Files & Documents Section */}
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
               <h3 className="font-heading uppercase text-sm flex items-center gap-2">
                 <File className="w-4 h-4" />
                 Files & Documents
               </h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                <span className="ml-1">{uploading ? "Uploading..." : "Upload"}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={uploadCategoryId} onValueChange={setUploadCategoryId}>
+                  <SelectTrigger className="h-7 text-xs w-[130px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Category</SelectItem>
+                    {docCategories.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  <span className="ml-1">{uploading ? "Uploading..." : "Upload"}</span>
+                </Button>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -838,6 +1175,45 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt,.csv"
               />
             </div>
+
+            {/* Category filter */}
+            {files.length > 0 && (
+              <div className="px-4 py-2 border-b border-border flex gap-1 flex-wrap">
+                <Button
+                  size="sm"
+                  variant={categoryFilter === "all" ? "default" : "ghost"}
+                  className="h-6 text-xs px-2"
+                  onClick={() => setCategoryFilter("all")}
+                >
+                  All
+                </Button>
+                {docCategories.map((c: any) => {
+                  const count = files.filter((f: any) => (f as any).category_id === c.id).length;
+                  if (count === 0) return null;
+                  return (
+                    <Button
+                      key={c.id}
+                      size="sm"
+                      variant={categoryFilter === c.id ? "default" : "ghost"}
+                      className="h-6 text-xs px-2"
+                      onClick={() => setCategoryFilter(c.id)}
+                    >
+                      {c.name} ({count})
+                    </Button>
+                  );
+                })}
+                {files.filter((f: any) => !(f as any).category_id).length > 0 && (
+                  <Button
+                    size="sm"
+                    variant={categoryFilter === "uncategorized" ? "default" : "ghost"}
+                    className="h-6 text-xs px-2"
+                    onClick={() => setCategoryFilter("uncategorized")}
+                  >
+                    Uncategorized ({files.filter((f: any) => !(f as any).category_id).length})
+                  </Button>
+                )}
+              </div>
+            )}
 
             {files.length === 0 ? (
               <div
@@ -850,35 +1226,51 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
               </div>
             ) : (
               <div className="p-4 space-y-2">
-                {files.map((f: any) => (
-                  <div key={f.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-muted/20">
-                    <File className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{f.file_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {f.file_size ? `${Math.round(f.file_size / 1024)}KB • ` : ""}
-                        {format(new Date(f.created_at), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => handleDownload(f.file_path, f.file_name)}
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => deleteFileMutation.mutate({ fileId: f.id, filePath: f.file_path })}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
+                {Object.entries(filesGroupedByCategory).map(([catName, catFiles]) => (
+                  <Collapsible key={catName} defaultOpen>
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-1.5 hover:bg-muted/20 rounded px-2 -mx-2">
+                      <FolderOpen className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-heading uppercase">{catName}</span>
+                      <Badge variant="secondary" className="text-[10px] ml-auto">{(catFiles as any[]).length}</Badge>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1.5 mt-1">
+                      {(catFiles as any[]).map((f: any) => (
+                        <div key={f.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-muted/20">
+                          {(f as any).is_sensitive ? (
+                            <Lock className="w-4 h-4 text-destructive shrink-0" />
+                          ) : (
+                            <File className="w-4 h-4 text-muted-foreground shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{f.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {f.file_size ? `${Math.round(f.file_size / 1024)}KB • ` : ""}
+                              {format(new Date(f.created_at), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => handleDownload(f.file_path, f.file_name)}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => deleteFileMutation.mutate({ fileId: f.id, filePath: f.file_path })}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
                 ))}
                 <div
                   className="mt-2 p-3 border border-dashed border-border rounded-lg text-center cursor-pointer hover:bg-muted/20 transition-colors"
