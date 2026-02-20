@@ -396,9 +396,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate email HTML
     const emailHtml = generateEmailHTML(salesReps, canvassers, summary, frequency);
 
-    // Send emails using Resend API directly
+    // Send emails using Resend API directly (with delay to avoid rate limiting)
     const results = [];
-    for (const email of adminEmails) {
+    for (let i = 0; i < adminEmails.length; i++) {
+      const email = adminEmails[i];
+      if (i > 0) await new Promise(r => setTimeout(r, 600)); // Rate limit: max 2/sec
       try {
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
