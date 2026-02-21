@@ -13,6 +13,8 @@ export interface EstimatePDFData {
   addons: { name: string; qty: string; unit: string }[];
   clampedQuoted: number;
   totalRetail: number;
+  gutterDsQuoted?: number;
+  protQuoted?: number;
   validityDays?: number;
   approvedAt?: string;
   logoBase64?: string;
@@ -42,7 +44,7 @@ export function loadLogoBase64(logoSrc: string): Promise<string> {
 export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
   const {
     jobInfo, protProduct, protFootage, gutterSize, gutterColor, gutterFootage,
-    dsTotalFootage, dsType, protSize, addons, clampedQuoted, totalRetail, validityDays, approvedAt, logoBase64,
+    dsTotalFootage, dsType, protSize, addons, clampedQuoted, totalRetail, gutterDsQuoted, protQuoted, validityDays, approvedAt, logoBase64,
   } = data;
 
   const vDays = validityDays || 7;
@@ -173,13 +175,13 @@ export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
     }
 
     pdf.text(gutterLabel, margin, y);
-    pdf.text(fmt(clampedQuoted), pageW - margin, y, { align: "right" });
+    const gutterDsPrice = gutterDsQuoted ?? clampedQuoted;
+    pdf.text(fmt(gutterDsPrice), pageW - margin, y, { align: "right" });
     y += 5;
 
     // Gutter warranties always appear under the merged line
     renderWarrantyItems([
       "✓ Lifetime Leak-Free Guarantee — With yearly scheduled inspection",
-      `✓ 10% Rebate Toward Future Roof Replacement — Value: ${fmt(clampedQuoted * 0.10)}`,
       "✓ 25-Year Baked-On Paint Warranty — Applies to gutters & downspouts",
     ]);
     renderFinePrint("* Check full manufacturer warranty documentation for complete terms.");
@@ -193,6 +195,9 @@ export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
     pdf.setTextColor(30, 30, 30);
     const protLabel = protSize && protSize !== '5"' ? `${protProduct} (${protSize})` : protProduct;
     pdf.text(protLabel, margin, y);
+    if (protQuoted != null) {
+      pdf.text(fmt(protQuoted), pageW - margin, y, { align: "right" });
+    }
     y += 5;
 
     if (protProduct === "Cheap Mesh") {
