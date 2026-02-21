@@ -1,130 +1,58 @@
 
 
-# Quote Validity, Approval Email with PDF, and PDF Layout Improvements
+# Separate Gutter and Protection Pricing on PDF Line Items
 
-## What We're Building
+## Problem
 
-Five connected changes that add quote expiration tracking, automatically email a professional PDF to the customer when a manager approves a quote, and improve the PDF layout with per-item warranties and discount display.
+Currently, the PDF shows the full `clampedQuoted` (total) price on the Gutters & Downspouts line item and no price on the Protection line item. The user wants each line item to display its own proportional price.
 
----
+## Solution
 
-## Part 1: Database Migration
+Add two new fields to the `EstimatePDFData` interface: `gutterDsQuoted` and `protQuoted`. These represent the portion of the total quoted price attributable to each section. The PDF will display each price next to its respective line item.
 
-Add a `validity_days` column to the `quote_requests` table:
+### Price Proportioning Logic
 
-```sql
-ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS validity_days integer DEFAULT 7;
-```
-
-This runs first so the frontend can save validity days on approval.
-
----
-
-## Part 2: Shared PDF Builder — New File `src/lib/generateEstimatePDF.ts`
-
-Extract the PDF generation logic from `NGRGutterCalculator.tsx` into a standalone, React-free utility function.
-
-**Interface:**
+Since the user may apply a discount that reduces the total, we proportionally split the quoted price based on each section's share of total retail:
 
 ```text
-EstimatePDFData {
-  jobInfo: { customer, city, state, jobNumber }
-  protProduct, protFootage, gutterSize, gutterColor, gutterFootage
-  dsTotalFootage
-  addons: { name, qty, unit }[]
-  clampedQuoted, totalRetail
-  validityDays?, approvedAt?, logoBase64?
-}
-
-buildEstimatePDF(data) -> Promise<jsPDF>
+gutterDsQuoted = (gutterRetail + dsRetail) / totalRetail * clampedQuoted
+protQuoted     = protRetail / totalRetail * clampedQuoted
 ```
 
-**PDF Layout Changes (vs current):**
-
-- **Per-item warranties**: Warranties now appear indented directly below each relevant scope line item instead of grouped at the bottom
-  - Gutter line -> 3 warranty items indented below (Leak-Free, Rebate, Paint)
-  - Protection line -> product-specific warranty indented below
-  - Cheap Mesh -> "no warranty" note
-- **Discount display**: When `clampedQuoted < totalRetail`, the total box shows:
-  - Original Value (9pt, gray)
-  - YOUR PRICE (14pt, bold)
-  - You Save (10pt, green)
-- **Validity warning**: Below the grand total: "This quote is valid for X days from [date]."
-- **Footer validity**: Additional expiry note in the footer section
-
-**Logo loading helper** is also exported from this file for reuse.
-
----
-
-## Part 3: Update `NGRGutterCalculator.tsx`
-
-- Remove the inline `handleGeneratePDF` function's PDF-building logic
-- Import and call `buildEstimatePDF()` from the shared utility instead
-- Keep the validation check (no items = toast warning + abort)
-- Keep the download + storage upload logic
-- Remove `loadLogoBase64` (now in shared utility)
-- Pass `lead?.validity_days` through to the PDF builder
-
----
-
-## Part 4: Update `QuoteApprovalSection.tsx`
-
-**New state:**
-- `validityDays` (string, default "7")
-- `approving` (boolean, for loading state during the full approval flow)
-
-**New UI** (inside the `pending_approval` admin block):
-- "Quote Valid For (days)" number input with placeholder "7"
-- Live expiry date preview below: "Quote expires: March 7, 2026"
-
-**Updated `handleApprove` flow** (exact sequence):
-1. Save approval + `validity_days` to DB
-2. Query `gutter_estimates` for this lead
-3. If estimate found:
-   a. Load logo as base64
-   b. Call `buildEstimatePDF()` with estimate data
-   c. Convert to base64 string (strip data URI prefix)
-   d. Call `send-quote-approval-email` edge function with PDF + lead details
-   e. Upload PDF blob to `lead-files` storage
-   f. Insert record into `lead_files` table
-4. If no estimate found:
-   a. Call `send-quote-approval-email` with no PDF (plain text amount only)
-5. Show success toast
-
----
-
-## Part 5: New Edge Function `send-quote-approval-email`
-
-**File:** `supabase/functions/send-quote-approval-email/index.ts`
-
-**Config:** Add `verify_jwt = false` to `supabase/config.toml`
-
-**Accepts:** `clientName`, `clientEmail`, `quoteAmount`, `validityDays`, `approvedAt`, `referenceNumber`, `pdfBase64?`, `pdfFileName?`
-
-**Email:**
-- From: `notifications@oknextgen.com`
-- Subject: "Your Next Generation Guttering Estimate -- [Name]"
-- Body: Professional HTML email with quoted amount, validity warning, and contact info
-- Attachment: PDF via Resend's `attachments` field (base64, no data URI prefix) -- only if `pdfBase64` is provided
+This ensures the individual line items sum to the total and the discount is distributed proportionally.
 
 ---
 
 ## Files Changed
 
-| File | Action |
-|---|---|
-| Database migration | Add `validity_days integer DEFAULT 7` to `quote_requests` |
-| `src/lib/generateEstimatePDF.ts` | New -- shared PDF builder with per-item warranties, discount display, validity |
-| `src/components/NGRGutterCalculator.tsx` | Refactor to use shared PDF builder |
-| `src/components/admin/QuoteApprovalSection.tsx` | Add validity field, approval-triggered PDF generation + email |
-| `supabase/functions/send-quote-approval-email/index.ts` | New edge function for approval email with PDF attachment |
-| `supabase/config.toml` | Add `[functions.send-quote-approval-email]` entry (auto-managed) |
+### 1. `src/lib/generateEstimatePDF.ts`
+
+- Add `gutterDsQuoted` and `protQuoted` (both optional numbers) to the `EstimatePDFData` interface
+- On the Gutters & Downspouts line (line 176), display `fmt(gutterDsQuoted)` instead of `fmt(clampedQuoted)`
+- On the Protection line (line 195), add `fmt(protQuoted)` right-aligned
+- Remove the rebate warranty line from under the gutter scope item (the "10% Rebate Toward Future Roof Replacement" line) since the rebate already appears below the Grand Total box
+
+### 2. `src/components/NGRGutterCalculator.tsx`
+
+- Calculate and pass `gutterDsQuoted` and `protQuoted` to `buildEstimatePDF()`:
+  ```text
+  gutterDsQuoted: (gutterCalc.retail + dsTotal.retail) / (totalRetail || 1) * clampedQuoted
+  protQuoted: protCalc.retail / (totalRetail || 1) * clampedQuoted
+  ```
+
+### 3. `src/components/admin/QuoteApprovalSection.tsx`
+
+- Calculate and pass `gutterDsQuoted` and `protQuoted` using the estimate's stored retail values:
+  ```text
+  gutterDsRetail = gutter_retail + ds_elbow_retail
+  protRetail = protection_retail
+  totalRetail = estimate.total_retail
+  ```
 
 ## What Does NOT Change
 
-- Pricing constants or calculation logic
-- On-screen calculator UI
-- Save/upsert functionality
-- Existing `send-quote-email` edge function
-- `LeadFilesSection.tsx` (already has "estimate" file type from previous update)
+- Pricing logic, discount calculations, or the on-screen calculator UI
+- The Grand Total box still shows the full `clampedQuoted`
+- The rebate value line below the Grand Total remains unchanged
+- No other files are modified
 
