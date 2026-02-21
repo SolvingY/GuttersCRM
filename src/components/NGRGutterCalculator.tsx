@@ -137,7 +137,7 @@ function SelectPill({ options, value, onChange, accent = "#e53935" }: { options:
 }
 
 function StatBar({ label, value, color = "#e8eaf0", className }: { label: string; value: string; color?: string; className?: string }) {
-  return <div className={className} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "#7b8bb2" }}>{label}</span><span style={{ color, fontWeight: 700 }}>{value}</span></div>;
+  return <div className={className} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, minWidth: 140, gap: 8 }}><span style={{ color: "#7b8bb2", whiteSpace: "nowrap" }}>{label}</span><span style={{ color, fontWeight: 700, whiteSpace: "nowrap" }}>{value}</span></div>;
 }
 
 function MeasurementTable({ rows, onChange, baseRetail, baseFloor }: { rows: MeasurementRow[]; onChange: (rows: MeasurementRow[]) => void; baseRetail?: number; baseFloor?: number }) {
@@ -206,13 +206,26 @@ function SummaryRow({ label, retail, floor, quoted, commission, muted, bold }: {
     ? { fontSize: 18, fontWeight: 800, fontFamily: "'Barlow Condensed', sans-serif" }
     : { fontSize: 14 };
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid #1e2d45", opacity: muted ? 0.5 : 1 }}>
-      <span style={{ ...s, color: "#e8eaf0" }}>{label}</span>
-      <span style={{ ...s, textAlign: "right", color: "#e8eaf0" }}>{retail > 0 || bold ? fmt(retail) : "—"}</span>
-      <span className="no-print" style={{ ...s, textAlign: "right", color: "#ffa726" }}>{floor > 0 || bold ? fmt(floor) : "—"}</span>
-      <span style={{ ...s, textAlign: "right", color: "#ffffff" }}>{quoted != null ? fmt(quoted) : "—"}</span>
-      <span className="no-print" style={{ ...s, color: (commission ?? 0) > 0 ? "#66bb6a" : "#4a5878", textAlign: "right" }}>{commission != null ? fmt(commission) : "—"}</span>
-    </div>
+    <>
+      {/* Desktop: 5-column grid */}
+      <div className="summary-row-desktop" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid #1e2d45", opacity: muted ? 0.5 : 1 }}>
+        <span style={{ ...s, color: "#e8eaf0" }}>{label}</span>
+        <span style={{ ...s, textAlign: "right", color: "#e8eaf0" }}>{retail > 0 || bold ? fmt(retail) : "—"}</span>
+        <span className="no-print" style={{ ...s, textAlign: "right", color: "#ffa726" }}>{floor > 0 || bold ? fmt(floor) : "—"}</span>
+        <span style={{ ...s, textAlign: "right", color: "#ffffff" }}>{quoted != null ? fmt(quoted) : "—"}</span>
+        <span className="no-print" style={{ ...s, color: (commission ?? 0) > 0 ? "#66bb6a" : "#4a5878", textAlign: "right" }}>{commission != null ? fmt(commission) : "—"}</span>
+      </div>
+      {/* Mobile: card layout */}
+      <div className="summary-row-mobile" style={{ padding: "10px 12px", borderBottom: "1px solid #1e2d45", opacity: muted ? 0.5 : 1 }}>
+        <div style={{ ...s, color: "#e8eaf0", marginBottom: 6, fontWeight: bold ? 800 : 600 }}>{label}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
+          <div style={{ fontSize: 12 }}><span style={{ color: "#7b8bb2" }}>Retail: </span><span style={{ ...s, color: "#e8eaf0" }}>{retail > 0 || bold ? fmt(retail) : "—"}</span></div>
+          <div className="no-print" style={{ fontSize: 12 }}><span style={{ color: "#7b8bb2" }}>Floor: </span><span style={{ ...s, color: "#ffa726" }}>{floor > 0 || bold ? fmt(floor) : "—"}</span></div>
+          <div style={{ fontSize: 12 }}><span style={{ color: "#7b8bb2" }}>Quoted: </span><span style={{ ...s, color: "#ffffff" }}>{quoted != null ? fmt(quoted) : "—"}</span></div>
+          <div className="no-print" style={{ fontSize: 12 }}><span style={{ color: "#7b8bb2" }}>Comm: </span><span style={{ ...s, color: (commission ?? 0) > 0 ? "#66bb6a" : "#4a5878" }}>{commission != null ? fmt(commission) : "—"}</span></div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -460,7 +473,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
   const totalElbowQty = elbows.reduce((s, e) => s + (parseFloat(e.qty) || 0), 0);
 
   const card: CSSProperties       = { background: "#0d1424", border: "1px solid #1e2d45", borderRadius: 14, padding: 24, marginBottom: 20 };
-  const statRow: CSSProperties    = { display: "flex", gap: 20, padding: "12px 16px", background: "#111827", borderRadius: 8, flexWrap: "wrap", marginTop: 10 };
+  const statRow: CSSProperties    = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px 20px", padding: "12px 16px", background: "#111827", borderRadius: 8, marginTop: 10 };
   const tabBtn     = (t: string): CSSProperties => ({
     padding: "10px 20px", borderRadius: "10px 10px 0 0", border: "none",
     fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14,
@@ -483,6 +496,13 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         ::-webkit-scrollbar-track { background: #070e1a; }
         ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
         input[type=range] { accent-color: #e53935; }
+        @media (max-width: 640px) {
+          .summary-row-desktop { display: none !important; }
+          .summary-header-desktop { display: none !important; }
+        }
+        @media (min-width: 641px) {
+          .summary-row-mobile { display: none !important; }
+        }
       `}</style>
 
 
@@ -594,8 +614,8 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
 
           {/* DOWNSPOUTS */}
           <SectionHeader label="Downspouts" icon="⬇️" accent="#ab47bc" />
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <div style={{ marginBottom: 16, overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(70px, 1fr))", gap: 8, alignItems: "center", marginBottom: 8, minWidth: 420 }}>
               {[{ label: "Type" }, { label: "Qty" }, { label: "Footage", color: "#e53935" }, { label: "Rate/ft", className: "no-print" }, { label: "Retail", className: "no-print" }, { label: "Floor", color: "#ffa726", className: "no-print" }].map(h => (
                 <div key={h.label} className={h.className || ""} style={{ fontSize: 10, color: h.color || "#4a5878", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>{h.label}</div>
               ))}
@@ -628,8 +648,8 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
             <SubHeader label="Elbow Pricing Rate" />
             <div className="no-print"><SelectPill options={Object.keys(PRICES.downspouts)} value={dsType} onChange={setDsType} accent="#ab47bc" /></div>
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <div style={{ marginBottom: 16, overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(70px, 1fr))", gap: 8, alignItems: "center", marginBottom: 8, minWidth: 420 }}>
               {[{ label: "Elbow Type" }, { label: "Qty" }, { label: "Footage", color: "#ab47bc" }, { label: "Rate/ft", className: "no-print" }, { label: "Retail", className: "no-print" }, { label: "Floor", color: "#ffa726", className: "no-print" }].map(h => (
                 <div key={h.label} className={h.className || ""} style={{ fontSize: 10, color: h.color || "#4a5878", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>{h.label}</div>
               ))}
@@ -683,8 +703,8 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
       {tab === "addons" && (
         <div style={card}>
           <SectionHeader label="Add-On Services" icon="➕" accent="#66bb6a" />
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.5fr 1fr 1fr", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <div style={{ marginBottom: 16, overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.5fr 1fr 1fr", gap: 8, alignItems: "center", marginBottom: 8, minWidth: 420 }}>
               {["Service", "Qty / Footage", "Unit"].map(h => (
                 <div key={h} style={{ fontSize: 10, color: "#4a5878", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>{h}</div>
               ))}
@@ -717,7 +737,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
       {/* SUMMARY */}
       <div style={card}>
         <SectionHeader label="Estimate Summary" icon="📊" accent="#e53935" />
-        <div className="no-print" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <div className="no-print summary-header-desktop" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
           <span style={{ fontSize: 10, color: "#4a5878", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "left" }}>Section</span>
           <span style={{ fontSize: 10, color: "#e8eaf0", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "right" }}>Retail</span>
           <span className="no-print" style={{ fontSize: 10, color: "#ffa726", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, textAlign: "right" }}>Floor</span>
