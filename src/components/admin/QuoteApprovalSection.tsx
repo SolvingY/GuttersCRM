@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CheckCircle, XCircle, DollarSign, Send, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
+import { buildEstimatePDF, loadLogoBase64 } from "@/lib/generateEstimatePDF";
+import ngrLogo from "@/assets/ngr-logo-circle.jpg";
 
 interface QuoteApprovalSectionProps {
   lead: any;
@@ -31,6 +32,8 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
   const [rejectReason, setRejectReason] = useState("");
   const [sending, setSending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [validityDays, setValidityDays] = useState("7");
+  const [approving, setApproving] = useState(false);
 
   const updateLead = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
@@ -40,7 +43,6 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lead-detail", lead.id] });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
-      toast({ title: "Quote updated" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -59,15 +61,127 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       quoted_at: lead.quoted_at || new Date().toISOString(),
       status: lead.status === "new" || lead.status === "contacted" ? "quoted" : lead.status,
     });
+    toast({ title: "Quote submitted for approval" });
   };
 
-  const handleApprove = () => {
-    updateLead.mutate({
-      quote_status: "approved",
-      quote_approved: true,
-      quote_approved_by: user?.id,
-      quote_approved_at: new Date().toISOString(),
-    });
+  const handleApprove = async () => {
+    setApproving(true);
+    try {
+      const vDays = parseInt(validityDays) || 7;
+      const approvedAt = new Date().toISOString();
+
+      // 1. Save approval + validity_days to DB
+      const { error: updateError } = await supabase.from("quote_requests").update({
+        quote_status: "approved",
+        quote_approved: true,
+        quote_approved_by: user?.id,
+        quote_approved_at: approvedAt,
+        validity_days: vDays,
+      }).eq("id", lead.id);
+      if (updateError) throw updateError;
+
+      // 2. Query gutter_estimates for this lead
+      const { data: estimates } = await supabase
+        .from("gutter_estimates")
+        .select("*")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const estimate = estimates?.[0];
+      let pdfBase64: string | undefined;
+      let pdfFileName: string | undefined;
+
+      if (estimate) {
+        // 3. Load logo + build PDF
+        const logoBase64 = await loadLogoBase64(ngrLogo);
+
+        // Parse addons from measurement_data
+        let measurementData = estimate.measurement_data as any;
+        if (typeof measurementData === "string") {
+          try { measurementData = JSON.parse(measurementData); } catch { measurementData = {}; }
+        }
+
+        const ADDON_UNITS: Record<string, string> = {
+          "Gutter Tune-Up": "ft", "Drip Edge": "ft", "Flashing Into Gutters": "ft",
+          "Ground Spout": "ea", "Wedges (Add-On)": "ft", "French Drain System": "ft",
+        };
+
+        const addons = (measurementData?.addons || [])
+          .filter((a: any) => (parseFloat(a.qty) || 0) > 0)
+          .map((a: any) => ({ name: a.name, qty: a.qty, unit: ADDON_UNITS[a.name] || "ea" }));
+
+        const pdf = await buildEstimatePDF({
+          jobInfo: {
+            customer: estimate.customer_name || lead.full_name || "",
+            city: estimate.city || lead.city || "",
+            state: estimate.state || lead.state || "",
+            jobNumber: estimate.job_number || lead.reference_number || "",
+          },
+          protProduct: estimate.protection_product || "",
+          protFootage: Number(estimate.protection_footage) || 0,
+          gutterSize: estimate.gutter_size || '5"',
+          gutterColor: estimate.gutter_color || "Standard",
+          gutterFootage: Number(estimate.gutter_footage) || 0,
+          dsTotalFootage: (Number(estimate.downspout_footage) || 0) + (Number(estimate.elbow_footage) || 0),
+          addons,
+          clampedQuoted: Number(estimate.quoted_price) || Number(lead.quote_amount) || 0,
+          totalRetail: Number(estimate.total_retail) || 0,
+          validityDays: vDays,
+          approvedAt,
+          logoBase64,
+        });
+
+        // 4. Convert to base64 (strip data URI prefix)
+        const dataUri = pdf.output("datauristring");
+        pdfBase64 = dataUri.split(",")[1];
+        pdfFileName = `NGG_Estimate_${(lead.full_name || "Customer").replace(/\s+/g, "_")}.pdf`;
+
+        // 5e. Upload PDF to storage
+        const pdfBlob = new Blob([pdf.output("arraybuffer")], { type: "application/pdf" });
+        const storagePath = `estimates/${lead.id}/${pdfFileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("lead-files")
+          .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: true });
+
+        // 5f. Insert into lead_files
+        if (!uploadError && uploadData) {
+          const { data: urlData } = supabase.storage.from("lead-files").getPublicUrl(uploadData.path);
+          await supabase.from("lead_files").insert({
+            lead_id: lead.id,
+            uploaded_by: user?.id || "",
+            file_name: pdfFileName,
+            file_url: urlData.publicUrl,
+            file_type: "estimate",
+            file_size: pdfBlob.size,
+          });
+        }
+      }
+
+      // 6. Call edge function to send email
+      await supabase.functions.invoke("send-quote-approval-email", {
+        body: {
+          clientName: lead.full_name,
+          clientEmail: lead.email,
+          quoteAmount: lead.quote_amount,
+          validityDays: vDays,
+          approvedAt,
+          referenceNumber: lead.reference_number,
+          pdfBase64,
+          pdfFileName,
+        },
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["lead-detail", lead.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-files", lead.id] });
+      toast({ title: "Quote approved and estimate emailed to customer" });
+    } catch (err: any) {
+      console.error("Approval failed:", err);
+      toast({ title: "Approval failed", description: err.message, variant: "destructive" });
+    } finally {
+      setApproving(false);
+    }
   };
 
   const handleReject = () => {
@@ -79,6 +193,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       quote_status: "rejected",
       quote_rejected_reason: rejectReason.trim(),
     });
+    toast({ title: "Quote rejected" });
   };
 
   const handleSendQuote = async () => {
@@ -95,7 +210,6 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       });
       if (error) throw error;
 
-      // Save the snapshot and mark as sent
       const updates: Record<string, any> = {
         quote_sent_at: new Date().toISOString(),
       };
@@ -112,6 +226,8 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
   };
 
   const currentStatus = lead.quote_status ? statusBadge[lead.quote_status] : null;
+  const expiryPreview = new Date(Date.now() + (parseInt(validityDays || "7") * 86400000))
+    .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   return (
     <div className="border border-border rounded-lg p-5">
@@ -156,15 +272,32 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         {/* Admin approve/reject buttons */}
         {isAdmin && lead.quote_status === "pending_approval" && (
           <div className="space-y-2 pt-2 border-t border-border">
+            {/* Validity days input */}
+            <div className="space-y-1">
+              <Label className="text-xs">Quote Valid For (days)</Label>
+              <Input
+                type="number"
+                min={1}
+                placeholder="7"
+                value={validityDays}
+                onChange={(e) => setValidityDays(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Quote expires: {expiryPreview}
+              </p>
+            </div>
+
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="outline"
                 className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
                 onClick={handleApprove}
-                disabled={updateLead.isPending}
+                disabled={approving || updateLead.isPending}
               >
-                <CheckCircle className="w-3 h-3" /> Approve
+                {approving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                Approve
               </Button>
               <Button
                 size="sm"

@@ -1,0 +1,1 @@
+ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS validity_days integer DEFAULT 7;

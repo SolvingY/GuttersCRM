@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.notify-new-application]
 verify_jwt = false
+
+[functions.send-quote-approval-email]
+verify_jwt = false
