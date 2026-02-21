@@ -859,6 +859,47 @@ export type Database = {
           },
         ]
       }
+      lead_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          lead_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string
+          file_url: string
+          id?: string
+          lead_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          lead_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_files_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_comments: {
         Row: {
           content: string
@@ -1311,6 +1352,7 @@ export type Database = {
           quote_approved: boolean | null
           quote_approved_at: string | null
           quote_approved_by: string | null
+          quote_email_snapshot: string | null
           quote_rejected_reason: string | null
           quote_sent_at: string | null
           quote_status: string | null
@@ -1361,6 +1403,7 @@ export type Database = {
           quote_approved?: boolean | null
           quote_approved_at?: string | null
           quote_approved_by?: string | null
+          quote_email_snapshot?: string | null
           quote_rejected_reason?: string | null
           quote_sent_at?: string | null
           quote_status?: string | null
@@ -1411,6 +1454,7 @@ export type Database = {
           quote_approved?: boolean | null
           quote_approved_at?: string | null
           quote_approved_by?: string | null
+          quote_email_snapshot?: string | null
           quote_rejected_reason?: string | null
           quote_sent_at?: string | null
           quote_status?: string | null

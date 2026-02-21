@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, DollarSign, Send, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CheckCircle, XCircle, DollarSign, Send, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,8 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
   const queryClient = useQueryClient();
   const [quoteAmount, setQuoteAmount] = useState(lead.quote_amount?.toString() || "");
   const [rejectReason, setRejectReason] = useState("");
+  const [sending, setSending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const updateLead = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
@@ -76,6 +79,36 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       quote_status: "rejected",
       quote_rejected_reason: rejectReason.trim(),
     });
+  };
+
+  const handleSendQuote = async () => {
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-quote-email", {
+        body: {
+          clientName: lead.full_name,
+          clientEmail: lead.email,
+          serviceType: lead.service_type,
+          referenceNumber: lead.reference_number,
+          quoteAmount: lead.quote_amount,
+        },
+      });
+      if (error) throw error;
+
+      // Save the snapshot and mark as sent
+      const updates: Record<string, any> = {
+        quote_sent_at: new Date().toISOString(),
+      };
+      if (data?.html) {
+        updates.quote_email_snapshot = data.html;
+      }
+      updateLead.mutate(updates);
+      toast({ title: "Quote sent to client" });
+    } catch {
+      toast({ title: "Failed to send", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
   };
 
   const currentStatus = lead.quote_status ? statusBadge[lead.quote_status] : null;
@@ -163,32 +196,52 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
             size="sm"
             variant="outline"
             className="w-full gap-2"
-            onClick={async () => {
-              try {
-                await supabase.functions.invoke("send-quote-email", {
-                  body: {
-                    clientName: lead.full_name,
-                    clientEmail: lead.email,
-                    serviceType: lead.service_type,
-                    referenceNumber: lead.reference_number,
-                    quoteAmount: lead.quote_amount,
-                  },
-                });
-                updateLead.mutate({ quote_sent_at: new Date().toISOString() });
-                toast({ title: "Quote sent to client" });
-              } catch {
-                toast({ title: "Failed to send", variant: "destructive" });
-              }
-            }}
+            onClick={handleSendQuote}
+            disabled={sending}
           >
-            <Send className="w-3 h-3" /> Send Quote to Client
+            {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+            Send Quote to Client
           </Button>
         )}
 
         {lead.quote_sent_at && (
-          <p className="text-xs text-green-600">Quote sent on {new Date(lead.quote_sent_at).toLocaleDateString()}</p>
+          <div className="space-y-2">
+            <p className="text-xs text-green-600">Quote sent on {new Date(lead.quote_sent_at).toLocaleDateString()}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setPreviewOpen(true)}
+            >
+              <Eye className="w-3 h-3" /> View Sent Quote
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Quote Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Sent Quote Preview</DialogTitle>
+          </DialogHeader>
+          {lead.quote_email_snapshot ? (
+            <iframe
+              srcDoc={lead.quote_email_snapshot}
+              className="w-full flex-1 min-h-[400px] border border-border rounded-md"
+              sandbox="allow-same-origin"
+              title="Quote Email Preview"
+            />
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              <p>Preview not available for quotes sent before this update.</p>
+              <p className="text-xs mt-2">
+                Quote was sent on {lead.quote_sent_at ? new Date(lead.quote_sent_at).toLocaleDateString() : "unknown date"} for ${lead.quote_amount ? Number(lead.quote_amount).toLocaleString("en-US", { minimumFractionDigits: 2 }) : "N/A"}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
