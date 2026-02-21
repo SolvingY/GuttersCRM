@@ -17,6 +17,7 @@ const fileTypeOptions = [
   { value: "contract", label: "Contract" },
   { value: "drawing", label: "Drawing" },
   { value: "warranty", label: "Warranty" },
+  { value: "photo", label: "Photo" },
   { value: "other", label: "Other" },
 ];
 
@@ -24,6 +25,7 @@ const fileTypeBadgeClasses: Record<string, string> = {
   contract: "bg-blue-500/10 text-blue-600 border-blue-500/30",
   drawing: "bg-purple-500/10 text-purple-600 border-purple-500/30",
   warranty: "bg-green-500/10 text-green-600 border-green-500/30",
+  photo: "bg-amber-500/10 text-amber-600 border-amber-500/30",
   other: "bg-muted text-muted-foreground",
 };
 
