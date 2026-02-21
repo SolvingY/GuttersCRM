@@ -209,16 +209,20 @@ export default function LeadDetailView() {
         {estimates.length === 0 ? (
           <p className="text-sm text-muted-foreground">No estimates yet</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {(estimates as any[]).map((est: any) => (
-              <div key={est.id} className="flex justify-between items-center text-sm border-b border-border pb-2">
-                <span className="text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
-                <span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span>
-                <span className="text-muted-foreground">Floor: ${Number(est.total_floor || 0).toFixed(2)}</span>
-                <span className="text-green-600 font-medium">Commission: ${Number(est.commission || 0).toFixed(2)}</span>
-                <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
-                  Open &amp; Edit
-                </Button>
+              <div key={est.id} className="border-b border-border pb-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
+                  <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
+                    Open &amp; Edit
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div><span className="text-muted-foreground text-xs block">Quoted</span><span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span></div>
+                  <div><span className="text-muted-foreground text-xs block">Floor</span><span>${Number(est.total_floor || 0).toFixed(2)}</span></div>
+                  <div><span className="text-muted-foreground text-xs block">Commission</span><span className="text-green-600 font-medium">${Number(est.commission || 0).toFixed(2)}</span></div>
+                </div>
               </div>
             ))}
           </div>
