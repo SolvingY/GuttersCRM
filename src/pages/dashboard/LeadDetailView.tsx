@@ -13,6 +13,7 @@ import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
 import { Badge } from "@/components/ui/badge";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import NGRGutterCalculator from "@/components/NGRGutterCalculator";
+import { LeadFilesSection } from "@/components/admin/LeadFilesSection";
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -276,6 +277,9 @@ export default function LeadDetailView() {
               </div>
             </div>
           )}
+
+          {/* Files */}
+          <LeadFilesSection leadId={lead.id} isAdmin={false} />
 
           {/* Activity Log */}
           <LeadActivityLog leadId={lead.id} />
