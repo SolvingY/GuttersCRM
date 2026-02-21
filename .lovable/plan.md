@@ -1,77 +1,130 @@
 
 
-# Fix Print Quote: Two-Section Architecture
+# Quote Validity, Approval Email with PDF, and PDF Layout Improvements
 
-## Problem
-The print CSS uses piecemeal `no-print` classes but the entire calculator UI (measurement tables, input fields, pricing columns, summary with two price columns) is still printing through, spanning multiple pages.
+## What We're Building
 
-## Solution — Single file change: `src/components/NGRGutterCalculator.tsx`
-
-### 1. Replace CSS block (lines 405-417)
-
-Replace the current `@media print` CSS with a two-section architecture that hides the entire calculator on print and only shows the customer document:
-
-```css
-.print-only { display: none !important; }
-.screen-only { display: block; }
-@media print {
-  .screen-only { display: none !important; }
-  .print-only { display: block !important; }
-  body { margin: 0; padding: 20px; background: white !important; color: #111 !important; font-size: 12px; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; color: #111 !important; border-color: #ccc !important; }
-  .warranty-section { border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin: 8px 0; page-break-inside: avoid; }
-  .warranty-item { padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-  .warranty-fine-print { font-size: 11px; color: #666 !important; margin-top: 6px; font-style: italic; }
-  .grand-total-print { font-size: 20px; font-weight: 900; text-align: center; padding: 12px; border: 2px solid #000; border-radius: 8px; margin: 12px 0; }
-  .scope-item { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-  .print-footer { margin-top: 20px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; page-break-inside: avoid; }
-}
-```
-
-Key changes from current CSS:
-- Remove `.no-print` rule (no longer needed)
-- Add `.screen-only` rule
-- Add `font-size: 12px` to print body for single-page fit
-- Reduce grand-total from 24px to 20px, padding from 20px to 12px
-- Reduce warranty padding from 16px to 8px, warranty-item from 6px to 4px
-- Reduce footer margin from 40px to 20px
-
-### 2. Wrap entire screen UI in `screen-only` div
-
-**Opening tag**: Insert `<div className="screen-only">` at line 511, just before the on-screen HEADER comment. Remove the `className="no-print"` from the header div on line 512 since it's now inside `screen-only`.
-
-**Closing tag**: Insert `</div>{/* end screen-only */}` at line 848, after the last `</div>` of the actions section but before the final `</div>` wrapper.
-
-This wraps everything the rep sees: header with logo, job info card, tab buttons, all three tab panels (Protection, Gutters, Add-Ons), Estimate Summary with SummaryRow components, slider/discount section, warning, and action buttons.
-
-### 3. Print-only blocks stay in place (lines 420-509)
-
-The existing print-only content (header, scope of work, gutter warranty, protection warranty, footer) remains exactly where it is -- outside the `screen-only` wrapper, above it in the DOM. This ensures it renders first in the print document flow in the correct order:
-1. Logo + title + "Customer Estimate" + date
-2. Customer name, city, state, job number
-3. Scope of Work (active line items)
-4. TOTAL INVESTMENT box
-5. 10% Rebate value
-6. Gutter Warranties (if gutter footage > 0)
-7. Protection Warranty (if protection footage > 0)
-8. Footer
-
-### 4. No other files changed
-
-This is a single-file CSS architecture fix only. No changes to pricing logic, save functionality, or screen UI.
+Five connected changes that add quote expiration tracking, automatically email a professional PDF to the customer when a manager approves a quote, and improve the PDF layout with per-item warranties and discount display.
 
 ---
 
-## What this fixes
-- Measurement tables with inputs no longer print
-- Internal pricing columns (Retail/ft, Floor/ft, Commission) no longer print
-- Job info form fields no longer print
-- Estimate Summary with two price columns no longer prints
-- Slider/discount section no longer prints
-- Only the clean 1-page customer document prints
+## Part 1: Database Migration
 
-## File changed
+Add a `validity_days` column to the `quote_requests` table:
+
+```sql
+ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS validity_days integer DEFAULT 7;
+```
+
+This runs first so the frontend can save validity days on approval.
+
+---
+
+## Part 2: Shared PDF Builder — New File `src/lib/generateEstimatePDF.ts`
+
+Extract the PDF generation logic from `NGRGutterCalculator.tsx` into a standalone, React-free utility function.
+
+**Interface:**
+
+```text
+EstimatePDFData {
+  jobInfo: { customer, city, state, jobNumber }
+  protProduct, protFootage, gutterSize, gutterColor, gutterFootage
+  dsTotalFootage
+  addons: { name, qty, unit }[]
+  clampedQuoted, totalRetail
+  validityDays?, approvedAt?, logoBase64?
+}
+
+buildEstimatePDF(data) -> Promise<jsPDF>
+```
+
+**PDF Layout Changes (vs current):**
+
+- **Per-item warranties**: Warranties now appear indented directly below each relevant scope line item instead of grouped at the bottom
+  - Gutter line -> 3 warranty items indented below (Leak-Free, Rebate, Paint)
+  - Protection line -> product-specific warranty indented below
+  - Cheap Mesh -> "no warranty" note
+- **Discount display**: When `clampedQuoted < totalRetail`, the total box shows:
+  - Original Value (9pt, gray)
+  - YOUR PRICE (14pt, bold)
+  - You Save (10pt, green)
+- **Validity warning**: Below the grand total: "This quote is valid for X days from [date]."
+- **Footer validity**: Additional expiry note in the footer section
+
+**Logo loading helper** is also exported from this file for reuse.
+
+---
+
+## Part 3: Update `NGRGutterCalculator.tsx`
+
+- Remove the inline `handleGeneratePDF` function's PDF-building logic
+- Import and call `buildEstimatePDF()` from the shared utility instead
+- Keep the validation check (no items = toast warning + abort)
+- Keep the download + storage upload logic
+- Remove `loadLogoBase64` (now in shared utility)
+- Pass `lead?.validity_days` through to the PDF builder
+
+---
+
+## Part 4: Update `QuoteApprovalSection.tsx`
+
+**New state:**
+- `validityDays` (string, default "7")
+- `approving` (boolean, for loading state during the full approval flow)
+
+**New UI** (inside the `pending_approval` admin block):
+- "Quote Valid For (days)" number input with placeholder "7"
+- Live expiry date preview below: "Quote expires: March 7, 2026"
+
+**Updated `handleApprove` flow** (exact sequence):
+1. Save approval + `validity_days` to DB
+2. Query `gutter_estimates` for this lead
+3. If estimate found:
+   a. Load logo as base64
+   b. Call `buildEstimatePDF()` with estimate data
+   c. Convert to base64 string (strip data URI prefix)
+   d. Call `send-quote-approval-email` edge function with PDF + lead details
+   e. Upload PDF blob to `lead-files` storage
+   f. Insert record into `lead_files` table
+4. If no estimate found:
+   a. Call `send-quote-approval-email` with no PDF (plain text amount only)
+5. Show success toast
+
+---
+
+## Part 5: New Edge Function `send-quote-approval-email`
+
+**File:** `supabase/functions/send-quote-approval-email/index.ts`
+
+**Config:** Add `verify_jwt = false` to `supabase/config.toml`
+
+**Accepts:** `clientName`, `clientEmail`, `quoteAmount`, `validityDays`, `approvedAt`, `referenceNumber`, `pdfBase64?`, `pdfFileName?`
+
+**Email:**
+- From: `notifications@oknextgen.com`
+- Subject: "Your Next Generation Guttering Estimate -- [Name]"
+- Body: Professional HTML email with quoted amount, validity warning, and contact info
+- Attachment: PDF via Resend's `attachments` field (base64, no data URI prefix) -- only if `pdfBase64` is provided
+
+---
+
+## Files Changed
+
 | File | Action |
 |---|---|
-| `src/components/NGRGutterCalculator.tsx` | Edit -- update CSS block (lines 405-417), add `screen-only` wrapper around lines 511-848 |
+| Database migration | Add `validity_days integer DEFAULT 7` to `quote_requests` |
+| `src/lib/generateEstimatePDF.ts` | New -- shared PDF builder with per-item warranties, discount display, validity |
+| `src/components/NGRGutterCalculator.tsx` | Refactor to use shared PDF builder |
+| `src/components/admin/QuoteApprovalSection.tsx` | Add validity field, approval-triggered PDF generation + email |
+| `supabase/functions/send-quote-approval-email/index.ts` | New edge function for approval email with PDF attachment |
+| `supabase/config.toml` | Add `[functions.send-quote-approval-email]` entry (auto-managed) |
+
+## What Does NOT Change
+
+- Pricing constants or calculation logic
+- On-screen calculator UI
+- Save/upsert functionality
+- Existing `send-quote-email` edge function
+- `LeadFilesSection.tsx` (already has "estimate" file type from previous update)
 
