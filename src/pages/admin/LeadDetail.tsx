@@ -17,6 +17,7 @@ import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
 import { LeadFilesSection } from "@/components/admin/LeadFilesSection";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import { useQuery as useRQQuery } from "@tanstack/react-query";
+import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
 
 function AdminEstimatesSection({ leadId }: { leadId: string }) {
   const { data: estimates = [] } = useRQQuery({
@@ -57,7 +58,7 @@ const serviceLabels: Record<string, string> = {
 
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
-const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost"];
+const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost", "completed"];
 const priorityOptions = ["urgent", "high", "normal", "low"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
 
@@ -320,6 +321,13 @@ export default function LeadDetail() {
           {/* Quote Approval */}
           <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
 
+          {/* Scheduling, Payments, Close Job, Canvasser Badge */}
+          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+            queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+          }} />
+
           {/* Follow-up Tracking */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
@@ -437,6 +445,18 @@ export default function LeadDetail() {
                 <div className="flex justify-between text-green-600">
                   <span>Won</span>
                   <span>{new Date(lead.won_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              {(lead as any).install_scheduled_at && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Install Scheduled</span>
+                  <span>{new Date((lead as any).install_scheduled_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              {(lead as any).completed_at && (
+                <div className="flex justify-between text-green-600">
+                  <span>Completed</span>
+                  <span>{new Date((lead as any).completed_at).toLocaleDateString()}</span>
                 </div>
               )}
               {lead.lost_at && (

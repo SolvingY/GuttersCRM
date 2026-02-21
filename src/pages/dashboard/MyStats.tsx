@@ -59,6 +59,7 @@ export default function MyStats() {
   const [fiscalOpen, setFiscalOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [collectionsThisMonth, setCollectionsThisMonth] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -109,8 +110,27 @@ export default function MyStats() {
       if (allWeeklyError) {
         console.error('Error fetching all weekly metrics:', allWeeklyError);
       } else {
-        setAllWeeklyMetrics(allWeeklyData || []);
+      setAllWeeklyMetrics(allWeeklyData || []);
       }
+
+      // Fetch collections this month
+      const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+      // Get leads assigned to this user, then fetch their payments
+      const { data: myLeads } = await supabase
+        .from("quote_requests")
+        .select("id")
+        .eq("assigned_to", user.id);
+      const myLeadIds = (myLeads || []).map(l => l.id);
+      let monthTotal = 0;
+      if (myLeadIds.length > 0) {
+        const { data: monthlyPayments } = await supabase
+          .from("lead_payments")
+          .select("amount")
+          .in("lead_id", myLeadIds)
+          .gte("created_at", startOfMonth);
+        monthTotal = (monthlyPayments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+      }
+      setCollectionsThisMonth(monthTotal);
 
       setLoading(false);
     };
@@ -353,6 +373,13 @@ export default function MyStats() {
                   trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
                 />
                 
+                {/* Collections This Month */}
+                <StatsCard
+                  title="Collections This Month"
+                  value={formatCurrency(collectionsThisMonth)}
+                  icon={Wallet}
+                  valueClassName="text-green-500"
+                />
                 {/* Row 5: Lead to Close % with Tooltip */}
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
