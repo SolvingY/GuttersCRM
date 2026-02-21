@@ -18,6 +18,7 @@ const fileTypeOptions = [
   { value: "drawing", label: "Drawing" },
   { value: "warranty", label: "Warranty" },
   { value: "photo", label: "Photo" },
+  { value: "estimate", label: "Estimate" },
   { value: "other", label: "Other" },
 ];
 
@@ -26,6 +27,7 @@ const fileTypeBadgeClasses: Record<string, string> = {
   drawing: "bg-purple-500/10 text-purple-600 border-purple-500/30",
   warranty: "bg-green-500/10 text-green-600 border-green-500/30",
   photo: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  estimate: "bg-red-500/10 text-red-600 border-red-500/30",
   other: "bg-muted text-muted-foreground",
 };
 
