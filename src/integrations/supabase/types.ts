@@ -1366,6 +1366,7 @@ export type Database = {
           status: string
           street_address: string
           updated_at: string
+          validity_days: number | null
           won_at: string | null
           zip_code: string
         }
@@ -1417,6 +1418,7 @@ export type Database = {
           status?: string
           street_address: string
           updated_at?: string
+          validity_days?: number | null
           won_at?: string | null
           zip_code: string
         }
@@ -1468,6 +1470,7 @@ export type Database = {
           status?: string
           street_address?: string
           updated_at?: string
+          validity_days?: number | null
           won_at?: string | null
           zip_code?: string
         }

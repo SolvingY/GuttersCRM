@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, CSSProperties } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
 import ngrLogo from "@/assets/ngr-logo-circle.jpg";
+import { buildEstimatePDF, loadLogoBase64 } from "@/lib/generateEstimatePDF";
 
 // ── Pricing Constants (DO NOT MODIFY) ──────────────────────────────────────
 const PRICES = {
@@ -376,25 +376,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
   };
 
   // ── PDF Generation ─────────────────────────────────────────────────────
-  const loadLogoBase64 = (): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => resolve("");
-      img.src = ngrLogo;
-    });
-  };
-
   const handleGeneratePDF = async () => {
-    // Validate that at least one item has footage
     const hasItems = protCalc.footage > 0 || gutterCalc.footage > 0 || dsTotal.footage > 0 || addons.some(a => (parseFloat(a.qty) || 0) > 0);
     if (!hasItems) {
       toast.error("No items entered — please complete the estimator before generating a PDF.");
@@ -403,171 +385,40 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
 
     setGeneratingPDF(true);
     try {
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageW = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      const usableW = pageW - margin * 2;
-      let y = 15;
+      const logoBase64 = await loadLogoBase64(ngrLogo);
 
-      const logoBase64 = await loadLogoBase64();
+      const pdfAddons = addons
+        .filter(a => (parseFloat(a.qty) || 0) > 0)
+        .map(a => ({ name: a.name, qty: a.qty, unit: PRICES.addons[a.name]?.unit || "ea" }));
 
-      // ── HEADER ──
-      if (logoBase64) {
-        pdf.addImage(logoBase64, "PNG", pageW / 2 - 10, y, 20, 20);
-        y += 24;
-      }
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
-      pdf.text("NEXT GENERATION GUTTERING", pageW / 2, y, { align: "center" });
-      y += 6;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      pdf.setTextColor(120, 120, 120);
-      pdf.text("Customer Estimate", pageW / 2, y, { align: "center" });
-      y += 5;
-      pdf.setFontSize(9);
-      pdf.text(new Date().toLocaleDateString(), pageW / 2, y, { align: "center" });
-      y += 4;
-      pdf.setDrawColor(200);
-      pdf.line(margin, y, pageW - margin, y);
-      y += 6;
-
-      // ── CUSTOMER INFO ──
-      pdf.setTextColor(30, 30, 30);
-      pdf.setFontSize(9);
-      if (jobInfo.customer) { pdf.text(`Customer: ${jobInfo.customer}`, margin, y); y += 5; }
-      if (jobInfo.city) { pdf.text(`Location: ${jobInfo.city}${jobInfo.state ? `, ${jobInfo.state}` : ""}`, margin, y); y += 5; }
-      if (jobInfo.jobNumber) { pdf.text(`Job #: ${jobInfo.jobNumber}`, margin, y); y += 5; }
-      y += 4;
-
-      // ── SCOPE OF WORK ──
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
-      pdf.setTextColor(30, 30, 30);
-      pdf.text("Scope of Work", margin, y);
-      y += 6;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-
-      const scopeItems: { label: string; value: string }[] = [];
-      if (protCalc.footage > 0) scopeItems.push({ label: `${protProduct}`, value: `${protCalc.footage} ft` });
-      if (gutterCalc.footage > 0) scopeItems.push({ label: `${gutterSize} ${gutterColor === "Premium (+$2/ft)" ? "Premium" : "Standard"} Gutters`, value: `${gutterCalc.footage} ft` });
-      if (dsTotal.footage > 0) scopeItems.push({ label: "Downspouts & Elbows", value: `${dsTotal.footage} ft` });
-      addons.forEach(a => {
-        const qty = parseFloat(a.qty) || 0;
-        if (qty > 0) scopeItems.push({ label: a.name, value: `${qty} ${PRICES.addons[a.name].unit}` });
+      const pdf = await buildEstimatePDF({
+        jobInfo,
+        protProduct,
+        protFootage: protCalc.footage,
+        gutterSize,
+        gutterColor,
+        gutterFootage: gutterCalc.footage,
+        dsTotalFootage: dsTotal.footage,
+        addons: pdfAddons,
+        clampedQuoted,
+        totalRetail,
+        validityDays: (lead as any)?.validity_days || 7,
+        logoBase64,
       });
 
-      scopeItems.forEach(item => {
-        pdf.text(item.label, margin, y);
-        pdf.text(item.value, pageW - margin, y, { align: "right" });
-        y += 4;
-        pdf.setDrawColor(230);
-        pdf.line(margin, y, pageW - margin, y);
-        y += 4;
-      });
-      y += 4;
-
-      // ── GRAND TOTAL BOX ──
-      pdf.setDrawColor(0);
-      pdf.setLineWidth(0.7);
-      pdf.roundedRect(margin, y, usableW, 18, 3, 3);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text(`TOTAL INVESTMENT: ${fmt(clampedQuoted)}`, pageW / 2, y + 10, { align: "center" });
-      y += 22;
-
-      // Rebate value
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(80, 80, 80);
-      pdf.text(`Your 10% Rebate Value: ${fmt(clampedQuoted * 0.10)}`, pageW / 2, y, { align: "center" });
-      y += 8;
-      pdf.setTextColor(30, 30, 30);
-
-      // ── GUTTER WARRANTIES ──
-      if (gutterCalc.footage > 0) {
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
-        pdf.text("Gutter Warranties & Guarantees", margin, y);
-        y += 6;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        const gutterWarranties = [
-          "✓ Lifetime Leak-Free Guarantee — With yearly scheduled inspection",
-          `✓ 10% Rebate Toward Future Roof Replacement — Value: ${fmt(clampedQuoted * 0.10)}`,
-          "✓ 25-Year Baked-On Paint Warranty — Applies to gutters and downspouts",
-        ];
-        gutterWarranties.forEach(w => { pdf.text(w, margin, y); y += 4; });
-        pdf.setFontSize(7);
-        pdf.setTextColor(100, 100, 100);
-        pdf.setFont("helvetica", "italic");
-        pdf.text("Check full manufacturer warranty documentation for complete terms and conditions.", margin, y);
-        y += 6;
-        pdf.setTextColor(30, 30, 30);
-        pdf.setFont("helvetica", "normal");
-      }
-
-      // ── PROTECTION WARRANTY ──
-      if (protCalc.footage > 0) {
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
-        pdf.text("Gutter Protection Warranty", margin, y);
-        y += 6;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        if (protProduct === "Cheap Mesh") {
-          pdf.setFont("helvetica", "italic");
-          pdf.text("Manufacturer warranty not available for this product.", margin, y);
-          y += 4;
-          pdf.text("Ask your rep about upgrading to a warranted protection product.", margin, y);
-          y += 4;
-          pdf.setFont("helvetica", "normal");
-        } else {
-          const warrantyYears = protProduct === "Gutter RX Collector" ? "10-Year" : "45-Year";
-          pdf.text(`✓ ${protProduct} — ${warrantyYears} Manufacturer Warranty`, margin, y);
-          y += 4;
-        }
-        pdf.setFontSize(7);
-        pdf.setTextColor(100, 100, 100);
-        pdf.setFont("helvetica", "italic");
-        pdf.text("Check full manufacturer warranty documentation for complete terms and conditions.", margin, y);
-        y += 6;
-        pdf.setTextColor(30, 30, 30);
-        pdf.setFont("helvetica", "normal");
-      }
-
-      // ── FOOTER ──
-      y = Math.max(y + 6, 260);
-      pdf.setDrawColor(200);
-      pdf.line(margin, y, pageW - margin, y);
-      y += 6;
-      pdf.setFontSize(8);
-      pdf.setTextColor(80, 80, 80);
-      pdf.text("Next Generation Guttering | nextgenerationroofing.com", pageW / 2, y, { align: "center" });
-      y += 4;
-      pdf.setFont("helvetica", "italic");
-      pdf.setFontSize(7);
-      pdf.text("Thank you for choosing Next Generation Guttering", pageW / 2, y, { align: "center" });
-
-      // ── SAVE & UPLOAD ──
       const fileName = `NGG_Estimate_${(jobInfo.customer || "Customer").replace(/\s+/g, "_")}_${new Date().toLocaleDateString("en-US").replace(/\//g, "-")}.pdf`;
-      
-      // Download for the rep
       pdf.save(fileName);
 
-      // Upload to storage if we have a lead
       if (lead?.id) {
         const pdfBlob = new Blob([pdf.output("arraybuffer")], { type: "application/pdf" });
         const storagePath = `estimates/${lead.id}/${fileName}`;
-        
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("lead-files")
           .upload(storagePath, pdfBlob, { contentType: "application/pdf", upsert: true });
 
         if (!uploadError && uploadData) {
           const { data: urlData } = supabase.storage.from("lead-files").getPublicUrl(uploadData.path);
-          
           await supabase.from("lead_files").insert({
             lead_id: lead.id,
             uploaded_by: user?.id || "",
