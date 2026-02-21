@@ -228,6 +228,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
   });
   const [tab,         setTab]         = useState("protection");
   const [protProduct, setProtProduct] = useState("Hydro Flow Mesh + Frame");
+  const [protSize,    setProtSize]    = useState<'5"' | '6"'>('5"');
   const [protRows,    setProtRows]    = useState(emptyRows());
   const [gutterSize,  setGutterSize]  = useState('5"');
   const [gutterColor, setGutterColor] = useState("Standard");
@@ -252,6 +253,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
     }
     if (!d) return;
     if (d.protProduct) setProtProduct(d.protProduct);
+    if (d.protSize) setProtSize(d.protSize);
     if (d.protRows) setProtRows(d.protRows);
     if (d.gutterSize) setGutterSize(d.gutterSize);
     if (d.gutterColor) setGutterColor(d.gutterColor);
@@ -272,7 +274,8 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
 
   // ── Calculations ───────────────────────────────────────────────────────
   const protPrices = PRICES.protection[protProduct];
-  const protCalc   = useMemo(() => calcSection(protRows, protPrices.retail, protPrices.floor), [protRows, protPrices]);
+  const protSizeUpcharge = protSize === '6"' ? 2 : 0;
+  const protCalc   = useMemo(() => calcSection(protRows, protPrices.retail + protSizeUpcharge, protPrices.floor + protSizeUpcharge), [protRows, protPrices, protSizeUpcharge]);
   const gutterPrices = PRICES.gutters[gutterSize];
   const isPremium    = gutterColor === "Premium (+$2/ft)";
   const gutterCalc   = useMemo(() => calcSection(gutterRows, gutterPrices.retail, gutterPrices.floor, isPremium), [gutterRows, gutterPrices, isPremium]);
@@ -351,7 +354,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         total_floor:        totalFloor,
         quoted_price:       clampedQuoted,
         commission:         totalCommission,
-        measurement_data:   { protProduct, protRows, gutterSize, gutterColor, gutterRows, downspouts, elbows, addons, quotedTotal, dsType, discountPct },
+        measurement_data:   { protProduct, protSize, protRows, gutterSize, gutterColor, gutterRows, downspouts, elbows, addons, quotedTotal, dsType, discountPct },
         created_by:         user?.id,
       };
 
@@ -395,10 +398,12 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         jobInfo,
         protProduct,
         protFootage: protCalc.footage,
+        protSize,
         gutterSize,
         gutterColor,
         gutterFootage: gutterCalc.footage,
         dsTotalFootage: dsTotal.footage,
+        dsType,
         addons: pdfAddons,
         clampedQuoted,
         totalRetail,
@@ -524,9 +529,13 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
           <div style={{ marginBottom: 16 }}>
             <SubHeader label="Product" />
             <div className="no-print"><SelectPill options={Object.keys(PRICES.protection)} value={protProduct} onChange={setProtProduct} /></div>
+            <div style={{ marginTop: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#4a5878", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Gutter Size</div>
+              <SelectPill options={['5"', '6"']} value={protSize} onChange={(v) => setProtSize(v as '5"' | '6"')} accent="#e53935" />
+            </div>
             <div className="no-print" style={{ background: "#0a1120", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", gap: 24, flexWrap: "wrap" }}>
-              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Retail/ft: </span><span style={{ color: "#e8eaf0", fontWeight: 700 }}>${protPrices.retail}</span></div>
-              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Floor/ft: </span><span style={{ color: "#ffa726", fontWeight: 700 }}>${protPrices.floor}</span></div>
+              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Retail/ft: </span><span style={{ color: "#e8eaf0", fontWeight: 700 }}>${protPrices.retail + protSizeUpcharge}</span></div>
+              <div><span style={{ color: "#4a5878", fontSize: 12 }}>Floor/ft: </span><span style={{ color: "#ffa726", fontWeight: 700 }}>${protPrices.floor + protSizeUpcharge}</span></div>
               <div><span style={{ color: "#4a5878", fontSize: 12 }}>Commission/ft: </span><span style={{ color: "#66bb6a", fontWeight: 700 }}>${protPrices.retail - protPrices.floor}</span></div>
             </div>
           </div>
