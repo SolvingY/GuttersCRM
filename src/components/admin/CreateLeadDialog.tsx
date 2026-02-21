@@ -19,6 +19,7 @@ const leadSourceOptions = [
   { value: "internet", label: "Internet/Website" },
   { value: "phone_general", label: "Phone - General" },
   { value: "phone_canvasser", label: "Phone - From Canvasser" },
+  { value: "canvasser", label: "Canvasser" },
   { value: "referral", label: "Referral" },
   { value: "walk_in", label: "Walk-In" },
   { value: "other", label: "Other" },
@@ -64,6 +65,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
     assigned_to: "",
     priority: "normal",
     admin_notes: "",
+    canvasser_id: "",
   });
 
   const { data: salesReps = [] } = useQuery({
@@ -73,6 +75,17 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
       const { data: userRoles } = await supabase.from("user_roles").select("user_id").eq("role", "user");
       const userRoleIds = new Set((userRoles || []).map(r => r.user_id));
       return (reps || []).filter(r => userRoleIds.has(r.user_id));
+    },
+  });
+
+  const { data: canvassers = [] } = useQuery({
+    queryKey: ["canvassers-for-create-lead"],
+    queryFn: async () => {
+      const { data: canvasserRoles } = await supabase.from("user_roles").select("user_id").eq("role", "canvasser");
+      if (!canvasserRoles?.length) return [];
+      const canvasserIds = canvasserRoles.map(r => r.user_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", canvasserIds);
+      return (profiles || []).map(p => ({ user_id: p.id, display_name: p.full_name || "Unknown" }));
     },
   });
 
@@ -92,6 +105,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
       assigned_to: "",
       priority: "normal",
       admin_notes: "",
+      canvasser_id: "",
     });
   };
 
@@ -122,6 +136,16 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
       });
 
       if (error) throw error;
+
+      // If canvasser source with canvasser_id, update the lead
+      if (form.lead_source === "canvasser" && form.canvasser_id) {
+        // Find the lead by reference number and update canvasser_id + lead_type
+        const { error: updateError } = await supabase
+          .from("quote_requests")
+          .update({ canvasser_id: form.canvasser_id, lead_type: "canvasser" })
+          .eq("reference_number", data);
+        if (updateError) console.error("Failed to set canvasser_id:", updateError);
+      }
 
       toast({ title: "Lead created", description: `Reference: ${data}` });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
@@ -219,6 +243,28 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
                 </Select>
               </div>
             </div>
+
+            {/* Canvasser Dropdown */}
+            {form.lead_source === "canvasser" && (
+              <div className="space-y-2">
+                <Label>Canvasser *</Label>
+                {canvassers.length === 0 ? (
+                  <Select disabled>
+                    <SelectTrigger><SelectValue placeholder="No canvassers found — add canvassers in user management" /></SelectTrigger>
+                    <SelectContent />
+                  </Select>
+                ) : (
+                  <Select value={form.canvasser_id} onValueChange={v => setForm({ ...form, canvasser_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select canvasser..." /></SelectTrigger>
+                    <SelectContent>
+                      {canvassers.map(c => (
+                        <SelectItem key={c.user_id} value={c.user_id}>{c.display_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Assign To (optional)</Label>

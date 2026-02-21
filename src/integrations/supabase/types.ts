@@ -900,6 +900,47 @@ export type Database = {
           },
         ]
       }
+      lead_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          lead_id: string | null
+          logged_by: string
+          payment_date: string | null
+          payment_method: string | null
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          logged_by: string
+          payment_date?: string | null
+          payment_method?: string | null
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          logged_by?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_payments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_comments: {
         Row: {
           content: string
@@ -1327,7 +1368,9 @@ export type Database = {
           assigned_by: string | null
           assigned_to: string | null
           best_contact_time: string[] | null
+          canvasser_id: string | null
           city: string
+          completed_at: string | null
           contacted_at: string | null
           counted_as_lead: boolean
           created_at: string
@@ -1337,6 +1380,10 @@ export type Database = {
           form_data: Json
           full_name: string
           id: string
+          install_date: string | null
+          install_notes: string | null
+          install_scheduled_at: string | null
+          install_time_window: string | null
           last_followup_at: string | null
           lead_counted_at: string | null
           lead_source: string
@@ -1379,7 +1426,9 @@ export type Database = {
           assigned_by?: string | null
           assigned_to?: string | null
           best_contact_time?: string[] | null
+          canvasser_id?: string | null
           city: string
+          completed_at?: string | null
           contacted_at?: string | null
           counted_as_lead?: boolean
           created_at?: string
@@ -1389,6 +1438,10 @@ export type Database = {
           form_data?: Json
           full_name: string
           id?: string
+          install_date?: string | null
+          install_notes?: string | null
+          install_scheduled_at?: string | null
+          install_time_window?: string | null
           last_followup_at?: string | null
           lead_counted_at?: string | null
           lead_source?: string
@@ -1431,7 +1484,9 @@ export type Database = {
           assigned_by?: string | null
           assigned_to?: string | null
           best_contact_time?: string[] | null
+          canvasser_id?: string | null
           city?: string
+          completed_at?: string | null
           contacted_at?: string | null
           counted_as_lead?: boolean
           created_at?: string
@@ -1441,6 +1496,10 @@ export type Database = {
           form_data?: Json
           full_name?: string
           id?: string
+          install_date?: string | null
+          install_notes?: string | null
+          install_scheduled_at?: string | null
+          install_time_window?: string | null
           last_followup_at?: string | null
           lead_counted_at?: string | null
           lead_source?: string

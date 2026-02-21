@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote, Users, GitCompare } from "lucide-react";
+import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote, Users, GitCompare, ClipboardList } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format, subWeeks } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
@@ -63,6 +64,8 @@ export default function CanvasserStats() {
   const [fiscalOpen, setFiscalOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [canvassedLeadsOpen, setCanvassedLeadsOpen] = useState(false);
+  const [canvassedLeads, setCanvassedLeads] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -115,6 +118,14 @@ export default function CanvasserStats() {
     } else {
       setAllWeeklyMetrics(allWeeklyData || []);
     }
+
+    // Fetch canvassed leads
+    const { data: leadsData } = await supabase
+      .from("quote_requests")
+      .select("id, full_name, service_type, status, quote_amount, created_at")
+      .eq("canvasser_id", user.id)
+      .order("created_at", { ascending: false });
+    setCanvassedLeads(leadsData || []);
 
     setLoading(false);
   };
@@ -309,6 +320,43 @@ export default function CanvasserStats() {
               leadsClosed: metrics?.leads_closed || 0,
             }} 
           />
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* My Canvassed Leads */}
+      <Collapsible open={canvassedLeadsOpen} onOpenChange={setCanvassedLeadsOpen}>
+        <CollapsibleTrigger asChild>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader className="py-4">
+              <CollapsibleHeader isOpen={canvassedLeadsOpen} title="My Canvassed Leads" icon={ClipboardList} />
+            </CardHeader>
+          </Card>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <Card>
+            <CardContent className="pt-4">
+              {canvassedLeads.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No canvassed leads yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {canvassedLeads.map((lead: any) => (
+                    <div key={lead.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">{lead.full_name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{lead.service_type?.replace("_", " ")}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {lead.quote_amount && (
+                          <span className="text-sm font-medium">${Number(lead.quote_amount).toLocaleString()}</span>
+                        )}
+                        <Badge variant="outline" className="capitalize text-[10px]">{lead.status}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </CollapsibleContent>
       </Collapsible>
 

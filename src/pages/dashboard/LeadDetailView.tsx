@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import NGRGutterCalculator from "@/components/NGRGutterCalculator";
 import { LeadFilesSection } from "@/components/admin/LeadFilesSection";
+import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -24,7 +25,7 @@ const serviceLabels: Record<string, string> = {
 
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
-const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost"];
+const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost", "completed"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
 
 export default function LeadDetailView() {
@@ -289,6 +290,12 @@ export default function LeadDetailView() {
         <div className="space-y-6">
           {/* Quote Section - submit only, no approve/reject */}
           <QuoteApprovalSection lead={lead} isAdmin={false} />
+
+          {/* Scheduling, Payments, Close Job, Canvasser Badge */}
+          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+          }} />
 
           {/* Follow-up Tracking */}
           <div className="border border-border rounded-lg p-5">
