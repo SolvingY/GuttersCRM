@@ -1,74 +1,109 @@
 
 
-# Lead Card Enhancements: Quote Email Fix, Preview, and File Uploads
+# Lead Card: Rep Files, Print Quote Cleanup, Scope of Work, and Warranties
 
-## Problems Identified
+## Summary
 
-1. **Quote email doesn't show the price** -- The `send-quote-email` edge function sends a generic "Quote Request Confirmation" that says "We've received your request" but never mentions the actual dollar amount ($4,345). It's essentially resending the initial confirmation, not a real quote.
-2. **No way to see what was sent** -- After clicking "Send Quote to Client," you just see "Quote sent on 2/21/2026" with no way to preview the email content.
-3. **No file upload section** -- Sales reps have no way to attach contracts, drawings, or warranty paperwork to a lead.
+Three categories of changes across 3 files: (1) enable reps to upload files/photos from their lead view, (2) sanitize the print quote to hide all internal pricing and show only grand total, and (3) add professional print-only content including scope of work, warranty language with calculated rebate, and footer.
 
 ---
 
-## Fix 1: Update the Quote Email to Actually Show the Quote
+## Part 1: LeadFilesSection.tsx -- Add "Photo" file type
 
-Update the `send-quote-email` edge function to:
-- Accept the `quoteAmount` parameter (already passed from the UI but ignored)
-- Change the email subject to "Your Quote from Next Generation Roofing"
-- Include the dollar amount prominently in the email body
-- Include service type, reference number, and a professional layout
-- Store a snapshot of what was sent (amount, date, service) in a new `quote_email_html` column on `quote_requests` so the email can be previewed later
+Add `{ value: "photo", label: "Photo" }` to `fileTypeOptions` array and `photo: "bg-amber-500/10 text-amber-600 border-amber-500/30"` to `fileTypeBadgeClasses`.
 
-### Database Change
-Add a column to `quote_requests`:
+## Part 2: LeadDetailView.tsx -- Add LeadFilesSection for reps
+
+Import `LeadFilesSection` and add it after the Photos section (line 278), before the Activity Log, passing `leadId={lead.id}` and `isAdmin={false}`.
+
+## Part 3: NGRGutterCalculator.tsx -- Print sanitization and print-only content
+
+### 3a. Add `no-print` classes to hide internal pricing
+
+Elements to hide in print:
+- Line 474: Product `SelectPill` -- wrap in `no-print` div
+- Lines 475-479: Per-foot pricing bar (Retail/ft, Floor/ft, Commission/ft) -- add `className="no-print"`
+- Lines 501-507: Gutter size/color `SelectPill` blocks -- wrap in `no-print` div
+- Lines 509-513: Gutter per-foot pricing bar -- add `className="no-print"`
+- Line 158: MeasurementTable "Row Retail" column header -- add `className="no-print"`
+- Lines 184-188: MeasurementTable "Row Retail" data cells -- add `className="no-print"`
+- Lines 531-533: Downspout grid headers "Rate/ft", "Retail", "Floor" -- add `className="no-print"`
+- Lines 544-546: Downspout row cells for Rate, Retail, Floor -- add `className="no-print"`
+- Lines 549-553: DS TOTAL rate/retail/floor cells -- add `className="no-print"`
+- Lines 561: Elbow pricing rate SelectPill -- add `className="no-print"`
+- Lines 565-566: Elbow grid headers Rate/ft, Retail, Floor -- add `className="no-print"`
+- Lines 578-580: Elbow row cells for Rate, Retail, Floor -- add `className="no-print"`
+- Lines 586-588: Elbow total rate/retail/floor cells -- add `className="no-print"`
+- Line 488: Protection section "Retail" StatBar -- add `className="no-print"`
+- Line 522: Gutter section "Retail" StatBar -- add `className="no-print"`
+- Line 597: Combined DS+Elbow "Retail" StatBar -- add `className="no-print"`
+- Line 607: Gutters Section Total "Retail" StatBar -- add `className="no-print"`
+- Line 640: Add-On "Retail" StatBar -- add `className="no-print"`
+- Lines 447-449: Auto-fill banner -- add `className="no-print"`
+- Line 731-733: 4th story warning -- add `className="no-print"`
+- Lines 656-659: Per-section SummaryRow components (Protection, Gutters, DS+Elbows, Add-Ons) -- wrap in `no-print` div
+- Lines 649-655: Summary column headers (Section, Retail, Floor, Quoted, Commission) -- wrap in `no-print` div
+- Line 660: Spacer div between section rows and total -- add `className="no-print"`
+- Lines 620-621: Add-on grid "Retail" and "Floor" column headers -- add `className="no-print"`
+- Lines 633-634: Add-on row retail/floor cells -- add `className="no-print"`
+
+### 3b. Update print-only header (lines 414-423)
+
+Replace the existing print header with:
+- Same `ngrLogo` (already imported from `@/assets/ngr-logo-circle.jpg`) centered at 100x100px
+- Title: "Next Generation Guttering" (large bold)
+- Subtitle: "Customer Estimate"
+- Date: `new Date().toLocaleDateString()`
+- Horizontal rule below
+
+### 3c. Add print-only Scope of Work section (new, after header)
+
+A `print-only` div listing active line items:
+- Protection (if `protCalc.footage > 0`): product name + footage
+- Gutters (if `gutterCalc.footage > 0`): size + color + footage
+- DS + Elbows (if `dsTotal.footage > 0`): combined footage
+- Add-Ons: each addon with qty > 0, showing name + qty + unit
+
+Grand Total prominently displayed:
 ```
-ALTER TABLE quote_requests ADD COLUMN quote_email_snapshot TEXT;
-```
-This stores the HTML that was sent so it can be previewed on the card.
-
-### Edge Function Changes (`send-quote-email`)
-- Use `quoteAmount` in the email template
-- Return the generated HTML in the response so the UI can save it as the snapshot
-- New subject: "Your Quote - $X,XXX.XX | Next Generation Roofing"
-- Email body shows: service type, quote amount (large/bold), reference number, next steps, contact info
-
----
-
-## Fix 2: Add "View Sent Quote" Button
-
-Update `QuoteApprovalSection.tsx`:
-- After a quote is sent (when `quote_sent_at` exists), show a "View Sent Quote" button
-- Clicking it opens a dialog/modal that renders the stored `quote_email_snapshot` HTML in an iframe or sanitized container
-- If no snapshot exists (for quotes sent before this update), show a message: "Preview not available for quotes sent before this update"
-
----
-
-## Fix 3: Lead File Uploads Section
-
-### Database Changes
-Create a new `lead_files` table:
-```
-- id (UUID, PK)
-- lead_id (UUID, FK to quote_requests)
-- uploaded_by (UUID)
-- file_name (TEXT)
-- file_url (TEXT)
-- file_type (TEXT) -- 'contract', 'drawing', 'warranty', 'other'
-- file_size (INTEGER)
-- created_at (TIMESTAMPTZ)
+TOTAL INVESTMENT: $X,XXX.XX
 ```
 
-RLS: Admins can manage all; assigned reps can manage files on their assigned leads.
+### 3d. Add print-only Gutter Warranty section (if `gutterCalc.footage > 0`)
 
-### Storage Bucket
-Create a `lead-files` storage bucket (private) with RLS policies allowing authenticated users to upload/read.
+Title: "Gutter Warranties and Guarantees"
+- Lifetime Leak-Free Guarantee -- With yearly scheduled inspection
+- 10% Rebate Toward Future Roof Replacement -- shows **calculated dollar amount**: `$${(clampedQuoted * 0.10).toFixed(2)}` applied toward any future NGR roof replacement
+- 25-Year Baked-On Paint Warranty -- Applies to gutters and downspouts
+- Fine print disclaimer
 
-### New UI Component: `LeadFilesSection.tsx`
-- Placed on the lead detail page (left column, after Photos section)
-- Shows uploaded files grouped by type (Contracts, Drawings, Warranty, Other)
-- Upload button with file type dropdown
-- Each file shows: name, type badge, upload date, uploaded by, download link, delete button (admin only)
-- Drag-and-drop or click-to-upload interface
+### 3e. Add print-only Gutter Protection Warranty section (if `protCalc.footage > 0`)
+
+Title: "Gutter Protection Warranty"
+- Hydro Flow Mesh + Frame: 45-Year Manufacturer Warranty
+- Pro Flo Mesh: 45-Year Manufacturer Warranty
+- Gutter RX Collector: 10-Year Manufacturer Warranty
+- Cheap Mesh: info note -- "Manufacturer warranty not available for this product. Ask your rep about upgrading to a warranted protection product."
+- Fine print disclaimer (for all except Cheap Mesh)
+
+### 3f. Add print-only footer
+
+At the bottom of the print page:
+- `ngrLogo` at 40px
+- "Next Generation Guttering | nextgenerationroofing.com"
+- "Thank you for choosing Next Generation Guttering"
+
+### 3g. Add print CSS to existing style block
+
+New rules inside `@media print {}`:
+```css
+.warranty-section { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 16px 0; page-break-inside: avoid; }
+.warranty-item { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.warranty-fine-print { font-size: 10px; color: #666 !important; margin-top: 8px; font-style: italic; }
+.grand-total-print { font-size: 24px; font-weight: 900; text-align: center; padding: 20px; border: 2px solid #000; border-radius: 8px; margin: 20px 0; }
+.scope-item { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+.print-footer { margin-top: 40px; text-align: center; border-top: 1px solid #ddd; padding-top: 16px; page-break-inside: avoid; }
+```
 
 ---
 
@@ -76,19 +111,19 @@ Create a `lead-files` storage bucket (private) with RLS policies allowing authen
 
 | File | Action |
 |---|---|
-| Database migration | New -- add `quote_email_snapshot` to `quote_requests`, create `lead_files` table, create `lead-files` storage bucket with policies |
-| `supabase/functions/send-quote-email/index.ts` | Edit -- include quote amount in email, return HTML for snapshot |
-| `src/components/admin/QuoteApprovalSection.tsx` | Edit -- save snapshot after sending, add "View Sent Quote" button with preview dialog |
-| `src/components/admin/LeadFilesSection.tsx` | New -- file upload/management component for lead cards |
-| `src/pages/admin/LeadDetail.tsx` | Edit -- add LeadFilesSection to the page layout |
+| `src/components/NGRGutterCalculator.tsx` | Edit -- add no-print to ~20 internal elements; update print header; add print-only Scope of Work, Warranty sections (with calculated rebate and Cheap Mesh note), and Footer; add print CSS |
+| `src/pages/dashboard/LeadDetailView.tsx` | Edit -- import and add LeadFilesSection after Photos |
+| `src/components/admin/LeadFilesSection.tsx` | Edit -- add "photo" to fileTypeOptions and badge classes |
 
 ---
 
 ## Technical Notes
 
-- The `quote_email_snapshot` column stores raw HTML (the exact email body sent). It's rendered in a sandboxed iframe for preview.
-- The `lead-files` storage bucket is private; files are accessed via signed URLs.
-- File type categories: Contract, Drawing, Warranty, Other -- shown as filter tabs or badges.
-- Max file size handled by storage defaults (50MB).
-- The edge function now returns `{ success: true, result, html }` so the client can save the HTML snapshot before updating `quote_sent_at`.
+- No database changes required
+- No new dependencies or assets -- reuses existing `ngrLogo` import from `@/assets/ngr-logo-circle.jpg`
+- All new print content uses `className="print-only"` which is already defined in the component's style block
+- The rebate warranty line calculates `clampedQuoted * 0.10` to show a real dollar amount
+- The Cheap Mesh note uses an informational message instead of omitting the warranty section entirely
+- The MeasurementTable sub-component's "Row Retail" column gets `className="no-print"` on both header and data cells
+- Per-section SummaryRows are wrapped in a single `no-print` div so only the bold GRAND TOTAL row prints
 
