@@ -1,145 +1,62 @@
 
+# Fix Calculator Mobile Layout and Schedule Confirmation Preview
 
-# Implementation Plan: Scheduling, Payments, Job Closeout, Warranty Email, and Canvasser Leads
+## Problem
 
-## Execution Order
+The Gutter Calculator's Estimate Summary section and other grid-based sections overflow horizontally on mobile screens. The 5-column and 6-column grids are too wide for 390px viewports, causing text to clip and values to run together (as shown in the uploaded screenshot).
 
-### Step 1: Database Migration
+## Changes
 
-Single migration adding all schema changes:
+### 1. `src/components/NGRGutterCalculator.tsx` -- Mobile-Responsive Grids
 
-```text
--- quote_requests: scheduling, closeout, canvasser columns
-install_date (date), install_time_window (text), install_notes (text),
-install_scheduled_at (timestamptz), completed_at (timestamptz), canvasser_id (uuid)
+**SummaryRow component (line 209)**
+- Change the 5-column grid to stack vertically on small screens
+- On mobile: show each row as a card-style layout with the section label on top and values in a 2x2 grid below
+- On desktop (>640px): keep the existing 5-column grid
 
--- lead_payments table
-id, lead_id (FK), amount, payment_method, payment_date, reference_number, logged_by, created_at
+**Summary header (line 720)**
+- Hide the 5-column header row on mobile since the card layout will have inline labels
+- Show it only on wider screens
 
--- RLS policies on lead_payments:
-1. "Reps can manage own lead payments" - FOR ALL USING (auth.uid() = logged_by)
-2. "Admins can manage all payments" - FOR ALL USING (has_role(auth.uid(), 'admin'))
-3. "Reps can view payments on own leads" - FOR SELECT USING (EXISTS (SELECT 1 FROM quote_requests WHERE id = lead_payments.lead_id AND assigned_to = auth.uid()))
-```
+**Section Summary StatBar groups (lines 554-558, 588-592, etc.)**
+- Change from a single flex row to a 2-column grid layout so values wrap properly on mobile instead of running together ("Total Footage**0 ft**" becomes two lines)
+- Add `min-width` or explicit gap to prevent label-value collision
 
-The third SELECT policy ensures reps see all payments on their leads even when an admin logged the payment.
+**Downspout grid (line 598) and Elbow grid (line 632)**
+- Both use `repeat(6, 1fr)` which is too many columns for mobile
+- Wrap these in a container with `overflowX: "auto"` (same pattern as the measurement table) OR switch to a card-based layout on mobile
+- Simplest fix: wrap in `overflowX: "auto"` container since these are data-entry grids
 
----
+**Add-ons grid (line 687)**
+- Same approach: wrap in `overflowX: "auto"` or use responsive columns
 
-### Step 2: Edge Functions (2 new)
+**Grand Total row (line 734)**
+- Ensure the bold summary row also adapts to the mobile card layout
 
-**`supabase/functions/send-install-confirmation/index.ts`**
-- Accepts: clientName, clientEmail, installDate, timeWindow, address, installNotes, referenceNumber
-- Sends HTML email from `notifications@oknextgen.com` via Resend
-- Subject: "Your Next Generation Guttering Installation is Scheduled"
-- Includes date, time window, address, notes, homeowner prep reminder
-- Pattern follows existing `send-quote-email` structure
+### 2. Schedule Confirmation -- No Code Changes Needed
 
-**`supabase/functions/send-warranty-email/index.ts`**
-- Accepts: clientName, clientEmail, quoteAmount, referenceNumber, installDate, completedAt, protectionProduct
-- Calculates rebate server-side: `(quoteAmount * 0.10).toFixed(2)`
-- Warranty tiers based on protectionProduct:
-  - Hydro Flow / Pro Flo: 45-Year Manufacturer Warranty
-  - Gutter RX: 10-Year Manufacturer Warranty
-  - Cheap Mesh / null: omitted
-- Always includes: Lifetime Leak-Free Guarantee, 25-Year Paint Warranty
+The Schedule Installation section is already rendering correctly on mobile. The email template exists in `supabase/functions/send-install-confirmation/index.ts` and sends a branded HTML email with install date, time window, address, notes, and homeowner prep reminder. Since we cannot trigger a test email from here, no screenshot of the actual delivered email is available -- the email template was reviewed and is correct.
 
----
+## Technical Details
 
-### Step 3: LeadDetailView.tsx (Rep View)
-
-**Status options update**: Add "completed" to statusOptions array.
-
-**Scheduling Section** (right column, after Quote section):
-- Only visible when `["won", "scheduled", "approved", "completed"].includes(lead.status)`
-- State: installDate, installTimeWindow (default "morning"), installNotes
-- Pre-populated from lead data if already scheduled
-- Button label: "Save & Send Confirmation" or "Update Schedule & Resend Confirmation" if install_date already exists
-- On save: updates quote_requests, sets status to "scheduled", calls send-install-confirmation, logs "Installation scheduled for [date] ([time window])"
-- When status is "completed": shows green badge "Job Complete -- Warranty Sent" with completed_at date
-
-**Payments Section** (right column, below scheduling):
-- Fetches lead_payments where lead_id = id
-- Add payment form with validation: amount > 0, payment_date defaults to today
-- Methods: Cash, Check, Card, Financing, Zelle, Venmo
-- Balance summary: Quote Total (using `lead.quote_amount ?? 0`), Total Paid, Balance Due
-- Logs activity: "Payment received: $[amount] via [method]"
-
-**Close Job Button**:
-- Guard: `totalPaid >= quoteAmount && quoteAmount > 0 && lead.status !== "completed"`
-- On click: fetches latest gutter_estimates for protection_product, updates status to "completed" + completed_at, calls send-warranty-email with protectionProduct and quoteAmount, logs "Job closed -- warranty documents sent to customer"
-
-**Canvasser Badge**:
-- When canvasser_id is present, fetch canvasser profile name
-- Show amber/orange badge: "Canvasser Lead -- [Name]" replacing the blue Internet Lead badge
-
----
-
-### Step 4: LeadDetail.tsx (Admin View)
-
-- Add "completed" to statusOptions
-- Add Scheduling section (same as rep view)
-- Add Payments section (same as rep view, admin can log payments and close jobs)
-- Add Close Job button with same logic
-- Canvasser badge with amber/orange styling
-- Timeline: add completed_at and install_scheduled_at entries
-
----
-
-### Step 5: CreateLeadDialog.tsx
-
-- Add `{ value: "canvasser", label: "Canvasser" }` to leadSourceOptions
-- Add canvasser_id to form state
-- When lead_source === "canvasser", show canvasser dropdown
-- Fetch canvassers via user_roles where role='canvasser' joined with profiles
-- Empty state: disabled select "No canvassers found -- add canvassers in user management"
-- After RPC create, if canvasser_id set, update lead with separate .update() call
-- Also set lead_type to "canvasser" when source is "canvasser"
-
----
-
-### Step 6: CanvasserStats.tsx
-
-- Add "My Canvassed Leads" collapsible section
-- Query quote_requests where canvasser_id = user.id
-- Display: customer name, service type, status badge, quote amount
-- Read-only for canvassers
-
----
-
-### Step 7: MyStats.tsx (Sales Rep Dashboard)
-
-- Add "Collections This Month" StatsCard in Key Metrics section
-- Query uses join through lead to filter by assigned rep (NOT logged_by):
+The primary approach for the Estimate Summary is to make `SummaryRow` responsive:
 
 ```text
-supabase.from("lead_payments")
-  .select("amount, quote_requests!inner(assigned_to)")
-  .eq("quote_requests.assigned_to", user.id)
-  .gte("created_at", startOfMonth)
+Mobile (<640px):
++---------------------------+
+| Protection                |
+| Retail: $X  | Floor: $X   |
+| Quoted: $X  | Comm: $X    |
++---------------------------+
+
+Desktop (>=640px):
+| Section | Retail | Floor | Quoted | Commission |
 ```
 
-- Shows monthly total as a currency StatsCard
+For the data-entry grids (downspouts, elbows, add-ons), wrapping in `overflow-x: auto` is the pragmatic fix since these are input-heavy tables that benefit from horizontal scrolling rather than stacking.
 
----
+## Files Modified
 
-## Files Created/Modified
-
-| File | Action |
+| File | Change |
 |---|---|
-| Database migration | 6 new columns on quote_requests + lead_payments table with 3 RLS policies |
-| `supabase/functions/send-install-confirmation/index.ts` | New |
-| `supabase/functions/send-warranty-email/index.ts` | New |
-| `src/pages/dashboard/LeadDetailView.tsx` | Scheduling, payments, close job, canvasser badge |
-| `src/pages/admin/LeadDetail.tsx` | Same sections + completed status |
-| `src/components/admin/CreateLeadDialog.tsx` | Canvasser source + dropdown |
-| `src/pages/canvasser/CanvasserStats.tsx` | My Canvassed Leads section |
-| `src/pages/dashboard/MyStats.tsx` | Collections stat card |
-
-## What Does NOT Change
-
-- Pricing logic, PDF generation, calculator UI
-- Existing email functions
-- Admin approval workflow (QuoteApprovalSection.tsx)
-- Existing lead status flow for new/contacted/quoted/won/lost
-
+| `src/components/NGRGutterCalculator.tsx` | Make SummaryRow responsive, add overflow containers to data grids, fix StatBar spacing |
