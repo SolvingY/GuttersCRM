@@ -8,6 +8,8 @@ export interface EstimatePDFData {
   gutterColor: string;
   gutterFootage: number;
   dsTotalFootage: number;
+  dsType?: string;
+  protSize?: string;
   addons: { name: string; qty: string; unit: string }[];
   clampedQuoted: number;
   totalRetail: number;
@@ -40,7 +42,7 @@ export function loadLogoBase64(logoSrc: string): Promise<string> {
 export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
   const {
     jobInfo, protProduct, protFootage, gutterSize, gutterColor, gutterFootage,
-    dsTotalFootage, addons, clampedQuoted, totalRetail, validityDays, approvedAt, logoBase64,
+    dsTotalFootage, dsType, protSize, addons, clampedQuoted, totalRetail, validityDays, approvedAt, logoBase64,
   } = data;
 
   const vDays = validityDays || 7;
@@ -152,6 +154,10 @@ export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
   const hasGutters = gutterFootage > 0;
   const hasDownspouts = dsTotalFootage > 0;
 
+  // Map dsType to display label
+  const dsDisplaySize = dsType === '3x4 (= 6")' ? "3x4" : "2x3";
+  const colorLabel = gutterColor === "Premium (+$2/ft)" ? "Premium" : "Standard";
+
   if (hasGutters || hasDownspouts) {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
@@ -159,17 +165,15 @@ export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
 
     let gutterLabel: string;
     if (hasGutters && hasDownspouts) {
-      gutterLabel = `${gutterSize} ${gutterColor === "Premium (+$2/ft)" ? "Premium" : "Standard"} Gutters & Downspouts`;
+      gutterLabel = `${gutterSize} ${colorLabel} Gutters & ${dsDisplaySize} Downspouts`;
     } else if (hasGutters) {
-      gutterLabel = `${gutterSize} ${gutterColor === "Premium (+$2/ft)" ? "Premium" : "Standard"} Gutters`;
+      gutterLabel = `${gutterSize} ${colorLabel} Gutters`;
     } else {
-      gutterLabel = "Downspouts & Elbows";
+      gutterLabel = `${dsDisplaySize} Downspouts & Elbows`;
     }
 
     pdf.text(gutterLabel, margin, y);
-    // Show combined footage on the right
-    const combinedFt = (hasGutters ? gutterFootage : 0) + (hasDownspouts ? dsTotalFootage : 0);
-    pdf.text(`${combinedFt} ft`, pageW - margin, y, { align: "right" });
+    pdf.text(fmt(clampedQuoted), pageW - margin, y, { align: "right" });
     y += 5;
 
     // Gutter warranties always appear under the merged line
@@ -187,8 +191,8 @@ export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
     pdf.setTextColor(30, 30, 30);
-    pdf.text(protProduct, margin, y);
-    pdf.text(`${protFootage} ft`, pageW - margin, y, { align: "right" });
+    const protLabel = protSize && protSize !== '5"' ? `${protProduct} (${protSize})` : protProduct;
+    pdf.text(protLabel, margin, y);
     y += 5;
 
     if (protProduct === "Cheap Mesh") {
@@ -217,7 +221,6 @@ export async function buildEstimatePDF(data: EstimatePDFData): Promise<jsPDF> {
       pdf.setFontSize(10);
       pdf.setTextColor(30, 30, 30);
       pdf.text(a.name, margin, y);
-      pdf.text(`${qty} ${a.unit}`, pageW - margin, y, { align: "right" });
       y += 6;
     }
   });
