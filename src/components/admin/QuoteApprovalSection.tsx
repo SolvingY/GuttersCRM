@@ -111,6 +111,13 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
           .filter((a: any) => (parseFloat(a.qty) || 0) > 0)
           .map((a: any) => ({ name: a.name, qty: a.qty, unit: ADDON_UNITS[a.name] || "ea" }));
 
+        const estGutterDsRetail = (Number(estimate.gutter_retail) || 0) + (Number(estimate.ds_elbow_retail) || 0);
+        const estProtRetail = Number(estimate.protection_retail) || 0;
+        const estTotalRetail = Number(estimate.total_retail) || 0;
+        const estClampedQuoted = Number(estimate.quoted_price) || Number(lead.quote_amount) || 0;
+        const estGutterDsQuoted = estTotalRetail > 0 ? (estGutterDsRetail / estTotalRetail) * estClampedQuoted : estClampedQuoted;
+        const estProtQuoted = estTotalRetail > 0 ? (estProtRetail / estTotalRetail) * estClampedQuoted : 0;
+
         const pdf = await buildEstimatePDF({
           jobInfo: {
             customer: estimate.customer_name || lead.full_name || "",
@@ -125,8 +132,10 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
           gutterFootage: Number(estimate.gutter_footage) || 0,
           dsTotalFootage: (Number(estimate.downspout_footage) || 0) + (Number(estimate.elbow_footage) || 0),
           addons,
-          clampedQuoted: Number(estimate.quoted_price) || Number(lead.quote_amount) || 0,
-          totalRetail: Number(estimate.total_retail) || 0,
+          clampedQuoted: estClampedQuoted,
+          totalRetail: estTotalRetail,
+          gutterDsQuoted: estGutterDsQuoted,
+          protQuoted: estProtQuoted,
           validityDays: vDays,
           approvedAt,
           logoBase64,

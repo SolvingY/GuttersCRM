@@ -394,6 +394,11 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         .filter(a => (parseFloat(a.qty) || 0) > 0)
         .map(a => ({ name: a.name, qty: a.qty, unit: PRICES.addons[a.name]?.unit || "ea" }));
 
+      const gutterDsRetail = gutterCalc.retail + dsTotal.retail;
+      const protRetailVal = protCalc.retail;
+      const gutterDsQuoted = totalRetail > 0 ? (gutterDsRetail / totalRetail) * clampedQuoted : clampedQuoted;
+      const protQuotedVal = totalRetail > 0 ? (protRetailVal / totalRetail) * clampedQuoted : 0;
+
       const pdf = await buildEstimatePDF({
         jobInfo,
         protProduct,
@@ -407,6 +412,8 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         addons: pdfAddons,
         clampedQuoted,
         totalRetail,
+        gutterDsQuoted,
+        protQuoted: protQuotedVal,
         validityDays: (lead as any)?.validity_days || 7,
         logoBase64,
       });
