@@ -403,17 +403,18 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
         input[type=range] { accent-color: #e53935; }
         .print-only { display: none !important; }
+        .screen-only { display: block; }
         @media print {
-          .no-print { display: none !important; }
+          .screen-only { display: none !important; }
           .print-only { display: block !important; }
-          body { background: white !important; color: #111 !important; }
+          body { margin: 0; padding: 20px; background: white !important; color: #111 !important; font-size: 12px; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; color: #111 !important; border-color: #ccc !important; }
-          .warranty-section { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 16px 0; page-break-inside: avoid; }
-          .warranty-item { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-          .warranty-fine-print { font-size: 10px; color: #666 !important; margin-top: 8px; font-style: italic; }
-          .grand-total-print { font-size: 24px; font-weight: 900; text-align: center; padding: 20px; border: 2px solid #000; border-radius: 8px; margin: 20px 0; }
-          .scope-item { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-          .print-footer { margin-top: 40px; text-align: center; border-top: 1px solid #ddd; padding-top: 16px; page-break-inside: avoid; }
+          .warranty-section { border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin: 8px 0; page-break-inside: avoid; }
+          .warranty-item { padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+          .warranty-fine-print { font-size: 11px; color: #666 !important; margin-top: 6px; font-style: italic; }
+          .grand-total-print { font-size: 20px; font-weight: 900; text-align: center; padding: 12px; border: 2px solid #000; border-radius: 8px; margin: 12px 0; }
+          .scope-item { padding: 6px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+          .print-footer { margin-top: 20px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; page-break-inside: avoid; }
         }
       `}</style>
 
@@ -508,8 +509,9 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
         <p style={{ fontSize: 11, fontStyle: "italic", margin: 0 }}>Thank you for choosing Next Generation Guttering</p>
       </div>
 
+      <div className="screen-only">
       {/* HEADER */}
-      <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <img src={ngrLogo} alt="NGR" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }} />
           <div>
@@ -846,6 +848,7 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
           </button>
         </div>
       </div>
+      </div>{/* end screen-only */}
     </div>
   );
 }
