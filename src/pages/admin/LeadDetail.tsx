@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { QuoteApprovalSection } from "@/components/admin/QuoteApprovalSection";
 import { LeadActivityLog } from "@/components/admin/LeadActivityLog";
+import { LeadFilesSection } from "@/components/admin/LeadFilesSection";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import { useQuery as useRQQuery } from "@tanstack/react-query";
 
@@ -303,6 +304,9 @@ export default function LeadDetail() {
               </div>
             </div>
           )}
+
+          {/* Lead Files */}
+          <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
 
           {/* Activity Log */}
           <LeadActivityLog leadId={lead.id} />
