@@ -247,6 +247,7 @@ export default function ReportSettings() {
                           <SelectItem value="3">Wednesday</SelectItem>
                           <SelectItem value="4">Thursday</SelectItem>
                           <SelectItem value="5">Friday</SelectItem>
+                          <SelectItem value="0">Sunday</SelectItem>
                         </>
                       ) : (
                         <>
@@ -374,7 +375,7 @@ export default function ReportSettings() {
         <CardContent className="pt-6">
           <h4 className="font-semibold text-foreground mb-2">How Scheduled Reports Work</h4>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Reports are sent automatically at 8:00 AM on the selected day</li>
+            <li>• Reports are sent automatically at 6:00 PM on the selected day</li>
             <li>• All users with admin role receive the report by default</li>
             <li>• Reports include current YTD data and goal progress</li>
             <li>• Use "Send Test Report" to preview the email format</li>
