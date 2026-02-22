@@ -20,6 +20,11 @@ interface CanvasserData {
   points: number;
 }
 
+interface CanvasserWeeklyHours {
+  name: string;
+  hoursWorked: number;
+}
+
 interface CompanySummary {
   totalApprovedRevenue: number;
   totalCollections: number;
@@ -53,7 +58,8 @@ function generateEmailHTML(
   salesReps: SalesRepData[],
   canvassers: CanvasserData[],
   summary: CompanySummary,
-  frequency: string
+  frequency: string,
+  canvasserWeeklyHours: CanvasserWeeklyHours[]
 ): string {
   const salesProgress = summary.salesRevenueGoal 
     ? ((summary.totalApprovedRevenue / summary.salesRevenueGoal) * 100).toFixed(1)
@@ -190,6 +196,29 @@ function generateEmailHTML(
                   <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 500;">${escapeHtml(c.name)}</td>
                   <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${c.leadsSet}</td>
                   <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${c.leadsClosed}</td>
+                </tr>
+                `).join('')}
+              </table>
+            </td>
+          </tr>
+          ` : ''}
+
+          <!-- Canvasser Weekly Hours -->
+          ${canvasserWeeklyHours.length > 0 ? `
+          <tr>
+            <td style="padding: 0 24px 24px 24px;">
+              <h2 style="color: #18181b; font-size: 18px; margin: 0 0 12px 0;">⏱️ Canvasser Hours This Week</h2>
+              <table role="presentation" style="width: 100%; border-collapse: collapse; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden;">
+                <tr style="background-color: #7c3aed;">
+                  <th style="padding: 12px; text-align: left; color: #ffffff; font-size: 12px;">#</th>
+                  <th style="padding: 12px; text-align: left; color: #ffffff; font-size: 12px;">Name</th>
+                  <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Hours</th>
+                </tr>
+                ${canvasserWeeklyHours.map((c, i) => `
+                <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                  <td style="padding: 12px; color: #71717a; font-size: 14px;">${i + 1}</td>
+                  <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 500;">${escapeHtml(c.name)}</td>
+                  <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${c.hoursWorked.toFixed(1)}</td>
                 </tr>
                 `).join('')}
               </table>
@@ -373,6 +402,42 @@ const handler = async (req: Request): Promise<Response> => {
     });
     const canvassers = Array.from(canvassersByUser.values()).sort((a, b) => b.leadsSet - a.leadsSet);
 
+    // Fetch canvasser weekly hours (current week)
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+
+    const { data: weeklyCanvasserData } = await supabase
+      .from('weekly_canvasser_metrics')
+      .select('user_id, hours_worked, leads_set, leads_closed')
+      .eq('week_start', weekStartStr);
+
+    // Build weekly hours list with names from canvasser metrics or profiles
+    const canvasserWeeklyHours: CanvasserWeeklyHours[] = [];
+    if (weeklyCanvasserData) {
+      for (const wm of weeklyCanvasserData) {
+        const hours = Number(wm.hours_worked) || 0;
+        if (hours <= 0) continue;
+        // Try to get name from canvasser YTD metrics first
+        const canvasserEntry = canvassersByUser.get(wm.user_id);
+        let name = canvasserEntry?.name || 'Unknown';
+        if (name === 'Unknown') {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', wm.user_id)
+            .maybeSingle();
+          if (profile?.full_name) name = profile.full_name;
+        }
+        canvasserWeeklyHours.push({ name, hoursWorked: hours });
+      }
+    }
+    canvasserWeeklyHours.sort((a, b) => b.hoursWorked - a.hoursWorked);
+
     // Calculate summary
     const totalApprovedRevenue = salesReps.reduce((sum, r) => sum + r.approvedRevenue, 0);
     const totalClosedDeals = salesReps.reduce((sum, r) => sum + r.closedDeals, 0);
@@ -394,7 +459,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     // Generate email HTML
-    const emailHtml = generateEmailHTML(salesReps, canvassers, summary, frequency);
+    const emailHtml = generateEmailHTML(salesReps, canvassers, summary, frequency, canvasserWeeklyHours);
 
     // Send emails using Resend API directly (with delay to avoid rate limiting)
     const results = [];
