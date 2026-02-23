@@ -1,79 +1,69 @@
 
 
-# Add Email Viewing and Editing to User Management
+# Demo Contract Email, Signed Contract Filing, Lead Card Layout Fix, and Collapsible Sections
 
-## Overview
-Currently the User Roles page doesn't show user emails because email addresses are stored in the auth system, which can't be queried from the client. We need a backend function to fetch emails and another action to update them.
+## 1. Send Demo Contract Email (Russ Pace Job)
 
-## Changes
+I will invoke the `send-contract-signing-email` edge function directly to send a demo contract signing email to `adamundergroundcoury@gmail.com` for the Russ Pace job. This will use the existing contract-signing email template so you can see exactly what a customer would receive. Since no contract form exists yet for this lead, I will first create a contract form record with a signing token, then trigger the email.
 
-### 1. Extend the `admin-manage-user` edge function
+**Steps:**
+- Create a `lead_forms` record of type "contract" for the Russ Pace lead with pre-filled form data from the lead record (name, address, quote amount of $4,345)
+- Call `send-contract-signing-email` with `clientEmail: adamundergroundcoury@gmail.com` to send the demo
 
-Add two new actions:
+## 2. Auto-File Signed Contracts on the Lead Card
 
-- **`fetch-emails`**: Accepts an array of user IDs, uses the admin API to look up each user's email, and returns a `{ userId: email }` map. This keeps the existing single-function pattern.
-- **`update-email`**: Accepts `targetUserId` and `newEmail`, uses `supabaseAdmin.auth.admin.updateUserById()` to change the email.
+Currently, when a customer signs a contract remotely via the `/sign/:token` route, the `lead_forms` record is updated with the signature data but the signed contract PDF is not automatically saved as a file on the lead card's Files section.
 
-Both actions will require the caller to be an admin (same auth check already in place).
+**Changes:**
+- Update `SignContract.tsx` (the public signing page): After a successful customer signature, automatically create a record in the `lead_files` table categorizing it as a "Contract" document, referencing the signed form
+- Update `notify-contract-signed` edge function: After processing the signature, generate a reference entry in `lead_files` so the signed contract appears in the "Lead Files" section on both admin and rep lead detail views
+- The contract can be viewed via the existing "View Contract" button which already loads the `lead_forms` record with all signature data
 
-### 2. Update `UserRoles.tsx` -- Display emails
+## 3. Fix Lead Card Layout (Desktop/Tablet)
 
-- After fetching profiles and roles, call `admin-manage-user` with `action: 'fetch-emails'` passing all user IDs.
-- Merge the returned email map into the `UserWithRole` objects.
-- Add an **Email** column to the table between Name and Roles.
+The current layout uses a `grid-cols-1 lg:grid-cols-3` grid with the left column (`col-span-2`) containing only Service Details, Contact Info, Photos, and Saved Estimates -- which can be very sparse. The right column has 8+ sections (Assignment, Follow-up, Quote, Outcome, Scheduling, Timeline, Archive, Files, Activity Log, Notes) making it feel like everything is shoved to the right.
 
-### 3. Add inline email editing
+**Fix (both `LeadDetail.tsx` and `LeadDetailView.tsx`):**
+- Change the grid from `lg:grid-cols-3` (2:1 split) to `lg:grid-cols-5` with left as `lg:col-span-3` and right as `lg:col-span-2`
+- This gives a more balanced 60/40 split instead of 67/33
+- Move the **Scheduling/Payments** and **Files** sections to the left column since they contain substantial content
+- This redistributes content more evenly between both columns
 
-- Add an "Edit Email" button (mail icon) next to each user's email in the table.
-- When clicked, open a small dialog with an input field pre-filled with the current email.
-- On submit, call `admin-manage-user` with `action: 'update-email'` and refresh the user list.
+## 4. Collapsible Categories on Lead Cards
 
-## Technical Details
+Wrap the major sections on both the admin and rep lead detail views in collapsible containers so users can expand/collapse them.
 
-### Edge Function Changes (`supabase/functions/admin-manage-user/index.ts`)
+**Sections to make collapsible (both views):**
+- Service Details (default: open)
+- Contact Information (default: open)
+- Photos (default: open)
+- Saved Estimates (default: open)
+- Follow-up (default: open)
+- Quote Approval (default: collapsed)
+- Outcome (default: open)
+- Scheduling/Payments (default: open)
+- Timeline (default: collapsed)
+- Files (default: collapsed)
+- Activity Log (default: collapsed)
+- Admin Notes (default: collapsed) -- admin only
+- Archive (default: collapsed) -- admin only
+- Assignment (default: open) -- admin only
 
-**New action validation** (line 75): Add `'fetch-emails'` and `'update-email'` to the valid actions list.
-
-**Skip admin-target protection for email actions**: The existing check that prevents actions on admin users should be skipped for `fetch-emails` and `update-email` since admins should be able to view/edit any user's email.
-
-**`fetch-emails` handler**:
-```typescript
-if (action === "fetch-emails") {
-  const { userIds } = body;  // string[]
-  const emailMap: Record<string, string> = {};
-  for (const uid of userIds) {
-    const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
-    if (data?.user?.email) emailMap[uid] = data.user.email;
-  }
-  return Response({ emailMap });
-}
-```
-
-**`update-email` handler**:
-```typescript
-if (action === "update-email") {
-  const { newEmail } = body;
-  await supabaseAdmin.auth.admin.updateUserById(targetUserId, { email: newEmail });
-  return Response({ success: true });
-}
-```
-
-### Frontend Changes (`src/pages/admin/UserRoles.tsx`)
-
-1. **Email fetching**: After building the `combined` users array, extract all user IDs and call `admin-manage-user` with `fetch-emails`. Merge results into each user's `email` field.
-
-2. **Email column**: Add `<TableHead>Email</TableHead>` after the Name column. Display the email in a `<TableCell>` with a small edit button (pencil/mail icon).
-
-3. **Edit Email Dialog**: Create a new state for `editEmailUser` and `editEmailDialogOpen`. The dialog contains:
-   - Current email (read-only display)
-   - New email input field
-   - Save button that calls `admin-manage-user` with `update-email`
-   - Success toast and refresh on completion
+**Implementation:**
+- Import `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` from `@/components/ui/collapsible`
+- Add `ChevronDown`/`ChevronRight` icons for toggle indicators
+- Add state variables for each collapsible section
+- Wrap each card section with the collapsible pattern already used in `AdminOverview.tsx` and `CompanyGoals.tsx`
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/admin-manage-user/index.ts` | Add `fetch-emails` and `update-email` actions |
-| `src/pages/admin/UserRoles.tsx` | Fetch and display emails, add edit email dialog |
+| `src/pages/admin/LeadDetail.tsx` | Fix layout grid, add collapsible sections, move sections to left column |
+| `src/pages/dashboard/LeadDetailView.tsx` | Fix layout grid, add collapsible sections, move sections to left column |
+| `src/pages/public/SignContract.tsx` | Auto-file signed contract to lead_files after signing |
+| `supabase/functions/notify-contract-signed/index.ts` | Add lead_files record for signed contract |
 
+## Demo Email
+
+After implementing, I will call the edge function to send the demo contract email to `adamundergroundcoury@gmail.com` so you can verify the email template in your inbox.
