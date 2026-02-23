@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock } from "lucide-react";
+import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { getLeadSourceIcon } from "@/lib/leadSourceConfig";
+import { CreateLeadDialog } from "@/components/admin/CreateLeadDialog";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -39,9 +41,16 @@ const priorityConfig: Record<string, { label: string; className: string; icon: a
   low: { label: "Low", className: "bg-muted text-muted-foreground border-border", icon: null },
 };
 
+const leadTypeBadge = (leadType: string) => {
+  if (leadType === "canvasser") return { label: "Canvasser", className: "bg-purple-500/10 text-purple-600 border-purple-500/30" };
+  if (leadType === "self_gen") return { label: "Self-Gen", className: "bg-green-500/10 text-green-600 border-green-500/30" };
+  return { label: "Internet", className: "bg-blue-500/10 text-blue-600 border-blue-500/30" };
+};
+
 export default function MyLeads() {
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["my-leads", user?.id, statusFilter],
@@ -65,9 +74,14 @@ export default function MyLeads() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl uppercase">My Leads</h1>
-        <p className="text-sm text-muted-foreground">Leads assigned to you</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading text-2xl uppercase">My Leads</h1>
+          <p className="text-sm text-muted-foreground">Leads assigned to you</p>
+        </div>
+        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+          <Plus className="w-4 h-4" /> Create Lead
+        </Button>
       </div>
 
       <div className="flex gap-3">
@@ -98,6 +112,8 @@ export default function MyLeads() {
             const followupDue = lead.next_followup_due ? new Date(lead.next_followup_due) : null;
             const isOverdue = followupDue && followupDue < now;
             const isDueToday = followupDue && !isOverdue && followupDue.toDateString() === now.toDateString();
+            const leadType = (lead as any).lead_type || "internet";
+            const typeBadge = leadTypeBadge(leadType);
 
             return (
               <Link
@@ -116,11 +132,10 @@ export default function MyLeads() {
                         <Badge className={cn("text-[10px]", statusColors[lead.status])}>{lead.status}</Badge>
                         {(() => {
                           const LeadSourceIcon = getLeadSourceIcon((lead as any).lead_source || "internet");
-                          const leadType = (lead as any).lead_type || "internet";
                           return (
-                            <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                            <Badge variant="outline" className={cn("text-[10px] gap-1", typeBadge.className)}>
                               <LeadSourceIcon className="w-3 h-3" />
-                              {leadType === "canvasser" ? "Canvasser" : "Internet"}
+                              {typeBadge.label}
                             </Badge>
                           );
                         })()}
@@ -165,6 +180,8 @@ export default function MyLeads() {
           })}
         </div>
       )}
+
+      <CreateLeadDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
