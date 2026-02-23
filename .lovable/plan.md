@@ -1,68 +1,58 @@
 
+# Fix Self-Gen Lead Type Display and Metrics Adjustment on Type Change
 
-# Auto-Track Canvasser Leads Set on Lead Creation and Archive
+## Problem
 
-## Overview
+Two issues exist:
 
-When a canvasser submits a lead, their "Leads Set" metric should automatically increment across all three tracking levels (YTD, weekly, daily). When a lead is archived (e.g., fake lead), those metrics should be rolled back. This ensures the Canvasser Performance leaderboard stays accurate without requiring manual admin data entry.
+1. The admin Leads list page (`Leads.tsx`) only renders two badge variants: "Canvasser" (purple) and "Internet" (blue). When a lead's type is changed to `self_gen`, the list still shows "Internet" because there's no condition for `self_gen`.
 
----
-
-## Change 1: Increment Canvasser Metrics on Lead Creation
-
-**File:** `src/pages/canvasser/CreateCanvasserLead.tsx`
-
-After successfully inserting the lead into `quote_requests`, add three metric updates:
-
-1. **YTD (canvasser_metrics):** Increment `leads_set` by 1 for the canvasser's user ID
-2. **Weekly (weekly_canvasser_metrics):** Upsert a record for the current week, incrementing `leads_set` by 1. Recalculate `points_earned` using the standard formula (closed x 10 + damage x 5 + set x 1)
-3. **Daily (daily_canvasser_metric_entries):** Upsert a record for today's date with `leads_set_delta` incremented by 1. Uses the existing unique constraint on `(user_id, entry_date)` to add to any existing entry for that day
-
-This happens client-side after lead insertion, using the same compounding pattern as the WeeklyUpdates admin page.
+2. When an admin changes a lead's type via the dropdown in LeadDetail (e.g., from "internet" to "self_gen"), only the `lead_type` column is updated. The corresponding `user_metrics` counts are NOT adjusted -- meaning the rep's `internet_leads` stays at 1 when it should be 0, and `self_generated_leads` stays at 0 when it should be 1.
 
 ---
 
-## Change 2: Decrement Canvasser Metrics on Archive
+## Fix 1: Update Lead Type Badge in Leads List
 
-**File:** Database migration (update `archive_lead` function)
+**File:** `src/pages/admin/Leads.tsx` (lines 245-248)
 
-Add a new block to the existing `archive_lead` function that checks if the archived lead has a `canvasser_id`. If so:
-
-1. Decrement `canvasser_metrics.leads_set` by 1 (floored at 0)
-2. Recalculate `canvasser_metrics.points` using the standard formula
-3. Find the weekly record matching the lead's `created_at` date and decrement `leads_set` there too
-4. Find the daily entry matching the lead's `created_at` date and decrement `leads_set_delta` there too
-
-This ensures that when a fake lead is archived, the canvasser's metrics are fully rolled back across all timeframes.
+Replace the two-state badge with a three-state badge:
+- `canvasser` -> Purple badge, "Canvasser" label
+- `self_gen` -> Green badge, "Self-Gen" label
+- Default (internet) -> Blue badge, "Internet" label
 
 ---
 
-## Technical Details
+## Fix 2: Adjust Metrics When Admin Changes Lead Type
 
-### Files to Modify
+**File:** `src/pages/admin/LeadDetail.tsx` (line 256)
+
+When the lead type dropdown changes, instead of just doing `updateLead.mutate({ lead_type: v })`, call a new database function that atomically:
+
+1. Updates the `lead_type` column on `quote_requests`
+2. If the lead was already counted (`counted_as_lead = true`) and has an `assigned_to`, decrements the old type's metric and increments the new type's metric on `user_metrics`
+
+**Database migration:** Create a new `SECURITY DEFINER` function `change_lead_type(p_lead_id uuid, p_new_type text)` that:
+- Reads the current lead's `lead_type`, `assigned_to`, and `counted_as_lead`
+- If counted and assigned, decrements the old metric column and increments the new one
+- Updates the `lead_type` on the lead
+- Logs the change in `lead_activity_log`
+
+This ensures that when an admin switches a lead from "internet" to "self_gen", Adam Coury's `internet_leads` goes from 1 to 0 and `self_generated_leads` goes from 0 to 1.
+
+---
+
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/pages/canvasser/CreateCanvasserLead.tsx` | After lead insert, increment canvasser_metrics.leads_set, upsert weekly and daily entries |
-| Database migration | Update `archive_lead` function to decrement canvasser metrics when canvasser_id is present |
+| `src/pages/admin/Leads.tsx` | Add self_gen badge variant (green) |
+| `src/pages/admin/LeadDetail.tsx` | Call `change_lead_type` RPC instead of raw update |
+| Database migration | Create `change_lead_type` function that adjusts metrics atomically |
 
-### Week Calculation Logic
+---
 
-The weekly bucket uses Monday-Sunday weeks, matching the existing pattern:
-- `week_start` = Monday of the lead creation date
-- `week_end` = Sunday of that week
+## One-Time Data Fix
 
-### Points Recalculation
-
-Canvasser points formula (already established): `(leads_closed * 10) + (leads_with_damage * 5) + (leads_set * 1)`
-
-After incrementing/decrementing `leads_set`, the points column is recalculated accordingly.
-
-### Daily Entry Upsert
-
-Uses `ON CONFLICT (user_id, entry_date)` to handle the case where the canvasser already has a daily entry for that date (e.g., admin entered other metrics). In that case, `leads_set_delta` is added to the existing value rather than overwritten.
-
-### RLS Consideration
-
-The canvasser only has SELECT on `daily_canvasser_metric_entries` and `weekly_canvasser_metrics`. The increment logic will use a new database function `increment_canvasser_lead_set` that runs as `SECURITY DEFINER` to bypass RLS, similar to how `create_manual_lead` works. This function handles all three metric levels atomically.
-
+After deploying the function, the Russ Pace lead (which was already changed to self_gen in the DB) needs its metrics corrected. A one-time migration will:
+- Decrement Adam Coury's `internet_leads` by 1
+- Increment Adam Coury's `self_generated_leads` by 1
