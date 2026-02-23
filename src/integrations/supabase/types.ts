@@ -2265,6 +2265,10 @@ export type Database = {
         Returns: undefined
       }
       archive_old_applications: { Args: never; Returns: undefined }
+      change_lead_type: {
+        Args: { p_lead_id: string; p_new_type: string }
+        Returns: undefined
+      }
       create_manual_lead: {
         Args: {
           p_admin_notes?: string

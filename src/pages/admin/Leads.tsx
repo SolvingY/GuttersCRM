@@ -242,9 +242,9 @@ export default function Leads() {
                         <Badge className={cn("text-[10px]", statusColors[lead.status])}>
                           {lead.status}
                         </Badge>
-                        <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                        <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : leadType === "self_gen" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
                           <LeadSourceIcon className="w-3 h-3" />
-                          {leadType === "canvasser" ? "Canvasser" : "Internet"}
+                          {leadType === "canvasser" ? "Canvasser" : leadType === "self_gen" ? "Self-Gen" : "Internet"}
                         </Badge>
                         {manuallyCreated && (
                           <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
