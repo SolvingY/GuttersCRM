@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, ChevronDown, ChevronRight, Home, CalendarDays } from "lucide-react";
+import { Loader2, ChevronDown, ChevronRight, Home, CalendarDays, ClipboardCheck, Droplets } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ResidentialQuestions } from "@/components/quote/ResidentialQuestions";
 
@@ -65,6 +66,55 @@ const roofingWhyChoose = [
   "Financing options available",
 ];
 
+// Gutter inspection constants (same as canvasser page)
+const gutterConditions = [
+  { key: "clogged", label: "Clogged", desc: "debris piling, water stains, gutters pulling from fascia" },
+  { key: "leaking", label: "Leaking", desc: "water dripping from gutter system" },
+  { key: "improperlyPitched", label: "Improperly Pitched", desc: "water sits stagnant or overshoots gutters" },
+  { key: "sagging", label: "Sagging", desc: "gutters pulling away from soffit and fascia" },
+];
+
+const perimeterItems = [
+  "Foundation/concrete issues",
+  "Tiger Stripes/algae growth",
+  "Mold or mildew",
+  "Sagging or damaged gutters",
+  "Rotten or damaged fascia",
+  "Soil erosion or trench",
+  "Damaged siding or brick",
+  "Clogged downspouts",
+  "Spike/ferrule in gutter",
+  "Metal/Shingles over gutters",
+];
+
+const insideGutterItems = [
+  "Shingle grit, muck and sludge",
+  "Leaves and foliage",
+  "Seeds, acorns and seed pods",
+  "Pine needles, Cypress needles",
+  "Weeds, branches and debris",
+  "Peeling paint",
+  "Standing water",
+  "Mosquitoes, Fire Ants, Termites",
+  "Birds, Squirrels and Other Nests",
+  "Rats, frogs, roaches, snakes",
+];
+
+const gutterInspectionServices = [
+  "Full Gutter Inspection",
+  "Downspout & Drainage Evaluation",
+  "Soffit & Fascia Health Check",
+  "Custom Quote/Estimate",
+];
+
+const gutterWhyChoose = [
+  "Locally owned and operated",
+  "Licensed and insured",
+  "Free estimates and inspections",
+  "Lifetime No-Leak Warranty",
+  "Highest quality materials",
+];
+
 export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -100,7 +150,32 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
   const [roofingApptRepPhone, setRoofingApptRepPhone] = useState("");
   const [roofingApptNotes, setRoofingApptNotes] = useState("");
 
+  // Gutter inspection checklist
+  const [gutterChecklistOpen, setGutterChecklistOpen] = useState(false);
+  const [gutterConditionsState, setGutterConditionsState] = useState<Record<string, boolean>>({});
+  const [gutterPerimeterChecks, setGutterPerimeterChecks] = useState<Record<string, boolean | null>>({});
+  const [gutterInsideChecks, setGutterInsideChecks] = useState<Record<string, boolean | null>>({});
+  const [gutterPreExisting, setGutterPreExisting] = useState("");
+  const [gutterSafetyConcerns, setGutterSafetyConcerns] = useState("");
+
+  // Gutter appointment
+  const [gutterApptOpen, setGutterApptOpen] = useState(false);
+  const [gutterApptDate, setGutterApptDate] = useState("");
+  const [gutterApptTime, setGutterApptTime] = useState("");
+  const [gutterApptNotes, setGutterApptNotes] = useState("");
+
   const isResidential = form.service_type === "residential";
+  const isGutters = form.service_type === "gutters";
+  const hasDetailedForms = isResidential || isGutters;
+
+  const isGutterChecklistTouched = () => {
+    return Object.values(gutterConditionsState).some(v => v) ||
+      Object.values(gutterPerimeterChecks).some(v => v !== undefined && v !== null) ||
+      Object.values(gutterInsideChecks).some(v => v !== undefined && v !== null) ||
+      gutterPreExisting.trim() !== "" || gutterSafetyConcerns.trim() !== "";
+  };
+
+  const isGutterApptTouched = () => gutterApptDate !== "" || gutterApptTime !== "";
 
   const { data: salesReps = [] } = useQuery({
     queryKey: ["sales-reps-for-create-lead"],
@@ -141,6 +216,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
       admin_notes: "",
       canvasser_id: "",
     });
+    // Reset roofing
     setRoofingData({});
     setRoofingQualOpen(false);
     setRoofingApptOpen(false);
@@ -149,6 +225,17 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
     setRoofingApptRepName("");
     setRoofingApptRepPhone("");
     setRoofingApptNotes("");
+    // Reset gutter
+    setGutterChecklistOpen(false);
+    setGutterConditionsState({});
+    setGutterPerimeterChecks({});
+    setGutterInsideChecks({});
+    setGutterPreExisting("");
+    setGutterSafetyConcerns("");
+    setGutterApptOpen(false);
+    setGutterApptDate("");
+    setGutterApptTime("");
+    setGutterApptNotes("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -197,12 +284,17 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
         if (updateError) console.error("Failed to set self_gen lead_type:", updateError);
       }
 
-      // Handle roofing forms — need the lead UUID first
+      // Handle detailed forms — need the lead UUID first
       const roofingQualTouched = Object.keys(roofingData).length > 0;
       const roofingApptTouched = roofingApptDate !== "" || roofingApptTime !== "";
+      const gutterCheckTouched = isGutterChecklistTouched();
+      const gutterApptTouched = isGutterApptTouched();
 
-      if (isResidential && (roofingQualTouched || roofingApptTouched)) {
-        // Get lead UUID by reference number
+      const needsLeadLookup =
+        (isResidential && (roofingQualTouched || roofingApptTouched)) ||
+        (isGutters && (gutterCheckTouched || gutterApptTouched));
+
+      if (needsLeadLookup) {
         const { data: leadRecord } = await supabase
           .from("quote_requests")
           .select("id")
@@ -211,27 +303,51 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
 
         if (leadRecord) {
           const leadId = leadRecord.id;
-
-          // Update form_data with roofing data
           const formDataUpdate: Record<string, any> = {};
-          if (roofingQualTouched) formDataUpdate.roofing = roofingData;
-          if (roofingApptTouched) {
-            formDataUpdate.roofingAppointment = {
-              date: roofingApptDate,
-              time: roofingApptTime,
-              repName: roofingApptRepName,
-              repPhone: roofingApptRepPhone,
-              notes: roofingApptNotes,
-            };
+
+          // Roofing forms
+          if (isResidential) {
+            if (roofingQualTouched) formDataUpdate.roofing = roofingData;
+            if (roofingApptTouched) {
+              formDataUpdate.roofingAppointment = {
+                date: roofingApptDate,
+                time: roofingApptTime,
+                repName: roofingApptRepName,
+                repPhone: roofingApptRepPhone,
+                notes: roofingApptNotes,
+              };
+            }
           }
 
-          await supabase
-            .from("quote_requests")
-            .update({ form_data: formDataUpdate })
-            .eq("id", leadId);
+          // Gutter forms
+          if (isGutters) {
+            if (gutterCheckTouched) {
+              formDataUpdate.inspection = {
+                conditions: gutterConditionsState,
+                perimeterChecks: gutterPerimeterChecks,
+                insideChecks: gutterInsideChecks,
+                preExisting: gutterPreExisting,
+                safetyConcerns: gutterSafetyConcerns,
+              };
+            }
+            if (gutterApptTouched) {
+              formDataUpdate.appointment = {
+                date: gutterApptDate,
+                time: gutterApptTime,
+                notes: gutterApptNotes,
+              };
+            }
+          }
 
-          // Insert lead_forms records
-          if (roofingQualTouched) {
+          if (Object.keys(formDataUpdate).length > 0) {
+            await supabase
+              .from("quote_requests")
+              .update({ form_data: formDataUpdate })
+              .eq("id", leadId);
+          }
+
+          // Insert lead_forms records — roofing
+          if (isResidential && roofingQualTouched) {
             await supabase.from("lead_forms").insert({
               lead_id: leadId,
               form_type: "roofing_inspection",
@@ -240,8 +356,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
               created_by: user?.id,
             });
           }
-
-          if (roofingApptTouched) {
+          if (isResidential && roofingApptTouched) {
             await supabase.from("lead_forms").insert({
               lead_id: leadId,
               form_type: "roofing_appointment",
@@ -254,6 +369,42 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
                 notes: roofingApptNotes,
                 customerName: form.full_name,
                 address: `${form.street_address}, ${form.city}, ${form.state} ${form.zip_code}`,
+              },
+              created_by: user?.id,
+            });
+          }
+
+          // Insert lead_forms records — gutter
+          if (isGutters && gutterCheckTouched) {
+            await supabase.from("lead_forms").insert({
+              lead_id: leadId,
+              form_type: "inspection",
+              status: "completed",
+              form_data: {
+                customerName: form.full_name,
+                address: `${form.street_address}, ${form.city}, ${form.state} ${form.zip_code}`,
+                date: new Date().toISOString().split("T")[0],
+                conditions: gutterConditionsState,
+                perimeterChecks: gutterPerimeterChecks,
+                insideChecks: gutterInsideChecks,
+                preExisting: gutterPreExisting,
+                safetyConcerns: gutterSafetyConcerns,
+              },
+              created_by: user?.id,
+            });
+          }
+          if (isGutters && gutterApptTouched) {
+            await supabase.from("lead_forms").insert({
+              lead_id: leadId,
+              form_type: "appointment",
+              status: "completed",
+              form_data: {
+                customerName: form.full_name,
+                address: `${form.street_address}, ${form.city}, ${form.state} ${form.zip_code}`,
+                appointmentDate: gutterApptDate,
+                appointmentTime: gutterApptTime,
+                notes: gutterApptNotes,
+                services: gutterInspectionServices,
               },
               created_by: user?.id,
             });
@@ -390,7 +541,6 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
                       <Textarea value={roofingApptNotes} onChange={e => setRoofingApptNotes(e.target.value)} rows={2} placeholder="Any notes for the homeowner..." />
                     </div>
 
-                    {/* Read-only consultation items */}
                     <div className="border-t border-border pt-4 space-y-2">
                       <h4 className="text-sm font-medium">What We'll Do During Your Consultation:</h4>
                       <ul className="list-none text-sm text-muted-foreground space-y-1">
@@ -415,8 +565,151 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
               </>
             )}
 
-            {/* Timeline & Description — hidden when residential */}
-            {!isResidential && (
+            {/* Gutter Inspection Checklist — only when gutters */}
+            {isGutters && (
+              <>
+                <Collapsible open={gutterChecklistOpen} onOpenChange={setGutterChecklistOpen}>
+                  <CollapsibleTrigger asChild>
+                    <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ClipboardCheck className="w-5 h-5 text-primary" />
+                        <span className="font-heading text-sm uppercase">📋 Fill Out Gutter Inspection Checklist</span>
+                      </div>
+                      {gutterChecklistOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 border border-border rounded-lg p-5 space-y-6">
+                    {/* Header */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div><span className="text-muted-foreground">Customer:</span> <span className="font-medium">{form.full_name || "—"}</span></div>
+                      <div><span className="text-muted-foreground">Address:</span> <span className="font-medium">{form.street_address || "—"}</span></div>
+                      <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{new Date().toLocaleDateString()}</span></div>
+                    </div>
+
+                    {/* Gutter Conditions */}
+                    <div>
+                      <h3 className="font-heading text-sm uppercase mb-3">Gutter Condition</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {gutterConditions.map(c => (
+                          <label key={c.key} className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/30">
+                            <Checkbox
+                              checked={!!gutterConditionsState[c.key]}
+                              onCheckedChange={(v) => setGutterConditionsState(prev => ({ ...prev, [c.key]: !!v }))}
+                            />
+                            <div>
+                              <span className="font-medium text-sm">{c.label}</span>
+                              <p className="text-xs text-muted-foreground">{c.desc}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Perimeter & Inside Checklists */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="font-heading text-sm uppercase mb-3">Perimeter Inspection</h3>
+                        <div className="space-y-2">
+                          {perimeterItems.map(item => (
+                            <div key={item} className="flex items-center justify-between text-sm p-2 bg-muted/20 rounded">
+                              <span>{item}</span>
+                              <div className="flex gap-2">
+                                <Button type="button" size="sm" variant={gutterPerimeterChecks[item] === true ? "default" : "outline"} className="h-7 px-2 text-xs"
+                                  onClick={() => setGutterPerimeterChecks(p => ({ ...p, [item]: true }))}>Yes</Button>
+                                <Button type="button" size="sm" variant={gutterPerimeterChecks[item] === false ? "destructive" : "outline"} className="h-7 px-2 text-xs"
+                                  onClick={() => setGutterPerimeterChecks(p => ({ ...p, [item]: false }))}>No</Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-sm uppercase mb-3">What's Inside Your Gutters</h3>
+                        <div className="space-y-2">
+                          {insideGutterItems.map(item => (
+                            <div key={item} className="flex items-center justify-between text-sm p-2 bg-muted/20 rounded">
+                              <span>{item}</span>
+                              <div className="flex gap-2">
+                                <Button type="button" size="sm" variant={gutterInsideChecks[item] === true ? "default" : "outline"} className="h-7 px-2 text-xs"
+                                  onClick={() => setGutterInsideChecks(p => ({ ...p, [item]: true }))}>Yes</Button>
+                                <Button type="button" size="sm" variant={gutterInsideChecks[item] === false ? "destructive" : "outline"} className="h-7 px-2 text-xs"
+                                  onClick={() => setGutterInsideChecks(p => ({ ...p, [item]: false }))}>No</Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Free text */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium">Any pre-existing conditions or damage?</label>
+                        <Textarea value={gutterPreExisting} onChange={e => setGutterPreExisting(e.target.value)} rows={2} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Any safety concerns?</label>
+                        <Textarea value={gutterSafetyConcerns} onChange={e => setGutterSafetyConcerns(e.target.value)} rows={2} />
+                      </div>
+                    </div>
+
+                    <p className="text-center font-bold text-foreground text-sm py-2">
+                      WE CAN ALL AGREE SOMETHING NEEDS TO BE DONE RIGHT?
+                    </p>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Collapsible open={gutterApptOpen} onOpenChange={setGutterApptOpen}>
+                  <CollapsibleTrigger asChild>
+                    <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-5 h-5 text-primary" />
+                        <span className="font-heading text-sm uppercase">📅 Schedule a Gutter Consultation</span>
+                      </div>
+                      {gutterApptOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 border border-border rounded-lg p-5 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Appointment Date</label>
+                        <Input type="date" value={gutterApptDate} onChange={e => setGutterApptDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Appointment Time</label>
+                        <Input type="time" value={gutterApptTime} onChange={e => setGutterApptTime(e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Representative Notes</label>
+                      <Textarea value={gutterApptNotes} onChange={e => setGutterApptNotes(e.target.value)} rows={2} placeholder="Any notes for the assigned rep..." />
+                    </div>
+
+                    <div className="border-t border-border pt-4 space-y-2">
+                      <h4 className="text-sm font-medium">Included with every consultation:</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {gutterInspectionServices.map(s => <li key={s}>{s}</li>)}
+                      </ul>
+                    </div>
+
+                    <div className="border-t border-border pt-4 space-y-2">
+                      <h4 className="text-sm font-medium">Why Choose Next Gen?</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {gutterWhyChoose.map(s => <li key={s}>{s}</li>)}
+                      </ul>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-1">
+                      <p>• An adult (18+) must be present at time of appointment</p>
+                      <p>• 24-hour reschedule notice required</p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+
+            {/* Timeline & Description — hidden when residential or gutters (they have their own forms) */}
+            {!hasDetailedForms && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Timeline</Label>
@@ -439,7 +732,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
               </div>
             )}
 
-            {isResidential && (
+            {hasDetailedForms && (
               <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
@@ -485,7 +778,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
               </Select>
             </div>
 
-            {!isResidential && (
+            {!hasDetailedForms && (
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Details about the lead..." />
