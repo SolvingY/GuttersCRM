@@ -229,10 +229,22 @@ export default function LeadDetailView() {
               </Button>
             )}
             {showContract && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
-                <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
-                {contractForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
+                  <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
+                </Button>
+                {contractForm && (contractForm as any).status === "sent" && !(contractForm as any).customer_signed_name && (
+                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">⏳ Awaiting Signature</Badge>
+                )}
+                {contractForm && (contractForm as any).customer_signed_name && (
+                  <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-600 border-green-500/30">
+                    ✅ Signed by {(contractForm as any).customer_signed_name}
+                  </Badge>
+                )}
+                {contractForm && (contractForm as any).status !== "sent" && !(contractForm as any).customer_signed_name && (
+                  <Badge variant="outline" className={cn("text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>
+                )}
+              </div>
             )}
             {showFlex && (
               <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/flex-schedule`, { state: { lead, existingForm: flexForm || null } })}>
