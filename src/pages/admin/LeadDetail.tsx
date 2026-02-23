@@ -97,10 +97,8 @@ export default function LeadDetail() {
   const { data: salesReps = [] } = useQuery({
     queryKey: ["sales-reps-for-assignment"],
     queryFn: async () => {
-      // Get users who have role='user' (sales reps have entries in user_metrics)
       const { data: reps, error } = await supabase.from("user_metrics").select("user_id, display_name");
       if (error) throw error;
-      // Filter to only users with 'user' role (excludes canvasser-only)
       const { data: userRoles } = await supabase.from("user_roles").select("user_id").eq("role", "user");
       const userRoleIds = new Set((userRoles || []).map(r => r.user_id));
       return (reps || []).filter(r => userRoleIds.has(r.user_id));
@@ -271,7 +269,7 @@ export default function LeadDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column */}
+        {/* Left column - lead info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Service Info */}
           <div className="border border-border rounded-lg p-5">
@@ -325,59 +323,13 @@ export default function LeadDetail() {
             </div>
           )}
 
-          {/* Lead Files */}
-          <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
-
-          {/* Activity Log */}
-          <LeadActivityLog leadId={lead.id} />
-
-          {/* Saved Estimates (read-only) */}
+          {/* Saved Estimates */}
           <AdminEstimatesSection leadId={lead.id} />
         </div>
 
-        {/* Right column */}
+        {/* Right column - chronological lifecycle */}
         <div className="space-y-6">
-          {/* Quote Approval */}
-          <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
-
-          {/* Scheduling, Payments, Close Job, Canvasser Badge */}
-          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
-            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-            queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
-            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-          }} />
-
-          {/* Follow-up Tracking */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
-            {lead.next_followup_due ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="w-4 h-4 text-muted-foreground" />
-                  <span className={cn(
-                    "text-sm",
-                    new Date(lead.next_followup_due) < new Date() ? "text-destructive font-medium" : ""
-                  )}>
-                    {new Date(lead.next_followup_due) < new Date() ? "Overdue: " : "Due: "}
-                    {new Date(lead.next_followup_due).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">Follow-ups: {lead.followup_count || 0}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No follow-up scheduled</p>
-            )}
-            <div className="flex gap-2 mt-3">
-              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleLogFollowup} disabled={updateLead.isPending}>
-                <CheckCircle className="w-3 h-3" /> Log Follow-up
-              </Button>
-              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleSnooze} disabled={updateLead.isPending}>
-                <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
-              </Button>
-            </div>
-          </div>
-
-          {/* Assignment */}
+          {/* 1. Assignment */}
           {isAdmin && (
             <div className="border border-border rounded-lg p-5">
               <h2 className="font-heading text-lg uppercase mb-4">Assignment</h2>
@@ -409,38 +361,89 @@ export default function LeadDetail() {
             </div>
           )}
 
-          {/* Archive Lead (Admin only) */}
-          {isAdmin && lead.status !== 'archived' && (
-            <div className="border border-destructive/20 rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-2">Archive Lead</h2>
-              <p className="text-sm text-muted-foreground mb-3">
-                Archiving removes this lead from the rep's metrics and lead totals.
-              </p>
-              <Button 
-                variant="outline" 
-                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                onClick={() => setArchiveOpen(true)}
-              >
-                <Archive className="w-4 h-4" /> Archive Lead
+          {/* 2. Follow-up */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
+            {lead.next_followup_due ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-muted-foreground" />
+                  <span className={cn(
+                    "text-sm",
+                    new Date(lead.next_followup_due) < new Date() ? "text-destructive font-medium" : ""
+                  )}>
+                    {new Date(lead.next_followup_due) < new Date() ? "Overdue: " : "Due: "}
+                    {new Date(lead.next_followup_due).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Follow-ups: {lead.followup_count || 0}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No follow-up scheduled</p>
+            )}
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleLogFollowup} disabled={updateLead.isPending}>
+                <CheckCircle className="w-3 h-3" /> Log Follow-up
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleSnooze} disabled={updateLead.isPending}>
+                <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
               </Button>
             </div>
-          )}
+          </div>
 
-          {lead.status === 'archived' && (
-            <div className="border border-muted rounded-lg p-5 bg-muted/30">
-              <h2 className="font-heading text-lg uppercase mb-2 text-muted-foreground">Archived</h2>
-              <p className="text-sm text-muted-foreground">
-                Reason: {(lead as any).archived_reason || 'No reason provided'}
-              </p>
-              {(lead as any).archived_at && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Archived: {new Date((lead as any).archived_at).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-          )}
+          {/* 3. Quote Approval */}
+          <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
 
-          {/* Timeline */}
+          {/* 4. Outcome (Won/Lost) */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Outcome</h2>
+            {lead.status === "won" && lead.won_at && (
+              <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
+            )}
+            {lead.status === "lost" && lead.lost_at && (
+              <div>
+                <p className="text-sm text-destructive font-medium">Lost on {new Date(lead.lost_at).toLocaleDateString()}</p>
+                {lead.lost_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {lead.lost_reason}</p>}
+              </div>
+            )}
+            {lead.status !== "won" && lead.status !== "lost" && (
+              <>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
+                    onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
+                    <CheckCircle className="w-3 h-3" /> Won
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => {
+                      if (!lostReason) {
+                        toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
+                        return;
+                      }
+                      updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
+                    }}>
+                    <XCircle className="w-3 h-3" /> Lost
+                  </Button>
+                </div>
+                <div className="mt-3">
+                  <Select value={lostReason} onValueChange={setLostReason}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
+                    <SelectContent>
+                      {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 5. Scheduling / Payments / Close Job */}
+          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+            queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+          }} />
+
+          {/* 6. Timeline (dates only) */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Timeline</h2>
             <div className="space-y-3 text-sm">
@@ -485,39 +488,46 @@ export default function LeadDetail() {
                 </div>
               )}
             </div>
-
-            {lead.status !== "won" && lead.status !== "lost" && (
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
-                  onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
-                  <CheckCircle className="w-3 h-3" /> Won
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                  onClick={() => {
-                    if (!lostReason) {
-                      toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
-                      return;
-                    }
-                    updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
-                  }}>
-                  <XCircle className="w-3 h-3" /> Lost
-                </Button>
-              </div>
-            )}
-
-            {lead.status !== "won" && lead.status !== "lost" && (
-              <div className="mt-3">
-                <Select value={lostReason} onValueChange={setLostReason}>
-                  <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
-                  <SelectContent>
-                    {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
-          {/* Admin Notes */}
+          {/* 7. Archive (Admin only) */}
+          {isAdmin && lead.status !== 'archived' && (
+            <div className="border border-destructive/20 rounded-lg p-5">
+              <h2 className="font-heading text-lg uppercase mb-2">Archive Lead</h2>
+              <p className="text-sm text-muted-foreground mb-3">
+                Archiving removes this lead from the rep's metrics and lead totals.
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => setArchiveOpen(true)}
+              >
+                <Archive className="w-4 h-4" /> Archive Lead
+              </Button>
+            </div>
+          )}
+
+          {lead.status === 'archived' && (
+            <div className="border border-muted rounded-lg p-5 bg-muted/30">
+              <h2 className="font-heading text-lg uppercase mb-2 text-muted-foreground">Archived</h2>
+              <p className="text-sm text-muted-foreground">
+                Reason: {(lead as any).archived_reason || 'No reason provided'}
+              </p>
+              {(lead as any).archived_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Archived: {new Date((lead as any).archived_at).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* 8. Files */}
+          <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
+
+          {/* 9. Activity Log */}
+          <LeadActivityLog leadId={lead.id} />
+
+          {/* 10. Admin Notes */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Admin Notes</h2>
             <Textarea
