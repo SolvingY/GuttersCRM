@@ -1,63 +1,92 @@
 
 
-# Two Changes: Full Scope of Work on Contract + Fix Welcome Modal Notifications
+# Inspection Checklist UI Parity, Email on Submit, Roofing Support, and Universal Scheduling
+
+## Overview
+
+Four interconnected changes to make the inspection checklist consistent across portals, add roofing as a service option, enable email delivery of forms on submit, and make scheduling universal.
 
 ---
 
-## Change 1: Contract Scope of Work — Match Full Estimate PDF
+## Change 1: Match Inspection Checklist UI (Rep View = Canvasser View)
 
-**Problem:** The contract currently only shows the product line items (e.g., `5" Standard Gutters & 2x3 Downspouts — $4,345.00`). The estimate PDF includes much more detail under each line item: warranty bullets, fine print, and the "What's Included" section.
+**Problem:** The rep's standalone `InspectionChecklist.tsx` uses a basic three-state emoji toggle, while the canvasser's inline version uses Yes/No buttons with proper styling.
 
-**Fix in `src/pages/dashboard/forms/GutterContract.tsx` (lines 99-116):**
+**Fix in `src/pages/dashboard/forms/InspectionChecklist.tsx`:**
 
-Expand the auto-generated scope to include everything the estimate PDF shows:
-
-1. **"What's Included" items** (matching `generateEstimatePDF.ts` lines 102-121):
-   - All labor and installation
-   - Material costs
-   - Applicable taxes
-   - Removal and haul-off of existing gutters
-   - Job site cleanup
-   - All applicable warranties as listed below
-   - Note: Removal of existing gutters is included unless otherwise specified
-
-2. **Gutter/Downspout line** with price (already done)
-
-3. **Gutter warranties** under the gutter line:
-   - Lifetime Leak-Free Guarantee -- With yearly scheduled inspection
-   - 25-Year Baked-On Paint Warranty -- Applies to gutters and downspouts
-
-4. **Protection line** with price (if applicable, already done)
-
-5. **Protection warranty** under the protection line:
-   - If "Cheap Mesh": no warranty note
-   - If "Gutter RX Collector": 10-Year Manufacturer Warranty
-   - Otherwise: 45-Year Manufacturer Warranty
-
-The scope textarea will be pre-filled with all of these details as multi-line text.
+- Replace the emoji-based tri-state toggle with the canvasser's Yes/No button pattern (green "Yes" / red "No" buttons per item)
+- Add the customer/address/date header block at the top (like the canvasser version)
+- Add the "Pre-existing conditions" and "Safety concerns" text areas (the canvasser has these, the rep version does not)
+- Add the "WE CAN ALL AGREE SOMETHING NEEDS TO BE DONE RIGHT?" closing line
+- Keep the same data structure so existing saved checklists still load correctly
 
 ---
 
-## Change 2: Welcome Modal — Stop Notifications for Won/Scheduled/Completed Leads
+## Change 2: Add Roofing as a Service Interest Option
 
-**Problem:** A lead with status "scheduled" still appears in "Open Leads - Action Required", "New Lead Assigned", and "Overdue Follow-up" sections. Once a lead is won, scheduled, or completed, the rep should only see install reminders, not follow-up prompts.
+**Problem:** The canvasser's "Service Interest" dropdown only has Gutters, Protection, Both, and Other. Roofing is missing.
 
-**Fix in `src/components/dashboard/WelcomeModal.tsx`:**
+**Fix in `src/pages/canvasser/CreateCanvasserLead.tsx`:**
 
-Three query changes — filter out scheduled and completed leads from notification sections:
-
-- **Overdue follow-ups** (line 318): Change filter from `("won","lost")` to `("won","lost","scheduled","completed")`
-- **Open leads** (line 329): Change filter from `("won","lost")` to `("won","lost","scheduled","completed")`
-- **Lead updates / my lead IDs** (line 344): Change filter from `("won","lost")` to `("won","lost","scheduled","completed")`
-
-This means only leads in `new`, `contacted`, or `quoted` status will trigger action-required notifications. Scheduled leads will no longer nag the rep to "follow up to close them out."
+- Add `<SelectItem value="roofing">Roofing</SelectItem>` and `<SelectItem value="roofing_gutters">Roofing & Gutters</SelectItem>` to the Service Interest dropdown (line ~253)
+- When `serviceInterest` is `"roofing"`, hide the gutter-specific sections of the inspection checklist (Gutter Conditions, Inside Gutter items) but keep Perimeter Inspection since that applies to all services
+- The rep's `InspectionChecklist.tsx` should also conditionally hide gutter sections when the lead's `service_type` is `"residential"` or `"commercial"` (roofing types)
 
 ---
 
-## Files Modified
+## Change 3: Email Checklist and Appointment to Homeowner on Submit
 
+**Problem:** When the canvasser submits a lead, there's no option to email the inspection results and appointment details to the homeowner.
+
+**Fix:**
+
+1. **Add a "Send to Homeowner" checkbox** in `CreateCanvasserLead.tsx` near the Submit button (visible when email is filled in and checklist or appointment is touched)
+
+2. **Create a new edge function** `supabase/functions/send-inspection-email/index.ts` that:
+   - Accepts: `clientName`, `clientEmail`, `address`, `appointmentDate`, `appointmentTime`, `inspectionData` (conditions, perimeter, inside checks), `serviceInterest`
+   - Generates an HTML email with the checklist results formatted as a report and the appointment details
+   - Sends via Resend API using `notifications@oknextgen.com` sender
+   - Uses the same email styling pattern as `send-install-confirmation`
+
+3. **Call the edge function** from `CreateCanvasserLead.tsx` after successful lead submission if the "Send to Homeowner" checkbox is checked
+
+---
+
+## Change 4: Universal Appointment/Scheduling Form
+
+**Problem:** The appointment scheduling is only available inline in the canvasser's create-lead flow. It should also be available as a standalone form (like contract, flex schedule, warranty) that reps and admins can create from the lead detail view.
+
+**Fix:**
+
+1. **Create `src/pages/dashboard/forms/AppointmentSheet.tsx`** as a standalone form page:
+   - Same fields as the canvasser inline version: date, time, rep notes
+   - Includes the "What's included with every consultation" and "Why Choose Next Gen" sections
+   - Saves to `lead_forms` with `form_type: "appointment"`
+   - Loads existing appointment form data if editing
+
+2. **Register the route** in `src/App.tsx`: `/dashboard/leads/:id/appointment`
+
+3. **Add an "Appointment" button** in `LeadDetailView.tsx` document action buttons section (alongside Contract, Flex Schedule, etc.) -- always visible for any lead status
+
+---
+
+## Technical Details
+
+### Files to Create
+| File | Purpose |
+|------|---------|
+| `supabase/functions/send-inspection-email/index.ts` | Edge function to email checklist + appointment to homeowner |
+| `src/pages/dashboard/forms/AppointmentSheet.tsx` | Standalone appointment/scheduling form for reps and admins |
+
+### Files to Modify
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/forms/GutterContract.tsx` | Expand scope of work to include What's Included, warranties, and protection warranty details |
-| `src/components/dashboard/WelcomeModal.tsx` | Exclude scheduled/completed leads from overdue, open leads, and lead update queries |
+| `src/pages/dashboard/forms/InspectionChecklist.tsx` | Rewrite UI to match canvasser's Yes/No button pattern; add pre-existing/safety fields; conditionally hide gutter sections for roofing leads |
+| `src/pages/canvasser/CreateCanvasserLead.tsx` | Add roofing service options; conditionally hide gutter checklist sections for roofing; add "Send to Homeowner" email checkbox |
+| `src/pages/dashboard/LeadDetailView.tsx` | Add Appointment Sheet button to document actions |
+| `src/App.tsx` | Register `/dashboard/leads/:id/appointment` route |
+
+### Conditional Logic for Roofing vs Gutters
+- If `serviceInterest` / `service_type` is `roofing`, `residential`, or `commercial`: hide "Gutter Conditions" and "Inside Gutter" sections from the checklist, keep "Perimeter Inspection"
+- If `gutters`, `protection`, `both`, or `roofing_gutters`: show all checklist sections
 
