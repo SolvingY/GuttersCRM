@@ -237,7 +237,7 @@ export default function GutterContract() {
       {/* Scope */}
       <div className="border border-border rounded-lg p-5 space-y-3">
         <h2 className="font-heading text-lg uppercase">Scope of Work</h2>
-        <textarea className="w-full border border-border rounded p-3 text-sm bg-background" rows={3} value={scopeOfWork} onChange={e => setScopeOfWork(e.target.value)} />
+        <textarea className="w-full border border-border rounded p-3 text-sm bg-background whitespace-pre-wrap" rows={14} value={scopeOfWork} onChange={e => setScopeOfWork(e.target.value)} />
       </div>
 
       {/* Pricing */}
