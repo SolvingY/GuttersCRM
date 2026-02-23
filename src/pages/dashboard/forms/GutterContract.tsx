@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/SignaturePad";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Send, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Clock, CheckCircle2, Undo2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -32,8 +34,10 @@ export default function GutterContract({
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [recallingContract, setRecallingContract] = useState(false);
 
   const lead = propLead || (location.state as any)?.lead;
   const existingForm = propExistingForm || (location.state as any)?.existingForm;
@@ -225,7 +229,44 @@ export default function GutterContract({
     }
   };
 
+  const handleRecallContract = async () => {
+    setRecallingContract(true);
+    try {
+      const leadId = id || lead?.id;
+      const { error } = await supabase.from("lead_forms").update({
+        status: "draft",
+        sent_for_signing_at: null,
+        token_expires_at: new Date(0).toISOString(),
+      } as any).eq("id", existingForm.id);
+      if (error) throw error;
+      await supabase.from("lead_activity_log").insert({
+        lead_id: leadId,
+        user_id: user?.id,
+        activity_type: "contract_recalled",
+        content: "Contract recalled for corrections",
+      });
+      queryClient.invalidateQueries({ queryKey: ["lead-forms", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["lead-detail", leadId] });
+      toast({ title: "Contract recalled — you can now edit and resend" });
+      navigate(`/dashboard/leads/${leadId}`);
+    } catch (err: any) {
+      toast({ title: "Failed to recall contract", description: err.message, variant: "destructive" });
+    } finally {
+      setRecallingContract(false);
+    }
+  };
+
   const handleSendForSignature = async () => {
+    // Validate required fields
+    const missing: string[] = [];
+    if (!contractPrice) missing.push("Contract Price");
+    if (downPayment === "") missing.push("Down Payment");
+    if (!startDate) missing.push("Approx Start Date");
+    if (!signatureDate) missing.push("Agreement Date");
+    if (missing.length > 0) {
+      toast({ title: "Required fields missing", description: `Please fill in: ${missing.join(", ")}`, variant: "destructive" });
+      return;
+    }
     setSending(true);
     try {
       const formData = buildContractData();
@@ -359,10 +400,34 @@ export default function GutterContract({
             <p className="text-sm font-medium text-amber-700">⏳ Awaiting customer signature</p>
             <p className="text-xs text-amber-600">Sent {formatDisplayDate((existingForm as any)?.sent_for_signing_at)}</p>
           </div>
-          <Button size="sm" variant="outline" onClick={handleResend} disabled={sending} className="gap-1">
-            {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-            Resend
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleResend} disabled={sending} className="gap-1">
+              {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              Resend
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" disabled={recallingContract}>
+                  {recallingContract ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
+                  Recall
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Recall this contract?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will void the signing link and reset the contract to draft so you can make corrections and resend it.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleRecallContract}>
+                    Recall Contract
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       )}
 
@@ -413,8 +478,8 @@ export default function GutterContract({
             </>
           ) : (
             <>
-              <div><label className="text-sm font-medium">Contract Price ($)</label><Input type="number" value={contractPrice} onChange={(e) => setContractPrice(e.target.value)} /></div>
-              <div><label className="text-sm font-medium">Down Payment ($)</label><Input type="number" value={downPayment} onChange={(e) => setDownPayment(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">Contract Price ($) <span className="text-destructive">*</span></label><Input type="number" value={contractPrice} onChange={(e) => setContractPrice(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">Down Payment ($) <span className="text-destructive">*</span></label><Input type="number" value={downPayment} onChange={(e) => setDownPayment(e.target.value)} /></div>
             </>
           )}
           <div>
@@ -430,7 +495,7 @@ export default function GutterContract({
             </>
           ) : (
             <>
-              <div><label className="text-sm font-medium">Approx Start Date</label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">Approx Start Date <span className="text-destructive">*</span></label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
               <div><label className="text-sm font-medium">Approx Completion Date</label><Input type="date" value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} /></div>
             </>
           )}
@@ -487,7 +552,7 @@ export default function GutterContract({
             </div>
           ) : (
             <div>
-              <label className="text-sm font-medium">Date</label>
+              <label className="text-sm font-medium">Agreement Date <span className="text-destructive">*</span></label>
               <Input type="date" value={signatureDate} onChange={(e) => setSignatureDate(e.target.value)} />
             </div>
           )}

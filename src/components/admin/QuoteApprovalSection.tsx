@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, DollarSign, Send, Loader2, Eye } from "lucide-react";
+import { CheckCircle, XCircle, DollarSign, Send, Loader2, Eye, Undo2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { buildEstimatePDF, loadLogoBase64 } from "@/lib/generateEstimatePDF";
@@ -34,6 +35,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
   const [previewOpen, setPreviewOpen] = useState(false);
   const [validityDays, setValidityDays] = useState("7");
   const [approving, setApproving] = useState(false);
+  const [recalling, setRecalling] = useState(false);
 
   const updateLead = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
@@ -346,7 +348,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
           </Button>
         )}
 
-        {lead.quote_sent_at && (
+      {lead.quote_sent_at && (
           <div className="space-y-2">
             <p className="text-xs text-green-600">Quote sent on {new Date(lead.quote_sent_at).toLocaleDateString()}</p>
             <Button
@@ -357,6 +359,64 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
             >
               <Eye className="w-3 h-3" /> View Sent Quote
             </Button>
+            {isAdmin && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    disabled={recalling}
+                  >
+                    {recalling ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
+                    Recall Quote
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Recall this quote?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will reset the quote back to "Pending Approval" so you can fix the estimate and resend it. The quote amount will be kept. The customer's email cannot be unsent, but you can send a corrected version.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        setRecalling(true);
+                        try {
+                          const { error } = await supabase.from("quote_requests").update({
+                            quote_status: "pending_approval",
+                            quote_sent_at: null,
+                            quote_email_snapshot: null,
+                            quote_approved: false,
+                            quote_approved_by: null,
+                            quote_approved_at: null,
+                          }).eq("id", lead.id);
+                          if (error) throw error;
+                          await supabase.from("lead_activity_log").insert({
+                            lead_id: lead.id,
+                            user_id: user?.id,
+                            activity_type: "quote_recalled",
+                            content: "Quote recalled for corrections",
+                          });
+                          queryClient.invalidateQueries({ queryKey: ["lead-detail", lead.id] });
+                          queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+                          toast({ title: "Quote recalled — ready for corrections" });
+                        } catch (err: any) {
+                          toast({ title: "Failed to recall", description: err.message, variant: "destructive" });
+                        } finally {
+                          setRecalling(false);
+                        }
+                      }}
+                    >
+                      Recall Quote
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         )}
       </div>
