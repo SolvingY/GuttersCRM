@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { CanvasserLeaderboardTable } from "@/components/dashboard/CanvasserLeaderboardTable";
-import { WeeklyCanvasserLeaderboardTable } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
+import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
 import { CommentsSection } from "@/components/dashboard/CommentsSection";
 import { 
   startOfWeek, 
@@ -22,42 +21,9 @@ import {
   subMonths
 } from "date-fns";
 
-interface CanvasserEntry {
-  rank: number;
-  name: string;
-  userId: string;
-  yearlyGoal: number;
-  leadsClosed: number;
-  leadsSet: number;
-  leadsWithDamage: number;
-  leadsWithoutDamage: number;
-  doorsKnocked: number;
-  points: number;
-  amountUntilGoal: number;
-  percentOfGoal: number;
-  contestsWon: number;
-  contestPoints: number;
-  wagerPoints: number;
-}
-
-interface WeeklyCanvasserEntry {
-  rank: number;
-  name: string;
-  userId: string;
-  leadsSet: number;
-  leadsWithDamage: number;
-  leadsWithoutDamage: number;
-  leadsClosed: number;
-  conversationsHad: number;
-  notInterested: number;
-  hoursWorked: number;
-  doorsKnocked: number;
-  pointsEarned: number;
-}
-
 export default function CanvasserLeaderboard() {
   const { user } = useAuth();
-  const [ytdEntries, setYtdEntries] = useState<CanvasserEntry[]>([]);
+  const [ytdEntries, setYtdEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [monthlyEntries, setMonthlyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +53,6 @@ export default function CanvasserLeaderboard() {
     const fetchYtdLeaderboard = async () => {
       setLoading(true);
       
-      // Fetch active profiles first (filter archived users)
       const { data: activeProfiles } = await supabase
         .from("profiles")
         .select("id")
@@ -95,68 +60,16 @@ export default function CanvasserLeaderboard() {
       
       const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
 
-      // Fetch canvasser metrics 
       const { data: metricsData, error } = await supabase
         .from("canvasser_metrics")
-        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, doors_knocked, points")
+        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, doors_knocked, points, conversations_had, not_interested, cancelled_leads, hours_worked, contest_points, wager_points")
         .order("leads_closed", { ascending: false });
-
-      // Also fetch contest_points and wager_points from canvasser_metrics
-      const { data: pointsData } = await supabase
-        .from("canvasser_metrics")
-        .select("user_id, contest_points, wager_points")
-        .order("metric_date", { ascending: false });
 
       if (error) {
         console.error("Error fetching leaderboard:", error);
         setLoading(false);
         return;
       }
-
-      // Fetch yearly goals from canvasser_metrics separately
-      const { data: goalsData } = await supabase
-        .from("canvasser_metrics")
-        .select("user_id, yearly_goal")
-        .order("metric_date", { ascending: false });
-
-      // Create goals map (latest goal per user)
-      const goalsMap = new Map<string, number>();
-      goalsData?.forEach(g => {
-        if (g.user_id && !goalsMap.has(g.user_id)) {
-          goalsMap.set(g.user_id, Number(g.yearly_goal) || 0);
-        }
-      });
-
-      // Create points breakdown map (latest per user)
-      const pointsBreakdownMap = new Map<string, { contestPoints: number; wagerPoints: number }>();
-      pointsData?.forEach(p => {
-        if (p.user_id && !pointsBreakdownMap.has(p.user_id)) {
-          pointsBreakdownMap.set(p.user_id, {
-            contestPoints: Number(p.contest_points) || 0,
-            wagerPoints: Number(p.wager_points) || 0,
-          });
-        }
-      });
-
-      // Fetch contests won for canvassers
-      const { data: contestsData } = await supabase
-        .from("contests")
-        .select("winner_user_id, winner_2nd_user_id, winner_3rd_user_id")
-        .eq("target_role", "canvasser");
-
-      // Count contest wins per user
-      const contestWins = new Map<string, number>();
-      contestsData?.forEach((contest) => {
-        if (contest.winner_user_id) {
-          contestWins.set(contest.winner_user_id, (contestWins.get(contest.winner_user_id) || 0) + 1);
-        }
-        if (contest.winner_2nd_user_id) {
-          contestWins.set(contest.winner_2nd_user_id, (contestWins.get(contest.winner_2nd_user_id) || 0) + 1);
-        }
-        if (contest.winner_3rd_user_id) {
-          contestWins.set(contest.winner_3rd_user_id, (contestWins.get(contest.winner_3rd_user_id) || 0) + 1);
-        }
-      });
 
       // Get unique entries per user (latest) - filter for active users only
       const uniqueUsers = new Map<string, any>();
@@ -167,34 +80,24 @@ export default function CanvasserLeaderboard() {
       });
 
       const sorted = Array.from(uniqueUsers.values())
-        .sort((a, b) => {
-          return (Number(b.points) || 0) - (Number(a.points) || 0);
-        })
-        .map((entry, index) => {
-          const leadsClosed = entry.leads_closed || 0;
-          const yearlyGoal = goalsMap.get(entry.user_id) || 0;
-          const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
-          const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
-          const pointsBreakdown = pointsBreakdownMap.get(entry.user_id) || { contestPoints: 0, wagerPoints: 0 };
-          
-          return {
-            rank: index + 1,
-            userId: entry.user_id,
-            name: entry.display_name || "Anonymous",
-            yearlyGoal,
-            leadsClosed,
-            leadsSet: entry.leads_set || 0,
-            leadsWithDamage: entry.leads_with_damage || 0,
-            leadsWithoutDamage: entry.leads_without_damage || 0,
-            doorsKnocked: entry.doors_knocked || 0,
-            points: Number(entry.points) || 0,
-            amountUntilGoal,
-            percentOfGoal,
-            contestsWon: contestWins.get(entry.user_id) || 0,
-            contestPoints: pointsBreakdown.contestPoints,
-            wagerPoints: pointsBreakdown.wagerPoints,
-          };
-        });
+        .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
+        .map((entry, index) => ({
+          rank: index + 1,
+          userId: entry.user_id,
+          name: entry.display_name || "Anonymous",
+          leadsClosed: entry.leads_closed || 0,
+          leadsSet: entry.leads_set || 0,
+          leadsWithDamage: entry.leads_with_damage || 0,
+          leadsWithoutDamage: entry.leads_without_damage || 0,
+          doorsKnocked: entry.doors_knocked || 0,
+          conversationsHad: entry.conversations_had || 0,
+          notInterested: entry.not_interested || 0,
+          cancelledLeads: entry.cancelled_leads || 0,
+          hoursWorked: entry.hours_worked || 0,
+          pointsEarned: Number(entry.points) || 0,
+          contestPoints: Number(entry.contest_points) || 0,
+          wagerPoints: Number(entry.wager_points) || 0,
+        }));
 
       setYtdEntries(sorted);
       setLoading(false);
@@ -209,7 +112,6 @@ export default function CanvasserLeaderboard() {
       setWeeklyLoading(true);
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
 
-      // Fetch active profiles first (filter archived users)
       const { data: activeProfiles } = await supabase
         .from("profiles")
         .select("id")
@@ -219,7 +121,7 @@ export default function CanvasserLeaderboard() {
 
       const { data: weeklyData, error } = await supabase
         .from("weekly_canvasser_metrics")
-        .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned")
+        .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned")
         .eq("week_start", weekStartStr);
 
       if (error) {
@@ -234,10 +136,8 @@ export default function CanvasserLeaderboard() {
         return;
       }
 
-      // Filter for active users only
       const filteredData = weeklyData.filter(w => activeUserIds.has(w.user_id));
 
-      // Fetch display names
       const userIds = filteredData.map(w => w.user_id);
       const { data: metricsData } = userIds.length > 0
         ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
@@ -259,6 +159,7 @@ export default function CanvasserLeaderboard() {
           leadsClosed: Number(w.leads_closed) || 0,
           conversationsHad: Number(w.conversations_had) || 0,
           notInterested: Number(w.not_interested) || 0,
+          cancelledLeads: Number(w.cancelled_leads) || 0,
           hoursWorked: Number(w.hours_worked) || 0,
           doorsKnocked: Number(w.doors_knocked) || 0,
           pointsEarned: Number(w.points_earned) || 0,
@@ -279,7 +180,6 @@ export default function CanvasserLeaderboard() {
     const fetchMonthlyLeaderboard = async () => {
       setMonthlyLoading(true);
 
-      // Fetch active profiles first (filter archived users)
       const { data: activeProfiles } = await supabase
         .from("profiles")
         .select("id")
@@ -290,10 +190,9 @@ export default function CanvasserLeaderboard() {
       const monthStartStr = format(monthStart, 'yyyy-MM-dd');
       const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
-      // Filter weeks where week_start falls within this month
       const { data: weeklyData, error } = await supabase
         .from("weekly_canvasser_metrics")
-        .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned")
+        .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned")
         .gte("week_start", monthStartStr)
         .lte("week_start", monthEndStr);
 
@@ -309,14 +208,13 @@ export default function CanvasserLeaderboard() {
         return;
       }
 
-      // Aggregate by user - only for active users
       const aggregated = new Map<string, any>();
       weeklyData.forEach(w => {
         if (!activeUserIds.has(w.user_id)) return;
         
         const existing = aggregated.get(w.user_id) || { 
           leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
-          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
+          conversationsHad: 0, notInterested: 0, cancelledLeads: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
         };
         aggregated.set(w.user_id, {
           leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
@@ -325,6 +223,7 @@ export default function CanvasserLeaderboard() {
           leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
           conversationsHad: existing.conversationsHad + (Number(w.conversations_had) || 0),
           notInterested: existing.notInterested + (Number(w.not_interested) || 0),
+          cancelledLeads: existing.cancelledLeads + (Number(w.cancelled_leads) || 0),
           hoursWorked: existing.hoursWorked + (Number(w.hours_worked) || 0),
           doorsKnocked: existing.doorsKnocked + (Number(w.doors_knocked) || 0),
           pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
@@ -379,7 +278,7 @@ export default function CanvasserLeaderboard() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <CanvasserLeaderboardTable entries={ytdEntries} currentUserId={user?.id} />
+            <WeeklyCanvasserLeaderboardTable entries={ytdEntries} currentUserId={user?.id} />
           )}
         </TabsContent>
 

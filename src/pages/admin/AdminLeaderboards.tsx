@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
 import { WeeklyLeaderboardTable } from '@/components/dashboard/WeeklyLeaderboardTable';
-import { CanvasserLeaderboardTable } from '@/components/dashboard/CanvasserLeaderboardTable';
-import { WeeklyCanvasserLeaderboardTable } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
+import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -47,35 +46,6 @@ interface WeeklySalesEntry {
   pointsEarned: number;
 }
 
-interface CanvasserEntry {
-  rank: number;
-  name: string;
-  userId: string;
-  yearlyGoal: number;
-  leadsClosed: number;
-  leadsSet: number;
-  leadsWithDamage: number;
-  points: number;
-  amountUntilGoal: number;
-  percentOfGoal: number;
-  contestsWon: number;
-}
-
-interface WeeklyCanvasserEntry {
-  rank: number;
-  name: string;
-  userId: string;
-  canvasserRank?: string;
-  leadsSet: number;
-  leadsWithDamage: number;
-  leadsWithoutDamage: number;
-  leadsClosed: number;
-  conversationsHad: number;
-  notInterested: number;
-  hoursWorked: number;
-  doorsKnocked: number;
-  pointsEarned: number;
-}
 
 export default function AdminLeaderboards() {
   const [timeFrame, setTimeFrame] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -88,7 +58,7 @@ export default function AdminLeaderboards() {
   const [salesLoading, setSalesLoading] = useState(true);
   
   // Canvasser states
-  const [canvasserYtdEntries, setCanvasserYtdEntries] = useState<CanvasserEntry[]>([]);
+  const [canvasserYtdEntries, setCanvasserYtdEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [canvasserWeeklyEntries, setCanvasserWeeklyEntries] = useState<WeeklyCanvasserEntry[]>([]);
   const [canvasserLoading, setCanvasserLoading] = useState(true);
 
@@ -473,16 +443,12 @@ export default function AdminLeaderboards() {
       const sorted = Array.from(uniqueUsers.values())
         .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
         .map((entry, index) => {
-          const yearlyGoal = entry.yearly_goal || 0;
           const leadsClosed = entry.leads_closed || 0;
-          const percentOfGoal = yearlyGoal > 0 ? (leadsClosed / yearlyGoal) * 100 : 0;
-          const amountUntilGoal = Math.max(0, yearlyGoal - leadsClosed);
 
           return {
             rank: index + 1,
             userId: entry.user_id,
             name: entry.display_name || 'Anonymous',
-            yearlyGoal,
             leadsClosed,
             leadsSet: entry.leads_set || 0,
             leadsWithDamage: entry.leads_with_damage || 0,
@@ -491,12 +457,10 @@ export default function AdminLeaderboards() {
             notInterested: (entry as any).not_interested || 0,
             cancelledLeads: (entry as any).cancelled_leads || 0,
             doorsKnocked: (entry as any).doors_knocked || 0,
-            points: Number(entry.points) || 0,
-            amountUntilGoal,
-            percentOfGoal,
-            contestsWon: contestWins.get(entry.user_id) || 0,
-            contestPoints: (entry as any).contest_points || 0,
-            wagerPoints: (entry as any).wager_points || 0,
+            hoursWorked: (entry as any).hours_worked || 0,
+            pointsEarned: Number(entry.points) || 0,
+            contestPoints: Number((entry as any).contest_points) || 0,
+            wagerPoints: Number((entry as any).wager_points) || 0,
           };
         });
 
@@ -951,7 +915,7 @@ export default function AdminLeaderboards() {
                   <Loader2 className="h-8 w-8 animate-spin text-accent" />
                 </div>
               ) : timeFrame === 'yearly' ? (
-                <CanvasserLeaderboardTable entries={canvasserYtdEntries} />
+                <WeeklyCanvasserLeaderboardTable entries={canvasserYtdEntries} showHours={true} />
               ) : (
                 <WeeklyCanvasserLeaderboardTable entries={canvasserWeeklyEntries} showHours={true} />
               )}
