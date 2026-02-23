@@ -66,6 +66,20 @@ export default function SignContract() {
   const handleSign = async (signatureData: string, signedName: string) => {
     setSigning(true);
     try {
+      // Re-check the form is still valid for signing
+      const { data: currentForm } = await (supabase
+        .from("lead_forms")
+        .select("status, token_expires_at") as any)
+        .eq("signing_token", token)
+        .single();
+
+      if (!currentForm || currentForm.status !== "sent" || 
+          (currentForm.token_expires_at && new Date(currentForm.token_expires_at) < new Date())) {
+        toast({ title: "This contract is no longer available for signing", description: "It may have been recalled or updated. Please contact your representative for a new link.", variant: "destructive" });
+        setTokenExpired(true);
+        return;
+      }
+
       const { error } = await (supabase
         .from("lead_forms")
         .update({
