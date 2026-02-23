@@ -2000,9 +2000,12 @@ export type Database = {
           created_at: string
           earnings: number | null
           id: string
+          internet_leads: number | null
+          internet_leads_closed: number | null
           leads: number | null
           points_earned: number | null
           sales: number | null
+          self_generated_deals: number | null
           updated_at: string
           user_id: string
           week_end: string
@@ -2017,9 +2020,12 @@ export type Database = {
           created_at?: string
           earnings?: number | null
           id?: string
+          internet_leads?: number | null
+          internet_leads_closed?: number | null
           leads?: number | null
           points_earned?: number | null
           sales?: number | null
+          self_generated_deals?: number | null
           updated_at?: string
           user_id: string
           week_end: string
@@ -2034,9 +2040,12 @@ export type Database = {
           created_at?: string
           earnings?: number | null
           id?: string
+          internet_leads?: number | null
+          internet_leads_closed?: number | null
           leads?: number | null
           points_earned?: number | null
           sales?: number | null
+          self_generated_deals?: number | null
           updated_at?: string
           user_id?: string
           week_end?: string

@@ -31,6 +31,13 @@ interface CompanyPeriodStats {
   contracts: number;
   leads: number;
   leadToCloseRate: number;
+  selfGenContracts: number;
+  canvassContracts: number;
+  canvassLeads: number;
+  internetContracts: number;
+  internetLeads: number;
+  canvassLtc: number;
+  internetLtc: number;
 }
 
 interface CompanySummary {
@@ -74,7 +81,9 @@ function generateCompanySummaryTableHTML(
       <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${formatCurrency(stats.collections)}</td>
       <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.contracts}</td>
       <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.leads}</td>
-      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.leadToCloseRate.toFixed(1)}%</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.selfGenContracts}</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.canvassLtc.toFixed(1)}%</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.internetLtc.toFixed(1)}%</td>
     </tr>`;
 
   return `
@@ -88,12 +97,15 @@ function generateCompanySummaryTableHTML(
             <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Collections</th>
             <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Contracts</th>
             <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Leads</th>
-            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">LtC %</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Self-Gen</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Canvass LtC</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Internet LtC</th>
           </tr>
           ${row('This Week', weekly, '#ffffff')}
           ${row('This Month', monthly, '#f9fafb')}
           ${row('YTD', ytd, '#ffffff')}
         </table>
+        <p style="color: #71717a; font-size: 11px; margin: 8px 0 0 0;">Contracts = Self-Gen + Canvass + Internet. Leads = Canvass + Internet. Self-Gen excluded from LtC %.</p>
       </td>
     </tr>`;
 }
@@ -411,13 +423,13 @@ const handler = async (req: Request): Promise<Response> => {
       // Company goals
       supabase.from('company_goals').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       // YTD sales rep metrics
-      supabase.from('user_metrics').select('user_id, display_name, approved_revenue, collections, points, leads, closed_deals, canvass_leads, canvass_deals_closed, internet_leads, internet_leads_closed').order('metric_date', { ascending: false }),
+      supabase.from('user_metrics').select('user_id, display_name, approved_revenue, collections, points, leads, closed_deals, canvass_leads, canvass_deals_closed, internet_leads, internet_leads_closed, self_generated_deals').order('metric_date', { ascending: false }),
       // YTD canvasser metrics
       supabase.from('canvasser_metrics').select('user_id, display_name, leads_set, leads_closed, points').order('metric_date', { ascending: false }),
       // Weekly sales data
-      supabase.from('weekly_user_metrics').select('user_id, approved_revenue, collections, closed_deals, leads, canvass_leads, canvass_deals_closed').eq('week_start', weekStartStr),
+      supabase.from('weekly_user_metrics').select('user_id, approved_revenue, collections, closed_deals, leads, canvass_leads, canvass_deals_closed, internet_leads, internet_leads_closed, self_generated_deals').eq('week_start', weekStartStr),
       // Monthly sales data (all weeks in current month)
-      supabase.from('weekly_user_metrics').select('user_id, approved_revenue, collections, closed_deals, leads, canvass_leads, canvass_deals_closed').gte('week_start', monthStartStr),
+      supabase.from('weekly_user_metrics').select('user_id, approved_revenue, collections, closed_deals, leads, canvass_leads, canvass_deals_closed, internet_leads, internet_leads_closed, self_generated_deals').gte('week_start', monthStartStr),
       // Weekly canvasser data
       supabase.from('weekly_canvasser_metrics').select('user_id, hours_worked, leads_set, leads_closed').eq('week_start', weekStartStr),
       // Monthly canvasser data
@@ -430,7 +442,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // ─── Process YTD Sales Rep data (latest per user) ───
     const salesByUser = new Map<string, SalesRepData>();
-    const ytdSalesAgg = { revenue: 0, collections: 0, contracts: 0, leads: 0, canvassLeads: 0, canvassDeals: 0, internetLeads: 0, internetClosed: 0 };
+    const ytdSalesAgg = { revenue: 0, collections: 0, selfGenDeals: 0, canvassLeads: 0, canvassDeals: 0, internetLeads: 0, internetClosed: 0 };
     salesMetrics?.forEach(m => {
       if (!salesByUser.has(m.user_id)) {
         salesByUser.set(m.user_id, {
@@ -441,8 +453,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
         ytdSalesAgg.revenue += Number(m.approved_revenue) || 0;
         ytdSalesAgg.collections += Number(m.collections) || 0;
-        ytdSalesAgg.contracts += Number(m.closed_deals) || 0;
-        ytdSalesAgg.leads += Number(m.leads) || 0;
+        ytdSalesAgg.selfGenDeals += Number((m as any).self_generated_deals) || 0;
         ytdSalesAgg.canvassLeads += Number(m.canvass_leads) || 0;
         ytdSalesAgg.canvassDeals += Number(m.canvass_deals_closed) || 0;
         ytdSalesAgg.internetLeads += Number(m.internet_leads) || 0;
@@ -468,27 +479,38 @@ const handler = async (req: Request): Promise<Response> => {
     const totalLeadsClosed = canvassers.reduce((sum, c) => sum + c.leadsClosed, 0);
 
     // ─── Build Weekly Stats ───
+    // Note: weekly_user_metrics doesn't have internet_leads/internet_leads_closed/self_generated_deals yet
+    // So for weekly: contracts = closed_deals + canvass_deals_closed, leads = canvass_leads + leads (legacy internet)
     const weeklyData = weeklySalesResult.data || [];
     const weeklyAgg = weeklyData.reduce((acc, m) => ({
       revenue: acc.revenue + (Number(m.approved_revenue) || 0),
       collections: acc.collections + (Number(m.collections) || 0),
-      contracts: acc.contracts + (Number(m.closed_deals) || 0),
-      leads: acc.leads + (Number(m.leads) || 0),
+      closedDeals: acc.closedDeals + (Number(m.closed_deals) || 0),
       canvassLeads: acc.canvassLeads + (Number(m.canvass_leads) || 0),
       canvassDeals: acc.canvassDeals + (Number(m.canvass_deals_closed) || 0),
-    }), { revenue: 0, collections: 0, contracts: 0, leads: 0, canvassLeads: 0, canvassDeals: 0 });
+      internetLeads: acc.internetLeads + (Number((m as any).internet_leads) || 0),
+      internetClosed: acc.internetClosed + (Number((m as any).internet_leads_closed) || 0),
+      selfGenDeals: acc.selfGenDeals + (Number((m as any).self_generated_deals) || 0),
+    }), { revenue: 0, collections: 0, closedDeals: 0, canvassLeads: 0, canvassDeals: 0, internetLeads: 0, internetClosed: 0, selfGenDeals: 0 });
 
-    // Add canvasser leads to weekly leads total
     const weeklyCanvasserData = weeklyCanvasserResult.data || [];
-    const weeklyCanvasserLeads = weeklyCanvasserData.reduce((sum, c) => sum + (Number(c.leads_set) || 0), 0);
-    const weeklyCanvasserClosed = weeklyCanvasserData.reduce((sum, c) => sum + (Number(c.leads_closed) || 0), 0);
+
+    const weeklyTotalContracts = weeklyAgg.selfGenDeals + weeklyAgg.canvassDeals + weeklyAgg.internetClosed;
+    const weeklyTotalLeads = weeklyAgg.canvassLeads + weeklyAgg.internetLeads;
 
     const weeklyStats: CompanyPeriodStats = {
       revenue: weeklyAgg.revenue,
       collections: weeklyAgg.collections,
-      contracts: weeklyAgg.contracts,
-      leads: weeklyAgg.leads,
-      leadToCloseRate: calculateLtcRate(weeklyAgg.canvassDeals, 0, weeklyAgg.canvassLeads, weeklyAgg.leads),
+      contracts: weeklyTotalContracts,
+      leads: weeklyTotalLeads,
+      leadToCloseRate: calculateLtcRate(weeklyAgg.canvassDeals, weeklyAgg.internetClosed, weeklyAgg.canvassLeads, weeklyAgg.internetLeads),
+      selfGenContracts: weeklyAgg.selfGenDeals,
+      canvassContracts: weeklyAgg.canvassDeals,
+      canvassLeads: weeklyAgg.canvassLeads,
+      internetContracts: weeklyAgg.internetClosed,
+      internetLeads: weeklyAgg.internetLeads,
+      canvassLtc: weeklyAgg.canvassLeads > 0 ? (weeklyAgg.canvassDeals / weeklyAgg.canvassLeads) * 100 : 0,
+      internetLtc: weeklyAgg.internetLeads > 0 ? (weeklyAgg.internetClosed / weeklyAgg.internetLeads) * 100 : 0,
     };
 
     // ─── Build Monthly Stats ───
@@ -496,27 +518,49 @@ const handler = async (req: Request): Promise<Response> => {
     const monthlyAgg = monthlyData.reduce((acc, m) => ({
       revenue: acc.revenue + (Number(m.approved_revenue) || 0),
       collections: acc.collections + (Number(m.collections) || 0),
-      contracts: acc.contracts + (Number(m.closed_deals) || 0),
-      leads: acc.leads + (Number(m.leads) || 0),
+      closedDeals: acc.closedDeals + (Number(m.closed_deals) || 0),
       canvassLeads: acc.canvassLeads + (Number(m.canvass_leads) || 0),
       canvassDeals: acc.canvassDeals + (Number(m.canvass_deals_closed) || 0),
-    }), { revenue: 0, collections: 0, contracts: 0, leads: 0, canvassLeads: 0, canvassDeals: 0 });
+      internetLeads: acc.internetLeads + (Number((m as any).internet_leads) || 0),
+      internetClosed: acc.internetClosed + (Number((m as any).internet_leads_closed) || 0),
+      selfGenDeals: acc.selfGenDeals + (Number((m as any).self_generated_deals) || 0),
+    }), { revenue: 0, collections: 0, closedDeals: 0, canvassLeads: 0, canvassDeals: 0, internetLeads: 0, internetClosed: 0, selfGenDeals: 0 });
+
+    const monthlyTotalContracts = monthlyAgg.selfGenDeals + monthlyAgg.canvassDeals + monthlyAgg.internetClosed;
+    const monthlyTotalLeads = monthlyAgg.canvassLeads + monthlyAgg.internetLeads;
 
     const monthlyStats: CompanyPeriodStats = {
       revenue: monthlyAgg.revenue,
       collections: monthlyAgg.collections,
-      contracts: monthlyAgg.contracts,
-      leads: monthlyAgg.leads,
-      leadToCloseRate: calculateLtcRate(monthlyAgg.canvassDeals, 0, monthlyAgg.canvassLeads, monthlyAgg.leads),
+      contracts: monthlyTotalContracts,
+      leads: monthlyTotalLeads,
+      leadToCloseRate: calculateLtcRate(monthlyAgg.canvassDeals, monthlyAgg.internetClosed, monthlyAgg.canvassLeads, monthlyAgg.internetLeads),
+      selfGenContracts: monthlyAgg.selfGenDeals,
+      canvassContracts: monthlyAgg.canvassDeals,
+      canvassLeads: monthlyAgg.canvassLeads,
+      internetContracts: monthlyAgg.internetClosed,
+      internetLeads: monthlyAgg.internetLeads,
+      canvassLtc: monthlyAgg.canvassLeads > 0 ? (monthlyAgg.canvassDeals / monthlyAgg.canvassLeads) * 100 : 0,
+      internetLtc: monthlyAgg.internetLeads > 0 ? (monthlyAgg.internetClosed / monthlyAgg.internetLeads) * 100 : 0,
     };
 
     // ─── Build YTD Stats ───
+    const ytdTotalContracts = ytdSalesAgg.selfGenDeals + ytdSalesAgg.canvassDeals + ytdSalesAgg.internetClosed;
+    const ytdTotalLeads = ytdSalesAgg.canvassLeads + ytdSalesAgg.internetLeads;
+
     const ytdStats: CompanyPeriodStats = {
       revenue: ytdSalesAgg.revenue,
       collections: ytdSalesAgg.collections,
-      contracts: ytdSalesAgg.contracts,
-      leads: ytdSalesAgg.leads,
+      contracts: ytdTotalContracts,
+      leads: ytdTotalLeads,
       leadToCloseRate: calculateLtcRate(ytdSalesAgg.canvassDeals, ytdSalesAgg.internetClosed, ytdSalesAgg.canvassLeads, ytdSalesAgg.internetLeads),
+      selfGenContracts: ytdSalesAgg.selfGenDeals,
+      canvassContracts: ytdSalesAgg.canvassDeals,
+      canvassLeads: ytdSalesAgg.canvassLeads,
+      internetContracts: ytdSalesAgg.internetClosed,
+      internetLeads: ytdSalesAgg.internetLeads,
+      canvassLtc: ytdSalesAgg.canvassLeads > 0 ? (ytdSalesAgg.canvassDeals / ytdSalesAgg.canvassLeads) * 100 : 0,
+      internetLtc: ytdSalesAgg.internetLeads > 0 ? (ytdSalesAgg.internetClosed / ytdSalesAgg.internetLeads) * 100 : 0,
     };
 
     // ─── Build Canvasser Weekly Hours ───
@@ -542,7 +586,7 @@ const handler = async (req: Request): Promise<Response> => {
     const summary: CompanySummary = {
       totalApprovedRevenue: ytdSalesAgg.revenue,
       totalCollections: ytdSalesAgg.collections,
-      totalClosedDeals: ytdSalesAgg.contracts,
+      totalClosedDeals: ytdTotalContracts,
       companyLeadCloseRate: ytdStats.leadToCloseRate,
       salesRepCount: salesReps.length,
       canvasserCount: canvassers.length,
