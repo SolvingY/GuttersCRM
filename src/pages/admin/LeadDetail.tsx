@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Archive } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Archive, Ban, FileText, CalendarDays, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -58,9 +58,10 @@ const serviceLabels: Record<string, string> = {
 
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
-const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost", "completed"];
+const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost", "cancelled", "completed"];
 const priorityOptions = ["urgent", "high", "normal", "low"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
+const cancelledReasons = ["Customer changed mind", "Financing fell through", "Insurance denied", "Scheduling conflict", "Material unavailable", "Weather delay", "Other"];
 
 export default function LeadDetail() {
   const { id } = useParams();
@@ -70,6 +71,7 @@ export default function LeadDetail() {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<string | null>(null);
   const [lostReason, setLostReason] = useState("");
+  const [cancelledReason, setCancelledReason] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [archiving, setArchiving] = useState(false);
@@ -103,6 +105,20 @@ export default function LeadDetail() {
       const userRoleIds = new Set((userRoles || []).map(r => r.user_id));
       return (reps || []).filter(r => userRoleIds.has(r.user_id));
     },
+  });
+
+  const { data: leadForms = [] } = useQuery({
+    queryKey: ["lead-forms", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_forms")
+        .select("*")
+        .eq("lead_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
   });
 
   const updateLead = useMutation({
@@ -268,6 +284,55 @@ export default function LeadDetail() {
         </div>
       </div>
 
+      {/* Document Action Buttons */}
+      {(() => {
+        const contractForm = (leadForms as any[]).find((f: any) => f.form_type === "contract");
+        const flexForm = (leadForms as any[]).find((f: any) => f.form_type === "flex_schedule");
+        const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
+        const inspectionForm = (leadForms as any[]).find((f: any) => f.form_type === "inspection");
+        const appointmentForm = (leadForms as any[]).find((f: any) => f.form_type === "appointment");
+        const showContract = ["won", "approved", "scheduled"].includes(lead.status);
+        const showFlex = ["won", "scheduled"].includes(lead.status);
+        const showWarranty = lead.status === "completed";
+        const showInspection = true;
+        const showAppointment = true;
+        
+        return (
+          <div className="flex flex-wrap gap-2">
+            {showAppointment && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null } })}>
+                <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : "📅 Schedule Appointment"}
+                {appointmentForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", appointmentForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{appointmentForm.status}</Badge>}
+              </Button>
+            )}
+            {showInspection && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/inspection`, { state: { lead, existingForm: inspectionForm || null } })}>
+                <CheckCircle className="w-4 h-4" /> {inspectionForm ? "✅ View Checklist" : "✅ 20-Point Checklist"}
+                {inspectionForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", inspectionForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{inspectionForm.status}</Badge>}
+              </Button>
+            )}
+            {showContract && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
+                <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
+                {contractForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>}
+              </Button>
+            )}
+            {showFlex && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/flex-schedule`, { state: { lead, existingForm: flexForm || null } })}>
+                <CalendarDays className="w-4 h-4" /> {flexForm ? "📆 View Flex Schedule" : "📆 Flex Schedule Form"}
+                {flexForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", flexForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{flexForm.status}</Badge>}
+              </Button>
+            )}
+            {showWarranty && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/warranty`, { state: { lead, existingForm: warrantyForm || null } })}>
+                <Shield className="w-4 h-4" /> {warrantyForm ? "📄 View Warranty" : "📄 Warranty Document"}
+                {warrantyForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", warrantyForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{warrantyForm.status}</Badge>}
+              </Button>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column - lead info */}
         <div className="lg:col-span-2 space-y-6">
@@ -394,7 +459,7 @@ export default function LeadDetail() {
           {/* 3. Quote Approval */}
           <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
 
-          {/* 4. Outcome (Won/Lost) */}
+          {/* 4. Outcome (Won/Lost/Cancelled) */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Outcome</h2>
             {lead.status === "won" && lead.won_at && (
@@ -406,7 +471,13 @@ export default function LeadDetail() {
                 {lead.lost_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {lead.lost_reason}</p>}
               </div>
             )}
-            {lead.status !== "won" && lead.status !== "lost" && (
+            {lead.status === "cancelled" && (lead as any).cancelled_at && (
+              <div>
+                <p className="text-sm text-amber-600 font-medium">Cancelled on {new Date((lead as any).cancelled_at).toLocaleDateString()}</p>
+                {(lead as any).cancelled_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {(lead as any).cancelled_reason}</p>}
+              </div>
+            )}
+            {!["won", "lost", "cancelled"].includes(lead.status) && (
               <>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
@@ -423,12 +494,28 @@ export default function LeadDetail() {
                     }}>
                     <XCircle className="w-3 h-3" /> Lost
                   </Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1 text-amber-600 border-amber-600/30 hover:bg-amber-600/10"
+                    onClick={() => {
+                      if (!cancelledReason) {
+                        toast({ title: "Select a reason", description: "Please select a cancellation reason first", variant: "destructive" });
+                        return;
+                      }
+                      updateLead.mutate({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_reason: cancelledReason } as any);
+                    }}>
+                    <Ban className="w-3 h-3" /> Cancelled
+                  </Button>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 space-y-2">
                   <Select value={lostReason} onValueChange={setLostReason}>
                     <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
                     <SelectContent>
                       {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={cancelledReason} onValueChange={setCancelledReason}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Cancellation reason (if cancelled)" /></SelectTrigger>
+                    <SelectContent>
+                      {cancelledReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -467,6 +554,12 @@ export default function LeadDetail() {
                 <div className="flex justify-between text-green-600">
                   <span>Won</span>
                   <span>{new Date(lead.won_at).toLocaleDateString()}</span>
+                </div>
+              )}
+              {(lead as any).cancelled_at && (
+                <div className="flex justify-between text-amber-600">
+                  <span>Cancelled</span>
+                  <span>{new Date((lead as any).cancelled_at).toLocaleDateString()}</span>
                 </div>
               )}
               {(lead as any).install_scheduled_at && (

@@ -1424,6 +1424,8 @@ export type Database = {
           assigned_by: string | null
           assigned_to: string | null
           best_contact_time: string[] | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
           canvasser_id: string | null
           city: string
           completed_at: string | null
@@ -1482,6 +1484,8 @@ export type Database = {
           assigned_by?: string | null
           assigned_to?: string | null
           best_contact_time?: string[] | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
           canvasser_id?: string | null
           city: string
           completed_at?: string | null
@@ -1540,6 +1544,8 @@ export type Database = {
           assigned_by?: string | null
           assigned_to?: string | null
           best_contact_time?: string[] | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
           canvasser_id?: string | null
           city?: string
           completed_at?: string | null
