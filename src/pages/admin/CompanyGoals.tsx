@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download, Globe, Pencil } from 'lucide-react';
+import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download, Globe, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
 import { format, addMonths, startOfMonth, subMonths } from 'date-fns';
@@ -71,6 +72,11 @@ export default function CompanyGoals() {
   const [targetAdSpendBudget, setTargetAdSpendBudget] = useState('');
   const [adSpendDialogOpen, setAdSpendDialogOpen] = useState(false);
   const [adSpendEditMonth, setAdSpendEditMonth] = useState<string | null>(null);
+  const [fiscalGoalsOpen, setFiscalGoalsOpen] = useState(false);
+  const [revenueProgressOpen, setRevenueProgressOpen] = useState(true);
+  const [contractProgressOpen, setContractProgressOpen] = useState(true);
+  const [additionalMetricsOpen, setAdditionalMetricsOpen] = useState(false);
+  const [internetMetricsOpen, setInternetMetricsOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
@@ -516,16 +522,21 @@ export default function CompanyGoals() {
       />
 
       {/* Goal Setting Card */}
+      <Collapsible open={fiscalGoalsOpen} onOpenChange={setFiscalGoalsOpen}>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-accent" />
-            Fiscal Year Goals
-          </CardTitle>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
+            {fiscalGoalsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-accent" />
+              Fiscal Year Goals
+            </CardTitle>
+          </CollapsibleTrigger>
           <CardDescription>
             Dec 15, 2025 - Dec 15, 2026
           </CardDescription>
         </CardHeader>
+        <CollapsibleContent>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -656,7 +667,17 @@ export default function CompanyGoals() {
             Save Goals
           </Button>
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
+
+      {/* Progress Cards - Row 1: Revenue + Collections */}
+      <Collapsible open={revenueProgressOpen} onOpenChange={setRevenueProgressOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
+          {revenueProgressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <h3 className="font-heading font-semibold text-foreground">Revenue & Collections</h3>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
 
       {/* Progress Cards - Row 1: Revenue + Collections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -745,8 +766,16 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
+      </CollapsibleContent>
+      </Collapsible>
 
       {/* Progress Cards - Row 2: Contract Progress Cards */}
+      <Collapsible open={contractProgressOpen} onOpenChange={setContractProgressOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
+          {contractProgressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <h3 className="font-heading font-semibold text-foreground">Contract Progress</h3>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Canvasser Contracts Progress */}
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
@@ -871,8 +900,16 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
+      </CollapsibleContent>
+      </Collapsible>
 
       {/* Additional Metrics Cards with Goal Tracking */}
+      <Collapsible open={additionalMetricsOpen} onOpenChange={setAdditionalMetricsOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
+          {additionalMetricsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <h3 className="font-heading font-semibold text-foreground">Additional Metrics</h3>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Lead-to-Close Rate (Canvasser) */}
         <Card>
@@ -1021,11 +1058,18 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
+      </CollapsibleContent>
+      </Collapsible>
 
       {/* Internet / Call-In Lead Metrics */}
+      <Collapsible open={internetMetricsOpen} onOpenChange={setInternetMetricsOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
+          {internetMetricsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <h3 className="font-heading font-semibold text-foreground">Internet / Call-In Lead Metrics</h3>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-heading font-bold text-foreground">Internet / Call-In Lead Metrics</h2>
           <p className="text-sm text-muted-foreground">
             Track performance and ROI for internet-sourced leads (website, phone calls, referrals)
           </p>
@@ -1268,6 +1312,8 @@ export default function CompanyGoals() {
           </Card>
         </div>
       </div>
+      </CollapsibleContent>
+      </Collapsible>
 
       <AdSpendDialog
         open={adSpendDialogOpen}
