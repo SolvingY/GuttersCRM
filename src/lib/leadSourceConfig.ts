@@ -1,4 +1,4 @@
-import { Globe, Phone, Users, UserPlus, Building, HelpCircle } from "lucide-react";
+import { Globe, Phone, Users, UserPlus, Building, HelpCircle, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export const leadSourceConfig: Record<string, { label: string; icon: LucideIcon; leadType: string }> = {
@@ -8,6 +8,7 @@ export const leadSourceConfig: Record<string, { label: string; icon: LucideIcon;
   referral: { label: "Referral", icon: UserPlus, leadType: "internet" },
   walk_in: { label: "Walk-In", icon: Building, leadType: "internet" },
   other: { label: "Other", icon: HelpCircle, leadType: "internet" },
+  self_gen: { label: "Self-Generated", icon: Star, leadType: "self_gen" },
 };
 
 export const getLeadSourceIcon = (source: string): LucideIcon => {

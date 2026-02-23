@@ -213,9 +213,13 @@ export default function LeadDetail() {
                 const leadType = (lead as any).lead_type || "internet";
                 return (
                   <>
-                    <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                    <Badge variant="outline" className={cn("text-[10px] gap-1", 
+                      leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : 
+                      leadType === "self_gen" ? "bg-green-500/10 text-green-600 border-green-500/30" :
+                      "bg-blue-500/10 text-blue-600 border-blue-500/30"
+                    )}>
                       <LeadSourceIcon className="w-3 h-3" />
-                      {leadType === "canvasser" ? "Canvasser Lead" : "Internet Lead"}
+                      {leadType === "canvasser" ? "Canvasser Lead" : leadType === "self_gen" ? "Self-Gen Lead" : "Internet Lead"}
                     </Badge>
                     {(lead as any).manually_created && (
                       <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">Manual</Badge>
@@ -245,6 +249,16 @@ export default function LeadDetail() {
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {priorityOptions.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {isAdmin && (
+            <Select value={(lead as any).lead_type || "internet"} onValueChange={(v) => updateLead.mutate({ lead_type: v })}>
+              <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="internet">Internet</SelectItem>
+                <SelectItem value="canvasser">Canvasser</SelectItem>
+                <SelectItem value="self_gen">Self-Gen</SelectItem>
               </SelectContent>
             </Select>
           )}

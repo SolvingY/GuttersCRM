@@ -23,6 +23,7 @@ const leadSourceOptions = [
   { value: "referral", label: "Referral" },
   { value: "walk_in", label: "Walk-In" },
   { value: "other", label: "Other" },
+  { value: "self_gen", label: "Self-Generated" },
 ];
 
 const serviceOptions = [
@@ -139,7 +140,6 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
 
       // If canvasser source with canvasser_id, update the lead
       if (form.lead_source === "canvasser" && form.canvasser_id) {
-        // Find the lead by reference number and update canvasser_id + lead_type
         const { error: updateError } = await supabase
           .from("quote_requests")
           .update({ canvasser_id: form.canvasser_id, lead_type: "canvasser" })
@@ -147,8 +147,18 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
         if (updateError) console.error("Failed to set canvasser_id:", updateError);
       }
 
+      // If self_gen source, ensure lead_type is set
+      if (form.lead_source === "self_gen") {
+        const { error: updateError } = await supabase
+          .from("quote_requests")
+          .update({ lead_type: "self_gen" })
+          .eq("reference_number", data);
+        if (updateError) console.error("Failed to set self_gen lead_type:", updateError);
+      }
+
       toast({ title: "Lead created", description: `Reference: ${data}` });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["my-leads"] });
       resetForm();
       onOpenChange(false);
     } catch (error: any) {
