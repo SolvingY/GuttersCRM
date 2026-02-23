@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/SignaturePad";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Send, Clock, CheckCircle2, Undo2, Mail } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Clock, CheckCircle2, Undo2, Mail, Download, Upload } from "lucide-react";
+import { generateAndUploadContractPDF, downloadContractPDF } from "@/lib/generateContractPDF";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ export default function GutterContract({
   const [sending, setSending] = useState(false);
   const [recallingContract, setRecallingContract] = useState(false);
   const [sendingConfirmation, setSendingConfirmation] = useState(false);
+  const [uploadingPDF, setUploadingPDF] = useState(false);
 
   const lead = propLead || (location.state as any)?.lead;
   const existingForm = propExistingForm || (location.state as any)?.existingForm;
@@ -197,6 +199,32 @@ export default function GutterContract({
     }
   };
 
+  const handleUploadPDFToFiles = async () => {
+    if (!user || !existingForm) return;
+    setUploadingPDF(true);
+    try {
+      const leadId = id || lead?.id;
+      const result = await generateAndUploadContractPDF(
+        existingForm.form_data,
+        existingForm.signature_data,
+        leadId,
+        user.id,
+        (existingForm as any).signed_at || (existingForm as any).customer_signed_at,
+        (existingForm as any).customer_signed_name,
+        (existingForm as any).signed_by_name,
+      );
+      if (result.success) {
+        toast({ title: "Contract PDF saved to lead files" });
+      } else {
+        toast({ title: "Failed to save PDF", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to save PDF", variant: "destructive" });
+    } finally {
+      setUploadingPDF(false);
+    }
+  };
+
   const buildContractData = () => ({
     ownerName, streetAddress, city: cityField, state: stateField, zip: zipField,
     phone: phoneField, email: emailField, contractPrice, downPayment,
@@ -273,6 +301,20 @@ export default function GutterContract({
             content: `Signed contract confirmation sent to ${emailField}`,
           });
         }
+      }
+
+      // Auto-generate and upload PDF for signed contracts
+      if (isFinalizing && user) {
+        const formDataForPDF = buildContractData();
+        generateAndUploadContractPDF(
+          formDataForPDF,
+          customerSignature,
+          leadId,
+          user.id,
+          new Date().toISOString(),
+          null,
+          ownerName,
+        ).catch(console.error);
       }
 
       toast({ title: isFinalizing ? "Contract saved successfully" : "Contract draft updated" });
@@ -497,6 +539,13 @@ export default function GutterContract({
             {sendingConfirmation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
             Email Copy
           </Button>
+          <Button size="sm" variant="outline" onClick={() => downloadContractPDF(existingForm.form_data, existingForm.signature_data, (existingForm as any).customer_signed_at, (existingForm as any).customer_signed_name, (existingForm as any).signed_by_name)} className="gap-1">
+            <Download className="w-3 h-3" /> PDF
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleUploadPDFToFiles} disabled={uploadingPDF} className="gap-1">
+            {uploadingPDF ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+            Save to Files
+          </Button>
         </div>
       )}
 
@@ -511,6 +560,13 @@ export default function GutterContract({
           <Button size="sm" variant="outline" onClick={handleSendConfirmationManual} disabled={sendingConfirmation} className="gap-1">
             {sendingConfirmation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
             Email Copy
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => downloadContractPDF(existingForm.form_data, existingForm.signature_data, (existingForm as any).signed_at, null, (existingForm as any).signed_by_name)} className="gap-1">
+            <Download className="w-3 h-3" /> PDF
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleUploadPDFToFiles} disabled={uploadingPDF} className="gap-1">
+            {uploadingPDF ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+            Save to Files
           </Button>
         </div>
       )}
