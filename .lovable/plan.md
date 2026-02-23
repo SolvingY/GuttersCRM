@@ -1,72 +1,65 @@
 
+# Recall Sent Quotes and Contracts + Required Contract Fields
 
-# Demo Contract Email, Auto-File Signed Contracts, Lead Card Layout Fix, and Collapsible Sections
+## Overview
+Three changes:
+1. Add a "Recall Quote" button to reset sent quotes back to pending approval
+2. Add a "Recall Contract" button to void sent contracts so they can be corrected and resent
+3. Make key contract fields (Payment Terms and Install Date) required before sending
 
-## 1. Send Demo Contract Email (Russ Pace Job)
+---
 
-Found the Russ Pace lead (ID: `dc45005b-867d-450a-bfe5-c5c030fa7f5e`, quote: $4,345, status: scheduled).
+## 1. Recall Quote (QuoteApprovalSection.tsx)
 
-**Steps:**
-- Create a `lead_forms` record of type "contract" for the Russ Pace lead with a signing token and 7-day expiry
-- Call the `send-contract-signing-email` edge function with `clientEmail: adamundergroundcoury@gmail.com` to send the demo email
-- You'll receive the email with a "REVIEW & SIGN CONTRACT" button linking to the signing page
+After a quote has been sent (`quote_sent_at` is set), add a "Recall Quote" button (admin only) that:
+- Resets `quote_status` to `pending_approval`
+- Clears `quote_sent_at`, `quote_email_snapshot`, `quote_approved`, `quote_approved_by`, `quote_approved_at`
+- Keeps the `quote_amount` intact
+- Logs a `quote_recalled` activity in `lead_activity_log`
+- Shows an AlertDialog confirmation before executing
 
-## 2. Auto-File Signed Contracts on Lead Card
+The button appears next to "View Sent Quote" with a destructive outline style and an Undo icon.
 
-When a customer signs a contract via the `/sign/:token` route, the signed contract should automatically appear in the lead's Files section.
+---
 
-**Changes:**
-- **`notify-contract-signed` edge function**: After logging the activity, insert a record into `lead_files` with `file_type: 'Contract'`, `file_name: 'Signed Contract - [customerName]'`, and `file_url` pointing to a reference path (e.g., `form://contract/[formId]`). Use the lead's `assigned_to` as `uploaded_by`.
-- This ensures the signed contract shows up in the Files section on both admin and rep lead detail views without any additional manual steps.
+## 2. Recall Contract (GutterContract.tsx)
 
-## 3. Fix Lead Card Layout (Desktop/Tablet)
+When a contract has been sent (`status: 'sent'`) but not yet signed, add a "Recall Contract" button in the awaiting-signature status bar that:
+- Updates the `lead_forms` record: sets `status` to `'draft'`, clears `sent_for_signing_at`, and sets `token_expires_at` to a past date (invalidating the signing link)
+- Logs a `contract_recalled` activity in `lead_activity_log`
+- Shows an AlertDialog confirmation
+- After recall, the rep can edit the contract and resend
 
-The current grid is `lg:grid-cols-3` with the left column at `col-span-2` (67%) and right at 1 column (33%). This crams too much into the narrow right column.
+This button sits alongside the existing "Resend" button in the amber "Awaiting customer signature" banner.
 
-**Fix (both `LeadDetail.tsx` and `LeadDetailView.tsx`):**
-- Change grid from `lg:grid-cols-3` to `lg:grid-cols-5`
-- Left column: `lg:col-span-3` (60%)
-- Right column: `lg:col-span-2` (40%)
-- Move **Scheduling/Payments** and **Files** sections from right to left column to balance content
+---
 
-## 4. Collapsible Categories on Lead Cards
+## 3. Required Fields Before Sending Contract
 
-Wrap each section in a `Collapsible` component with a toggle trigger showing a chevron icon.
+In `handleSendForSignature`, add validation that blocks sending if these fields are empty:
+- `contractPrice` (Contract Price)
+- `downPayment` (Down Payment -- can be 0 but must be explicitly set)
+- `startDate` (Approx Start Date)
+- `signatureDate` (Agreement Date)
 
-**Sections and defaults:**
+If any are missing, show a toast error listing which fields need to be filled in. The "Send to Customer for Signature" button remains enabled but validation fires on click.
 
-| Section | Default State | Notes |
-|---------|--------------|-------|
-| Service Details | Open | |
-| Contact Information | Open | |
-| Photos | Open | |
-| Saved Estimates | Open | |
-| Scheduling/Payments | Open | Moved to left column |
-| Files | Open | Moved to left column |
-| Assignment | Open | Admin only |
-| Follow-up | Open | |
-| Quote Approval | Collapsed | |
-| Outcome | Open | |
-| Timeline | Collapsed | |
-| Activity Log | Collapsed | |
-| Admin Notes | Collapsed | Admin only |
-| Archive | Collapsed | Admin only |
+Also add visual required indicators (red asterisk) to these field labels.
 
-**Implementation:**
-- Import `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` from `@/components/ui/collapsible`
-- Import `ChevronDown`, `ChevronRight` icons
-- Add boolean state variables for each section (e.g., `serviceOpen`, `contactOpen`, etc.)
-- Wrap each card with the collapsible pattern: clickable header toggles content visibility
+---
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/admin/LeadDetail.tsx` | Fix grid layout (5-col), move sections, add collapsibles |
-| `src/pages/dashboard/LeadDetailView.tsx` | Fix grid layout (5-col), move sections, add collapsibles |
-| `supabase/functions/notify-contract-signed/index.ts` | Insert `lead_files` record for signed contract |
+| `src/components/admin/QuoteApprovalSection.tsx` | Add recall quote handler, AlertDialog, and Recall button after "sent" state |
+| `src/pages/dashboard/forms/GutterContract.tsx` | Add recall contract handler, AlertDialog in awaiting-signature banner, and required field validation before send |
 
-## Demo Email
+## Technical Details
 
-After implementing, I will create the contract form record for Russ Pace and invoke the edge function to send the demo contract email to `adamundergroundcoury@gmail.com`.
-
+- Import `AlertDialog` components and `Undo2` icon from lucide-react
+- Quote recall updates 6 fields on `quote_requests` in a single mutation
+- Contract recall updates 3 fields on `lead_forms` in a single update
+- Both recall actions insert an activity log entry for audit trail
+- Required field validation uses simple string checks before the existing `handleSendForSignature` logic
+- No database schema changes needed -- all fields already exist
