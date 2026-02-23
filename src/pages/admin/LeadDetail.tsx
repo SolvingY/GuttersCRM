@@ -253,7 +253,12 @@ export default function LeadDetail() {
             </Select>
           )}
           {isAdmin && (
-            <Select value={(lead as any).lead_type || "internet"} onValueChange={(v) => updateLead.mutate({ lead_type: v })}>
+            <Select value={(lead as any).lead_type || "internet"} onValueChange={async (v) => {
+              await supabase.rpc("change_lead_type", { p_lead_id: lead.id, p_new_type: v });
+              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+              queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+              toast({ title: "Lead type updated" });
+            }}>
               <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="internet">Internet</SelectItem>
