@@ -1,74 +1,64 @@
 
 
-# Fix Client Signing Error + Add In-Person Signing Flow
+# Generate Contract PDF, Auto-Save to Lead Files, and Download
 
-## Problem 1: Client Signing Error (Red Error Message)
-When a customer tries to sign a contract that was recalled and resent, they may encounter an RLS (row-level security) error. The pre-validation check we just added should now show a friendly message instead of a raw error. However, there may also be a token mismatch issue: when a contract is recalled and resent, the `handleResend` function pulls the old `signing_token` from the stale component state rather than refetching from the database. We need to ensure `handleSendForSignature` (which is used after recall, not `handleResend`) properly generates a fresh token.
+## Overview
+When a contract is signed (either in person or remotely), automatically generate a professional PDF of the signed contract, upload it to the lead's Files section, and provide a download button. Also run this retroactively for Russ Pace's existing signed contract.
 
-**Fix**: After the recall + resend flow, the `handleSendForSignature` function already upserts with the existing form ID, which preserves the `signing_token` (since it's not in the upsert payload). We need to verify the token used in the email matches what's in the DB by reading it back from the upsert response -- which it already does via `.select().single()`. This part should already work correctly. The client error was likely the RLS violation that our pre-validation now catches gracefully.
+## Changes
 
-No additional code changes needed for this -- the fix from the last edit (pre-checking status before attempting the update) should resolve it.
+### 1. New Utility: `src/lib/generateContractPDF.ts`
+Create a PDF generator for signed contracts using jsPDF (already installed). The PDF will include:
+- Company header (Next Generation Guttering)
+- Customer information (name, address, phone, email)
+- Scope of work
+- Contract terms (price, down payment, balance, dates, payment info)
+- Payment terms legal text (A-E)
+- Customer signature image (rendered from base64 data URL)
+- Second owner signature (if present)
+- Rep name and agreement date
+- "SIGNED" watermark or badge with signed date
+- Footer with company contact info
 
-## Problem 2: In-Person Signing with Email Confirmation
+### 2. Update `src/pages/dashboard/forms/GutterContract.tsx`
+In `handleSave` (when finalizing / signing in person):
+- After saving the contract to `lead_forms`, call the new PDF generator
+- Convert the PDF to a Blob, upload it to the `lead-files` storage bucket
+- Insert a record into `lead_files` table with `file_type: "contract"` and the file name `NGG_Contract_[CustomerName].pdf`
+- Log activity: "Signed contract PDF added to files"
 
-Currently, the rep can have the customer sign in person using the signature pad, then click "Sign & Save Contract." But there's no way to send the customer a confirmation email afterward.
+In the signed status bars (both remote-signed and in-person-signed):
+- Add a "Download PDF" button next to the "Email Copy" button
 
-### Changes
+### 3. Update `src/pages/public/SignContract.tsx`
+After remote signing completes successfully:
+- Generate the PDF and upload it to lead-files storage
+- Insert into `lead_files` table
+- This ensures remote-signed contracts also get auto-filed
 
-**File: `src/pages/dashboard/forms/GutterContract.tsx`**
-
-- After saving an in-person signed contract, add a "Send Signed Copy to Customer" button that appears when a contract has `status: 'signed'` and was signed in person (has `signature_data` but no `customer_signed_at` -- meaning it wasn't done via the remote signing flow)
-- Also add the option inline: after clicking "Sign & Save Contract", automatically trigger a confirmation email to the customer
-- Add a new button in the signed status bar: "Email Copy to Customer" that invokes a new edge function
-
-**File: `supabase/functions/send-signed-contract-confirmation/index.ts`** (new)
-
-Create a new edge function that sends a confirmation email to the customer after an in-person signing. The email will:
-- Confirm their contract has been signed
-- Include contract details (amount, rep name, address)
-- Include company contact info
-- NOT include a signing link (since it's already signed)
-
-**File: `src/pages/dashboard/forms/GutterContract.tsx`** (additional changes)
-
-- In `handleSave` (for non-draft saves), after successfully saving the contract, invoke the `send-signed-contract-confirmation` edge function to email the customer automatically
-- Also update the lead status to "scheduled" (which already happens)
-- Log activity: "Contract signed in person by [name], confirmation sent to [email]"
-
-### Detailed Changes
-
-#### 1. New Edge Function: `send-signed-contract-confirmation`
-
-Accepts: `clientName`, `clientEmail`, `contractAmount`, `repName`, `signedDate`
-
-Sends a confirmation email:
-- Subject: "Your Contract with Next Generation Guttering is Confirmed"
-- Body: Confirmation that the contract was signed, contract amount, rep name, and company contact info
-- Professional template matching existing email styles
-
-#### 2. GutterContract.tsx Updates
-
-In `handleSave` (non-draft path):
-- After saving the contract and updating lead status, call `send-signed-contract-confirmation` with the customer's email
-- This sends the confirmation automatically when a rep saves an in-person signed contract
-
-In the signed status bar (where it shows "Signed by [name]"):
-- Add an "Email Copy" button so the rep can resend the confirmation email anytime after the contract is signed
-
-#### 3. Flow Summary
-
-**In-Person Signing:**
-1. Rep fills out contract with customer present
-2. Customer signs on rep's device using the signature pad
-3. Rep clicks "Sign & Save Contract"
-4. Contract saves as "signed", lead moves to "scheduled"
-5. Confirmation email automatically sent to customer
-6. Rep can resend the confirmation email later from the signed status bar
+### 4. Retroactive Execution for Russ Pace
+After implementing, manually trigger the PDF generation for the existing signed contract on lead `dc45005b-867d-450a-bfe5-c5c030fa7f5e` by adding a one-time "Generate PDF" action or by navigating to the contract and using the new download button.
 
 ## Technical Details
 
+### PDF Layout (jsPDF)
+- Page: A4 portrait
+- Header: Company name, "INSTALLATION CONTRACT" title, signed date
+- Sections mirror the on-screen contract: Customer Info, Scope of Work, Contract Terms, Payment Terms, Signatures
+- Signature rendered as embedded image from base64 data URL stored in `signature_data`
+- "SIGNED" stamp with date in green
+
+### File Storage Flow
+```
+PDF Blob -> supabase.storage.from("lead-files").upload(path, blob)
+         -> supabase.from("lead_files").insert({ file_name, file_url, file_type: "contract", ... })
+```
+
+### Files Changed
+
 | File | Change |
 |------|--------|
-| `supabase/functions/send-signed-contract-confirmation/index.ts` | New edge function for confirmation email |
-| `src/pages/dashboard/forms/GutterContract.tsx` | Auto-send confirmation on in-person save; add "Email Copy" button to signed status bar |
+| `src/lib/generateContractPDF.ts` | New - PDF generation utility for signed contracts |
+| `src/pages/dashboard/forms/GutterContract.tsx` | Auto-generate and upload PDF on sign; add Download PDF button |
+| `src/pages/public/SignContract.tsx` | Auto-generate and upload PDF after remote signing |
 
