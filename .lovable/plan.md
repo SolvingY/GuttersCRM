@@ -1,98 +1,79 @@
 
 
-# Standardize Sales Rep Leaderboards + Make Sections Collapsible
+# Add Email Viewing and Editing to User Management
 
-## Part 1: Unified Sales Rep Leaderboard (All 3 Timeframes)
+## Overview
+Currently the User Roles page doesn't show user emails because email addresses are stored in the auth system, which can't be queried from the client. We need a backend function to fetch emails and another action to update them.
 
-### Problem
-The YTD sales leaderboard uses `LeaderboardTable` with columns like Rank, Rep Goals, Amount Until Goal, % of Goal, and Contests Won. The Weekly/Monthly views use `WeeklyLeaderboardTable` which has different columns (Leads, Close %) but is missing Rank, Goals, Amount Until Goal, % of Goal, and Contests Won.
+## Changes
 
-The user wants all three timeframes (YTD, Weekly, Monthly) to display the same columns, and for weekly/monthly to show only that time period's data.
+### 1. Extend the `admin-manage-user` edge function
 
-### Target Columns (All 3 Timeframes)
-Place | Rep Name | Rank | Rep Goals | Approved Rev | Collections | Contracts | Close % | Amount til Goal | % of Goal | Points | Contests Won
+Add two new actions:
 
-### Changes
+- **`fetch-emails`**: Accepts an array of user IDs, uses the admin API to look up each user's email, and returns a `{ userId: email }` map. This keeps the existing single-function pattern.
+- **`update-email`**: Accepts `targetUserId` and `newEmail`, uses `supabaseAdmin.auth.admin.updateUserById()` to change the email.
 
-**1. LeaderboardTable.tsx -- Add Close % column**
-- Add a "Close %" column header between "Total Contracts" and "Amount Until Goal"
-- Add Close % calculation per row: `leads > 0 ? (closedDeals / leads) * 100 : 0` and display it
-- Update the footer: move the existing Close % display (currently in the % of Goal column) to the new Close % column, and show a dash in % of Goal footer
+Both actions will require the caller to be an admin (same auth check already in place).
 
-**2. Leaderboard.tsx (Sales Rep Dashboard) -- Use LeaderboardTable for all 3 tabs**
-- Change `weeklyEntries` and `monthlyEntries` state types from `WeeklyLeaderboardEntry[]` to `LeaderboardEntry[]`
-- Update weekly fetch: after getting weekly data, also fetch each user's `salesRank`, `yearlyGoal`, `contestsWon`, `contestPoints`, `wagerPoints` from `user_metrics` and `contests` tables. Map all fields into `LeaderboardEntry` format.
-- Update monthly aggregation: same enrichment as weekly - fetch static YTD fields and merge them.
-- Replace `<WeeklyLeaderboardTable>` with `<LeaderboardTable>` for both Monthly and Weekly tabs.
-- Remove unused `WeeklyLeaderboardEntry` interface and `WeeklyLeaderboardTable` import.
+### 2. Update `UserRoles.tsx` -- Display emails
 
-**3. AdminLeaderboards.tsx (Admin Dashboard) -- Same changes**
-- Change `salesWeeklyEntries` state type from `WeeklySalesEntry[]` to match `SalesRepEntry[]` (with all LeaderboardTable fields).
-- Update weekly/monthly fetch: enrich with `salesRank`, `yearlyGoal`, `contestsWon`, `contestPoints`, `wagerPoints` from `user_metrics` and `contests` tables.
-- Replace `<WeeklyLeaderboardTable entries={salesWeeklyEntries} />` with `<LeaderboardTable entries={salesWeeklyEntries} />` for weekly/monthly.
-- Remove unused `WeeklySalesEntry` interface and `WeeklyLeaderboardTable` import.
+- After fetching profiles and roles, call `admin-manage-user` with `action: 'fetch-emails'` passing all user IDs.
+- Merge the returned email map into the `UserWithRole` objects.
+- Add an **Email** column to the table between Name and Roles.
 
-### Weekly/Monthly Data Notes
-- `approvedRevenue`, `collections`, `closedDeals`, `leads`, `pointsEarned` come from `weekly_user_metrics` (time-scoped)
-- `salesRank`, `yearlyGoal` come from `user_metrics` (current/YTD values - same across all views)
-- `contestsWon` comes from `contests` table (YTD total - same across all views)
-- `contestPoints`, `wagerPoints` come from `user_metrics` (YTD)
-- `Amount Until Goal` = max(0, yearlyGoal - approvedRevenue) -- for weekly/monthly this shows goal minus that period's revenue
-- `% of Goal` = (approvedRevenue / yearlyGoal) * 100
+### 3. Add inline email editing
 
----
+- Add an "Edit Email" button (mail icon) next to each user's email in the table.
+- When clicked, open a small dialog with an input field pre-filled with the current email.
+- On submit, call `admin-manage-user` with `action: 'update-email'` and refresh the user list.
 
-## Part 2: Collapsible Sections in Master Overview (AdminOverview.tsx)
+## Technical Details
 
-### Problem
-The Master Overview page has many sections that make it overwhelming. The user wants the following sections wrapped in collapsible containers:
+### Edge Function Changes (`supabase/functions/admin-manage-user/index.ts`)
 
-### Sections to Make Collapsible
-1. **Contract Sources** card (lines 877-932) -- the self-gen/canvass/internet comparison
-2. **Users Needing Attention** alert (lines 934-946)
-3. **Sales Rep Performance** table (lines 948-1073)
-4. **Conversion Funnel** (lines 1092-1102)
-5. **Canvasser Hours Tracker** (lines 1104-1245)
-6. **Canvassers Needing Attention** alert (lines 1247-1258)
-7. **Canvasser Performance** table (lines 1261-1326)
+**New action validation** (line 75): Add `'fetch-emails'` and `'update-email'` to the valid actions list.
 
-### Implementation
-- Import `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger` from `@/components/ui/collapsible`
-- Import `ChevronDown`, `ChevronRight` icons
-- Add state variables for each collapsible section (e.g., `contractSourcesOpen`, `salesPerfOpen`, etc.)
-- Wrap each section with `<Collapsible>` using the same pattern already used in `MyStats.tsx`
-- Default all sections to collapsed (false) so the page is clean on load
+**Skip admin-target protection for email actions**: The existing check that prevents actions on admin users should be skipped for `fetch-emails` and `update-email` since admins should be able to view/edit any user's email.
 
----
+**`fetch-emails` handler**:
+```typescript
+if (action === "fetch-emails") {
+  const { userIds } = body;  // string[]
+  const emailMap: Record<string, string> = {};
+  for (const uid of userIds) {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
+    if (data?.user?.email) emailMap[uid] = data.user.email;
+  }
+  return Response({ emailMap });
+}
+```
 
-## Part 3: Collapsible Sections in Company Goals (CompanyGoals.tsx)
+**`update-email` handler**:
+```typescript
+if (action === "update-email") {
+  const { newEmail } = body;
+  await supabaseAdmin.auth.admin.updateUserById(targetUserId, { email: newEmail });
+  return Response({ success: true });
+}
+```
 
-### Sections to Make Collapsible
-1. **Fiscal Year Goals** form card (lines 518-659)
-2. **Progress Cards Row 1** - Revenue + Collections (lines 662-747)
-3. **Progress Cards Row 2** - Contract Progress (lines 750-873)
-4. **Additional Metrics** - Lead-to-Close, Cost Per Contract, Cost Per Lead (lines 876-1023)
-5. **Internet / Call-In Lead Metrics** section (lines 1025-end)
+### Frontend Changes (`src/pages/admin/UserRoles.tsx`)
 
-### Implementation
-- Same collapsible pattern as above
-- Default all to collapsed except the Progress Cards
+1. **Email fetching**: After building the `combined` users array, extract all user IDs and call `admin-manage-user` with `fetch-emails`. Merge results into each user's `email` field.
 
----
+2. **Email column**: Add `<TableHead>Email</TableHead>` after the Name column. Display the email in a `<TableCell>` with a small edit button (pencil/mail icon).
 
-## Part 4: Collapsible Lead Cards in Sales Rep Dashboard (MyStats.tsx)
-
-The MyStats page already has collapsible sections implemented. No changes needed there -- the user may be referring to sections in the overview pages which are addressed in Parts 2 and 3 above.
-
----
+3. **Edit Email Dialog**: Create a new state for `editEmailUser` and `editEmailDialogOpen`. The dialog contains:
+   - Current email (read-only display)
+   - New email input field
+   - Save button that calls `admin-manage-user` with `update-email`
+   - Success toast and refresh on completion
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/LeaderboardTable.tsx` | Add Close % column |
-| `src/pages/dashboard/Leaderboard.tsx` | Use `LeaderboardTable` for all 3 tabs; enrich weekly/monthly with rank, goals, contests |
-| `src/pages/admin/AdminLeaderboards.tsx` | Use `LeaderboardTable` for all 3 sales tabs; enrich weekly/monthly |
-| `src/pages/dashboard/AdminOverview.tsx` | Wrap major sections in collapsible containers |
-| `src/pages/admin/CompanyGoals.tsx` | Wrap major sections in collapsible containers |
+| `supabase/functions/admin-manage-user/index.ts` | Add `fetch-emails` and `update-email` actions |
+| `src/pages/admin/UserRoles.tsx` | Fetch and display emails, add edit email dialog |
 
