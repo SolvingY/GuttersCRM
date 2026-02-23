@@ -6,7 +6,7 @@ import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserM
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -140,6 +141,11 @@ export default function AdminOverview() {
   });
   const [canvasserHoursData, setCanvasserHoursData] = useState<any[]>([]);
   const [editingHoursCell, setEditingHoursCell] = useState<string | null>(null);
+  const [contractSourcesOpen, setContractSourcesOpen] = useState(false);
+  const [salesPerfOpen, setSalesPerfOpen] = useState(false);
+  const [conversionFunnelOpen, setConversionFunnelOpen] = useState(false);
+  const [hoursTrackerOpen, setHoursTrackerOpen] = useState(false);
+  const [canvasserPerfOpen, setCanvasserPerfOpen] = useState(false);
 
   const getWeekStartForDate = (dateStr: string): string => {
     const d = new Date(dateStr + 'T00:00:00');
@@ -874,62 +880,69 @@ export default function AdminOverview() {
           </div>
 
           {/* Contract Source Comparison Card */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <GitCompare className="h-5 w-5 text-accent" />
-              <h3 className="font-heading font-semibold text-foreground">Contract Sources</h3>
-            </div>
-            {(() => {
-              const totalSelfGenContracts = aggregates.totalSelfGen;
-              const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
-              const totalInternetContracts = aggregates.totalInternetClosedDeals;
-              const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
-              const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
-              const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
-              const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
-              
-              return (
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Self-Generated</span>
-                      <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
+          <Collapsible open={contractSourcesOpen} onOpenChange={setContractSourcesOpen}>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
+                {contractSourcesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                <GitCompare className="h-5 w-5 text-accent" />
+                <h3 className="font-heading font-semibold text-foreground">Contract Sources</h3>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-3">
+                {(() => {
+                  const totalSelfGenContracts = aggregates.totalSelfGen;
+                  const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
+                  const totalInternetContracts = aggregates.totalInternetClosedDeals;
+                  const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
+                  const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
+                  const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
+                  const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
+                  
+                  return (
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Self-Generated</span>
+                          <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                          <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Canvass Contracts</span>
+                          <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Internet Contracts</span>
+                          <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                          <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                      </div>
+                      <div className="pt-2 border-t border-border">
+                        <div className="flex justify-between font-semibold text-foreground">
+                          <span>Total Contracts</span>
+                          <span>{totalContracts}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                      <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Canvass Contracts</span>
-                      <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                      <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Internet Contracts</span>
-                      <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                      <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
-                  </div>
-                  <div className="pt-2 border-t border-border">
-                    <div className="flex justify-between font-semibold text-foreground">
-                      <span>Total Contracts</span>
-                      <span>{totalContracts}</span>
-                    </div>
-                  </div>
+                  );
+                })()}
                 </div>
-              );
-            })()}
-          </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
 
           {usersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
@@ -945,10 +958,13 @@ export default function AdminOverview() {
             </div>
           )}
 
+          <Collapsible open={salesPerfOpen} onOpenChange={setSalesPerfOpen}>
           <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="p-4 border-b border-border">
+            <CollapsibleTrigger className="p-4 border-b border-border w-full cursor-pointer flex items-center gap-2">
+              {salesPerfOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
               <h3 className="text-lg font-heading text-foreground">Sales Rep Performance</h3>
-            </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             {userDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No sales rep data available yet.</p>
@@ -1070,7 +1086,9 @@ export default function AdminOverview() {
                 </table>
               </div>
             )}
+            </CollapsibleContent>
           </div>
+          </Collapsible>
         </TabsContent>
 
         {/* Canvassers Tab */}
@@ -1089,23 +1107,34 @@ export default function AdminOverview() {
           </div>
 
           {/* Conversion Funnel */}
-          <CanvasserConversionFunnel 
-            title="Team Conversion Funnel (YTD)"
-            data={{
-              doorsKnocked: canvasserAggregates.totalDoorsKnocked,
-              conversationsHad: canvasserAggregates.totalConversationsHad,
-              leadsSet: canvasserAggregates.totalLeadsSet,
-              leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-              leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
-              leadsClosed: canvasserAggregates.totalLeadsClosed,
-            }} 
-          />
+          <Collapsible open={conversionFunnelOpen} onOpenChange={setConversionFunnelOpen}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
+              {conversionFunnelOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+              <h3 className="font-heading font-semibold text-foreground">Team Conversion Funnel (YTD)</h3>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CanvasserConversionFunnel 
+                title="Team Conversion Funnel (YTD)"
+                data={{
+                  doorsKnocked: canvasserAggregates.totalDoorsKnocked,
+                  conversationsHad: canvasserAggregates.totalConversationsHad,
+                  leadsSet: canvasserAggregates.totalLeadsSet,
+                  leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+                  leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
+                  leadsClosed: canvasserAggregates.totalLeadsClosed,
+                }} 
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
-          {/* Canvasser Hours Tracker */}
+          <Collapsible open={hoursTrackerOpen} onOpenChange={setHoursTrackerOpen}>
           <div className="bg-card border border-border rounded-lg overflow-hidden mt-6">
             <div className="p-4 border-b border-border">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h3 className="text-lg font-heading text-foreground">Canvasser Hours Tracker</h3>
+                <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+                  {hoursTrackerOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                  <h3 className="text-lg font-heading text-foreground">Canvasser Hours Tracker</h3>
+                </CollapsibleTrigger>
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"

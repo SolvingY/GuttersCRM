@@ -4,7 +4,6 @@ import { Loader2, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
-import { WeeklyLeaderboardTable } from '@/components/dashboard/WeeklyLeaderboardTable';
 import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -33,17 +32,9 @@ interface SalesRepEntry {
   yearlyGoal: number;
   salesRank: string;
   contestsWon: number;
-}
-
-interface WeeklySalesEntry {
-  rank: number;
-  name: string;
-  userId: string;
-  approvedRevenue: number;
-  collections: number;
-  leads: number;
-  closedDeals: number;
-  pointsEarned: number;
+  contestPoints?: number;
+  wagerPoints?: number;
+  leads?: number;
 }
 
 
@@ -54,7 +45,7 @@ export default function AdminLeaderboards() {
   
   // Sales rep states
   const [salesYtdEntries, setSalesYtdEntries] = useState<SalesRepEntry[]>([]);
-  const [salesWeeklyEntries, setSalesWeeklyEntries] = useState<WeeklySalesEntry[]>([]);
+  const [salesWeeklyEntries, setSalesWeeklyEntries] = useState<SalesRepEntry[]>([]);
   const [salesLoading, setSalesLoading] = useState(true);
   
   // Canvasser states
@@ -261,42 +252,58 @@ export default function AdminLeaderboards() {
           return;
         }
 
-        // Filter out ineligible and hidden users
         const filteredWeekly = weeklyData.filter(w => eligibleUserIds.has(w.user_id) && !hiddenUserIds.has(w.user_id));
         const userIds = filteredWeekly.map(w => w.user_id);
         
-        const { data: profilesData } = userIds.length > 0 
-          ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
-          : { data: [] };
-        const { data: metricsData } = userIds.length > 0
-          ? await supabase.from('user_metrics').select('user_id, display_name').in('user_id', userIds)
-          : { data: [] };
+        // Fetch profiles, YTD enrichment, and contest wins in parallel
+        const [profilesRes, metricsRes, contestWinsRes] = await Promise.all([
+          userIds.length > 0 ? supabase.from('profiles').select('id, full_name').in('id', userIds) : { data: [] },
+          userIds.length > 0 ? supabase.from('user_metrics').select('user_id, display_name, sales_rank, yearly_goal, contest_points, wager_points').in('user_id', userIds) : { data: [] },
+          supabase.from('contests').select('winner_user_id').not('winner_user_id', 'is', null),
+        ]);
 
-        const profilesMap = new Map<string, string | null>(profilesData?.map(p => [p.id, p.full_name] as [string, string | null]) || []);
-        const displayNameMap = new Map<string, string | null>();
-        metricsData?.forEach(m => {
-          if (m.display_name && !displayNameMap.has(m.user_id)) {
-            displayNameMap.set(m.user_id, m.display_name);
+        const profilesMap = new Map<string, string | null>(
+          (profilesRes.data || []).map((p: any) => [p.id, p.full_name] as [string, string | null])
+        );
+        const ytdMap = new Map<string, { displayName: string | null; salesRank: string; yearlyGoal: number; contestPoints: number; wagerPoints: number }>();
+        (metricsRes.data || []).forEach((m: any) => {
+          if (!ytdMap.has(m.user_id)) {
+            ytdMap.set(m.user_id, {
+              displayName: m.display_name,
+              salesRank: m.sales_rank || 'SR1',
+              yearlyGoal: Number(m.yearly_goal) || 0,
+              contestPoints: Number(m.contest_points) || 0,
+              wagerPoints: Number(m.wager_points) || 0,
+            });
           }
+        });
+        const contestWinsMap = new Map<string, number>();
+        (contestWinsRes.data || []).forEach((c: any) => {
+          const current = contestWinsMap.get(c.winner_user_id!) || 0;
+          contestWinsMap.set(c.winner_user_id!, current + 1);
         });
 
         const sorted = filteredWeekly
-          .map(w => ({
-            userId: w.user_id,
-            approvedRevenue: Number(w.approved_revenue) || 0,
-            collections: Number(w.collections) || 0,
-            leads: Number(w.leads) || 0,
-            closedDeals: (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
-            pointsEarned: Number(w.points_earned) || 0,
-            name: String(displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User'),
-          }))
-          // Filter out users with zero metrics for weekly
+          .map(w => {
+            const ytd = ytdMap.get(w.user_id) || { displayName: null, salesRank: 'SR1', yearlyGoal: 0, contestPoints: 0, wagerPoints: 0 };
+            return {
+              userId: w.user_id,
+              approvedRevenue: Number(w.approved_revenue) || 0,
+              collections: Number(w.collections) || 0,
+              leads: Number(w.leads) || 0,
+              closedDeals: (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
+              points: Number(w.points_earned) || 0,
+              name: String(ytd.displayName || profilesMap.get(w.user_id) || 'Unknown User'),
+              salesRank: ytd.salesRank,
+              yearlyGoal: ytd.yearlyGoal,
+              contestsWon: contestWinsMap.get(w.user_id) || 0,
+              contestPoints: ytd.contestPoints,
+              wagerPoints: ytd.wagerPoints,
+            };
+          })
           .filter(entry => 
-            entry.approvedRevenue > 0 || 
-            entry.collections > 0 || 
-            entry.leads > 0 || 
-            entry.closedDeals > 0 || 
-            entry.pointsEarned > 0
+            entry.approvedRevenue > 0 || entry.collections > 0 || entry.leads > 0 || 
+            entry.closedDeals > 0 || entry.points > 0
           )
           .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
@@ -334,34 +341,56 @@ export default function AdminLeaderboards() {
         });
 
         const userIds = Array.from(aggregated.keys());
-        const { data: profilesData } = userIds.length > 0 
-          ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
-          : { data: [] };
-        const { data: metricsData } = userIds.length > 0
-          ? await supabase.from('user_metrics').select('user_id, display_name').in('user_id', userIds)
-          : { data: [] };
 
-        const profilesMap = new Map<string, string | null>(profilesData?.map(p => [p.id, p.full_name] as [string, string | null]) || []);
-        const displayNameMap = new Map<string, string | null>();
-        metricsData?.forEach(m => {
-          if (m.display_name && !displayNameMap.has(m.user_id)) {
-            displayNameMap.set(m.user_id, m.display_name);
+        // Fetch YTD enrichment data
+        const [profilesRes, metricsRes, contestWinsRes] = await Promise.all([
+          userIds.length > 0 ? supabase.from('profiles').select('id, full_name').in('id', userIds) : { data: [] },
+          userIds.length > 0 ? supabase.from('user_metrics').select('user_id, display_name, sales_rank, yearly_goal, contest_points, wager_points').in('user_id', userIds) : { data: [] },
+          supabase.from('contests').select('winner_user_id').not('winner_user_id', 'is', null),
+        ]);
+
+        const profilesMap = new Map<string, string | null>(
+          (profilesRes.data || []).map((p: any) => [p.id, p.full_name] as [string, string | null])
+        );
+        const ytdMap = new Map<string, { displayName: string | null; salesRank: string; yearlyGoal: number; contestPoints: number; wagerPoints: number }>();
+        (metricsRes.data || []).forEach((m: any) => {
+          if (!ytdMap.has(m.user_id)) {
+            ytdMap.set(m.user_id, {
+              displayName: m.display_name,
+              salesRank: m.sales_rank || 'SR1',
+              yearlyGoal: Number(m.yearly_goal) || 0,
+              contestPoints: Number(m.contest_points) || 0,
+              wagerPoints: Number(m.wager_points) || 0,
+            });
           }
+        });
+        const contestWinsMap = new Map<string, number>();
+        (contestWinsRes.data || []).forEach((c: any) => {
+          const current = contestWinsMap.get(c.winner_user_id!) || 0;
+          contestWinsMap.set(c.winner_user_id!, current + 1);
         });
 
         const sorted = Array.from(aggregated.entries())
-          .map(([userId, data]) => ({
-            userId,
-            ...data,
-            name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
-          }))
-          // Filter out users with zero metrics for monthly
+          .map(([userId, data]) => {
+            const ytd = ytdMap.get(userId) || { displayName: null, salesRank: 'SR1', yearlyGoal: 0, contestPoints: 0, wagerPoints: 0 };
+            return {
+              userId,
+              approvedRevenue: data.approvedRevenue,
+              collections: data.collections,
+              leads: data.leads,
+              closedDeals: data.closedDeals,
+              points: data.pointsEarned,
+              name: String(ytd.displayName || profilesMap.get(userId) || 'Unknown User'),
+              salesRank: ytd.salesRank,
+              yearlyGoal: ytd.yearlyGoal,
+              contestsWon: contestWinsMap.get(userId) || 0,
+              contestPoints: ytd.contestPoints,
+              wagerPoints: ytd.wagerPoints,
+            };
+          })
           .filter(entry => 
-            entry.approvedRevenue > 0 || 
-            entry.collections > 0 || 
-            entry.leads > 0 || 
-            entry.closedDeals > 0 || 
-            entry.pointsEarned > 0
+            entry.approvedRevenue > 0 || entry.collections > 0 || entry.leads > 0 || 
+            entry.closedDeals > 0 || entry.points > 0
           )
           .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
           .map((entry, index) => ({ ...entry, rank: index + 1 }));
@@ -906,7 +935,7 @@ export default function AdminLeaderboards() {
               ) : timeFrame === 'yearly' ? (
                 <LeaderboardTable entries={salesYtdEntries} />
               ) : (
-                <WeeklyLeaderboardTable entries={salesWeeklyEntries} />
+                <LeaderboardTable entries={salesWeeklyEntries} />
               )}
             </TabsContent>
 
