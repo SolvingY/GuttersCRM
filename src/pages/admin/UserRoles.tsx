@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound } from 'lucide-react';
+import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { EditUserRoleModal } from '@/components/admin/EditUserRoleModal';
 import { SetPasswordModal } from '@/components/admin/SetPasswordModal';
 import { format } from 'date-fns';
@@ -53,53 +63,44 @@ export default function UserRoles() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordUser, setPasswordUser] = useState<UserWithRole | null>(null);
+  const [editEmailDialogOpen, setEditEmailDialogOpen] = useState(false);
+  const [editEmailUser, setEditEmailUser] = useState<UserWithRole | null>(null);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Fetch profiles with archive status and hidden_from_leaderboard
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('id, full_name, is_archived, archived_at, hidden_from_leaderboard');
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch users',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to fetch users', variant: 'destructive' });
       setLoading(false);
       return;
     }
 
-    // Fetch ALL roles (users can now have multiple)
     const { data: rolesData, error: rolesError } = await supabase
       .from('user_roles')
       .select('user_id, role');
 
     if (rolesError) {
       console.error('Error fetching roles:', rolesError);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch user roles',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to fetch user roles', variant: 'destructive' });
       setLoading(false);
       return;
     }
 
-    // Fetch user_metrics for sales rep ranks
     const { data: userMetricsData } = await supabase
       .from('user_metrics')
       .select('user_id, sales_rank');
 
-    // Fetch canvasser_metrics for canvasser ranks
     const { data: canvasserMetricsData } = await supabase
       .from('canvasser_metrics')
       .select('user_id, canvasser_rank');
 
-    // Build a map of user_id -> array of roles
     const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser' | 'supplementer')[]>();
     for (const r of rolesData || []) {
       const existing = rolesMap.get(r.user_id) || [];
@@ -110,24 +111,36 @@ export default function UserRoles() {
     const salesRankMap = new Map(userMetricsData?.map(m => [m.user_id, m.sales_rank]) || []);
     const canvasserRankMap = new Map(canvasserMetricsData?.map(m => [m.user_id, m.canvasser_rank]) || []);
 
-    const combined: UserWithRole[] = (profilesData || []).map(profile => {
-      const roles = rolesMap.get(profile.id) || ['user'];
-      
-      return {
-        id: profile.id,
-        email: null, // Email fetched from edge function when needed
-        fullName: profile.full_name,
-        roles,
-        salesRank: salesRankMap.get(profile.id) || 'SR1',
-        canvasserRank: canvasserRankMap.get(profile.id) || 'C1',
-        isArchived: profile.is_archived || false,
-        archivedAt: profile.archived_at,
-        hiddenFromLeaderboard: (profile as any).hidden_from_leaderboard || false,
-      };
-    });
+    const combined: UserWithRole[] = (profilesData || []).map(profile => ({
+      id: profile.id,
+      email: null,
+      fullName: profile.full_name,
+      roles: rolesMap.get(profile.id) || ['user'],
+      salesRank: salesRankMap.get(profile.id) || 'SR1',
+      canvasserRank: canvasserRankMap.get(profile.id) || 'C1',
+      isArchived: profile.is_archived || false,
+      archivedAt: profile.archived_at,
+      hiddenFromLeaderboard: (profile as any).hidden_from_leaderboard || false,
+    }));
 
-    // Sort alphabetically by name
     combined.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+
+    // Fetch emails from edge function
+    const userIds = combined.map(u => u.id);
+    if (userIds.length > 0) {
+      try {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('admin-manage-user', {
+          body: { action: 'fetch-emails', userIds },
+        });
+        if (!emailError && emailData?.emailMap) {
+          for (const u of combined) {
+            u.email = emailData.emailMap[u.id] || null;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching emails:', err);
+      }
+    }
 
     setUsers(combined);
     setLoading(false);
@@ -145,29 +158,17 @@ export default function UserRoles() {
 
   const handleArchive = async () => {
     if (!targetUser) return;
-    
     setActionLoading(targetUser.id);
     try {
       const response = await supabase.functions.invoke('admin-manage-user', {
         body: { action: 'archive', targetUserId: targetUser.id },
       });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to archive user');
-      }
-
-      toast({
-        title: 'User Archived',
-        description: `${targetUser.fullName || 'User'} has been archived and can no longer log in.`,
-      });
+      if (response.error) throw new Error(response.error.message || 'Failed to archive user');
+      toast({ title: 'User Archived', description: `${targetUser.fullName || 'User'} has been archived and can no longer log in.` });
       fetchUsers();
     } catch (error) {
       console.error('Error archiving user:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to archive user',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to archive user', variant: 'destructive' });
     } finally {
       setActionLoading(null);
       setArchiveDialogOpen(false);
@@ -181,23 +182,12 @@ export default function UserRoles() {
       const response = await supabase.functions.invoke('admin-manage-user', {
         body: { action: 'unarchive', targetUserId: user.id },
       });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to unarchive user');
-      }
-
-      toast({
-        title: 'User Restored',
-        description: `${user.fullName || 'User'} has been restored and can now log in again.`,
-      });
+      if (response.error) throw new Error(response.error.message || 'Failed to unarchive user');
+      toast({ title: 'User Restored', description: `${user.fullName || 'User'} has been restored and can now log in again.` });
       fetchUsers();
     } catch (error) {
       console.error('Error unarchiving user:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to restore user',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to restore user', variant: 'destructive' });
     } finally {
       setActionLoading(null);
     }
@@ -205,29 +195,17 @@ export default function UserRoles() {
 
   const handleDelete = async () => {
     if (!targetUser) return;
-    
     setActionLoading(targetUser.id);
     try {
       const response = await supabase.functions.invoke('admin-manage-user', {
         body: { action: 'delete', targetUserId: targetUser.id },
       });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to delete user');
-      }
-
-      toast({
-        title: 'User Deleted',
-        description: `${targetUser.fullName || 'User'} has been permanently deleted.`,
-      });
+      if (response.error) throw new Error(response.error.message || 'Failed to delete user');
+      toast({ title: 'User Deleted', description: `${targetUser.fullName || 'User'} has been permanently deleted.` });
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete user',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete user', variant: 'destructive' });
     } finally {
       setActionLoading(null);
       setDeleteDialogOpen(false);
@@ -235,58 +213,52 @@ export default function UserRoles() {
     }
   };
 
-
-  const getRoleBadges = (roles: string[]) => {
-    return (
-      <div className="flex flex-wrap gap-1">
-        {roles.includes('admin') && (
-          <Badge variant="destructive">Admin</Badge>
-        )}
-        {roles.includes('user') && (
-          <Badge variant="secondary">Sales Rep</Badge>
-        )}
-        {roles.includes('canvasser') && (
-          <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>
-        )}
-        {roles.includes('supplementer') && (
-          <Badge className="bg-accent text-accent-foreground">Supplementer</Badge>
-        )}
-      </div>
-    );
+  const handleUpdateEmail = async () => {
+    if (!editEmailUser || !newEmail.trim()) return;
+    setEmailSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: { action: 'update-email', targetUserId: editEmailUser.id, newEmail: newEmail.trim() },
+      });
+      if (error) throw new Error(error.message || 'Failed to update email');
+      toast({ title: 'Email Updated', description: `Email updated for ${editEmailUser.fullName || 'user'}.` });
+      setEditEmailDialogOpen(false);
+      setEditEmailUser(null);
+      setNewEmail('');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating email:', error);
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to update email', variant: 'destructive' });
+    } finally {
+      setEmailSaving(false);
+    }
   };
+
+  const getRoleBadges = (roles: string[]) => (
+    <div className="flex flex-wrap gap-1">
+      {roles.includes('admin') && <Badge variant="destructive">Admin</Badge>}
+      {roles.includes('user') && <Badge variant="secondary">Sales Rep</Badge>}
+      {roles.includes('canvasser') && <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>}
+      {roles.includes('supplementer') && <Badge className="bg-accent text-accent-foreground">Supplementer</Badge>}
+    </div>
+  );
 
   const getRankDisplay = (user: UserWithRole) => {
     const ranks: string[] = [];
-    
-    // Admin-only users don't have ranks
     if (user.roles.length === 1 && user.roles.includes('admin')) {
       return <span className="text-muted-foreground">—</span>;
     }
-    
-    if (user.roles.includes('user')) {
-      ranks.push(user.salesRank || 'SR1');
-    }
-    if (user.roles.includes('canvasser')) {
-      ranks.push(user.canvasserRank || 'C1');
-    }
-    
-    if (ranks.length === 0) {
-      return <span className="text-muted-foreground">—</span>;
-    }
-    
+    if (user.roles.includes('user')) ranks.push(user.salesRank || 'SR1');
+    if (user.roles.includes('canvasser')) ranks.push(user.canvasserRank || 'C1');
+    if (ranks.length === 0) return <span className="text-muted-foreground">—</span>;
     return (
       <div className="flex flex-wrap gap-1">
-        {ranks.map((rank, idx) => (
-          <Badge key={idx} variant="outline">{rank}</Badge>
-        ))}
+        {ranks.map((rank, idx) => <Badge key={idx} variant="outline">{rank}</Badge>)}
       </div>
     );
   };
 
-  // All users can be edited now (including admin-only to toggle admin status)
-  const canEditUser = (_user: UserWithRole) => {
-    return true;
-  };
+  const canEditUser = (_user: UserWithRole) => true;
 
   const filteredUsers = users.filter(u => 
     activeTab === 'active' ? !u.isArchived : u.isArchived
@@ -325,6 +297,7 @@ export default function UserRoles() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Roles</TableHead>
                   <TableHead>Ranks</TableHead>
                   {activeTab === 'archived' && <TableHead>Archived</TableHead>}
@@ -334,7 +307,7 @@ export default function UserRoles() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={activeTab === 'archived' ? 5 : 4} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={activeTab === 'archived' ? 6 : 5} className="text-center text-muted-foreground py-8">
                       {activeTab === 'active' ? 'No active users found' : 'No archived users'}
                     </TableCell>
                   </TableRow>
@@ -343,6 +316,27 @@ export default function UserRoles() {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         {user.fullName || 'Unknown User'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                            {user.email || '—'}
+                          </span>
+                          {user.email && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setEditEmailUser(user);
+                                setNewEmail(user.email || '');
+                                setEditEmailDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{getRoleBadges(user.roles)}</TableCell>
                       <TableCell>{getRankDisplay(user)}</TableCell>
@@ -355,97 +349,32 @@ export default function UserRoles() {
                         <div className="flex items-center justify-end gap-1">
                           {canEditUser(user) && activeTab === 'active' && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingUser(user);
-                                  setEditModalOpen(true);
-                                }}
-                                disabled={actionLoading === user.id}
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => { setEditingUser(user); setEditModalOpen(true); }} disabled={actionLoading === user.id}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setTargetUser(user);
-                                  setArchiveDialogOpen(true);
-                                }}
-                                disabled={actionLoading === user.id}
-                              >
-                                {actionLoading === user.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Archive className="h-4 w-4" />
-                                )}
+                              <Button variant="ghost" size="sm" onClick={() => { setTargetUser(user); setArchiveDialogOpen(true); }} disabled={actionLoading === user.id}>
+                                {actionLoading === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setPasswordUser(user);
-                                  setPasswordModalOpen(true);
-                                }}
-                                disabled={actionLoading === user.id}
-                                title="Set password"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => { setPasswordUser(user); setPasswordModalOpen(true); }} disabled={actionLoading === user.id} title="Set password">
                                 <KeyRound className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  setTargetUser(user);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                disabled={actionLoading === user.id}
-                              >
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setTargetUser(user); setDeleteDialogOpen(true); }} disabled={actionLoading === user.id}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
                           )}
                           {activeTab === 'archived' && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleUnarchive(user)}
-                                disabled={actionLoading === user.id}
-                              >
-                                {actionLoading === user.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <ArchiveRestore className="h-4 w-4" />
-                                )}
+                              <Button variant="ghost" size="sm" onClick={() => handleUnarchive(user)} disabled={actionLoading === user.id}>
+                                {actionLoading === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArchiveRestore className="h-4 w-4" />}
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  setTargetUser(user);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                disabled={actionLoading === user.id}
-                              >
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setTargetUser(user); setDeleteDialogOpen(true); }} disabled={actionLoading === user.id}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyUserId(user.id)}
-                            className="text-xs"
-                          >
-                            {copiedId === user.id ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
+                          <Button variant="ghost" size="sm" onClick={() => copyUserId(user.id)} className="text-xs">
+                            {copiedId === user.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                           </Button>
                         </div>
                       </TableCell>
@@ -459,12 +388,7 @@ export default function UserRoles() {
       </Tabs>
 
       {/* Edit Role Modal */}
-      <EditUserRoleModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        user={editingUser}
-        onSuccess={fetchUsers}
-      />
+      <EditUserRoleModal open={editModalOpen} onOpenChange={setEditModalOpen} user={editingUser} onSuccess={fetchUsers} />
 
       {/* Archive Confirmation Dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
@@ -511,10 +435,7 @@ export default function UserRoles() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -522,11 +443,42 @@ export default function UserRoles() {
       </AlertDialog>
 
       {/* Set Password Modal */}
-      <SetPasswordModal
-        open={passwordModalOpen}
-        onOpenChange={setPasswordModalOpen}
-        user={passwordUser}
-      />
+      <SetPasswordModal open={passwordModalOpen} onOpenChange={setPasswordModalOpen} user={passwordUser} />
+
+      {/* Edit Email Dialog */}
+      <Dialog open={editEmailDialogOpen} onOpenChange={setEditEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Email</DialogTitle>
+            <DialogDescription>
+              Change the email address for <strong>{editEmailUser?.fullName || 'this user'}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="current-email">Current Email</Label>
+              <Input id="current-email" value={editEmailUser?.email || ''} disabled className="bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-email">New Email</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="Enter new email address"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEmailDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateEmail} disabled={emailSaving || !newEmail.trim() || newEmail === editEmailUser?.email}>
+              {emailSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

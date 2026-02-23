@@ -57,19 +57,73 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { action, targetUserId, targetUserEmail, newPassword } = await req.json();
+    const body = await req.json();
+    const { action, targetUserId, targetUserEmail, newPassword, userIds, newEmail } = body;
     
-    if (!targetUserId || !action) {
+    if (!action) {
       return new Response(
-        JSON.stringify({ error: "Missing targetUserId or action" }),
+        JSON.stringify({ error: "Missing action" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!["archive", "unarchive", "delete", "reset-password", "set-password"].includes(action)) {
+    if (!["archive", "unarchive", "delete", "reset-password", "set-password", "fetch-emails", "update-email"].includes(action)) {
       return new Response(
-        JSON.stringify({ error: "Invalid action. Must be 'archive', 'unarchive', 'delete', 'reset-password', or 'set-password'" }),
+        JSON.stringify({ error: "Invalid action" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle fetch-emails (doesn't need targetUserId)
+    if (action === "fetch-emails") {
+      if (!userIds || !Array.isArray(userIds)) {
+        return new Response(
+          JSON.stringify({ error: "Missing userIds array" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const emailMap: Record<string, string> = {};
+      for (const uid of userIds) {
+        const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
+        if (data?.user?.email) emailMap[uid] = data.user.email;
+      }
+      return new Response(
+        JSON.stringify({ emailMap }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // All other actions require targetUserId
+    if (!targetUserId) {
+      return new Response(
+        JSON.stringify({ error: "Missing targetUserId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle update-email (allowed on any user including admins)
+    if (action === "update-email") {
+      if (!newEmail || typeof newEmail !== "string") {
+        return new Response(
+          JSON.stringify({ error: "Missing or invalid newEmail" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        targetUserId,
+        { email: newEmail }
+      );
+      if (updateError) {
+        console.error("Update email error:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update email" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log(`Email updated for user ${targetUserId} by admin ${user.id}`);
+      return new Response(
+        JSON.stringify({ success: true, action: "update-email" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
