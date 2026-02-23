@@ -9,6 +9,7 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown,
   X, 
   Menu,
   ArrowLeft,
@@ -30,28 +31,170 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { NewApplicantsModal } from '@/components/admin/NewApplicantsModal';
 import { getScoreColor } from '@/lib/dnaAssessment';
 import nextGenLogo from '@/assets/next-gen-logo.png';
+import type { LucideIcon } from 'lucide-react';
 
-const adminNavItems = [
-  { icon: Users, label: 'Master Overview', path: '/admin/overview' },
-  { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
-  { icon: Target, label: 'Company Goals', path: '/admin/goals' },
-  { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
-  { icon: UserCog, label: 'User Roles', path: '/admin/users' },
-  { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
-  { icon: Trophy, label: 'Contests', path: '/admin/contests' },
-  { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
-  { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
-  { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
-  { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
-  { icon: Users, label: 'Contractor Mgmt', path: '/admin/team' },
-  { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
+interface NavItem {
+  icon: LucideIcon;
+  label: string;
+  path: string;
+}
+
+interface NavGroup {
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+}
+
+const adminNavGroups: NavGroup[] = [
+  {
+    label: 'Master Overview',
+    icon: BarChart3,
+    items: [
+      { icon: Users, label: 'Master Overview', path: '/admin/overview' },
+      { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
+      { icon: Target, label: 'Company Goals', path: '/admin/goals' },
+      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
+      { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
+    ],
+  },
+  {
+    label: 'HR Management',
+    icon: UserCog,
+    items: [
+      { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
+      { icon: UserCog, label: 'User Roles', path: '/admin/users' },
+      { icon: Users, label: 'Contractor Mgmt', path: '/admin/team' },
+      { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
+    ],
+  },
+  {
+    label: 'Leads & Sales',
+    icon: ClipboardList,
+    items: [
+      { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
+    ],
+  },
+  {
+    label: 'Competitions & Tracking',
+    icon: Trophy,
+    items: [
+      { icon: Trophy, label: 'Contests', path: '/admin/contests' },
+      { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
+      { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
+    ],
+  },
 ];
+
+function getItemBadge(path: string, newCount: number, newLeadsCount: number) {
+  if (path === '/admin/applicants' && newCount > 0) return newCount;
+  if (path === '/admin/leads' && newLeadsCount > 0) return newLeadsCount;
+  return 0;
+}
+
+function getGroupBadge(group: NavGroup, newCount: number, newLeadsCount: number) {
+  let count = 0;
+  for (const item of group.items) {
+    count += getItemBadge(item.path, newCount, newLeadsCount);
+  }
+  return count;
+}
+
+function groupContainsPath(group: NavGroup, pathname: string) {
+  return group.items.some((item) => pathname === item.path);
+}
+
+// -- Sidebar nav group (desktop expanded + mobile) --
+function SidebarNavGroup({
+  group,
+  pathname,
+  newCount,
+  newLeadsCount,
+  onNavigate,
+}: {
+  group: NavGroup;
+  pathname: string;
+  newCount: number;
+  newLeadsCount: number;
+  onNavigate?: () => void;
+}) {
+  const containsActive = groupContainsPath(group, pathname);
+  const [open, setOpen] = useState(containsActive);
+  const badge = getGroupBadge(group, newCount, newLeadsCount);
+
+  // Auto-expand when active route changes into this group
+  useEffect(() => {
+    if (containsActive) setOpen(true);
+  }, [containsActive]);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          className={cn(
+            'flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-medium transition-colors',
+            'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+          )}
+        >
+          <group.icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">{group.label}</span>
+          {badge > 0 && (
+            <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+              {badge}
+            </span>
+          )}
+          <ChevronDown
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pl-4 space-y-0.5 mt-0.5">
+          {group.items.map((item) => {
+            const isActive = pathname === item.path;
+            const itemBadge = getItemBadge(item.path, newCount, newLeadsCount);
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={onNavigate}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                  isActive
+                    ? 'bg-background text-foreground'
+                    : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 flex items-center justify-between">
+                  {item.label}
+                  {itemBadge > 0 && (
+                    <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
+                      {itemBadge}
+                    </span>
+                  )}
+                </span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth();
@@ -62,7 +205,7 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
 
-  // Track login on mount — sessionStorage guard prevents duplicate counts on auth refresh
+  // Track login on mount
   useEffect(() => {
     if (!user) return;
     const today = new Date().toISOString().slice(0, 10);
@@ -106,11 +249,7 @@ export default function AdminLayout() {
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) {
-      toast({
-        title: 'Error signing out',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error signing out', description: error.message, variant: 'destructive' });
     } else {
       navigate('/');
     }
@@ -121,13 +260,7 @@ export default function AdminLayout() {
       {/* Header */}
       <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-3">
-          {/* Mobile hamburger menu */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 md:hidden text-foreground"
-            onClick={() => setMobileMenuOpen(true)}
-          >
+          <Button variant="ghost" size="icon" className="h-9 w-9 md:hidden text-foreground" onClick={() => setMobileMenuOpen(true)}>
             <Menu className="h-5 w-5" />
             <span className="sr-only">Open menu</span>
           </Button>
@@ -138,12 +271,7 @@ export default function AdminLayout() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/dashboard/stats')}
-            className="text-xs sm:text-sm"
-          >
+          <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/stats')} className="text-xs sm:text-sm">
             <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Back to</span> Dashboard
           </Button>
@@ -193,9 +321,7 @@ export default function AdminLayout() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem className="text-muted-foreground">
-                  {user.email}
-                </DropdownMenuItem>
+                <DropdownMenuItem className="text-muted-foreground">{user.email}</DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign out
@@ -209,23 +335,13 @@ export default function AdminLayout() {
       <div className="flex flex-1">
         {/* Mobile overlay */}
         {mobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
-            onClick={() => setMobileMenuOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in" onClick={() => setMobileMenuOpen(false)} />
         )}
 
         {/* Desktop sidebar */}
-        <aside
-          className={cn(
-            'bg-accent text-accent-foreground flex-col transition-all duration-300 hidden md:flex',
-            collapsed ? 'w-14' : 'w-56'
-          )}
-        >
+        <aside className={cn('bg-accent text-accent-foreground flex-col transition-all duration-300 hidden md:flex', collapsed ? 'w-14' : 'w-56')}>
           <div className="flex items-center justify-between p-3 border-b border-accent-foreground/10">
-            {!collapsed && (
-              <span className="text-sm font-heading uppercase tracking-wide">Admin Menu</span>
-            )}
+            {!collapsed && <span className="text-sm font-heading uppercase tracking-wide">Admin Menu</span>}
             <Button
               variant="ghost"
               size="icon"
@@ -236,39 +352,40 @@ export default function AdminLayout() {
             </Button>
           </div>
 
-          <nav className="flex-1 p-2 space-y-1">
-            {adminNavItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors',
-                    isActive
-                      ? 'bg-background text-foreground'
-                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && (
-                    <span className="flex-1 flex items-center justify-between">
-                      {item.label}
-                      {item.path === '/admin/applicants' && newCount > 0 && (
-                        <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                          {newCount}
+          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+            {collapsed
+              ? adminNavGroups.map((group) => {
+                  const badge = getGroupBadge(group, newCount, newLeadsCount);
+                  return (
+                    <button
+                      key={group.label}
+                      title={group.label}
+                      onClick={() => navigate(group.items[0].path)}
+                      className={cn(
+                        'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
+                        groupContainsPath(group, location.pathname)
+                          ? 'bg-background text-foreground'
+                          : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                      )}
+                    >
+                      <group.icon className="h-4 w-4" />
+                      {badge > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full text-[9px] flex items-center justify-center font-bold">
+                          {badge}
                         </span>
                       )}
-                      {item.path === '/admin/leads' && newLeadsCount > 0 && (
-                        <span className="w-5 h-5 bg-accent text-accent-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                          {newLeadsCount}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
+                    </button>
+                  );
+                })
+              : adminNavGroups.map((group) => (
+                  <SidebarNavGroup
+                    key={group.label}
+                    group={group}
+                    pathname={location.pathname}
+                    newCount={newCount}
+                    newLeadsCount={newLeadsCount}
+                  />
+                ))}
           </nav>
         </aside>
 
@@ -292,54 +409,24 @@ export default function AdminLayout() {
           </div>
 
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {adminNavItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-3 rounded-md text-sm transition-colors',
-                    isActive
-                      ? 'bg-background text-foreground'
-                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  <span className="flex-1 flex items-center justify-between">
-                    {item.label}
-                    {item.path === '/admin/applicants' && newCount > 0 && (
-                      <span className="w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                        {newCount}
-                      </span>
-                    )}
-                    {item.path === '/admin/leads' && newLeadsCount > 0 && (
-                      <span className="w-5 h-5 bg-accent text-accent-foreground rounded-full text-[10px] flex items-center justify-center font-bold">
-                        {newLeadsCount}
-                      </span>
-                    )}
-                  </span>
-                </NavLink>
-              );
-            })}
+            {adminNavGroups.map((group) => (
+              <SidebarNavGroup
+                key={group.label}
+                group={group}
+                pathname={location.pathname}
+                newCount={newCount}
+                newLeadsCount={newLeadsCount}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+            ))}
           </nav>
         </aside>
 
         {/* Main content with watermark */}
         <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto relative">
-          {/* Watermark background */}
-          <div 
-            className="absolute inset-0 pointer-events-none flex items-center justify-center"
-            style={{ zIndex: 0 }}
-          >
-            <img 
-              src={nextGenLogo} 
-              alt="" 
-              className="w-64 h-64 md:w-96 md:h-96 object-contain opacity-[0.04]"
-            />
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ zIndex: 0 }}>
+            <img src={nextGenLogo} alt="" className="w-64 h-64 md:w-96 md:h-96 object-contain opacity-[0.04]" />
           </div>
-          
           <div className="w-full max-w-7xl mx-auto relative z-10">
             <Outlet />
           </div>
