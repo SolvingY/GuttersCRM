@@ -2292,6 +2292,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_canvasser_lead_set: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       increment_login_count: { Args: { uid: string }; Returns: undefined }
       submit_quote_request: {
         Args: {

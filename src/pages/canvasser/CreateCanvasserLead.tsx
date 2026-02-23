@@ -187,6 +187,11 @@ export default function CreateCanvasserLead() {
         content: "Lead created by canvasser",
       });
 
+      // Auto-increment canvasser metrics (YTD, weekly, daily)
+      if (user?.id) {
+        await supabase.rpc("increment_canvasser_lead_set", { p_user_id: user.id });
+      }
+
       // Send email to homeowner if checked
       if (sendToHomeowner && email.trim()) {
         try {
