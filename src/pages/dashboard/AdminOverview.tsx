@@ -1101,87 +1101,6 @@ export default function AdminOverview() {
             }} 
           />
 
-          {canvassersNeedingAttention.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-                <h3 className="font-semibold text-red-600 dark:text-red-400">
-                  {canvassersNeedingAttention.length} Canvasser{canvassersNeedingAttention.length > 1 ? 's' : ''} Need{canvassersNeedingAttention.length === 1 ? 's' : ''} Attention
-                </h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Canvassers with conversion rate below 25% are highlighted below.
-              </p>
-            </div>
-          )}
-
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="p-4 border-b border-border">
-              <h3 className="text-lg font-heading text-foreground">Canvasser Performance</h3>
-            </div>
-            {canvasserDetails.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">No canvasser data available yet.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {canvasserDetails.map((canvasser) => {
-                      const attention = canvasserNeedsAttention(canvasser);
-                      return (
-                        <tr 
-                          key={canvasser.metricId}
-                          className={cn(
-                            "border-t border-border transition-colors",
-                            attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
-                          )}
-                        >
-                          <td className="py-3 px-4 text-foreground font-medium">
-                            <div className="flex items-center gap-2">
-                              {canvasser.name}
-                              {attention && (
-                                <Badge variant="destructive" className="text-xs">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
-                                  Attention
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
-                          <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
-                            {canvasser.conversionRate.toFixed(1)}%
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
           {/* Canvasser Hours Tracker */}
           <div className="bg-card border border-border rounded-lg overflow-hidden mt-6">
             <div className="p-4 border-b border-border">
@@ -1324,6 +1243,88 @@ export default function AdminOverview() {
               </div>
             )}
           </div>
+
+          {canvassersNeedingAttention.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <h3 className="font-semibold text-red-600 dark:text-red-400">
+                  {canvassersNeedingAttention.length} Canvasser{canvassersNeedingAttention.length > 1 ? 's' : ''} Need{canvassersNeedingAttention.length === 1 ? 's' : ''} Attention
+                </h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Canvassers with conversion rate below 25% are highlighted below.
+              </p>
+            </div>
+          )}
+
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-heading text-foreground">Canvasser Performance</h3>
+            </div>
+            {canvasserDetails.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-muted-foreground">No canvasser data available yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
+                      <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {canvasserDetails.map((canvasser) => {
+                      const attention = canvasserNeedsAttention(canvasser);
+                      return (
+                        <tr 
+                          key={canvasser.metricId}
+                          className={cn(
+                            "border-t border-border transition-colors",
+                            attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
+                          )}
+                        >
+                          <td className="py-3 px-4 text-foreground font-medium">
+                            <div className="flex items-center gap-2">
+                              {canvasser.name}
+                              {attention && (
+                                <Badge variant="destructive" className="text-xs">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Attention
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
+                          <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
+                            {canvasser.conversionRate.toFixed(1)}%
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
         </TabsContent>
       </Tabs>
 
