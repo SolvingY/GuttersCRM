@@ -208,9 +208,10 @@ export default function GutterContract({
 
   const handleSave = async () => {
     const isDraft = existingForm?.status === "draft";
+    const isFinalizing = !isDraft || !!customerSignature;
 
-    // Only require signature when finalizing (not when updating a draft)
-    if (!isDraft && !customerSignature) {
+    // Require signature when finalizing (not a pure draft-only update)
+    if (isFinalizing && !customerSignature) {
       toast({ title: "Signature required", description: "Customer must sign the contract.", variant: "destructive" });
       return;
     }
@@ -220,13 +221,14 @@ export default function GutterContract({
       const leadId = id || lead?.id;
 
       if (existingForm) {
-        if (isDraft) {
-          // Draft update: save form data only, keep status as draft
+        if (isDraft && !customerSignature) {
+          // Draft update without signature: save form data only, keep status as draft
           await supabase.from("lead_forms").update({
             form_data: formData,
             updated_at: new Date().toISOString(),
           }).eq("id", existingForm.id);
         } else {
+          // Finalizing: either was already non-draft, or draft with signature
           await supabase.from("lead_forms").update({
             form_data: formData,
             status: "signed",
@@ -249,19 +251,19 @@ export default function GutterContract({
         });
       }
 
-      if (!isDraft && lead && ["won", "approved"].includes(lead.status)) {
+      if (isFinalizing && lead && ["won", "approved"].includes(lead.status)) {
         await supabase.from("quote_requests").update({ status: "scheduled" }).eq("id", leadId);
       }
 
       await supabase.from("lead_activity_log").insert({
         lead_id: leadId,
         user_id: user?.id,
-        activity_type: isDraft ? "contract_updated" : "contract_signed",
-        content: isDraft ? "Contract draft updated" : `Contract signed in person by ${ownerName}`,
+        activity_type: isFinalizing ? "contract_signed" : "contract_updated",
+        content: isFinalizing ? `Contract signed in person by ${ownerName}` : "Contract draft updated",
       });
 
       // Auto-send confirmation email for in-person signing (non-draft)
-      if (!isDraft && emailField) {
+      if (isFinalizing && emailField) {
         const emailSent = await sendConfirmationEmail(ownerName, emailField);
         if (emailSent) {
           await supabase.from("lead_activity_log").insert({
@@ -273,7 +275,7 @@ export default function GutterContract({
         }
       }
 
-      toast({ title: isDraft ? "Contract draft updated" : "Contract saved successfully" });
+      toast({ title: isFinalizing ? "Contract saved successfully" : "Contract draft updated" });
       navigate(`/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -704,7 +706,7 @@ export default function GutterContract({
         <div className="space-y-3">
           <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="lg">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {existingForm ? "Update Contract" : "Sign & Save Contract"}
+            {existingForm && existingForm.status !== "draft" ? "Update Contract" : "Sign & Save Contract"}
           </Button>
 
           {lead && (
