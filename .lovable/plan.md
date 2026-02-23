@@ -1,50 +1,51 @@
 
 
-# Standardize Canvasser Leaderboard Columns Across All Views
+# Fix YTD Canvasser Leaderboard + Hours Total
 
-## Problem
-The YTD canvasser leaderboard (both canvasser portal and admin) uses a different table component (`CanvasserLeaderboardTable`) with Contracts Goal and % of Goal columns. The weekly/monthly views use `WeeklyCanvasserLeaderboardTable` with Close % and standard columns. All three timeframes should display identical metrics. The admin view should additionally show Hours.
+## Issues Found
+
+1. **Admin YTD query missing fields**: The select query on line 406 of `AdminLeaderboards.tsx` does not include `hours_worked` or `canvasser_rank`, so hours show as 0 and canvasser rank badges are blank.
+2. **Hours total shows dash**: The `WeeklyCanvasserLeaderboardTable` footer (line 184) displays a dash for the Hours column instead of summing up total hours.
+3. **Close % already present**: The `WeeklyCanvasserLeaderboardTable` already displays Close % for both individual rows and team totals -- this is working correctly on all views that use this component (including YTD in both portals).
 
 ## Changes
 
-### 1. CanvasserLeaderboard.tsx (Canvasser Portal)
+### 1. AdminLeaderboards.tsx -- Add missing fields to YTD query
 
-**Replace YTD table component**: Switch from `CanvasserLeaderboardTable` to `WeeklyCanvasserLeaderboardTable` for the YTD tab.
+**Line 406**: Add `hours_worked` and `canvasser_rank` to the canvasser_metrics select:
 
-**Update YTD fetch query** (line 101): Add `conversations_had`, `not_interested`, `cancelled_leads` to the select.
+```
+.select('user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, cancelled_leads, doors_knocked, hours_worked, canvasser_rank, yearly_goal, points, contest_points, wager_points')
+```
 
-**Remap YTD data** (lines 169-197): Map entries to `WeeklyCanvasserEntry` format with `pointsEarned` instead of `points`, and include `conversationsHad`, `notInterested`, `cancelledLeads`, `hoursWorked`.
+**Line 459-461**: Add `canvasserRank` to the entry mapping so the rank badge (C1, C2, etc.) displays under each canvasser's name:
 
-**Update YTD state type**: Change `ytdEntries` from `CanvasserEntry[]` to use the `WeeklyCanvasserEntry` type from the component.
+```
+doorsKnocked: (entry as any).doors_knocked || 0,
+hoursWorked: Number((entry as any).hours_worked) || 0,
+canvasserRank: (entry as any).canvasser_rank || undefined,
+pointsEarned: Number(entry.points) || 0,
+```
 
-**Update weekly fetch** (line 222): Add `cancelled_leads` to the select query and pass `cancelledLeads` through in the mapping.
+### 2. WeeklyCanvasserLeaderboardTable.tsx -- Sum total hours in footer
 
-**Update monthly aggregation** (lines 317-331): Add `cancelledLeads` to the initial value and aggregation logic.
+**Line 50-52**: Add `totalHours` to the totals calculation:
 
-**Remove unused import**: Remove `CanvasserLeaderboardTable` import and the local `CanvasserEntry` interface.
+```
+const totalHours = entries.reduce((sum, e) => sum + e.hoursWorked, 0);
+```
 
-### 2. AdminLeaderboards.tsx (Admin Portal)
+Include `totalHours` in the return object.
 
-**Replace YTD canvasser render** (line 954): Switch from `<CanvasserLeaderboardTable entries={canvasserYtdEntries} />` to `<WeeklyCanvasserLeaderboardTable entries={canvasserYtdEntries} showHours={true} />`.
+**Line 184**: Replace the dash with the actual total:
 
-**Update YTD canvasser state type** (line 91): Change from `CanvasserEntry[]` to `WeeklyCanvasserEntry[]` (already imported).
+Before: `{showHours && <td ...>---</td>}`
+After: `{showHours && <td ...>{totals.totalHours}</td>}`
 
-**Remap YTD data** (lines 481-500): Map to `WeeklyCanvasserEntry` format with `pointsEarned`, `hoursWorked`, `cancelledLeads`, etc. instead of `points`, `yearlyGoal`, `percentOfGoal`, etc.
+## Files Summary
 
-**Remove unused import**: Remove `CanvasserLeaderboardTable` import (line 8) and the local `CanvasserEntry` interface (lines 50-62).
-
-### No other files change
-The `WeeklyCanvasserLeaderboardTable` component already has all the correct columns (Doors, Convos, Not Int., Canceled, Leads Set, w/ Damage, w/o Damage, Closed, Close %, optionally Hours, Points) and correct team totals. No changes needed there.
-
-## Column Layout (All Views)
-
-**Canvasser Portal** (no hours): Place | Canvasser | Doors | Convos | Not Int. | Canceled | Leads Set | w/ Damage | w/o Damage | Closed | Close % | Points
-
-**Admin Portal** (with hours): Place | Canvasser | Doors | Convos | Not Int. | Canceled | Leads Set | w/ Damage | w/o Damage | Closed | Close % | Hours | Points
-
-## Technical Notes
-
-- YTD data comes from `canvasser_metrics` table (cumulative). The `points` field maps to `pointsEarned` and `hours_worked` maps to `hoursWorked` in the `WeeklyCanvasserEntry` interface.
-- Contest/wager points breakdown tooltip will continue to work since those fields are optional in the interface.
-- Team totals will calculate correctly across all views since `WeeklyCanvasserLeaderboardTable` already sums all columns including `cancelledLeads`.
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminLeaderboards.tsx` | Add `hours_worked`, `canvasser_rank` to YTD select; map `canvasserRank` in entry |
+| `src/components/dashboard/WeeklyCanvasserLeaderboardTable.tsx` | Sum total hours in footer instead of showing dash |
 
