@@ -900,6 +900,62 @@ export type Database = {
           },
         ]
       }
+      lead_forms: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          form_data: Json
+          form_type: string
+          id: string
+          lead_id: string | null
+          pdf_path: string | null
+          rep_signature_data: string | null
+          signature_data: string | null
+          signed_at: string | null
+          signed_by_name: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          form_data?: Json
+          form_type: string
+          id?: string
+          lead_id?: string | null
+          pdf_path?: string | null
+          rep_signature_data?: string | null
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          form_data?: Json
+          form_type?: string
+          id?: string
+          lead_id?: string | null
+          pdf_path?: string | null
+          rep_signature_data?: string | null
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_forms_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_payments: {
         Row: {
           amount: number
