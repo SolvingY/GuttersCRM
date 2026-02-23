@@ -12,6 +12,9 @@ export interface CanvasserLeaderboardEntry {
   leadsSet: number;
   leadsWithDamage: number;
   leadsWithoutDamage?: number;
+  conversationsHad?: number;
+  notInterested?: number;
+  cancelledLeads?: number;
   points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
@@ -27,7 +30,6 @@ interface CanvasserLeaderboardTableProps {
 }
 
 export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserLeaderboardTableProps) {
-  // Get row background color based on rank (consistent with weekly tables)
   const getRowColor = (rank: number) => {
     if (rank === 1) return 'bg-emerald-500 text-white';
     if (rank === 2) return 'bg-green-400 text-green-950';
@@ -44,14 +46,19 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
     return 'bg-red-500 text-white';
   };
 
-  // Calculate team totals
   const totals = useMemo(() => {
+    const totalDoors = entries.reduce((sum, e) => sum + (e.doorsKnocked || 0), 0);
+    const totalConvos = entries.reduce((sum, e) => sum + (e.conversationsHad || 0), 0);
+    const totalNotInterested = entries.reduce((sum, e) => sum + (e.notInterested || 0), 0);
+    const totalCancelled = entries.reduce((sum, e) => sum + (e.cancelledLeads || 0), 0);
     const totalLeadsSet = entries.reduce((sum, e) => sum + e.leadsSet, 0);
+    const totalWithDamage = entries.reduce((sum, e) => sum + e.leadsWithDamage, 0);
+    const totalWithoutDamage = entries.reduce((sum, e) => sum + (e.leadsWithoutDamage || 0), 0);
     const totalClosed = entries.reduce((sum, e) => sum + e.leadsClosed, 0);
     const closePercent = totalLeadsSet > 0 ? (totalClosed / totalLeadsSet) * 100 : 0;
-    const leadsPerContract = totalClosed > 0 ? totalLeadsSet / totalClosed : 0;
+    const totalPoints = entries.reduce((sum, e) => sum + (e.points || 0), 0);
     
-    return { totalLeadsSet, totalClosed, closePercent, leadsPerContract };
+    return { totalDoors, totalConvos, totalNotInterested, totalCancelled, totalLeadsSet, totalWithDamage, totalWithoutDamage, totalClosed, closePercent, totalPoints };
   }, [entries]);
 
   if (entries.length === 0) {
@@ -71,6 +78,9 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Place</th>
               <th className="text-left py-3 px-4 text-sm font-bold whitespace-nowrap">Canvasser</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Convos</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Not Int.</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
@@ -121,6 +131,9 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.conversationsHad || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.notInterested || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
@@ -163,10 +176,14 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
           </tbody>
           <tfoot className="bg-slate-700 text-white font-bold">
             <tr>
-              <td colSpan={3} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td colSpan={2} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td className="py-3 px-4 text-right">{totals.totalDoors}</td>
+              <td className="py-3 px-4 text-right">{totals.totalConvos}</td>
+              <td className="py-3 px-4 text-right">{totals.totalNotInterested}</td>
+              <td className="py-3 px-4 text-right">{totals.totalCancelled}</td>
               <td className="py-3 px-4 text-right">{totals.totalLeadsSet}</td>
-              <td className="py-3 px-4 text-right">—</td>
-              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">{totals.totalWithDamage}</td>
+              <td className="py-3 px-4 text-right">{totals.totalWithoutDamage}</td>
               <td className="py-3 px-4 text-right">{totals.totalClosed}</td>
               <td className="py-3 px-4 text-right">—</td>
               <td className="py-3 px-4 text-center">
@@ -177,11 +194,9 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                 ) : '—'}
               </td>
               <td className="py-3 px-4 text-right">
-                {totals.totalClosed > 0 ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
-                    {totals.leadsPerContract.toFixed(1)}:1
-                  </span>
-                ) : '—'}
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
+                  {totals.totalPoints.toLocaleString()}
+                </span>
               </td>
             </tr>
           </tfoot>

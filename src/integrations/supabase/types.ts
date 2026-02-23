@@ -103,6 +103,7 @@ export type Database = {
       }
       canvasser_metrics: {
         Row: {
+          cancelled_leads: number | null
           canvasser_rank: string | null
           contest_points: number | null
           conversations_had: number | null
@@ -128,6 +129,7 @@ export type Database = {
           yearly_goal: number | null
         }
         Insert: {
+          cancelled_leads?: number | null
           canvasser_rank?: string | null
           contest_points?: number | null
           conversations_had?: number | null
@@ -153,6 +155,7 @@ export type Database = {
           yearly_goal?: number | null
         }
         Update: {
+          cancelled_leads?: number | null
           canvasser_rank?: string | null
           contest_points?: number | null
           conversations_had?: number | null
@@ -449,6 +452,7 @@ export type Database = {
       }
       daily_canvasser_metric_entries: {
         Row: {
+          cancelled_leads_delta: number | null
           conversations_had_delta: number | null
           created_at: string
           doors_knocked_delta: number | null
@@ -469,6 +473,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancelled_leads_delta?: number | null
           conversations_had_delta?: number | null
           created_at?: string
           doors_knocked_delta?: number | null
@@ -489,6 +494,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancelled_leads_delta?: number | null
           conversations_had_delta?: number | null
           created_at?: string
           doors_knocked_delta?: number | null
@@ -1958,6 +1964,7 @@ export type Database = {
       }
       weekly_canvasser_metrics: {
         Row: {
+          cancelled_leads: number | null
           canvasser_rank: string | null
           conversations_had: number | null
           created_at: string
@@ -1978,6 +1985,7 @@ export type Database = {
           week_start: string
         }
         Insert: {
+          cancelled_leads?: number | null
           canvasser_rank?: string | null
           conversations_had?: number | null
           created_at?: string
@@ -1998,6 +2006,7 @@ export type Database = {
           week_start: string
         }
         Update: {
+          cancelled_leads?: number | null
           canvasser_rank?: string | null
           conversations_had?: number | null
           created_at?: string

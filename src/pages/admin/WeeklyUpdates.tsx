@@ -58,6 +58,7 @@ interface CanvasserWeeklyEntry {
   weeklyLeadsWithoutDamage: string;
   weeklyConversationsHad: string;
   weeklyNotInterested: string;
+  weeklyCancelledLeads: string;
   weeklyHoursWorked: string;
   weeklyIncome: string;
   weeklyDoorsKnocked: string;
@@ -191,6 +192,7 @@ export default function WeeklyUpdates() {
           weeklyLeadsWithoutDamage: '',
           weeklyConversationsHad: '',
           weeklyNotInterested: '',
+          weeklyCancelledLeads: '',
           weeklyHoursWorked: '',
           weeklyIncome: '',
           weeklyDoorsKnocked: '',
@@ -393,13 +395,14 @@ export default function WeeklyUpdates() {
         const weeklyLeadsWithoutDamage = parseInt(entry.weeklyLeadsWithoutDamage) || 0;
         const weeklyConversationsHad = parseInt(entry.weeklyConversationsHad) || 0;
         const weeklyNotInterested = parseInt(entry.weeklyNotInterested) || 0;
+        const weeklyCancelledLeads = parseInt(entry.weeklyCancelledLeads) || 0;
         const weeklyHoursWorked = parseFloat(entry.weeklyHoursWorked) || 0;
         const weeklyIncome = parseFloat(entry.weeklyIncome) || 0;
         const weeklyDoorsKnocked = parseInt(entry.weeklyDoorsKnocked) || 0;
 
         if (weeklyLeadsSet === 0 && weeklyLeadsClosed === 0 && weeklyLeadsWithDamage === 0 && 
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
-            weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) {
+            weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) {
           continue;
         }
 
@@ -423,6 +426,7 @@ export default function WeeklyUpdates() {
         const newLeadsWithoutDamage = (Number((currentMetrics as any).leads_without_damage) || 0) + weeklyLeadsWithoutDamage;
         const newConversationsHad = (Number((currentMetrics as any).conversations_had) || 0) + weeklyConversationsHad;
         const newNotInterested = (Number((currentMetrics as any).not_interested) || 0) + weeklyNotInterested;
+        const newCancelledLeads = (Number((currentMetrics as any).cancelled_leads) || 0) + weeklyCancelledLeads;
         const newHoursWorked = (Number((currentMetrics as any).hours_worked) || 0) + weeklyHoursWorked;
         const newIncome = (Number(currentMetrics.income) || 0) + weeklyIncome;
         const newDoorsKnocked = (Number((currentMetrics as any).doors_knocked) || 0) + weeklyDoorsKnocked;
@@ -436,11 +440,12 @@ export default function WeeklyUpdates() {
             leads_without_damage: newLeadsWithoutDamage,
             conversations_had: newConversationsHad,
             not_interested: newNotInterested,
+            cancelled_leads: newCancelledLeads,
             hours_worked: newHoursWorked,
             income: newIncome,
             doors_knocked: newDoorsKnocked,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('user_id', entry.userId);
 
         if (updateError) {
@@ -474,12 +479,13 @@ export default function WeeklyUpdates() {
           leads_without_damage: (Number(existingCanvasserWeekly?.leads_without_damage) || 0) + weeklyLeadsWithoutDamage,
           conversations_had: (Number(existingCanvasserWeekly?.conversations_had) || 0) + weeklyConversationsHad,
           not_interested: (Number(existingCanvasserWeekly?.not_interested) || 0) + weeklyNotInterested,
+          cancelled_leads: (Number((existingCanvasserWeekly as any)?.cancelled_leads) || 0) + weeklyCancelledLeads,
           hours_worked: (Number(existingCanvasserWeekly?.hours_worked) || 0) + weeklyHoursWorked,
           income: (Number(existingCanvasserWeekly?.income) || 0) + weeklyIncome,
           doors_knocked: (Number(existingCanvasserWeekly?.doors_knocked) || 0) + weeklyDoorsKnocked,
           points_earned: canvasserPoints,
           updated_at: new Date().toISOString(),
-        };
+        } as any;
 
         // Upsert with compounded values
         const { error: weeklyError } = await supabase
@@ -506,11 +512,12 @@ export default function WeeklyUpdates() {
             leads_without_damage_delta: weeklyLeadsWithoutDamage,
             conversations_had_delta: weeklyConversationsHad,
             not_interested_delta: weeklyNotInterested,
+            cancelled_leads_delta: weeklyCancelledLeads,
             doors_knocked_delta: weeklyDoorsKnocked,
             income_delta: weeklyIncome,
             entered_by: authUser.user?.id,
             updated_at: new Date().toISOString(),
-          }, {
+          } as any, {
             onConflict: 'user_id,entry_date',
           });
 
@@ -626,6 +633,7 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithoutDamage: '',
             weeklyConversationsHad: '',
             weeklyNotInterested: '',
+            weeklyCancelledLeads: '',
             weeklyHoursWorked: '',
             weeklyIncome: '',
             weeklyDoorsKnocked: '',
@@ -862,7 +870,7 @@ export default function WeeklyUpdates() {
               ) : (
               <div className="space-y-4">
                   {/* Header row - hidden on mobile */}
-                  <div className="hidden lg:grid lg:grid-cols-11 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
+                  <div className="hidden lg:grid lg:grid-cols-12 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
                     <div>Team Member</div>
                     <div>Leads Set</div>
                     <div>Leads Closed</div>
@@ -870,13 +878,14 @@ export default function WeeklyUpdates() {
                     <div>w/o Damage</div>
                     <div>Convos</div>
                     <div>Not Int.</div>
+                    <div>Canceled</div>
                     <div>Hours</div>
                     <div>Doors</div>
                     <div>Income ($)</div>
                   </div>
 
                   {canvasserEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-11 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
+                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
                       <div className="font-medium text-foreground text-sm">
                         {entry.displayName}
                       </div>
@@ -945,6 +954,17 @@ export default function WeeklyUpdates() {
                             placeholder="0"
                             value={entry.weeklyNotInterested}
                             onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyNotInterested', e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground lg:hidden">Canceled</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={entry.weeklyCancelledLeads}
+                            onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyCancelledLeads', e.target.value)}
                             className="h-8 text-sm"
                           />
                         </div>

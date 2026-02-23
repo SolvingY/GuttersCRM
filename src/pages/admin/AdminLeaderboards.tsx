@@ -433,7 +433,7 @@ export default function AdminLeaderboards() {
 
       const { data } = await supabase
         .from('canvasser_metrics')
-        .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, yearly_goal, points')
+        .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, cancelled_leads, doors_knocked, yearly_goal, points, contest_points, wager_points')
         .order('leads_closed', { ascending: false });
 
       if (!data || data.length === 0) {
@@ -486,10 +486,17 @@ export default function AdminLeaderboards() {
             leadsClosed,
             leadsSet: entry.leads_set || 0,
             leadsWithDamage: entry.leads_with_damage || 0,
+            leadsWithoutDamage: (entry as any).leads_without_damage || 0,
+            conversationsHad: (entry as any).conversations_had || 0,
+            notInterested: (entry as any).not_interested || 0,
+            cancelledLeads: (entry as any).cancelled_leads || 0,
+            doorsKnocked: (entry as any).doors_knocked || 0,
             points: Number(entry.points) || 0,
             amountUntilGoal,
             percentOfGoal,
             contestsWon: contestWins.get(entry.user_id) || 0,
+            contestPoints: (entry as any).contest_points || 0,
+            wagerPoints: (entry as any).wager_points || 0,
           };
         });
 
@@ -674,7 +681,7 @@ export default function AdminLeaderboards() {
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned')
           .eq('week_start', weekStartStr);
 
         if (!weeklyData || weeklyData.length === 0) {
@@ -711,6 +718,7 @@ export default function AdminLeaderboards() {
             leadsClosed: Number(w.leads_closed) || 0,
             conversationsHad: Number(w.conversations_had) || 0,
             notInterested: Number(w.not_interested) || 0,
+            cancelledLeads: Number((w as any).cancelled_leads) || 0,
             hoursWorked: Number(w.hours_worked) || 0,
             doorsKnocked: Number(w.doors_knocked) || 0,
             pointsEarned: Number(w.points_earned) || 0,
@@ -746,7 +754,7 @@ export default function AdminLeaderboards() {
 
         const { data: weeklyData } = await supabase
           .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, hours_worked, doors_knocked, points_earned')
+          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned')
           .gte('week_start', monthStartStr)
           .lte('week_start', monthEndStr);
 
@@ -763,7 +771,7 @@ export default function AdminLeaderboards() {
           
           const existing = aggregated.get(w.user_id) || { 
             leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
-            conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
+            conversationsHad: 0, notInterested: 0, cancelledLeads: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
           };
           aggregated.set(w.user_id, {
             leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
@@ -772,6 +780,7 @@ export default function AdminLeaderboards() {
             leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
             conversationsHad: existing.conversationsHad + (Number(w.conversations_had) || 0),
             notInterested: existing.notInterested + (Number(w.not_interested) || 0),
+            cancelledLeads: existing.cancelledLeads + (Number((w as any).cancelled_leads) || 0),
             hoursWorked: existing.hoursWorked + (Number(w.hours_worked) || 0),
             doorsKnocked: existing.doorsKnocked + (Number(w.doors_knocked) || 0),
             pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
@@ -803,6 +812,7 @@ export default function AdminLeaderboards() {
             leadsClosed: data.leadsClosed,
             conversationsHad: data.conversationsHad,
             notInterested: data.notInterested,
+            cancelledLeads: data.cancelledLeads,
             hoursWorked: data.hoursWorked,
             doorsKnocked: data.doorsKnocked,
             pointsEarned: data.pointsEarned,
