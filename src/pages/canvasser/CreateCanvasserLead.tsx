@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ChevronDown, ChevronRight, ClipboardCheck, CalendarDays, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, ClipboardCheck, CalendarDays, Home, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ResidentialQuestions } from "@/components/quote/ResidentialQuestions";
 
 const gutterConditions = [
   { key: "clogged", label: "Clogged", desc: "debris piling, water stains, gutters pulling from fascia" },
@@ -59,6 +60,21 @@ const whyChooseUs = [
   "Highest quality materials",
 ];
 
+const roofingConsultationItems = [
+  "Full Roof Inspection (exterior and visible interior)",
+  "Storm & Hail Damage Assessment",
+  "Soffit, Fascia & Gutter Evaluation",
+  "Insurance Claim Consultation (if applicable)",
+  "Custom Quote & Estimate",
+];
+
+const roofingWhyChoose = [
+  "Licensed & insured roofing specialists",
+  "Free inspections with no obligation",
+  "Insurance claim experts on staff",
+  "Financing options available",
+];
+
 export default function CreateCanvasserLead() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -92,6 +108,19 @@ export default function CreateCanvasserLead() {
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentNotes, setAppointmentNotes] = useState("");
 
+  // Roofing qualification
+  const [roofingData, setRoofingData] = useState<Record<string, any>>({});
+  const [roofingQualOpen, setRoofingQualOpen] = useState(false);
+
+  // Roofing appointment
+  const [roofingApptOpen, setRoofingApptOpen] = useState(false);
+  const [roofingApptDate, setRoofingApptDate] = useState("");
+  const [roofingApptTime, setRoofingApptTime] = useState("");
+  const [roofingApptRepPhone, setRoofingApptRepPhone] = useState("");
+  const [roofingApptNotes, setRoofingApptNotes] = useState("");
+
+  const isRoofingInterest = serviceInterest === "roofing" || serviceInterest === "roofing_gutters";
+
   const isChecklistTouched = () => {
     return Object.values(conditions).some(v => v) ||
       Object.values(perimeterChecks).some(v => v !== undefined && v !== null) ||
@@ -103,6 +132,9 @@ export default function CreateCanvasserLead() {
     return appointmentDate !== "" || appointmentTime !== "";
   };
 
+  const isRoofingQualTouched = () => Object.keys(roofingData).length > 0;
+  const isRoofingApptTouched = () => roofingApptDate !== "" || roofingApptTime !== "";
+
   const handleSubmit = async () => {
     if (!customerName.trim() || !address.trim() || !phone.trim()) {
       toast({ title: "Required fields missing", description: "Customer Name, Address, and Phone are required.", variant: "destructive" });
@@ -111,6 +143,24 @@ export default function CreateCanvasserLead() {
 
     setSubmitting(true);
     try {
+      // Build form_data
+      const formData: Record<string, any> = {
+        description: notes,
+        altPhone,
+        serviceInterest,
+      };
+      if (isRoofingInterest && isRoofingQualTouched()) {
+        formData.roofing = roofingData;
+      }
+      if (isRoofingInterest && isRoofingApptTouched()) {
+        formData.roofingAppointment = {
+          date: roofingApptDate,
+          time: roofingApptTime,
+          repPhone: roofingApptRepPhone,
+          notes: roofingApptNotes,
+        };
+      }
+
       // Insert lead into quote_requests
       const { data: leadData, error: leadError } = await supabase
         .from("quote_requests")
@@ -129,11 +179,7 @@ export default function CreateCanvasserLead() {
           status: "new",
           manually_created: true,
           created_by: user?.id,
-          form_data: {
-            description: notes,
-            altPhone,
-            serviceInterest,
-          },
+          form_data: formData,
         })
         .select("id")
         .single();
@@ -174,6 +220,35 @@ export default function CreateCanvasserLead() {
             appointmentTime,
             notes: appointmentNotes,
             services: inspectionServices,
+          },
+          created_by: user?.id,
+        });
+      }
+
+      // Save roofing qualification if touched
+      if (isRoofingInterest && isRoofingQualTouched()) {
+        await supabase.from("lead_forms").insert({
+          lead_id: leadId,
+          form_type: "roofing_inspection",
+          status: "completed",
+          form_data: roofingData,
+          created_by: user?.id,
+        });
+      }
+
+      // Save roofing appointment if touched
+      if (isRoofingInterest && isRoofingApptTouched()) {
+        await supabase.from("lead_forms").insert({
+          lead_id: leadId,
+          form_type: "roofing_appointment",
+          status: "completed",
+          form_data: {
+            customerName,
+            address: `${address}, ${city}, ${state} ${zip}`,
+            date: roofingApptDate,
+            time: roofingApptTime,
+            repPhone: roofingApptRepPhone,
+            notes: roofingApptNotes,
           },
           created_by: user?.id,
         });
@@ -292,6 +367,83 @@ export default function CreateCanvasserLead() {
           </div>
         </div>
       </div>
+
+      {/* Roofing Qualification Form — when roofing interest selected */}
+      {isRoofingInterest && (
+        <Collapsible open={roofingQualOpen} onOpenChange={setRoofingQualOpen}>
+          <CollapsibleTrigger asChild>
+            <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Home className="w-5 h-5 text-primary" />
+                <span className="font-heading text-sm uppercase">🏠 Fill Out Roofing Qualification Details</span>
+              </div>
+              {roofingQualOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 border border-border rounded-lg p-5 space-y-4">
+            <ResidentialQuestions data={roofingData} onChange={setRoofingData} />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Roofing Appointment — when roofing interest selected */}
+      {isRoofingInterest && (
+        <Collapsible open={roofingApptOpen} onOpenChange={setRoofingApptOpen}>
+          <CollapsibleTrigger asChild>
+            <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-primary" />
+                <span className="font-heading text-sm uppercase">📅 Schedule a Roofing Consultation</span>
+              </div>
+              {roofingApptOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 border border-border rounded-lg p-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Appointment Date</label>
+                <Input type="date" value={roofingApptDate} onChange={e => setRoofingApptDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Appointment Time</label>
+                <Input type="time" value={roofingApptTime} onChange={e => setRoofingApptTime(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Direct Phone</label>
+              <Input value={roofingApptRepPhone} onChange={e => setRoofingApptRepPhone(e.target.value)} placeholder="(555) 000-0000" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Notes for homeowner</label>
+              <Textarea value={roofingApptNotes} onChange={e => setRoofingApptNotes(e.target.value)} rows={2} placeholder="Any notes for the homeowner..." />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Rep Name: (to be assigned by manager)</label>
+            </div>
+
+            {/* Read-only consultation items */}
+            <div className="border-t border-border pt-4 space-y-2">
+              <h4 className="text-sm font-medium">What We'll Do During Your Consultation:</h4>
+              <ul className="list-none text-sm text-muted-foreground space-y-1">
+                {roofingConsultationItems.map(s => <li key={s}>✅ {s}</li>)}
+              </ul>
+            </div>
+
+            <div className="border-t border-border pt-4 space-y-2">
+              <h4 className="text-sm font-medium">Why Choose Next Generation Roofing:</h4>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                {roofingWhyChoose.map(s => <li key={s}>{s}</li>)}
+              </ul>
+            </div>
+
+            <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-1">
+              <p>• Please ensure an adult (18+) is present for the full consultation</p>
+              <p>• If you need to reschedule, please contact your representative at least 24 hours in advance</p>
+              <p>• Have any previous inspection reports or insurance documents ready if available</p>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {/* Section B: Inspection Checklist */}
       <Collapsible open={checklistOpen} onOpenChange={setChecklistOpen}>

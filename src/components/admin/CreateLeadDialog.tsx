@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2, ChevronDown, ChevronRight, Home, CalendarDays } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ResidentialQuestions } from "@/components/quote/ResidentialQuestions";
 
 interface CreateLeadDialogProps {
   open: boolean;
@@ -47,8 +50,24 @@ const priorityOptions = [
   { value: "low", label: "Low" },
 ];
 
+const roofingConsultationItems = [
+  "Full Roof Inspection (exterior and visible interior)",
+  "Storm & Hail Damage Assessment",
+  "Soffit, Fascia & Gutter Evaluation",
+  "Insurance Claim Consultation (if applicable)",
+  "Custom Quote & Estimate",
+];
+
+const roofingWhyChoose = [
+  "Licensed & insured roofing specialists",
+  "Free inspections with no obligation",
+  "Insurance claim experts on staff",
+  "Financing options available",
+];
+
 export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -68,6 +87,20 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
     admin_notes: "",
     canvasser_id: "",
   });
+
+  // Roofing qualification
+  const [roofingData, setRoofingData] = useState<Record<string, any>>({});
+  const [roofingQualOpen, setRoofingQualOpen] = useState(false);
+
+  // Roofing appointment
+  const [roofingApptOpen, setRoofingApptOpen] = useState(false);
+  const [roofingApptDate, setRoofingApptDate] = useState("");
+  const [roofingApptTime, setRoofingApptTime] = useState("");
+  const [roofingApptRepName, setRoofingApptRepName] = useState("");
+  const [roofingApptRepPhone, setRoofingApptRepPhone] = useState("");
+  const [roofingApptNotes, setRoofingApptNotes] = useState("");
+
+  const isResidential = form.service_type === "residential";
 
   const { data: salesReps = [] } = useQuery({
     queryKey: ["sales-reps-for-create-lead"],
@@ -108,6 +141,14 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
       admin_notes: "",
       canvasser_id: "",
     });
+    setRoofingData({});
+    setRoofingQualOpen(false);
+    setRoofingApptOpen(false);
+    setRoofingApptDate("");
+    setRoofingApptTime("");
+    setRoofingApptRepName("");
+    setRoofingApptRepPhone("");
+    setRoofingApptNotes("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,6 +195,70 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
           .update({ lead_type: "self_gen" })
           .eq("reference_number", data);
         if (updateError) console.error("Failed to set self_gen lead_type:", updateError);
+      }
+
+      // Handle roofing forms — need the lead UUID first
+      const roofingQualTouched = Object.keys(roofingData).length > 0;
+      const roofingApptTouched = roofingApptDate !== "" || roofingApptTime !== "";
+
+      if (isResidential && (roofingQualTouched || roofingApptTouched)) {
+        // Get lead UUID by reference number
+        const { data: leadRecord } = await supabase
+          .from("quote_requests")
+          .select("id")
+          .eq("reference_number", data)
+          .single();
+
+        if (leadRecord) {
+          const leadId = leadRecord.id;
+
+          // Update form_data with roofing data
+          const formDataUpdate: Record<string, any> = {};
+          if (roofingQualTouched) formDataUpdate.roofing = roofingData;
+          if (roofingApptTouched) {
+            formDataUpdate.roofingAppointment = {
+              date: roofingApptDate,
+              time: roofingApptTime,
+              repName: roofingApptRepName,
+              repPhone: roofingApptRepPhone,
+              notes: roofingApptNotes,
+            };
+          }
+
+          await supabase
+            .from("quote_requests")
+            .update({ form_data: formDataUpdate })
+            .eq("id", leadId);
+
+          // Insert lead_forms records
+          if (roofingQualTouched) {
+            await supabase.from("lead_forms").insert({
+              lead_id: leadId,
+              form_type: "roofing_inspection",
+              status: "completed",
+              form_data: roofingData,
+              created_by: user?.id,
+            });
+          }
+
+          if (roofingApptTouched) {
+            await supabase.from("lead_forms").insert({
+              lead_id: leadId,
+              form_type: "roofing_appointment",
+              status: "completed",
+              form_data: {
+                date: roofingApptDate,
+                time: roofingApptTime,
+                repName: roofingApptRepName,
+                repPhone: roofingApptRepPhone,
+                notes: roofingApptNotes,
+                customerName: form.full_name,
+                address: `${form.street_address}, ${form.city}, ${form.state} ${form.zip_code}`,
+              },
+              created_by: user?.id,
+            });
+          }
+        }
       }
 
       toast({ title: "Lead created", description: `Reference: ${data}` });
@@ -233,16 +338,108 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Timeline</Label>
-                <Select value={form.timeline} onValueChange={v => setForm({ ...form, timeline: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger>
-                  <SelectContent>
-                    {timelineOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+            {/* Roofing Qualification Form — only when residential */}
+            {isResidential && (
+              <>
+                <Collapsible open={roofingQualOpen} onOpenChange={setRoofingQualOpen}>
+                  <CollapsibleTrigger asChild>
+                    <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Home className="w-5 h-5 text-primary" />
+                        <span className="font-heading text-sm uppercase">🏠 Fill Out Roofing Qualification Details</span>
+                      </div>
+                      {roofingQualOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 border border-border rounded-lg p-5 space-y-4">
+                    <ResidentialQuestions data={roofingData} onChange={setRoofingData} />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Collapsible open={roofingApptOpen} onOpenChange={setRoofingApptOpen}>
+                  <CollapsibleTrigger asChild>
+                    <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-5 h-5 text-primary" />
+                        <span className="font-heading text-sm uppercase">📅 Schedule a Roofing Consultation</span>
+                      </div>
+                      {roofingApptOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 border border-border rounded-lg p-5 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Appointment Date</label>
+                        <Input type="date" value={roofingApptDate} onChange={e => setRoofingApptDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Appointment Time</label>
+                        <Input type="time" value={roofingApptTime} onChange={e => setRoofingApptTime(e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Rep/Consultant Name</label>
+                      <Input value={roofingApptRepName} onChange={e => setRoofingApptRepName(e.target.value)} placeholder="Rep name" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Direct Phone</label>
+                      <Input value={roofingApptRepPhone} onChange={e => setRoofingApptRepPhone(e.target.value)} placeholder="(555) 000-0000" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Notes for homeowner</label>
+                      <Textarea value={roofingApptNotes} onChange={e => setRoofingApptNotes(e.target.value)} rows={2} placeholder="Any notes for the homeowner..." />
+                    </div>
+
+                    {/* Read-only consultation items */}
+                    <div className="border-t border-border pt-4 space-y-2">
+                      <h4 className="text-sm font-medium">What We'll Do During Your Consultation:</h4>
+                      <ul className="list-none text-sm text-muted-foreground space-y-1">
+                        {roofingConsultationItems.map(s => <li key={s}>✅ {s}</li>)}
+                      </ul>
+                    </div>
+
+                    <div className="border-t border-border pt-4 space-y-2">
+                      <h4 className="text-sm font-medium">Why Choose Next Generation Roofing:</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {roofingWhyChoose.map(s => <li key={s}>{s}</li>)}
+                      </ul>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-1">
+                      <p>• Please ensure an adult (18+) is present for the full consultation</p>
+                      <p>• If you need to reschedule, please contact your representative at least 24 hours in advance</p>
+                      <p>• Have any previous inspection reports or insurance documents ready if available</p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+
+            {/* Timeline & Description — hidden when residential */}
+            {!isResidential && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Timeline</Label>
+                  <Select value={form.timeline} onValueChange={v => setForm({ ...form, timeline: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger>
+                    <SelectContent>
+                      {timelineOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {priorityOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            )}
+
+            {isResidential && (
               <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
@@ -252,7 +449,7 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+            )}
 
             {/* Canvasser Dropdown */}
             {form.lead_source === "canvasser" && (
@@ -288,10 +485,12 @@ export function CreateLeadDialog({ open, onOpenChange }: CreateLeadDialogProps) 
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Details about the lead..." />
-            </div>
+            {!isResidential && (
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Details about the lead..." />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Admin Notes</Label>
