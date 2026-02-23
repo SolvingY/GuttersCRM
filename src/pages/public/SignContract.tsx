@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import GutterContract from "@/pages/dashboard/forms/GutterContract";
+import { generateAndUploadContractPDF } from "@/lib/generateContractPDF";
 
 export default function SignContract() {
   const { token } = useParams();
@@ -102,6 +103,19 @@ export default function SignContract() {
           signedAt: new Date().toISOString(),
         },
       });
+
+      // Auto-generate and upload PDF for remote signing
+      if (form.lead_id && form.created_by) {
+        generateAndUploadContractPDF(
+          form.form_data,
+          signatureData,
+          form.lead_id,
+          form.created_by,
+          new Date().toISOString(),
+          signedName,
+          null,
+        ).catch(console.error);
+      }
 
       setCompleted(true);
     } catch (err: any) {
