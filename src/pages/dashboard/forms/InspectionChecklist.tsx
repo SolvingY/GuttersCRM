@@ -41,6 +41,8 @@ const insideGutterItems = [
   "Rats, frogs, roaches, snakes",
 ];
 
+const roofingOnlyServices = ["residential", "commercial", "roofing"];
+
 export default function InspectionChecklist() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,9 +54,13 @@ export default function InspectionChecklist() {
   const lead = (location.state as any)?.lead;
   const existingForm = (location.state as any)?.existingForm;
 
+  const isRoofingOnly = lead ? roofingOnlyServices.includes(lead.service_type) : false;
+
   const [conditions, setConditions] = useState<Record<string, boolean>>({});
   const [perimeterChecks, setPerimeterChecks] = useState<Record<string, boolean | null>>({});
   const [insideChecks, setInsideChecks] = useState<Record<string, boolean | null>>({});
+  const [preExisting, setPreExisting] = useState("");
+  const [safetyConcerns, setSafetyConcerns] = useState("");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -63,31 +69,26 @@ export default function InspectionChecklist() {
       setConditions(d.conditions || {});
       setPerimeterChecks(d.perimeterChecks || {});
       setInsideChecks(d.insideChecks || {});
+      setPreExisting(d.preExisting || "");
+      setSafetyConcerns(d.safetyConcerns || "");
       setNotes(d.notes || "");
     }
   }, [existingForm]);
 
-  const toggleThreeState = (
-    current: Record<string, boolean | null>,
-    setter: (v: Record<string, boolean | null>) => void,
-    key: string
-  ) => {
-    const val = current[key];
-    if (val === undefined || val === null) setter({ ...current, [key]: true });
-    else if (val === true) setter({ ...current, [key]: false });
-    else setter({ ...current, [key]: null });
-  };
-
-  const getTriStateIcon = (val: boolean | null | undefined) => {
-    if (val === true) return "✅";
-    if (val === false) return "❌";
-    return "⬜";
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
-      const formData = { conditions, perimeterChecks, insideChecks, notes };
+      const formData = {
+        customerName: lead?.full_name || "",
+        address: lead ? `${lead.street_address}, ${lead.city}, ${lead.state} ${lead.zip_code}` : "",
+        date: new Date().toISOString().split("T")[0],
+        conditions,
+        perimeterChecks,
+        insideChecks,
+        preExisting,
+        safetyConcerns,
+        notes,
+      };
 
       if (existingForm) {
         await supabase.from("lead_forms").update({
@@ -127,26 +128,36 @@ export default function InspectionChecklist() {
         <ArrowLeft className="w-4 h-4" /> Back to Lead
       </Button>
       <h1 className="font-heading text-2xl uppercase">20-Point Inspection Checklist</h1>
-      {lead && <p className="text-sm text-muted-foreground">{lead.full_name} — {lead.street_address}, {lead.city}</p>}
 
-      {/* Gutter Conditions */}
-      <div className="border border-border rounded-lg p-5 space-y-3">
-        <h2 className="font-heading text-lg uppercase">Gutter Conditions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {gutterConditions.map(c => (
-            <div key={c.key} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-              <Checkbox
-                checked={!!conditions[c.key]}
-                onCheckedChange={(v) => setConditions({ ...conditions, [c.key]: !!v })}
-              />
-              <div>
-                <p className="text-sm font-medium">{c.label}</p>
-                <p className="text-xs text-muted-foreground">{c.desc}</p>
-              </div>
-            </div>
-          ))}
+      {/* Header info */}
+      {lead && (
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div><span className="text-muted-foreground">Customer:</span> <span className="font-medium">{lead.full_name}</span></div>
+          <div><span className="text-muted-foreground">Address:</span> <span className="font-medium">{lead.street_address}, {lead.city}</span></div>
+          <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{new Date().toLocaleDateString()}</span></div>
         </div>
-      </div>
+      )}
+
+      {/* Gutter Conditions - hidden for roofing-only */}
+      {!isRoofingOnly && (
+        <div className="border border-border rounded-lg p-5 space-y-3">
+          <h2 className="font-heading text-lg uppercase">Gutter Condition</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {gutterConditions.map(c => (
+              <label key={c.key} className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/30">
+                <Checkbox
+                  checked={!!conditions[c.key]}
+                  onCheckedChange={(v) => setConditions(prev => ({ ...prev, [c.key]: !!v }))}
+                />
+                <div>
+                  <span className="font-medium text-sm">{c.label}</span>
+                  <p className="text-xs text-muted-foreground">{c.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Perimeter & Inside Checklists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -154,33 +165,49 @@ export default function InspectionChecklist() {
           <h2 className="font-heading text-sm uppercase">Perimeter Inspection</h2>
           <div className="space-y-2">
             {perimeterItems.map(item => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => toggleThreeState(perimeterChecks, setPerimeterChecks, item)}
-                className="flex items-center gap-2 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors"
-              >
-                <span className="text-lg">{getTriStateIcon(perimeterChecks[item])}</span>
-                <span className="text-sm">{item}</span>
-              </button>
+              <div key={item} className="flex items-center justify-between text-sm p-2 bg-muted/20 rounded">
+                <span>{item}</span>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant={perimeterChecks[item] === true ? "default" : "outline"} className="h-7 px-2 text-xs"
+                    onClick={() => setPerimeterChecks(p => ({ ...p, [item]: true }))}>Yes</Button>
+                  <Button type="button" size="sm" variant={perimeterChecks[item] === false ? "destructive" : "outline"} className="h-7 px-2 text-xs"
+                    onClick={() => setPerimeterChecks(p => ({ ...p, [item]: false }))}>No</Button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
-        <div className="border border-border rounded-lg p-5 space-y-3">
-          <h2 className="font-heading text-sm uppercase">Inside Gutter</h2>
-          <div className="space-y-2">
-            {insideGutterItems.map(item => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => toggleThreeState(insideChecks, setInsideChecks, item)}
-                className="flex items-center gap-2 w-full text-left p-2 rounded hover:bg-muted/50 transition-colors"
-              >
-                <span className="text-lg">{getTriStateIcon(insideChecks[item])}</span>
-                <span className="text-sm">{item}</span>
-              </button>
-            ))}
+
+        {/* Inside Gutter - hidden for roofing-only */}
+        {!isRoofingOnly && (
+          <div className="border border-border rounded-lg p-5 space-y-3">
+            <h2 className="font-heading text-sm uppercase">What's Inside Your Gutters</h2>
+            <div className="space-y-2">
+              {insideGutterItems.map(item => (
+                <div key={item} className="flex items-center justify-between text-sm p-2 bg-muted/20 rounded">
+                  <span>{item}</span>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant={insideChecks[item] === true ? "default" : "outline"} className="h-7 px-2 text-xs"
+                      onClick={() => setInsideChecks(p => ({ ...p, [item]: true }))}>Yes</Button>
+                    <Button type="button" size="sm" variant={insideChecks[item] === false ? "destructive" : "outline"} className="h-7 px-2 text-xs"
+                      onClick={() => setInsideChecks(p => ({ ...p, [item]: false }))}>No</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* Pre-existing & Safety */}
+      <div className="border border-border rounded-lg p-5 space-y-3">
+        <div>
+          <label className="text-sm font-medium">Any pre-existing conditions or damage?</label>
+          <Textarea value={preExisting} onChange={e => setPreExisting(e.target.value)} rows={2} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Any safety concerns?</label>
+          <Textarea value={safetyConcerns} onChange={e => setSafetyConcerns(e.target.value)} rows={2} />
         </div>
       </div>
 
@@ -189,6 +216,10 @@ export default function InspectionChecklist() {
         <h2 className="font-heading text-lg uppercase">Notes</h2>
         <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="Additional observations..." />
       </div>
+
+      <p className="text-center font-bold text-foreground text-sm py-2">
+        WE CAN ALL AGREE SOMETHING NEEDS TO BE DONE RIGHT?
+      </p>
 
       <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="lg">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

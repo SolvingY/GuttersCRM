@@ -205,12 +205,12 @@ export default function LeadDetailView() {
         const flexForm = (leadForms as any[]).find((f: any) => f.form_type === "flex_schedule");
         const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
         const inspectionForm = (leadForms as any[]).find((f: any) => f.form_type === "inspection");
+        const appointmentForm = (leadForms as any[]).find((f: any) => f.form_type === "appointment");
         const showContract = ["won", "approved", "scheduled"].includes(lead.status);
         const showFlex = ["won", "scheduled"].includes(lead.status);
         const showWarranty = lead.status === "completed";
-        const showInspection = true; // Always available for reps to create if canvasser didn't
-        
-        if (!showContract && !showFlex && !showWarranty && !showInspection) return null;
+        const showInspection = true;
+        const showAppointment = true;
         
         return (
           <div className="flex flex-wrap gap-2">
@@ -236,6 +236,12 @@ export default function LeadDetailView() {
               <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/warranty`, { state: { lead, existingForm: warrantyForm || null } })}>
                 <Shield className="w-4 h-4" /> {warrantyForm ? "📄 View Warranty" : "📄 Warranty Document"}
                 {warrantyForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", warrantyForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{warrantyForm.status}</Badge>}
+              </Button>
+            )}
+            {showAppointment && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null } })}>
+                <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : "📅 Schedule Appointment"}
+                {appointmentForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", appointmentForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{appointmentForm.status}</Badge>}
               </Button>
             )}
           </div>
