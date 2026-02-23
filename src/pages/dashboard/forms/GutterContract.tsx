@@ -178,7 +178,10 @@ export default function GutterContract({
   });
 
   const handleSave = async () => {
-    if (!customerSignature) {
+    const isDraft = existingForm?.status === "draft";
+
+    // Only require signature when finalizing (not when updating a draft)
+    if (!isDraft && !customerSignature) {
       toast({ title: "Signature required", description: "Customer must sign the contract.", variant: "destructive" });
       return;
     }
@@ -188,14 +191,22 @@ export default function GutterContract({
       const leadId = id || lead?.id;
 
       if (existingForm) {
-        await supabase.from("lead_forms").update({
-          form_data: formData,
-          status: "signed",
-          signed_by_name: ownerName,
-          signed_at: new Date().toISOString(),
-          signature_data: customerSignature,
-          updated_at: new Date().toISOString(),
-        }).eq("id", existingForm.id);
+        if (isDraft) {
+          // Draft update: save form data only, keep status as draft
+          await supabase.from("lead_forms").update({
+            form_data: formData,
+            updated_at: new Date().toISOString(),
+          }).eq("id", existingForm.id);
+        } else {
+          await supabase.from("lead_forms").update({
+            form_data: formData,
+            status: "signed",
+            signed_by_name: ownerName,
+            signed_at: new Date().toISOString(),
+            signature_data: customerSignature,
+            updated_at: new Date().toISOString(),
+          }).eq("id", existingForm.id);
+        }
       } else {
         await supabase.from("lead_forms").insert({
           lead_id: leadId,
@@ -209,18 +220,18 @@ export default function GutterContract({
         });
       }
 
-      if (lead && ["won", "approved"].includes(lead.status)) {
+      if (!isDraft && lead && ["won", "approved"].includes(lead.status)) {
         await supabase.from("quote_requests").update({ status: "scheduled" }).eq("id", leadId);
       }
 
       await supabase.from("lead_activity_log").insert({
         lead_id: leadId,
         user_id: user?.id,
-        activity_type: "contract_signed",
-        content: `Contract signed by ${ownerName}`,
+        activity_type: isDraft ? "contract_updated" : "contract_signed",
+        content: isDraft ? "Contract draft updated" : `Contract signed by ${ownerName}`,
       });
 
-      toast({ title: "Contract saved successfully" });
+      toast({ title: isDraft ? "Contract draft updated" : "Contract saved successfully" });
       navigate(`/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
