@@ -315,6 +315,7 @@ export function WelcomeModal() {
           .from('quote_requests')
           .select('id, full_name, service_type, priority, assigned_at')
           .eq('assigned_to', user.id)
+          .eq('status', 'new')
           .gte('assigned_at', referenceSince.toISOString())
           .order('assigned_at', { ascending: false })
           .limit(5);

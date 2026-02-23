@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator, FileText, CalendarDays, Shield } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator, FileText, CalendarDays, Shield, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -25,8 +25,9 @@ const serviceLabels: Record<string, string> = {
 
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
-const statusOptions = ["new", "contacted", "quoted", "won", "lost", "scheduled", "completed"];
+const statusOptions = ["new", "contacted", "quoted", "won", "lost", "cancelled", "scheduled", "completed"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
+const cancelledReasons = ["Customer changed mind", "Financing fell through", "Insurance denied", "Scheduling conflict", "Material unavailable", "Weather delay", "Other"];
 
 export default function LeadDetailView() {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export default function LeadDetailView() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [lostReason, setLostReason] = useState("");
+  const [cancelledReason, setCancelledReason] = useState("");
   const [showCalculator, setShowCalculator] = useState(false);
   const [editingEstimate, setEditingEstimate] = useState<any>(null);
 
@@ -266,34 +268,8 @@ export default function LeadDetailView() {
         </div>
       )}
 
-      {/* Past Estimates */}
-      <div className="border border-border rounded-lg p-5">
-        <h2 className="font-heading text-lg uppercase mb-4">Past Estimates</h2>
-        {estimates.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No estimates yet</p>
-        ) : (
-          <div className="space-y-3">
-            {(estimates as any[]).map((est: any) => (
-              <div key={est.id} className="border-b border-border pb-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
-                  <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
-                    Open &amp; Edit
-                  </Button>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div><span className="text-muted-foreground text-xs block">Quoted</span><span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span></div>
-                  <div><span className="text-muted-foreground text-xs block">Floor</span><span>${Number(est.total_floor || 0).toFixed(2)}</span></div>
-                  <div><span className="text-muted-foreground text-xs block">Commission</span><span className="text-green-600 font-medium">${Number(est.commission || 0).toFixed(2)}</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column */}
+        {/* Left column - Service Details, Contact Info, Photos, Saved Estimates */}
         <div className="lg:col-span-2 space-y-6">
           {/* Service Info */}
           <div className="border border-border rounded-lg p-5">
@@ -346,46 +322,35 @@ export default function LeadDetailView() {
             </div>
           )}
 
-          {/* Files */}
-          <LeadFilesSection leadId={lead.id} isAdmin={false} />
-
-          {/* Documents Section */}
-          {(leadForms as any[]).length > 0 && (
-            <div className="border border-border rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-4">Documents</h2>
-              <div className="space-y-2">
-                {(leadForms as any[]).map((form: any) => {
-                  const typeLabels: Record<string, string> = { contract: "📋 Contract", flex_schedule: "📆 Flex Schedule", warranty: "📄 Warranty", inspection: "✓ Inspection", appointment: "📅 Appointment" };
-                  const statusColors: Record<string, string> = { signed: "bg-green-500/10 text-green-600 border-green-500/30", completed: "bg-blue-500/10 text-blue-600 border-blue-500/30", draft: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
-                  return (
-                    <div key={form.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium">{typeLabels[form.form_type] || form.form_type}</span>
-                        <Badge variant="outline" className={cn("text-[10px]", statusColors[form.status] || "")}>{form.status}</Badge>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{new Date(form.created_at).toLocaleDateString()}</span>
+          {/* Past Estimates */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Saved Estimates</h2>
+            {estimates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No estimates yet</p>
+            ) : (
+              <div className="space-y-3">
+                {(estimates as any[]).map((est: any) => (
+                  <div key={est.id} className="border-b border-border pb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
+                      <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
+                        Open &amp; Edit
+                      </Button>
                     </div>
-                  );
-                })}
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div><span className="text-muted-foreground text-xs block">Quoted</span><span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span></div>
+                      <div><span className="text-muted-foreground text-xs block">Floor</span><span>${Number(est.total_floor || 0).toFixed(2)}</span></div>
+                      <div><span className="text-muted-foreground text-xs block">Commission</span><span className="text-green-600 font-medium">${Number(est.commission || 0).toFixed(2)}</span></div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-
-          {/* Activity Log */}
-          <LeadActivityLog leadId={lead.id} />
+            )}
+          </div>
         </div>
 
-        {/* Right column */}
+        {/* Right column - Follow-up, Quote, Outcome, Scheduling, Timeline, Files, Activity Log */}
         <div className="space-y-6">
-          {/* Quote Section - submit only, no approve/reject */}
-          <QuoteApprovalSection lead={lead} isAdmin={false} />
-
-          {/* Scheduling, Payments, Close Job, Canvasser Badge */}
-          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
-            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-          }} />
-
           {/* Follow-up Tracking */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
@@ -416,6 +381,79 @@ export default function LeadDetailView() {
             </div>
           </div>
 
+          {/* Quote Section */}
+          <QuoteApprovalSection lead={lead} isAdmin={false} />
+
+          {/* Outcome (Won/Lost/Cancelled) */}
+          <div className="border border-border rounded-lg p-5">
+            <h2 className="font-heading text-lg uppercase mb-4">Outcome</h2>
+            {lead.status === "won" && lead.won_at && (
+              <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
+            )}
+            {lead.status === "lost" && lead.lost_at && (
+              <div>
+                <p className="text-sm text-destructive font-medium">Lost on {new Date(lead.lost_at).toLocaleDateString()}</p>
+                {lead.lost_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {lead.lost_reason}</p>}
+              </div>
+            )}
+            {lead.status === "cancelled" && (lead as any).cancelled_at && (
+              <div>
+                <p className="text-sm text-amber-600 font-medium">Cancelled on {new Date((lead as any).cancelled_at).toLocaleDateString()}</p>
+                {(lead as any).cancelled_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {(lead as any).cancelled_reason}</p>}
+              </div>
+            )}
+            {!["won", "lost", "cancelled"].includes(lead.status) && (
+              <>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
+                    onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
+                    <CheckCircle className="w-3 h-3" /> Won
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => {
+                      if (!lostReason) {
+                        toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
+                        return;
+                      }
+                      updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
+                    }}>
+                    <XCircle className="w-3 h-3" /> Lost
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1 text-amber-600 border-amber-600/30 hover:bg-amber-600/10"
+                    onClick={() => {
+                      if (!cancelledReason) {
+                        toast({ title: "Select a reason", description: "Please select a cancellation reason first", variant: "destructive" });
+                        return;
+                      }
+                      updateLead.mutate({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_reason: cancelledReason } as any);
+                    }}>
+                    <Ban className="w-3 h-3" /> Cancelled
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <Select value={lostReason} onValueChange={setLostReason}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
+                    <SelectContent>
+                      {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={cancelledReason} onValueChange={setCancelledReason}>
+                    <SelectTrigger className="text-xs"><SelectValue placeholder="Cancellation reason (if cancelled)" /></SelectTrigger>
+                    <SelectContent>
+                      {cancelledReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Scheduling, Payments, Close Job */}
+          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+          }} />
+
           {/* Timeline */}
           <div className="border border-border rounded-lg p-5">
             <h2 className="font-heading text-lg uppercase mb-4">Timeline</h2>
@@ -442,6 +480,12 @@ export default function LeadDetailView() {
                   <span>{new Date(lead.won_at).toLocaleDateString()}</span>
                 </div>
               )}
+              {(lead as any).cancelled_at && (
+                <div className="flex justify-between text-amber-600">
+                  <span>Cancelled</span>
+                  <span>{new Date((lead as any).cancelled_at).toLocaleDateString()}</span>
+                </div>
+              )}
               {lead.lost_at && (
                 <div className="flex justify-between text-destructive">
                   <span>Lost</span>
@@ -449,37 +493,13 @@ export default function LeadDetailView() {
                 </div>
               )}
             </div>
-
-            {lead.status !== "won" && lead.status !== "lost" && (
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
-                  onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
-                  <CheckCircle className="w-3 h-3" /> Won
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                  onClick={() => {
-                    if (!lostReason) {
-                      toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
-                      return;
-                    }
-                    updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
-                  }}>
-                  <XCircle className="w-3 h-3" /> Lost
-                </Button>
-              </div>
-            )}
-
-            {lead.status !== "won" && lead.status !== "lost" && (
-              <div className="mt-3">
-                <Select value={lostReason} onValueChange={setLostReason}>
-                  <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
-                  <SelectContent>
-                    {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
+
+          {/* Files */}
+          <LeadFilesSection leadId={lead.id} isAdmin={false} />
+
+          {/* Activity Log */}
+          <LeadActivityLog leadId={lead.id} />
         </div>
       </div>
     </div>
