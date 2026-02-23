@@ -63,6 +63,20 @@ Deno.serve(async (req) => {
         content: `Contract signed by ${customerName}`,
       });
 
+    // Auto-file signed contract on the lead card
+    const uploadedBy = lead.assigned_to || (formId ? undefined : undefined);
+    if (uploadedBy) {
+      await supabaseAdmin
+        .from("lead_files")
+        .insert({
+          lead_id: leadId,
+          file_name: `Signed Contract - ${customerName}`,
+          file_type: "Contract",
+          file_url: `form://contract/${formId}`,
+          uploaded_by: uploadedBy,
+        });
+    }
+
     // Send notification email to rep
     if (repEmail) {
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
