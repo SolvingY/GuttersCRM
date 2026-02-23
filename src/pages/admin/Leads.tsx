@@ -396,10 +396,10 @@ function UnassignedCanvasserQueue({ salesReps }: { salesReps: any[] }) {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className={cn("text-[10px]", hasChecklist ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-muted text-muted-foreground")}>
-                    {hasChecklist ? "✓ Checklist" : "No Checklist"}
+                    {hasChecklist ? "✓ Gutter Checklist" : "No Checklist"}
                   </Badge>
                   <Badge variant="outline" className={cn("text-[10px]", hasAppointment ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-muted text-muted-foreground")}>
-                    {hasAppointment ? "✓ Appt Sheet" : "No Appt Sheet"}
+                    {hasAppointment ? "✓ Gutter Appt" : "No Appt Sheet"}
                   </Badge>
                   {hasRoofingInspection && (
                     <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/30">

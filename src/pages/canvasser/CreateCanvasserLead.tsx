@@ -451,7 +451,7 @@ export default function CreateCanvasserLead() {
           <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-primary" />
-              <span className="font-heading text-sm uppercase">📋 Fill Out Inspection Checklist</span>
+              <span className="font-heading text-sm uppercase">📋 Fill Out Gutter Inspection Checklist</span>
             </div>
             {checklistOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </div>
@@ -548,7 +548,7 @@ export default function CreateCanvasserLead() {
           <div className="border border-border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" />
-              <span className="font-heading text-sm uppercase">📅 Schedule a Consultation</span>
+              <span className="font-heading text-sm uppercase">📅 Schedule a Gutter Consultation</span>
             </div>
             {appointmentOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </div>
