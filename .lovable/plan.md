@@ -1,81 +1,68 @@
 
 
-# Move Schedule Appointment to Top, Add "Create Lead" for Reps, Add "Self-Gen" Lead Type with Full Metrics Tracking
+# Auto-Track Canvasser Leads Set on Lead Creation and Archive
+
+## Overview
+
+When a canvasser submits a lead, their "Leads Set" metric should automatically increment across all three tracking levels (YTD, weekly, daily). When a lead is archived (e.g., fake lead), those metrics should be rolled back. This ensures the Canvasser Performance leaderboard stays accurate without requiring manual admin data entry.
 
 ---
 
-## Change 1: Move "Schedule Appointment" Button to Top
+## Change 1: Increment Canvasser Metrics on Lead Creation
 
-**File:** `src/pages/dashboard/LeadDetailView.tsx` (lines 216-246)
+**File:** `src/pages/canvasser/CreateCanvasserLead.tsx`
 
-Reorder the document action buttons so the Appointment button renders first, before the checklist, contract, flex schedule, and warranty buttons.
+After successfully inserting the lead into `quote_requests`, add three metric updates:
 
----
+1. **YTD (canvasser_metrics):** Increment `leads_set` by 1 for the canvasser's user ID
+2. **Weekly (weekly_canvasser_metrics):** Upsert a record for the current week, incrementing `leads_set` by 1. Recalculate `points_earned` using the standard formula (closed x 10 + damage x 5 + set x 1)
+3. **Daily (daily_canvasser_metric_entries):** Upsert a record for today's date with `leads_set_delta` incremented by 1. Uses the existing unique constraint on `(user_id, entry_date)` to add to any existing entry for that day
 
-## Change 2: Add "Create Lead" Button to My Leads Page
-
-**File:** `src/pages/dashboard/MyLeads.tsx`
-
-- Import `CreateLeadDialog` and add a `+ Create Lead` button in the header area
-- Also invalidate `my-leads` query after creation
-- The dialog already handles all lead source options and assignment
+This happens client-side after lead insertion, using the same compounding pattern as the WeeklyUpdates admin page.
 
 ---
 
-## Change 3: Add "Self-Generated" Lead Source
+## Change 2: Decrement Canvasser Metrics on Archive
 
-**File:** `src/lib/leadSourceConfig.ts`
+**File:** Database migration (update `archive_lead` function)
 
-Add a `self_gen` entry with `Star` icon and `leadType: "self_gen"`.
+Add a new block to the existing `archive_lead` function that checks if the archived lead has a `canvasser_id`. If so:
 
-**File:** `src/components/admin/CreateLeadDialog.tsx`
+1. Decrement `canvasser_metrics.leads_set` by 1 (floored at 0)
+2. Recalculate `canvasser_metrics.points` using the standard formula
+3. Find the weekly record matching the lead's `created_at` date and decrement `leads_set` there too
+4. Find the daily entry matching the lead's `created_at` date and decrement `leads_set_delta` there too
 
-- Add `{ value: "self_gen", label: "Self-Generated" }` to `leadSourceOptions`
-- After creation, if source is `self_gen`, update the lead's `lead_type` to `"self_gen"` (same pattern as canvasser post-creation update)
-
----
-
-## Change 4: Self-Gen Badge Display
-
-**File:** `src/pages/dashboard/MyLeads.tsx`
-
-Update the lead type badge rendering to show a green "Self-Gen" badge when `lead_type === "self_gen"`.
-
-**File:** `src/pages/admin/LeadDetail.tsx`
-
-- Update the badge display to show three colors: blue (Internet), purple (Canvasser), green (Self-Gen)
-- Add a "Lead Type" dropdown near the status/priority selects so admins can change any lead's type between `internet`, `canvasser`, and `self_gen`
+This ensures that when a fake lead is archived, the canvasser's metrics are fully rolled back across all timeframes.
 
 ---
 
-## Change 5: Metrics Tracking for Self-Gen Leads (Database)
+## Technical Details
 
-The existing database triggers `count_lead_on_assign`, `count_lead_on_insert_assign`, and `update_lead_close_stats` only handle `internet` and `canvasser` lead types. The `create_manual_lead` RPC also only maps to those two types. All need to be updated to support `self_gen`.
-
-**Database migration** to update three functions and the RPC:
-
-1. **`create_manual_lead`** -- Add mapping: when `p_lead_source = 'self_gen'`, set `v_lead_type := 'self_gen'`
-
-2. **`count_lead_on_insert_assign`** -- Add `ELSIF NEW.lead_type = 'self_gen'` block that increments `self_generated_leads` on `user_metrics`
-
-3. **`count_lead_on_assign`** -- Add the same `self_gen` branch to increment `self_generated_leads`
-
-4. **`update_lead_close_stats`** -- Add `self_gen` branch that increments `self_generated_deals` and `closed_deals` + `approved_revenue` on won, and decrements on reversal
-
-5. **`archive_lead`** -- Add `self_gen` branch to decrement `self_generated_leads` (and close stats if won) on archive
-
-This ensures that when a rep or admin creates a self-gen lead, the assignment and close triggers correctly update the `user_metrics` table columns (`self_generated_leads`, `self_generated_deals`) that already exist.
-
----
-
-## Files Modified
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/LeadDetailView.tsx` | Move appointment button to first position |
-| `src/pages/dashboard/MyLeads.tsx` | Add Create Lead button + dialog; Self-Gen badge |
-| `src/lib/leadSourceConfig.ts` | Add `self_gen` entry |
-| `src/components/admin/CreateLeadDialog.tsx` | Add Self-Generated option; post-create update for self_gen |
-| `src/pages/admin/LeadDetail.tsx` | Self-Gen badge color; Lead Type admin dropdown |
-| Database migration | Update `create_manual_lead`, `count_lead_on_insert_assign`, `count_lead_on_assign`, `update_lead_close_stats`, `archive_lead` to handle `self_gen` lead type |
+| `src/pages/canvasser/CreateCanvasserLead.tsx` | After lead insert, increment canvasser_metrics.leads_set, upsert weekly and daily entries |
+| Database migration | Update `archive_lead` function to decrement canvasser metrics when canvasser_id is present |
+
+### Week Calculation Logic
+
+The weekly bucket uses Monday-Sunday weeks, matching the existing pattern:
+- `week_start` = Monday of the lead creation date
+- `week_end` = Sunday of that week
+
+### Points Recalculation
+
+Canvasser points formula (already established): `(leads_closed * 10) + (leads_with_damage * 5) + (leads_set * 1)`
+
+After incrementing/decrementing `leads_set`, the points column is recalculated accordingly.
+
+### Daily Entry Upsert
+
+Uses `ON CONFLICT (user_id, entry_date)` to handle the case where the canvasser already has a daily entry for that date (e.g., admin entered other metrics). In that case, `leads_set_delta` is added to the existing value rather than overwritten.
+
+### RLS Consideration
+
+The canvasser only has SELECT on `daily_canvasser_metric_entries` and `weekly_canvasser_metrics`. The increment logic will use a new database function `increment_canvasser_lead_set` that runs as `SECURITY DEFINER` to bypass RLS, similar to how `create_manual_lead` works. This function handles all three metric levels atomically.
 
