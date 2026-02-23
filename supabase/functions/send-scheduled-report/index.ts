@@ -25,6 +25,14 @@ interface CanvasserWeeklyHours {
   hoursWorked: number;
 }
 
+interface CompanyPeriodStats {
+  revenue: number;
+  collections: number;
+  contracts: number;
+  leads: number;
+  leadToCloseRate: number;
+}
+
 interface CompanySummary {
   totalApprovedRevenue: number;
   totalCollections: number;
@@ -54,12 +62,51 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function generateCompanySummaryTableHTML(
+  weekly: CompanyPeriodStats,
+  monthly: CompanyPeriodStats,
+  ytd: CompanyPeriodStats
+): string {
+  const row = (label: string, stats: CompanyPeriodStats, bgColor: string) => `
+    <tr style="background-color: ${bgColor};">
+      <td style="padding: 12px; color: #18181b; font-size: 14px; font-weight: 600;">${label}</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${formatCurrency(stats.revenue)}</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${formatCurrency(stats.collections)}</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.contracts}</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.leads}</td>
+      <td style="padding: 12px; color: #18181b; font-size: 14px; text-align: right;">${stats.leadToCloseRate.toFixed(1)}%</td>
+    </tr>`;
+
+  return `
+    <tr>
+      <td style="padding: 0 24px 24px 24px;">
+        <h2 style="color: #18181b; font-size: 18px; margin: 0 0 12px 0;">📈 Company Performance Summary</h2>
+        <table role="presentation" style="width: 100%; border-collapse: collapse; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden;">
+          <tr style="background-color: #18181b;">
+            <th style="padding: 12px; text-align: left; color: #ffffff; font-size: 12px;">Period</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Revenue</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Collections</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Contracts</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">Leads</th>
+            <th style="padding: 12px; text-align: right; color: #ffffff; font-size: 12px;">LtC %</th>
+          </tr>
+          ${row('This Week', weekly, '#ffffff')}
+          ${row('This Month', monthly, '#f9fafb')}
+          ${row('YTD', ytd, '#ffffff')}
+        </table>
+      </td>
+    </tr>`;
+}
+
 function generateEmailHTML(
   salesReps: SalesRepData[],
   canvassers: CanvasserData[],
   summary: CompanySummary,
   frequency: string,
-  canvasserWeeklyHours: CanvasserWeeklyHours[]
+  canvasserWeeklyHours: CanvasserWeeklyHours[],
+  weeklyStats: CompanyPeriodStats,
+  monthlyStats: CompanyPeriodStats,
+  ytdStats: CompanyPeriodStats
 ): string {
   const salesProgress = summary.salesRevenueGoal 
     ? ((summary.totalApprovedRevenue / summary.salesRevenueGoal) * 100).toFixed(1)
@@ -129,35 +176,14 @@ function generateEmailHTML(
             </td>
           </tr>
 
-          <!-- Key Metrics -->
-          <tr>
-            <td style="padding: 0 24px 24px 24px;">
-              <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 16px; background-color: #f4f4f5; border-radius: 8px; text-align: center; width: 32%;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">Total Revenue</p>
-                    <p style="color: #18181b; font-size: 18px; font-weight: 700; margin: 4px 0 0 0;">${formatCurrency(summary.totalApprovedRevenue)}</p>
-                  </td>
-                  <td style="width: 2%;"></td>
-                  <td style="padding: 16px; background-color: #f4f4f5; border-radius: 8px; text-align: center; width: 32%;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">Closed Deals</p>
-                    <p style="color: #18181b; font-size: 18px; font-weight: 700; margin: 4px 0 0 0;">${summary.totalClosedDeals}</p>
-                  </td>
-                  <td style="width: 2%;"></td>
-                  <td style="padding: 16px; background-color: #f4f4f5; border-radius: 8px; text-align: center; width: 32%;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">Close Rate</p>
-                    <p style="color: #18181b; font-size: 18px; font-weight: 700; margin: 4px 0 0 0;">${summary.companyLeadCloseRate.toFixed(1)}%</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+          <!-- Company Performance Summary (Weekly / Monthly / YTD) -->
+          ${generateCompanySummaryTableHTML(weeklyStats, monthlyStats, ytdStats)}
 
-          <!-- Top Sales Reps -->
+          <!-- Top Sales Reps (YTD) -->
           ${topSalesReps.length > 0 ? `
           <tr>
             <td style="padding: 0 24px 24px 24px;">
-              <h2 style="color: #18181b; font-size: 18px; margin: 0 0 12px 0;">🏆 Top Sales Reps</h2>
+              <h2 style="color: #18181b; font-size: 18px; margin: 0 0 12px 0;">🏆 Top Sales Reps (YTD)</h2>
               <table role="presentation" style="width: 100%; border-collapse: collapse; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden;">
                 <tr style="background-color: #4f46e5;">
                   <th style="padding: 12px; text-align: left; color: #ffffff; font-size: 12px;">#</th>
@@ -178,11 +204,11 @@ function generateEmailHTML(
           </tr>
           ` : ''}
 
-          <!-- Top Canvassers -->
+          <!-- Top Canvassers (YTD) -->
           ${topCanvassers.length > 0 ? `
           <tr>
             <td style="padding: 0 24px 24px 24px;">
-              <h2 style="color: #18181b; font-size: 18px; margin: 0 0 12px 0;">🚪 Top Canvassers</h2>
+              <h2 style="color: #18181b; font-size: 18px; margin: 0 0 12px 0;">🚪 Top Canvassers (YTD)</h2>
               <table role="presentation" style="width: 100%; border-collapse: collapse; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden;">
                 <tr style="background-color: #059669;">
                   <th style="padding: 12px; text-align: left; color: #ffffff; font-size: 12px;">#</th>
@@ -243,8 +269,28 @@ function generateEmailHTML(
   `;
 }
 
+function calculateLtcRate(canvassDeals: number, internetClosed: number, canvassLeads: number, internetLeads: number): number {
+  const totalDeals = canvassDeals + internetClosed;
+  const totalLeads = canvassLeads + internetLeads;
+  return totalLeads > 0 ? (totalDeals / totalLeads) * 100 : 0;
+}
+
+function getWeekStartMonday(): string {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+  return weekStart.toISOString().split('T')[0];
+}
+
+function getMonthStart(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -277,8 +323,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const userId = claimsData.claims.sub;
-
-    // Check admin role using service role client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: roleData } = await supabase
@@ -300,7 +344,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    // Parse request body
     const { frequency = 'weekly' } = await req.json().catch(() => ({}));
     console.log(`Generating ${frequency} scheduled report...`);
 
@@ -328,8 +371,6 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('role', 'admin');
 
     const adminIds = adminRoles?.map(r => r.user_id) || [];
-    
-    // Get admin emails from auth
     const adminEmails: string[] = [];
     for (const adminId of adminIds) {
       const { data: userData } = await supabase.auth.admin.getUserById(adminId);
@@ -338,7 +379,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Add custom recipients if configured
     const customRecipients = settingsMap.get('scheduled_report_recipients');
     if (Array.isArray(customRecipients)) {
       adminEmails.push(...customRecipients.filter((e: string) => e && e.includes('@')));
@@ -354,22 +394,43 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending report to ${adminEmails.length} recipients`);
 
-    // Fetch company goals
-    const { data: goalsData } = await supabase
-      .from('company_goals')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Date calculations
+    const weekStartStr = getWeekStartMonday();
+    const monthStartStr = getMonthStart();
 
-    // Fetch sales rep metrics
-    const { data: salesMetrics } = await supabase
-      .from('user_metrics')
-      .select('user_id, display_name, approved_revenue, collections, points, leads, closed_deals')
-      .order('metric_date', { ascending: false });
+    // ─── Fetch all data in parallel ───
+    const [
+      goalsResult,
+      salesMetricsResult,
+      canvasserMetricsResult,
+      weeklySalesResult,
+      monthlySalesResult,
+      weeklyCanvasserResult,
+      monthlyCanvasserResult,
+    ] = await Promise.all([
+      // Company goals
+      supabase.from('company_goals').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      // YTD sales rep metrics
+      supabase.from('user_metrics').select('user_id, display_name, approved_revenue, collections, points, leads, closed_deals, canvass_leads, canvass_deals_closed, internet_leads, internet_leads_closed').order('metric_date', { ascending: false }),
+      // YTD canvasser metrics
+      supabase.from('canvasser_metrics').select('user_id, display_name, leads_set, leads_closed, points').order('metric_date', { ascending: false }),
+      // Weekly sales data
+      supabase.from('weekly_user_metrics').select('user_id, approved_revenue, collections, closed_deals, leads, canvass_leads, canvass_deals_closed').eq('week_start', weekStartStr),
+      // Monthly sales data (all weeks in current month)
+      supabase.from('weekly_user_metrics').select('user_id, approved_revenue, collections, closed_deals, leads, canvass_leads, canvass_deals_closed').gte('week_start', monthStartStr),
+      // Weekly canvasser data
+      supabase.from('weekly_canvasser_metrics').select('user_id, hours_worked, leads_set, leads_closed').eq('week_start', weekStartStr),
+      // Monthly canvasser data
+      supabase.from('weekly_canvasser_metrics').select('user_id, leads_set, leads_closed').gte('week_start', monthStartStr),
+    ]);
 
-    // Process sales rep data (get latest per user)
+    const goalsData = goalsResult.data;
+    const salesMetrics = salesMetricsResult.data;
+    const canvasserMetrics = canvasserMetricsResult.data;
+
+    // ─── Process YTD Sales Rep data (latest per user) ───
     const salesByUser = new Map<string, SalesRepData>();
+    const ytdSalesAgg = { revenue: 0, collections: 0, contracts: 0, leads: 0, canvassLeads: 0, canvassDeals: 0, internetLeads: 0, internetClosed: 0 };
     salesMetrics?.forEach(m => {
       if (!salesByUser.has(m.user_id)) {
         salesByUser.set(m.user_id, {
@@ -378,17 +439,19 @@ const handler = async (req: Request): Promise<Response> => {
           closedDeals: Number(m.closed_deals) || 0,
           points: Number(m.points) || 0,
         });
+        ytdSalesAgg.revenue += Number(m.approved_revenue) || 0;
+        ytdSalesAgg.collections += Number(m.collections) || 0;
+        ytdSalesAgg.contracts += Number(m.closed_deals) || 0;
+        ytdSalesAgg.leads += Number(m.leads) || 0;
+        ytdSalesAgg.canvassLeads += Number(m.canvass_leads) || 0;
+        ytdSalesAgg.canvassDeals += Number(m.canvass_deals_closed) || 0;
+        ytdSalesAgg.internetLeads += Number(m.internet_leads) || 0;
+        ytdSalesAgg.internetClosed += Number(m.internet_leads_closed) || 0;
       }
     });
     const salesReps = Array.from(salesByUser.values()).sort((a, b) => b.approvedRevenue - a.approvedRevenue);
 
-    // Fetch canvasser metrics
-    const { data: canvasserMetrics } = await supabase
-      .from('canvasser_metrics')
-      .select('user_id, display_name, leads_set, leads_closed, points')
-      .order('metric_date', { ascending: false });
-
-    // Process canvasser data
+    // ─── Process YTD Canvasser data ───
     const canvassersByUser = new Map<string, CanvasserData>();
     canvasserMetrics?.forEach(m => {
       if (!canvassersByUser.has(m.user_id)) {
@@ -401,55 +464,86 @@ const handler = async (req: Request): Promise<Response> => {
       }
     });
     const canvassers = Array.from(canvassersByUser.values()).sort((a, b) => b.leadsSet - a.leadsSet);
-
-    // Fetch canvasser weekly hours (current week)
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() + mondayOffset);
-    weekStart.setHours(0, 0, 0, 0);
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-
-    const { data: weeklyCanvasserData } = await supabase
-      .from('weekly_canvasser_metrics')
-      .select('user_id, hours_worked, leads_set, leads_closed')
-      .eq('week_start', weekStartStr);
-
-    // Build weekly hours list with names from canvasser metrics or profiles
-    const canvasserWeeklyHours: CanvasserWeeklyHours[] = [];
-    if (weeklyCanvasserData) {
-      for (const wm of weeklyCanvasserData) {
-        const hours = Number(wm.hours_worked) || 0;
-        if (hours <= 0) continue;
-        // Try to get name from canvasser YTD metrics first
-        const canvasserEntry = canvassersByUser.get(wm.user_id);
-        let name = canvasserEntry?.name || 'Unknown';
-        if (name === 'Unknown') {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', wm.user_id)
-            .maybeSingle();
-          if (profile?.full_name) name = profile.full_name;
-        }
-        canvasserWeeklyHours.push({ name, hoursWorked: hours });
-      }
-    }
-    canvasserWeeklyHours.sort((a, b) => b.hoursWorked - a.hoursWorked);
-
-    // Calculate summary
-    const totalApprovedRevenue = salesReps.reduce((sum, r) => sum + r.approvedRevenue, 0);
-    const totalClosedDeals = salesReps.reduce((sum, r) => sum + r.closedDeals, 0);
-    const totalLeads = salesMetrics?.reduce((sum, m) => sum + (Number(m.leads) || 0), 0) || 0;
     const totalLeadsSet = canvassers.reduce((sum, c) => sum + c.leadsSet, 0);
     const totalLeadsClosed = canvassers.reduce((sum, c) => sum + c.leadsClosed, 0);
 
+    // ─── Build Weekly Stats ───
+    const weeklyData = weeklySalesResult.data || [];
+    const weeklyAgg = weeklyData.reduce((acc, m) => ({
+      revenue: acc.revenue + (Number(m.approved_revenue) || 0),
+      collections: acc.collections + (Number(m.collections) || 0),
+      contracts: acc.contracts + (Number(m.closed_deals) || 0),
+      leads: acc.leads + (Number(m.leads) || 0),
+      canvassLeads: acc.canvassLeads + (Number(m.canvass_leads) || 0),
+      canvassDeals: acc.canvassDeals + (Number(m.canvass_deals_closed) || 0),
+    }), { revenue: 0, collections: 0, contracts: 0, leads: 0, canvassLeads: 0, canvassDeals: 0 });
+
+    // Add canvasser leads to weekly leads total
+    const weeklyCanvasserData = weeklyCanvasserResult.data || [];
+    const weeklyCanvasserLeads = weeklyCanvasserData.reduce((sum, c) => sum + (Number(c.leads_set) || 0), 0);
+    const weeklyCanvasserClosed = weeklyCanvasserData.reduce((sum, c) => sum + (Number(c.leads_closed) || 0), 0);
+
+    const weeklyStats: CompanyPeriodStats = {
+      revenue: weeklyAgg.revenue,
+      collections: weeklyAgg.collections,
+      contracts: weeklyAgg.contracts,
+      leads: weeklyAgg.leads,
+      leadToCloseRate: calculateLtcRate(weeklyAgg.canvassDeals, 0, weeklyAgg.canvassLeads, weeklyAgg.leads),
+    };
+
+    // ─── Build Monthly Stats ───
+    const monthlyData = monthlySalesResult.data || [];
+    const monthlyAgg = monthlyData.reduce((acc, m) => ({
+      revenue: acc.revenue + (Number(m.approved_revenue) || 0),
+      collections: acc.collections + (Number(m.collections) || 0),
+      contracts: acc.contracts + (Number(m.closed_deals) || 0),
+      leads: acc.leads + (Number(m.leads) || 0),
+      canvassLeads: acc.canvassLeads + (Number(m.canvass_leads) || 0),
+      canvassDeals: acc.canvassDeals + (Number(m.canvass_deals_closed) || 0),
+    }), { revenue: 0, collections: 0, contracts: 0, leads: 0, canvassLeads: 0, canvassDeals: 0 });
+
+    const monthlyStats: CompanyPeriodStats = {
+      revenue: monthlyAgg.revenue,
+      collections: monthlyAgg.collections,
+      contracts: monthlyAgg.contracts,
+      leads: monthlyAgg.leads,
+      leadToCloseRate: calculateLtcRate(monthlyAgg.canvassDeals, 0, monthlyAgg.canvassLeads, monthlyAgg.leads),
+    };
+
+    // ─── Build YTD Stats ───
+    const ytdStats: CompanyPeriodStats = {
+      revenue: ytdSalesAgg.revenue,
+      collections: ytdSalesAgg.collections,
+      contracts: ytdSalesAgg.contracts,
+      leads: ytdSalesAgg.leads,
+      leadToCloseRate: calculateLtcRate(ytdSalesAgg.canvassDeals, ytdSalesAgg.internetClosed, ytdSalesAgg.canvassLeads, ytdSalesAgg.internetLeads),
+    };
+
+    // ─── Build Canvasser Weekly Hours ───
+    const canvasserWeeklyHours: CanvasserWeeklyHours[] = [];
+    for (const wm of weeklyCanvasserData) {
+      const hours = Number(wm.hours_worked) || 0;
+      if (hours <= 0) continue;
+      const canvasserEntry = canvassersByUser.get(wm.user_id);
+      let name = canvasserEntry?.name || 'Unknown';
+      if (name === 'Unknown') {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', wm.user_id)
+          .maybeSingle();
+        if (profile?.full_name) name = profile.full_name;
+      }
+      canvasserWeeklyHours.push({ name, hoursWorked: hours });
+    }
+    canvasserWeeklyHours.sort((a, b) => b.hoursWorked - a.hoursWorked);
+
+    // ─── Company Summary (for goals progress) ───
     const summary: CompanySummary = {
-      totalApprovedRevenue,
-      totalCollections: 0,
-      totalClosedDeals,
-      companyLeadCloseRate: totalLeads > 0 ? (totalClosedDeals / totalLeads) * 100 : 0,
+      totalApprovedRevenue: ytdSalesAgg.revenue,
+      totalCollections: ytdSalesAgg.collections,
+      totalClosedDeals: ytdSalesAgg.contracts,
+      companyLeadCloseRate: ytdStats.leadToCloseRate,
       salesRepCount: salesReps.length,
       canvasserCount: canvassers.length,
       totalLeadsSet,
@@ -459,13 +553,13 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     // Generate email HTML
-    const emailHtml = generateEmailHTML(salesReps, canvassers, summary, frequency, canvasserWeeklyHours);
+    const emailHtml = generateEmailHTML(salesReps, canvassers, summary, frequency, canvasserWeeklyHours, weeklyStats, monthlyStats, ytdStats);
 
-    // Send emails using Resend API directly (with delay to avoid rate limiting)
+    // Send emails
     const results = [];
     for (let i = 0; i < adminEmails.length; i++) {
       const email = adminEmails[i];
-      if (i > 0) await new Promise(r => setTimeout(r, 600)); // Rate limit: max 2/sec
+      if (i > 0) await new Promise(r => setTimeout(r, 600));
       try {
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
