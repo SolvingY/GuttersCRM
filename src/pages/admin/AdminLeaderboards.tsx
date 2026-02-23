@@ -403,7 +403,7 @@ export default function AdminLeaderboards() {
 
       const { data } = await supabase
         .from('canvasser_metrics')
-        .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, cancelled_leads, doors_knocked, yearly_goal, points, contest_points, wager_points')
+        .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, cancelled_leads, doors_knocked, hours_worked, canvasser_rank, yearly_goal, points, contest_points, wager_points')
         .order('leads_closed', { ascending: false });
 
       if (!data || data.length === 0) {
@@ -457,7 +457,8 @@ export default function AdminLeaderboards() {
             notInterested: (entry as any).not_interested || 0,
             cancelledLeads: (entry as any).cancelled_leads || 0,
             doorsKnocked: (entry as any).doors_knocked || 0,
-            hoursWorked: (entry as any).hours_worked || 0,
+            hoursWorked: Number((entry as any).hours_worked) || 0,
+            canvasserRank: (entry as any).canvasser_rank || undefined,
             pointsEarned: Number(entry.points) || 0,
             contestPoints: Number((entry as any).contest_points) || 0,
             wagerPoints: Number((entry as any).wager_points) || 0,

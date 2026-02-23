@@ -48,8 +48,9 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
     const totalWithoutDamage = entries.reduce((sum, e) => sum + e.leadsWithoutDamage, 0);
     const closePercent = totalLeadsSet > 0 ? (totalClosed / totalLeadsSet) * 100 : 0;
     const totalPoints = entries.reduce((sum, e) => sum + e.pointsEarned, 0);
+    const totalHours = entries.reduce((sum, e) => sum + e.hoursWorked, 0);
     
-    return { totalLeadsSet, totalClosed, totalDoors, totalConvos, totalNotInterested, totalCancelled, totalWithDamage, totalWithoutDamage, closePercent, totalPoints };
+    return { totalLeadsSet, totalClosed, totalDoors, totalConvos, totalNotInterested, totalCancelled, totalWithDamage, totalWithoutDamage, closePercent, totalPoints, totalHours };
   }, [entries]);
 
   if (entries.length === 0) {
@@ -181,7 +182,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
                   </span>
                 ) : '—'}
               </td>
-              {showHours && <td className="py-3 px-4 text-right">—</td>}
+              {showHours && <td className="py-3 px-4 text-right">{totals.totalHours}</td>}
               <td className="py-3 px-4 text-right">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
                   {totals.totalPoints.toLocaleString()}
