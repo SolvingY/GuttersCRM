@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Archive, Ban, FileText, CalendarDays, Shield } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Archive, Ban, FileText, CalendarDays, Shield, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,28 @@ import { LeadFilesSection } from "@/components/admin/LeadFilesSection";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import { useQuery as useRQQuery } from "@tanstack/react-query";
 import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+
+function CollapsibleSection({ title, defaultOpen = true, children, className }: { title: string; defaultOpen?: boolean; children: React.ReactNode; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className={cn("border border-border rounded-lg", className)}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center justify-between w-full p-5 text-left hover:bg-muted/30 transition-colors rounded-lg">
+            <h2 className="font-heading text-lg uppercase">{title}</h2>
+            {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-5 pb-5">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
 
 function AdminEstimatesSection({ leadId }: { leadId: string }) {
   const { data: estimates = [] } = useRQQuery({
@@ -29,8 +51,7 @@ function AdminEstimatesSection({ leadId }: { leadId: string }) {
     },
   });
   return (
-    <div className="border border-border rounded-lg p-5">
-      <h2 className="font-heading text-lg uppercase mb-4">Saved Estimates</h2>
+    <>
       {(estimates as any[]).length === 0 ? (
         <p className="text-sm text-muted-foreground">No estimates yet</p>
       ) : (
@@ -45,7 +66,7 @@ function AdminEstimatesSection({ leadId }: { leadId: string }) {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -333,18 +354,14 @@ export default function LeadDetail() {
         );
       })()}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - lead info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Service Info */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Service Details</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left column - lead info (60%) */}
+        <div className="lg:col-span-3 space-y-6">
+          <CollapsibleSection title="Service Details" defaultOpen>
             {renderFormData()}
-          </div>
+          </CollapsibleSection>
 
-          {/* Contact Info */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Contact Information</h2>
+          <CollapsibleSection title="Contact Information" defaultOpen>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
@@ -372,12 +389,10 @@ export default function LeadDetail() {
               )}
               <p className="text-xs text-muted-foreground">Lead Source: {getLeadSourceLabel((lead as any).lead_source || "internet")}</p>
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Photos */}
           {lead.photo_urls?.length > 0 && (
-            <div className="border border-border rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-4">Photos</h2>
+            <CollapsibleSection title="Photos" defaultOpen>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {lead.photo_urls.map((url: string, i: number) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
@@ -385,19 +400,32 @@ export default function LeadDetail() {
                   </a>
                 ))}
               </div>
-            </div>
+            </CollapsibleSection>
           )}
 
-          {/* Saved Estimates */}
-          <AdminEstimatesSection leadId={lead.id} />
+          <CollapsibleSection title="Saved Estimates" defaultOpen>
+            <AdminEstimatesSection leadId={lead.id} />
+          </CollapsibleSection>
+
+          {/* Scheduling/Payments moved to left column */}
+          <CollapsibleSection title="Scheduling / Payments" defaultOpen>
+            <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+              queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+              queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+            }} />
+          </CollapsibleSection>
+
+          {/* Files moved to left column */}
+          <CollapsibleSection title="Files" defaultOpen>
+            <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
+          </CollapsibleSection>
         </div>
 
-        {/* Right column - chronological lifecycle */}
-        <div className="space-y-6">
-          {/* 1. Assignment */}
+        {/* Right column - lifecycle (40%) */}
+        <div className="lg:col-span-2 space-y-6">
           {isAdmin && (
-            <div className="border border-border rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-4">Assignment</h2>
+            <CollapsibleSection title="Assignment" defaultOpen>
               <Select
                 value={lead.assigned_to || "unassigned"}
                 onValueChange={(v) => {
@@ -423,12 +451,10 @@ export default function LeadDetail() {
                   Assigned: {new Date(lead.assigned_at).toLocaleDateString()}
                 </p>
               )}
-            </div>
+            </CollapsibleSection>
           )}
 
-          {/* 2. Follow-up */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
+          <CollapsibleSection title="Follow-up" defaultOpen>
             {lead.next_followup_due ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -454,14 +480,13 @@ export default function LeadDetail() {
                 <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
               </Button>
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* 3. Quote Approval */}
-          <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
+          <CollapsibleSection title="Quote Approval" defaultOpen={false}>
+            <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
+          </CollapsibleSection>
 
-          {/* 4. Outcome (Won/Lost/Cancelled) */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Outcome</h2>
+          <CollapsibleSection title="Outcome" defaultOpen>
             {lead.status === "won" && lead.won_at && (
               <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
             )}
@@ -521,18 +546,9 @@ export default function LeadDetail() {
                 </div>
               </>
             )}
-          </div>
+          </CollapsibleSection>
 
-          {/* 5. Scheduling / Payments / Close Job */}
-          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
-            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-            queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
-            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-          }} />
-
-          {/* 6. Timeline (dates only) */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Timeline</h2>
+          <CollapsibleSection title="Timeline" defaultOpen={false}>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Submitted</span>
@@ -581,12 +597,10 @@ export default function LeadDetail() {
                 </div>
               )}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* 7. Archive (Admin only) */}
           {isAdmin && lead.status !== 'archived' && (
-            <div className="border border-destructive/20 rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-2">Archive Lead</h2>
+            <CollapsibleSection title="Archive Lead" defaultOpen={false} className="border-destructive/20">
               <p className="text-sm text-muted-foreground mb-3">
                 Archiving removes this lead from the rep's metrics and lead totals.
               </p>
@@ -597,7 +611,7 @@ export default function LeadDetail() {
               >
                 <Archive className="w-4 h-4" /> Archive Lead
               </Button>
-            </div>
+            </CollapsibleSection>
           )}
 
           {lead.status === 'archived' && (
@@ -614,15 +628,11 @@ export default function LeadDetail() {
             </div>
           )}
 
-          {/* 8. Files */}
-          <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
+          <CollapsibleSection title="Activity Log" defaultOpen={false}>
+            <LeadActivityLog leadId={lead.id} />
+          </CollapsibleSection>
 
-          {/* 9. Activity Log */}
-          <LeadActivityLog leadId={lead.id} />
-
-          {/* 10. Admin Notes */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Admin Notes</h2>
+          <CollapsibleSection title="Admin Notes" defaultOpen={false}>
             <Textarea
               value={currentNotes}
               onChange={(e) => setNotes(e.target.value)}
@@ -638,7 +648,7 @@ export default function LeadDetail() {
               {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
               Save Notes
             </Button>
-          </div>
+          </CollapsibleSection>
         </div>
       </div>
 

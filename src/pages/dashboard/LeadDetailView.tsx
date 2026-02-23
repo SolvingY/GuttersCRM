@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator, FileText, CalendarDays, Shield, Ban } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator, FileText, CalendarDays, Shield, Ban, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,28 @@ import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import NGRGutterCalculator from "@/components/NGRGutterCalculator";
 import { LeadFilesSection } from "@/components/admin/LeadFilesSection";
 import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+
+function CollapsibleSection({ title, defaultOpen = true, children, className }: { title: string; defaultOpen?: boolean; children: React.ReactNode; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className={cn("border border-border rounded-lg", className)}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center justify-between w-full p-5 text-left hover:bg-muted/30 transition-colors rounded-lg">
+            <h2 className="font-heading text-lg uppercase">{title}</h2>
+            {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-5 pb-5">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
 
 const serviceLabels: Record<string, string> = {
   commercial: "Commercial Roofing",
@@ -280,18 +302,14 @@ export default function LeadDetailView() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Service Details, Contact Info, Photos, Saved Estimates */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Service Info */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Service Details</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left column - Service Details, Contact Info, Photos, Saved Estimates (60%) */}
+        <div className="lg:col-span-3 space-y-6">
+          <CollapsibleSection title="Service Details" defaultOpen>
             {renderFormData()}
-          </div>
+          </CollapsibleSection>
 
-          {/* Contact Info */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Contact Information</h2>
+          <CollapsibleSection title="Contact Information" defaultOpen>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
@@ -318,12 +336,10 @@ export default function LeadDetailView() {
                 <p className="text-xs text-muted-foreground">Source: {lead.referral_source}</p>
               )}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Photos */}
           {lead.photo_urls?.length > 0 && (
-            <div className="border border-border rounded-lg p-5">
-              <h2 className="font-heading text-lg uppercase mb-4">Photos</h2>
+            <CollapsibleSection title="Photos" defaultOpen>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {lead.photo_urls.map((url: string, i: number) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
@@ -331,12 +347,10 @@ export default function LeadDetailView() {
                   </a>
                 ))}
               </div>
-            </div>
+            </CollapsibleSection>
           )}
 
-          {/* Past Estimates */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Saved Estimates</h2>
+          <CollapsibleSection title="Saved Estimates" defaultOpen>
             {estimates.length === 0 ? (
               <p className="text-sm text-muted-foreground">No estimates yet</p>
             ) : (
@@ -358,14 +372,25 @@ export default function LeadDetailView() {
                 ))}
               </div>
             )}
-          </div>
+          </CollapsibleSection>
+
+          {/* Scheduling/Payments moved to left column */}
+          <CollapsibleSection title="Scheduling / Payments" defaultOpen>
+            <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+              queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+            }} />
+          </CollapsibleSection>
+
+          {/* Files moved to left column */}
+          <CollapsibleSection title="Files" defaultOpen>
+            <LeadFilesSection leadId={lead.id} isAdmin={false} />
+          </CollapsibleSection>
         </div>
 
-        {/* Right column - Follow-up, Quote, Outcome, Scheduling, Timeline, Files, Activity Log */}
-        <div className="space-y-6">
-          {/* Follow-up Tracking */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Follow-up</h2>
+        {/* Right column - Follow-up, Quote, Outcome, Timeline, Activity Log (40%) */}
+        <div className="lg:col-span-2 space-y-6">
+          <CollapsibleSection title="Follow-up" defaultOpen>
             {lead.next_followup_due ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -391,14 +416,13 @@ export default function LeadDetailView() {
                 <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
               </Button>
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Quote Section */}
-          <QuoteApprovalSection lead={lead} isAdmin={false} />
+          <CollapsibleSection title="Quote Approval" defaultOpen={false}>
+            <QuoteApprovalSection lead={lead} isAdmin={false} />
+          </CollapsibleSection>
 
-          {/* Outcome (Won/Lost/Cancelled) */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Outcome</h2>
+          <CollapsibleSection title="Outcome" defaultOpen>
             {lead.status === "won" && lead.won_at && (
               <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
             )}
@@ -458,17 +482,9 @@ export default function LeadDetailView() {
                 </div>
               </>
             )}
-          </div>
+          </CollapsibleSection>
 
-          {/* Scheduling, Payments, Close Job */}
-          <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
-            queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-            queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-          }} />
-
-          {/* Timeline */}
-          <div className="border border-border rounded-lg p-5">
-            <h2 className="font-heading text-lg uppercase mb-4">Timeline</h2>
+          <CollapsibleSection title="Timeline" defaultOpen={false}>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Submitted</span>
@@ -505,13 +521,11 @@ export default function LeadDetailView() {
                 </div>
               )}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Files */}
-          <LeadFilesSection leadId={lead.id} isAdmin={false} />
-
-          {/* Activity Log */}
-          <LeadActivityLog leadId={lead.id} />
+          <CollapsibleSection title="Activity Log" defaultOpen={false}>
+            <LeadActivityLog leadId={lead.id} />
+          </CollapsibleSection>
         </div>
       </div>
     </div>
