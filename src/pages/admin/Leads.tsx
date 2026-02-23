@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus } from "lucide-react";
+import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus, ChevronDown, ChevronRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AutoAssignmentSettings } from "@/components/admin/AutoAssignmentSettings";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
 import { CreateLeadDialog } from "@/components/admin/CreateLeadDialog";
 import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -50,6 +53,7 @@ export default function Leads() {
   const [assignedFilter, setAssignedFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [canvasserQueueOpen, setCanvasserQueueOpen] = useState(true);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["admin-leads", statusFilter, serviceFilter, priorityFilter, assignedFilter, sourceFilter],
@@ -120,6 +124,8 @@ export default function Leads() {
       <CreateLeadDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <AutoAssignmentSettings />
+
+      <UnassignedCanvasserQueue salesReps={salesReps} />
 
       {/* Stats Bar */}
       <div className="grid grid-cols-5 gap-2 sm:gap-3">
@@ -297,5 +303,118 @@ export default function Leads() {
         </div>
       )}
     </div>
+  );
+}
+
+function UnassignedCanvasserQueue({ salesReps }: { salesReps: any[] }) {
+  const [open, setOpen] = useState(true);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: unassignedLeads = [] } = useQuery({
+    queryKey: ["unassigned-canvasser-leads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quote_requests")
+        .select("*")
+        .eq("lead_source", "canvasser")
+        .is("assigned_to", null)
+        .neq("status", "archived")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: canvasserProfiles = [] } = useQuery({
+    queryKey: ["canvasser-profiles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name");
+      return data || [];
+    },
+  });
+
+  const { data: leadFormCounts = [] } = useQuery({
+    queryKey: ["lead-form-counts-queue"],
+    queryFn: async () => {
+      const ids = unassignedLeads.map((l: any) => l.id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from("lead_forms").select("lead_id, form_type").in("lead_id", ids);
+      return data || [];
+    },
+    enabled: unassignedLeads.length > 0,
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ leadId, repId }: { leadId: string; repId: string }) => {
+      const { error } = await supabase.from("quote_requests").update({
+        assigned_to: repId, assigned_at: new Date().toISOString(), assigned_by: user?.id,
+      }).eq("id", leadId);
+      if (error) throw error;
+      await supabase.from("lead_activity_log").insert({
+        lead_id: leadId, user_id: user?.id, activity_type: "assignment",
+        content: `Lead assigned by manager`,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unassigned-canvasser-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      toast({ title: "Lead assigned" });
+    },
+  });
+
+  if (unassignedLeads.length === 0) return null;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-4 cursor-pointer flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-amber-600" />
+            <span className="font-heading text-sm uppercase">Unassigned Canvasser Leads ({unassignedLeads.length})</span>
+          </div>
+          {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2 space-y-2">
+        {unassignedLeads.map((lead: any) => {
+          const canvasser = canvasserProfiles.find((p: any) => p.id === lead.canvasser_id);
+          const forms = leadFormCounts.filter((f: any) => f.lead_id === lead.id);
+          const hasChecklist = forms.some((f: any) => f.form_type === "inspection");
+          const hasAppointment = forms.some((f: any) => f.form_type === "appointment");
+
+          return (
+            <div key={lead.id} className="border border-border rounded-lg p-4 bg-card space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">{lead.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{lead.street_address}, {lead.city} • {lead.service_type}</p>
+                  <p className="text-xs text-muted-foreground">Submitted by: {canvasser?.full_name || "Unknown"} • {new Date(lead.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className={cn("text-[10px]", hasChecklist ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-muted text-muted-foreground")}>
+                    {hasChecklist ? "✓ Checklist" : "No Checklist"}
+                  </Badge>
+                  <Badge variant="outline" className={cn("text-[10px]", hasAppointment ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-muted text-muted-foreground")}>
+                    {hasAppointment ? "✓ Appt Sheet" : "No Appt Sheet"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select onValueChange={(repId) => assignMutation.mutate({ leadId: lead.id, repId })}>
+                  <SelectTrigger className="w-[200px] text-xs"><SelectValue placeholder="Assign to Rep..." /></SelectTrigger>
+                  <SelectContent>
+                    {salesReps.map((rep: any) => (
+                      <SelectItem key={rep.user_id} value={rep.user_id}>{rep.display_name || "Unknown"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          );
+        })}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

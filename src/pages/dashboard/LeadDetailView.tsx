@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator } from "lucide-react";
+import { ArrowLeft, Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, CalendarClock, AlarmClockPlus, Calculator, FileText, CalendarDays, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,20 @@ export default function LeadDetailView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("gutter_estimates")
+        .select("*")
+        .eq("lead_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && !!user,
+  });
+
+  const { data: leadForms = [] } = useQuery({
+    queryKey: ["lead-forms", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_forms")
         .select("*")
         .eq("lead_id", id)
         .order("created_at", { ascending: false });
@@ -185,6 +199,41 @@ export default function LeadDetailView() {
         </div>
       </div>
 
+      {/* Document Action Buttons */}
+      {(() => {
+        const contractForm = (leadForms as any[]).find((f: any) => f.form_type === "contract");
+        const flexForm = (leadForms as any[]).find((f: any) => f.form_type === "flex_schedule");
+        const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
+        const showContract = ["won", "approved", "scheduled"].includes(lead.status);
+        const showFlex = ["won", "scheduled"].includes(lead.status);
+        const showWarranty = lead.status === "completed";
+        
+        if (!showContract && !showFlex && !showWarranty) return null;
+        
+        return (
+          <div className="flex flex-wrap gap-2">
+            {showContract && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
+                <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
+                {contractForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>}
+              </Button>
+            )}
+            {showFlex && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/flex-schedule`, { state: { lead, existingForm: flexForm || null } })}>
+                <CalendarDays className="w-4 h-4" /> {flexForm ? "📆 View Flex Schedule" : "📆 Flex Schedule Form"}
+                {flexForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", flexForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{flexForm.status}</Badge>}
+              </Button>
+            )}
+            {showWarranty && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/warranty`, { state: { lead, existingForm: warrantyForm || null } })}>
+                <Shield className="w-4 h-4" /> {warrantyForm ? "📄 View Warranty" : "📄 Warranty Document"}
+                {warrantyForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", warrantyForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{warrantyForm.status}</Badge>}
+              </Button>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Calculator Panel */}
       {showCalculator && (
         <div className="border border-border rounded-lg overflow-hidden">
@@ -285,6 +334,28 @@ export default function LeadDetailView() {
 
           {/* Files */}
           <LeadFilesSection leadId={lead.id} isAdmin={false} />
+
+          {/* Documents Section */}
+          {(leadForms as any[]).length > 0 && (
+            <div className="border border-border rounded-lg p-5">
+              <h2 className="font-heading text-lg uppercase mb-4">Documents</h2>
+              <div className="space-y-2">
+                {(leadForms as any[]).map((form: any) => {
+                  const typeLabels: Record<string, string> = { contract: "📋 Contract", flex_schedule: "📆 Flex Schedule", warranty: "📄 Warranty", inspection: "✓ Inspection", appointment: "📅 Appointment" };
+                  const statusColors: Record<string, string> = { signed: "bg-green-500/10 text-green-600 border-green-500/30", completed: "bg-blue-500/10 text-blue-600 border-blue-500/30", draft: "bg-amber-500/10 text-amber-600 border-amber-500/30" };
+                  return (
+                    <div key={form.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">{typeLabels[form.form_type] || form.form_type}</span>
+                        <Badge variant="outline" className={cn("text-[10px]", statusColors[form.status] || "")}>{form.status}</Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{new Date(form.created_at).toLocaleDateString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Activity Log */}
           <LeadActivityLog leadId={lead.id} />

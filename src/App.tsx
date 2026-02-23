@@ -43,6 +43,7 @@ import CanvasserContests from "./pages/canvasser/CanvasserContests";
 import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
 import CanvasserPit from "./pages/canvasser/CanvasserPit";
 import CanvasserPointsHistory from "./pages/canvasser/CanvasserPointsHistory";
+import CreateCanvasserLead from "./pages/canvasser/CreateCanvasserLead";
 import SupplementerLayout from "./pages/supplementer/SupplementerLayout";
 import SupplementerDashboard from "./pages/supplementer/SupplementerDashboard";
 import SupplementerLeaderboard from "./pages/supplementer/SupplementerLeaderboard";
@@ -53,6 +54,9 @@ import SupplementerPit from "./pages/supplementer/SupplementerPit";
 import SupplementerPointsHistory from "./pages/supplementer/SupplementerPointsHistory";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import InternalAssessment from "./pages/dashboard/InternalAssessment";
+import GutterContract from "./pages/dashboard/forms/GutterContract";
+import FlexSchedule from "./pages/dashboard/forms/FlexSchedule";
+import WarrantyDocument from "./pages/dashboard/forms/WarrantyDocument";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +93,9 @@ const App = () => (
             <Route path="tools/estimator" element={<GutterEstimator />} />
             <Route path="tools/my-estimates" element={<MyEstimates />} />
             <Route path="leads/:id" element={<LeadDetailView />} />
+            <Route path="leads/:id/contract" element={<GutterContract />} />
+            <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
+            <Route path="leads/:id/warranty" element={<WarrantyDocument />} />
             <Route path="settings" element={<Settings />} />
             <Route path="assessment" element={<InternalAssessment />} />
           </Route>
@@ -108,6 +115,7 @@ const App = () => (
             <Route path="contests" element={<CanvasserContests />} />
             <Route path="pit" element={<CanvasserPit />} />
             <Route path="points-history" element={<CanvasserPointsHistory />} />
+            <Route path="create-lead" element={<CreateCanvasserLead />} />
             <Route path="settings" element={<CanvasserSettings />} />
             <Route path="assessment" element={<InternalAssessment />} />
           </Route>
