@@ -315,7 +315,7 @@ export function WelcomeModal() {
           .eq('assigned_to', user.id)
           .not('next_followup_due', 'is', null)
           .lt('next_followup_due', new Date().toISOString())
-          .not('status', 'in', '("won","lost")')
+          .not('status', 'in', '("won","lost","scheduled","completed")')
           .order('next_followup_due', { ascending: true })
           .limit(5);
 
@@ -326,7 +326,7 @@ export function WelcomeModal() {
           .from('quote_requests')
           .select('id, full_name, service_type, status, priority, next_followup_due, assigned_at')
           .eq('assigned_to', user.id)
-          .not('status', 'in', '("won","lost")')
+          .not('status', 'in', '("won","lost","scheduled","completed")')
           .order('next_followup_due', { ascending: true, nullsFirst: false })
           .limit(10);
 
@@ -341,7 +341,7 @@ export function WelcomeModal() {
           .from('quote_requests')
           .select('id, full_name')
           .eq('assigned_to', user.id)
-          .not('status', 'in', '("won","lost")');
+          .not('status', 'in', '("won","lost","scheduled","completed")');
 
         if (myLeadIds && myLeadIds.length > 0) {
           const leadIdMap = new Map(myLeadIds.map(l => [l.id, l.full_name]));

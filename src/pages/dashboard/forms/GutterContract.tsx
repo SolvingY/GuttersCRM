@@ -103,11 +103,40 @@ export default function GutterContract() {
         const colorLabel = estimate.gutter_color === "Premium (+$2/ft)" ? "Premium" : "Standard";
         const dsSize = md?.dsType === '3x4 (= 6")' ? "3x4" : "2x3";
         const gutterDsPrice = md?.gutterDsQuoted ? `$${Number(md.gutterDsQuoted).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
-        const lines = [`${estimate.gutter_size || '6"'} ${colorLabel} Gutters & ${dsSize} Downspouts${gutterDsPrice ? ` — ${gutterDsPrice}` : ""}`];
+        const protPrice = md?.protQuoted ? `$${Number(md.protQuoted).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
+
+        const lines: string[] = [];
+
+        // What's Included
+        lines.push("WHAT'S INCLUDED:");
+        lines.push("• All labor and installation");
+        lines.push("• Material costs");
+        lines.push("• Applicable taxes");
+        lines.push("• Removal and haul-off of existing gutters");
+        lines.push("• Job site cleanup");
+        lines.push("• All applicable warranties as listed below");
+        lines.push("Note: Removal of existing gutters is included unless otherwise specified.");
+        lines.push("");
+
+        // Gutter/Downspout line
+        lines.push(`${estimate.gutter_size || '6"'} ${colorLabel} Gutters & ${dsSize} Downspouts${gutterDsPrice ? ` — ${gutterDsPrice}` : ""}`);
+        lines.push("  • Lifetime Leak-Free Guarantee — With yearly scheduled inspection");
+        lines.push("  • 25-Year Baked-On Paint Warranty — Applies to gutters and downspouts");
+
+        // Protection line
         if (estimate.protection_product && (estimate.protection_footage ?? 0) > 0) {
-          const protPrice = md?.protQuoted ? `$${Number(md.protQuoted).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
+          lines.push("");
           lines.push(`${estimate.protection_product}${protPrice ? ` — ${protPrice}` : ""}`);
+          const prod = estimate.protection_product || "";
+          if (prod.includes("Cheap Mesh")) {
+            // No warranty for cheap mesh
+          } else if (prod.includes("Gutter RX Collector")) {
+            lines.push("  • 10-Year Manufacturer Warranty");
+          } else {
+            lines.push("  • 45-Year Manufacturer Warranty");
+          }
         }
+
         setScopeOfWork(lines.join("\n"));
       } else if (md?.description) {
         setScopeOfWork(md.description);
