@@ -57,6 +57,7 @@ import InternalAssessment from "./pages/dashboard/InternalAssessment";
 import GutterContract from "./pages/dashboard/forms/GutterContract";
 import FlexSchedule from "./pages/dashboard/forms/FlexSchedule";
 import WarrantyDocument from "./pages/dashboard/forms/WarrantyDocument";
+import InspectionChecklist from "./pages/dashboard/forms/InspectionChecklist";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => (
             <Route path="leads/:id/contract" element={<GutterContract />} />
             <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
             <Route path="leads/:id/warranty" element={<WarrantyDocument />} />
+            <Route path="leads/:id/inspection" element={<InspectionChecklist />} />
             <Route path="settings" element={<Settings />} />
             <Route path="assessment" element={<InternalAssessment />} />
           </Route>

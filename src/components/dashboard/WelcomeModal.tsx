@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
-import { Trophy, Megaphone, Quote, Sparkles, Rocket, Flame, Clock, TrendingUp, Gift, Zap, ClipboardList, AlertCircle } from 'lucide-react';
+import { Trophy, Megaphone, Quote, Sparkles, Rocket, Flame, Clock, TrendingUp, Gift, Zap, ClipboardList, AlertCircle, CalendarCheck, FileWarning } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays, differenceInHours, isPast } from 'date-fns';
 
 interface Announcement {
@@ -96,6 +96,17 @@ interface OpenLead {
   assigned_at: string | null;
 }
 
+interface ScheduledJob {
+  id: string;
+  full_name: string;
+  install_date: string | null;
+  install_scheduled_at: string | null;
+  quote_amount: number | null;
+  total_paid: number;
+  balance_owed: number;
+  has_contract: boolean;
+}
+
 export function WelcomeModal() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -119,6 +130,8 @@ export function WelcomeModal() {
   const [leadUpdates, setLeadUpdates] = useState<LeadUpdate[]>([]);
   const [overdueFollowups, setOverdueFollowups] = useState<OverdueFollowup[]>([]);
   const [openLeads, setOpenLeads] = useState<OpenLead[]>([]);
+  const [scheduledJobs, setScheduledJobs] = useState<ScheduledJob[]>([]);
+  const [missingContractLeads, setMissingContractLeads] = useState<{ id: string; full_name: string }[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -368,6 +381,72 @@ export function WelcomeModal() {
           setLeadUpdates(enrichedUpdates);
         }
 
+        // --- Scheduled Jobs with Balance Reminders ---
+        const { data: scheduledLeads } = await supabase
+          .from('quote_requests')
+          .select('id, full_name, install_date, install_scheduled_at, quote_amount')
+          .eq('assigned_to', user.id)
+          .eq('status', 'scheduled')
+          .order('install_date', { ascending: true })
+          .limit(10);
+
+        if (scheduledLeads && scheduledLeads.length > 0) {
+          const jobsWithBalance: ScheduledJob[] = [];
+          for (const sl of scheduledLeads) {
+            const { data: payments } = await supabase
+              .from('lead_payments')
+              .select('amount')
+              .eq('lead_id', sl.id);
+            const totalPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            const balance = Math.max(0, (sl.quote_amount || 0) - totalPaid);
+
+            // Check if contract exists
+            const { data: contractForm } = await supabase
+              .from('lead_forms')
+              .select('id')
+              .eq('lead_id', sl.id)
+              .eq('form_type', 'contract')
+              .limit(1)
+              .maybeSingle();
+
+            jobsWithBalance.push({
+              id: sl.id,
+              full_name: sl.full_name,
+              install_date: sl.install_date,
+              install_scheduled_at: sl.install_scheduled_at,
+              quote_amount: sl.quote_amount,
+              total_paid: totalPaid,
+              balance_owed: balance,
+              has_contract: !!contractForm,
+            });
+          }
+          setScheduledJobs(jobsWithBalance);
+          setMissingContractLeads(jobsWithBalance.filter(j => !j.has_contract).map(j => ({ id: j.id, full_name: j.full_name })));
+        }
+
+        // Also check won leads missing contracts
+        const { data: wonLeads } = await supabase
+          .from('quote_requests')
+          .select('id, full_name')
+          .eq('assigned_to', user.id)
+          .eq('status', 'won')
+          .limit(10);
+
+        if (wonLeads && wonLeads.length > 0) {
+          for (const wl of wonLeads) {
+            const { data: contractForm } = await supabase
+              .from('lead_forms')
+              .select('id')
+              .eq('lead_id', wl.id)
+              .eq('form_type', 'contract')
+              .limit(1)
+              .maybeSingle();
+            if (!contractForm) {
+              setMissingContractLeads(prev => [...prev, { id: wl.id, full_name: wl.full_name }]);
+            }
+          }
+        }
+
         // Show modal if returning user
         setIsOpen(true);
       } finally {
@@ -406,7 +485,7 @@ export function WelcomeModal() {
 
   if (loading) return null;
 
-  const hasLeadNotifications = newLeads.length > 0 || overdueFollowups.length > 0 || leadUpdates.length > 0 || openLeads.length > 0;
+  const hasLeadNotifications = newLeads.length > 0 || overdueFollowups.length > 0 || leadUpdates.length > 0 || openLeads.length > 0 || scheduledJobs.length > 0 || missingContractLeads.length > 0;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -541,7 +620,68 @@ export function WelcomeModal() {
             </div>
           )}
 
-          {/* Lead Notifications Section */}
+          {/* Upcoming Scheduled Jobs */}
+          {scheduledJobs.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="h-4 w-4 text-green-600" />
+                <h3 className="text-sm font-semibold text-foreground">Upcoming Installs</h3>
+              </div>
+              <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                <div className="space-y-2">
+                  {scheduledJobs.map(job => (
+                    <div key={job.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <button
+                          onClick={() => { handleClose(); navigate(`/dashboard/leads/${job.id}`); }}
+                          className="text-foreground hover:text-accent underline-offset-2 hover:underline text-left truncate max-w-[55%]"
+                        >
+                          {job.full_name}
+                        </button>
+                        <span className="text-xs text-muted-foreground">
+                          {job.install_date ? new Date(job.install_date).toLocaleDateString() : 'Date TBD'}
+                        </span>
+                      </div>
+                      {job.balance_owed > 0 && (
+                        <p className="text-xs text-destructive font-medium">
+                          💰 Balance owed: ${job.balance_owed.toLocaleString('en-US', { minimumFractionDigits: 2 })} — collect by install date
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Missing Contract Alert */}
+          {missingContractLeads.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FileWarning className="h-4 w-4 text-destructive" />
+                <h3 className="text-sm font-semibold text-foreground">Missing Contract</h3>
+              </div>
+              <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <p className="text-xs font-medium text-destructive mb-2">
+                  ⚠️ {missingContractLeads.length} job{missingContractLeads.length > 1 ? 's' : ''} missing a signed contract
+                </p>
+                <div className="space-y-1.5">
+                  {missingContractLeads.map(lead => (
+                    <div key={lead.id} className="flex items-center justify-between text-sm">
+                      <button
+                        onClick={() => { handleClose(); navigate(`/dashboard/leads/${lead.id}`); }}
+                        className="text-foreground hover:text-accent underline-offset-2 hover:underline text-left truncate"
+                      >
+                        {lead.full_name}
+                      </button>
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">No Contract</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {hasLeadNotifications && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">

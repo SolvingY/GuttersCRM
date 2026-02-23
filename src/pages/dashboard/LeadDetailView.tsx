@@ -204,14 +204,22 @@ export default function LeadDetailView() {
         const contractForm = (leadForms as any[]).find((f: any) => f.form_type === "contract");
         const flexForm = (leadForms as any[]).find((f: any) => f.form_type === "flex_schedule");
         const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
+        const inspectionForm = (leadForms as any[]).find((f: any) => f.form_type === "inspection");
         const showContract = ["won", "approved", "scheduled"].includes(lead.status);
         const showFlex = ["won", "scheduled"].includes(lead.status);
         const showWarranty = lead.status === "completed";
+        const showInspection = true; // Always available for reps to create if canvasser didn't
         
-        if (!showContract && !showFlex && !showWarranty) return null;
+        if (!showContract && !showFlex && !showWarranty && !showInspection) return null;
         
         return (
           <div className="flex flex-wrap gap-2">
+            {showInspection && (
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/inspection`, { state: { lead, existingForm: inspectionForm || null } })}>
+                <CheckCircle className="w-4 h-4" /> {inspectionForm ? "✅ View Checklist" : "✅ 20-Point Checklist"}
+                {inspectionForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", inspectionForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{inspectionForm.status}</Badge>}
+              </Button>
+            )}
             {showContract && (
               <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
                 <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
