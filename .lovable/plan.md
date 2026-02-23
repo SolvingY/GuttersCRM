@@ -1,35 +1,63 @@
 
 
-# Fix Contract Scope of Work and Status Dropdown Order
+# Two Changes: Full Scope of Work on Contract + Fix Welcome Modal Notifications
 
-## Change 1: Contract Scope of Work (GutterContract.tsx)
+---
 
-**Problem:** Scope shows raw footage like `335ft 5" gutters, 0ft Hydro Flow Mesh + Frame` instead of matching the estimate PDF format.
+## Change 1: Contract Scope of Work — Match Full Estimate PDF
 
-**Fix:** Replace lines 99-110 in `src/pages/dashboard/forms/GutterContract.tsx` with logic that mirrors `generateEstimatePDF.ts`:
+**Problem:** The contract currently only shows the product line items (e.g., `5" Standard Gutters & 2x3 Downspouts — $4,345.00`). The estimate PDF includes much more detail under each line item: warranty bullets, fine print, and the "What's Included" section.
 
-- Build gutter label: `{gutterSize} {colorLabel} Gutters & {dsDisplaySize} Downspouts — $X,XXX.00`
-- Add protection as a separate line if footage > 0: `Hydro Flow Mesh + Frame — $X,XXX.00`
-- Use estimate fields: `gutter_size`, `gutter_color`, `measurement_data.dsType`, `measurement_data.gutterDsQuoted`, `measurement_data.protQuoted`
-- Color label: "Premium" if `gutter_color === "Premium (+$2/ft)"`, else "Standard"
-- Downspout size: "3x4" if `dsType === '3x4 (= 6")'`, else "2x3"
-- Fall back to `md.description` if no gutter footage exists
+**Fix in `src/pages/dashboard/forms/GutterContract.tsx` (lines 99-116):**
 
-## Change 2: Status Dropdown Order (LeadDetailView.tsx)
+Expand the auto-generated scope to include everything the estimate PDF shows:
 
-**Fix:** Change line 28 from:
-```
-["new", "contacted", "quoted", "scheduled", "won", "lost", "completed"]
-```
-To:
-```
-["new", "contacted", "quoted", "won", "lost", "scheduled", "completed"]
-```
+1. **"What's Included" items** (matching `generateEstimatePDF.ts` lines 102-121):
+   - All labor and installation
+   - Material costs
+   - Applicable taxes
+   - Removal and haul-off of existing gutters
+   - Job site cleanup
+   - All applicable warranties as listed below
+   - Note: Removal of existing gutters is included unless otherwise specified
+
+2. **Gutter/Downspout line** with price (already done)
+
+3. **Gutter warranties** under the gutter line:
+   - Lifetime Leak-Free Guarantee -- With yearly scheduled inspection
+   - 25-Year Baked-On Paint Warranty -- Applies to gutters and downspouts
+
+4. **Protection line** with price (if applicable, already done)
+
+5. **Protection warranty** under the protection line:
+   - If "Cheap Mesh": no warranty note
+   - If "Gutter RX Collector": 10-Year Manufacturer Warranty
+   - Otherwise: 45-Year Manufacturer Warranty
+
+The scope textarea will be pre-filled with all of these details as multi-line text.
+
+---
+
+## Change 2: Welcome Modal — Stop Notifications for Won/Scheduled/Completed Leads
+
+**Problem:** A lead with status "scheduled" still appears in "Open Leads - Action Required", "New Lead Assigned", and "Overdue Follow-up" sections. Once a lead is won, scheduled, or completed, the rep should only see install reminders, not follow-up prompts.
+
+**Fix in `src/components/dashboard/WelcomeModal.tsx`:**
+
+Three query changes — filter out scheduled and completed leads from notification sections:
+
+- **Overdue follow-ups** (line 318): Change filter from `("won","lost")` to `("won","lost","scheduled","completed")`
+- **Open leads** (line 329): Change filter from `("won","lost")` to `("won","lost","scheduled","completed")`
+- **Lead updates / my lead IDs** (line 344): Change filter from `("won","lost")` to `("won","lost","scheduled","completed")`
+
+This means only leads in `new`, `contacted`, or `quoted` status will trigger action-required notifications. Scheduled leads will no longer nag the rep to "follow up to close them out."
+
+---
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/forms/GutterContract.tsx` | Rewrite scope-of-work generation (lines 99-110) to match estimate PDF format |
-| `src/pages/dashboard/LeadDetailView.tsx` | Reorder status dropdown (line 28) |
+| `src/pages/dashboard/forms/GutterContract.tsx` | Expand scope of work to include What's Included, warranties, and protection warranty details |
+| `src/components/dashboard/WelcomeModal.tsx` | Exclude scheduled/completed leads from overdue, open leads, and lead update queries |
 
