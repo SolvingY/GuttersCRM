@@ -1,92 +1,81 @@
 
 
-# Inspection Checklist UI Parity, Email on Submit, Roofing Support, and Universal Scheduling
-
-## Overview
-
-Four interconnected changes to make the inspection checklist consistent across portals, add roofing as a service option, enable email delivery of forms on submit, and make scheduling universal.
+# Move Schedule Appointment to Top, Add "Create Lead" for Reps, Add "Self-Gen" Lead Type with Full Metrics Tracking
 
 ---
 
-## Change 1: Match Inspection Checklist UI (Rep View = Canvasser View)
+## Change 1: Move "Schedule Appointment" Button to Top
 
-**Problem:** The rep's standalone `InspectionChecklist.tsx` uses a basic three-state emoji toggle, while the canvasser's inline version uses Yes/No buttons with proper styling.
+**File:** `src/pages/dashboard/LeadDetailView.tsx` (lines 216-246)
 
-**Fix in `src/pages/dashboard/forms/InspectionChecklist.tsx`:**
-
-- Replace the emoji-based tri-state toggle with the canvasser's Yes/No button pattern (green "Yes" / red "No" buttons per item)
-- Add the customer/address/date header block at the top (like the canvasser version)
-- Add the "Pre-existing conditions" and "Safety concerns" text areas (the canvasser has these, the rep version does not)
-- Add the "WE CAN ALL AGREE SOMETHING NEEDS TO BE DONE RIGHT?" closing line
-- Keep the same data structure so existing saved checklists still load correctly
+Reorder the document action buttons so the Appointment button renders first, before the checklist, contract, flex schedule, and warranty buttons.
 
 ---
 
-## Change 2: Add Roofing as a Service Interest Option
+## Change 2: Add "Create Lead" Button to My Leads Page
 
-**Problem:** The canvasser's "Service Interest" dropdown only has Gutters, Protection, Both, and Other. Roofing is missing.
+**File:** `src/pages/dashboard/MyLeads.tsx`
 
-**Fix in `src/pages/canvasser/CreateCanvasserLead.tsx`:**
-
-- Add `<SelectItem value="roofing">Roofing</SelectItem>` and `<SelectItem value="roofing_gutters">Roofing & Gutters</SelectItem>` to the Service Interest dropdown (line ~253)
-- When `serviceInterest` is `"roofing"`, hide the gutter-specific sections of the inspection checklist (Gutter Conditions, Inside Gutter items) but keep Perimeter Inspection since that applies to all services
-- The rep's `InspectionChecklist.tsx` should also conditionally hide gutter sections when the lead's `service_type` is `"residential"` or `"commercial"` (roofing types)
+- Import `CreateLeadDialog` and add a `+ Create Lead` button in the header area
+- Also invalidate `my-leads` query after creation
+- The dialog already handles all lead source options and assignment
 
 ---
 
-## Change 3: Email Checklist and Appointment to Homeowner on Submit
+## Change 3: Add "Self-Generated" Lead Source
 
-**Problem:** When the canvasser submits a lead, there's no option to email the inspection results and appointment details to the homeowner.
+**File:** `src/lib/leadSourceConfig.ts`
 
-**Fix:**
+Add a `self_gen` entry with `Star` icon and `leadType: "self_gen"`.
 
-1. **Add a "Send to Homeowner" checkbox** in `CreateCanvasserLead.tsx` near the Submit button (visible when email is filled in and checklist or appointment is touched)
+**File:** `src/components/admin/CreateLeadDialog.tsx`
 
-2. **Create a new edge function** `supabase/functions/send-inspection-email/index.ts` that:
-   - Accepts: `clientName`, `clientEmail`, `address`, `appointmentDate`, `appointmentTime`, `inspectionData` (conditions, perimeter, inside checks), `serviceInterest`
-   - Generates an HTML email with the checklist results formatted as a report and the appointment details
-   - Sends via Resend API using `notifications@oknextgen.com` sender
-   - Uses the same email styling pattern as `send-install-confirmation`
-
-3. **Call the edge function** from `CreateCanvasserLead.tsx` after successful lead submission if the "Send to Homeowner" checkbox is checked
+- Add `{ value: "self_gen", label: "Self-Generated" }` to `leadSourceOptions`
+- After creation, if source is `self_gen`, update the lead's `lead_type` to `"self_gen"` (same pattern as canvasser post-creation update)
 
 ---
 
-## Change 4: Universal Appointment/Scheduling Form
+## Change 4: Self-Gen Badge Display
 
-**Problem:** The appointment scheduling is only available inline in the canvasser's create-lead flow. It should also be available as a standalone form (like contract, flex schedule, warranty) that reps and admins can create from the lead detail view.
+**File:** `src/pages/dashboard/MyLeads.tsx`
 
-**Fix:**
+Update the lead type badge rendering to show a green "Self-Gen" badge when `lead_type === "self_gen"`.
 
-1. **Create `src/pages/dashboard/forms/AppointmentSheet.tsx`** as a standalone form page:
-   - Same fields as the canvasser inline version: date, time, rep notes
-   - Includes the "What's included with every consultation" and "Why Choose Next Gen" sections
-   - Saves to `lead_forms` with `form_type: "appointment"`
-   - Loads existing appointment form data if editing
+**File:** `src/pages/admin/LeadDetail.tsx`
 
-2. **Register the route** in `src/App.tsx`: `/dashboard/leads/:id/appointment`
-
-3. **Add an "Appointment" button** in `LeadDetailView.tsx` document action buttons section (alongside Contract, Flex Schedule, etc.) -- always visible for any lead status
+- Update the badge display to show three colors: blue (Internet), purple (Canvasser), green (Self-Gen)
+- Add a "Lead Type" dropdown near the status/priority selects so admins can change any lead's type between `internet`, `canvasser`, and `self_gen`
 
 ---
 
-## Technical Details
+## Change 5: Metrics Tracking for Self-Gen Leads (Database)
 
-### Files to Create
-| File | Purpose |
-|------|---------|
-| `supabase/functions/send-inspection-email/index.ts` | Edge function to email checklist + appointment to homeowner |
-| `src/pages/dashboard/forms/AppointmentSheet.tsx` | Standalone appointment/scheduling form for reps and admins |
+The existing database triggers `count_lead_on_assign`, `count_lead_on_insert_assign`, and `update_lead_close_stats` only handle `internet` and `canvasser` lead types. The `create_manual_lead` RPC also only maps to those two types. All need to be updated to support `self_gen`.
 
-### Files to Modify
+**Database migration** to update three functions and the RPC:
+
+1. **`create_manual_lead`** -- Add mapping: when `p_lead_source = 'self_gen'`, set `v_lead_type := 'self_gen'`
+
+2. **`count_lead_on_insert_assign`** -- Add `ELSIF NEW.lead_type = 'self_gen'` block that increments `self_generated_leads` on `user_metrics`
+
+3. **`count_lead_on_assign`** -- Add the same `self_gen` branch to increment `self_generated_leads`
+
+4. **`update_lead_close_stats`** -- Add `self_gen` branch that increments `self_generated_deals` and `closed_deals` + `approved_revenue` on won, and decrements on reversal
+
+5. **`archive_lead`** -- Add `self_gen` branch to decrement `self_generated_leads` (and close stats if won) on archive
+
+This ensures that when a rep or admin creates a self-gen lead, the assignment and close triggers correctly update the `user_metrics` table columns (`self_generated_leads`, `self_generated_deals`) that already exist.
+
+---
+
+## Files Modified
+
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/forms/InspectionChecklist.tsx` | Rewrite UI to match canvasser's Yes/No button pattern; add pre-existing/safety fields; conditionally hide gutter sections for roofing leads |
-| `src/pages/canvasser/CreateCanvasserLead.tsx` | Add roofing service options; conditionally hide gutter checklist sections for roofing; add "Send to Homeowner" email checkbox |
-| `src/pages/dashboard/LeadDetailView.tsx` | Add Appointment Sheet button to document actions |
-| `src/App.tsx` | Register `/dashboard/leads/:id/appointment` route |
-
-### Conditional Logic for Roofing vs Gutters
-- If `serviceInterest` / `service_type` is `roofing`, `residential`, or `commercial`: hide "Gutter Conditions" and "Inside Gutter" sections from the checklist, keep "Perimeter Inspection"
-- If `gutters`, `protection`, `both`, or `roofing_gutters`: show all checklist sections
+| `src/pages/dashboard/LeadDetailView.tsx` | Move appointment button to first position |
+| `src/pages/dashboard/MyLeads.tsx` | Add Create Lead button + dialog; Self-Gen badge |
+| `src/lib/leadSourceConfig.ts` | Add `self_gen` entry |
+| `src/components/admin/CreateLeadDialog.tsx` | Add Self-Generated option; post-create update for self_gen |
+| `src/pages/admin/LeadDetail.tsx` | Self-Gen badge color; Lead Type admin dropdown |
+| Database migration | Update `create_manual_lead`, `count_lead_on_insert_assign`, `count_lead_on_assign`, `update_lead_close_stats`, `archive_lead` to handle `self_gen` lead type |
 
