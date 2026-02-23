@@ -1,66 +1,75 @@
 
 
-# Add Weekly, Monthly, and YTD Company-Wide Stats to the Report
+# Fix Stats, Progress Bars, and Lead-to-Close Breakdown
 
-## Problem
+## Issues Identified
 
-The scheduled report only queries YTD cumulative tables (`user_metrics`, `canvasser_metrics`). It needs to show company-wide **weekly**, **monthly**, and **yearly** numbers for: Revenue, Contracts (closed deals), Leads, Lead-to-Close Ratio, and Collections.
+### 1. Incorrect Stats in Email Report
+The weekly report's Company Performance Summary shows wrong numbers because:
+- **Contracts** uses the `closed_deals` column from the database, which only tracks internet and canvass closes (via triggers). It misses self-generated deals. The correct formula is: `self_generated_deals + canvass_deals_closed + internet_leads_closed`.
+  - Email shows: 10 contracts (YTD) vs. dashboard showing 20
+- **Leads** uses a legacy `leads` column that is mostly zero. Should use `canvass_leads + internet_leads`.
+  - Email shows: 1 lead (YTD) vs. dashboard showing 3
+- **LtC %** appears correct in formula but produces wrong results because leads count is wrong
 
-## Data Sources
+### 2. Progress Bars Not Showing Color
+The Contract Sources section on the Admin Overview uses `bg-primary` for the Canvass Contracts progress bar. In light mode, `--primary` is pure black (`0 0% 0%`), which technically renders but blends poorly with the design. Will replace with distinct, vibrant colors for each source type to ensure visibility across themes.
 
-| Period | Sales Table | Canvasser Table |
+### 3. Lead-to-Close Ratio Needs Source Breakdown
+Currently the Company Performance Summary in the email only shows a single combined LtC %. The user wants separate close rates for:
+- **Self-Generated** (does not count toward LtC -- note this)
+- **Canvass** (canvass_deals_closed / canvass_leads)
+- **Internet** (internet_leads_closed / internet_leads)
+
+## Changes
+
+### File 1: `supabase/functions/send-scheduled-report/index.ts`
+
+**Data model updates:**
+- Expand `CompanyPeriodStats` interface to include separate fields: `selfGenContracts`, `canvassContracts`, `canvassLeads`, `internetContracts`, `internetLeads`, `canvassLtc`, `internetLtc`
+- Update YTD query to also fetch `self_generated_deals`
+- Fix `contracts` calculation: `self_generated_deals + canvass_deals_closed + internet_leads_closed`
+- Fix `leads` calculation: `canvass_leads + internet_leads` (not the legacy `leads` column)
+
+**LtC breakdown in email:**
+- Replace the single LtC % column with three columns: Self-Gen Contracts, Canvass LtC %, Internet LtC %
+- Or add a new "Lead Source Breakdown" section below the summary table showing each source's close rate
+
+**Weekly/monthly stats fix:**
+- The `weekly_user_metrics` table lacks `internet_leads`, `internet_leads_closed`, and `self_generated_deals` columns
+- For weekly/monthly: calculate contracts as `closed_deals + canvass_deals_closed` (since these are the available columns)
+- Add a database migration to add `self_generated_deals`, `internet_leads`, and `internet_leads_closed` columns to `weekly_user_metrics` for future accuracy
+
+### File 2: `src/pages/dashboard/AdminOverview.tsx`
+
+**Progress bar colors:**
+- Change the Canvass Contracts progress bar from `bg-primary` to `bg-emerald-500` (green)
+- Keep Self-Generated as `bg-accent` (red/pink)
+- Keep Internet as `bg-blue-500`
+- This ensures all three bars have distinct, visible colors
+
+**LtC source breakdown:**
+- Add a new "Lead-to-Close by Source" section below Contract Sources showing:
+  - Canvass Close %: `canvass_deals_closed / canvass_leads`
+  - Internet Close %: `internet_leads_closed / internet_leads`
+  - Combined Close %: `(canvass + internet closed) / (canvass + internet leads)`
+- Self-Generated is excluded from LtC (already noted in existing UI)
+
+### File 3: Database Migration
+
+Add columns to `weekly_user_metrics`:
+- `self_generated_deals` (integer, default 0)
+- `internet_leads` (integer, default 0)  
+- `internet_leads_closed` (integer, default 0)
+
+This ensures weekly and monthly breakdowns can track all three lead sources going forward.
+
+## Summary of Fixes
+
+| Problem | Root Cause | Fix |
 |---|---|---|
-| Weekly | `weekly_user_metrics` where `week_start = current Monday` | `weekly_canvasser_metrics` where `week_start = current Monday` |
-| Monthly | `weekly_user_metrics` where `week_start >= 1st of current month` (sum across weeks) | `weekly_canvasser_metrics` where `week_start >= 1st of current month` |
-| YTD | `user_metrics` (existing logic) | `canvasser_metrics` (existing logic) |
-
-## Changes to `supabase/functions/send-scheduled-report/index.ts`
-
-### 1. Add a `CompanyPeriodStats` interface
-
-Fields: `revenue`, `collections`, `contracts`, `leads`, `leadToCloseRate` -- one instance for each of weekly, monthly, and YTD.
-
-### 2. Fetch Weekly Sales Data
-
-Query `weekly_user_metrics` for `week_start = current Monday`. Sum `approved_revenue`, `collections`, `closed_deals`, and `leads` across all users to get company-wide weekly totals.
-
-### 3. Fetch Monthly Sales Data
-
-Query `weekly_user_metrics` where `week_start >= first day of current month`. Aggregate same fields across all rows.
-
-### 4. Fetch Weekly Canvasser Data
-
-Already partially fetched for hours. Extend to also sum `leads_set` and `leads_closed` for the weekly company totals.
-
-### 5. Fetch Monthly Canvasser Data
-
-Query `weekly_canvasser_metrics` where `week_start >= first day of current month`. Sum `leads_set` and `leads_closed`.
-
-### 6. Calculate Lead-to-Close Ratio per Period
-
-For each period: `(closedDeals / leads) * 100` using the sales rep leads and closed deals.
-
-### 7. Update Email HTML Template
-
-Add a new **"Company Performance Summary"** section near the top (after Goals Progress) with a 3-row table:
-
-```
-| Period    | Revenue   | Collections | Contracts | Leads | LtC %  |
-|-----------|-----------|-------------|-----------|-------|--------|
-| This Week | $X        | $X          | X         | X     | X.X%   |
-| This Month| $X        | $X          | X         | X     | X.X%   |
-| YTD       | $X        | $X          | X         | X     | X.X%   |
-```
-
-This gives a clear at-a-glance comparison across all three time periods. The existing Top Sales Reps and Top Canvassers tables will continue showing YTD rankings. The Canvasser Hours section remains as-is (weekly only).
-
-### 8. Fix YTD Collections
-
-Currently `totalCollections` is hardcoded to `0`. Will actually sum `collections` from `user_metrics` (the YTD table already has this column).
-
-## Files Modified
-
-| File | Change |
-|---|---|
-| `supabase/functions/send-scheduled-report/index.ts` | Add weekly/monthly data fetching, add CompanyPeriodStats, add company summary table to email HTML, fix collections |
+| Email contracts = 10 (should be 20) | Uses `closed_deals` column, misses self-gen | Use `self_generated_deals + canvass_deals_closed + internet_leads_closed` |
+| Email leads = 1 (should be 3) | Uses legacy `leads` column | Use `canvass_leads + internet_leads` |
+| Progress bars lack color | Canvass bar uses `bg-primary` (black) | Change to `bg-emerald-500` |
+| LtC only combined | Single LtC % in summary | Add per-source breakdown (Self-Gen, Canvass, Internet) |
 
