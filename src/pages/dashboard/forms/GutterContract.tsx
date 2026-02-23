@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/SignaturePad";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Send, Clock, CheckCircle2, Undo2 } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Clock, CheckCircle2, Undo2, Mail } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +38,7 @@ export default function GutterContract({
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [recallingContract, setRecallingContract] = useState(false);
+  const [sendingConfirmation, setSendingConfirmation] = useState(false);
 
   const lead = propLead || (location.state as any)?.lead;
   const existingForm = propExistingForm || (location.state as any)?.existingForm;
@@ -168,6 +169,34 @@ export default function GutterContract({
 
   const unpaidBalance = Math.max(0, (parseFloat(contractPrice) || 0) - (parseFloat(downPayment) || 0));
 
+  const sendConfirmationEmail = async (name?: string, email?: string) => {
+    try {
+      await supabase.functions.invoke("send-signed-contract-confirmation", {
+        body: {
+          clientName: name || lead?.full_name || ownerName,
+          clientEmail: email || lead?.email || emailField,
+          contractAmount: contractPrice,
+          repName: profile?.full_name || "",
+          signedDate: new Date().toISOString(),
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleSendConfirmationManual = async () => {
+    setSendingConfirmation(true);
+    const ok = await sendConfirmationEmail();
+    setSendingConfirmation(false);
+    if (ok) {
+      toast({ title: `Confirmation sent to ${lead?.email || emailField}` });
+    } else {
+      toast({ title: "Failed to send confirmation", variant: "destructive" });
+    }
+  };
+
   const buildContractData = () => ({
     ownerName, streetAddress, city: cityField, state: stateField, zip: zipField,
     phone: phoneField, email: emailField, contractPrice, downPayment,
@@ -228,8 +257,21 @@ export default function GutterContract({
         lead_id: leadId,
         user_id: user?.id,
         activity_type: isDraft ? "contract_updated" : "contract_signed",
-        content: isDraft ? "Contract draft updated" : `Contract signed by ${ownerName}`,
+        content: isDraft ? "Contract draft updated" : `Contract signed in person by ${ownerName}`,
       });
+
+      // Auto-send confirmation email for in-person signing (non-draft)
+      if (!isDraft && emailField) {
+        const emailSent = await sendConfirmationEmail(ownerName, emailField);
+        if (emailSent) {
+          await supabase.from("lead_activity_log").insert({
+            lead_id: leadId,
+            user_id: user?.id,
+            activity_type: "confirmation_sent",
+            content: `Signed contract confirmation sent to ${emailField}`,
+          });
+        }
+      }
 
       toast({ title: isDraft ? "Contract draft updated" : "Contract saved successfully" });
       navigate(`/dashboard/leads/${leadId}`);
@@ -445,10 +487,29 @@ export default function GutterContract({
       {!signingMode && contractFormStatus === "signed" && (existingForm as any)?.customer_signed_name && (
         <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
           <CheckCircle2 className="w-5 h-5 text-green-600" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-green-700">✅ Signed by {(existingForm as any).customer_signed_name}</p>
             <p className="text-xs text-green-600">{formatDisplayDate((existingForm as any).customer_signed_at)}</p>
           </div>
+          <Button size="sm" variant="outline" onClick={handleSendConfirmationManual} disabled={sendingConfirmation} className="gap-1">
+            {sendingConfirmation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+            Email Copy
+          </Button>
+        </div>
+      )}
+
+      {/* In-person signed (has signature_data but no customer_signed_name = signed by rep in person) */}
+      {!signingMode && contractFormStatus === "signed" && !(existingForm as any)?.customer_signed_name && (
+        <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-700">✅ Signed in person by {(existingForm as any)?.signed_by_name || ownerName}</p>
+            <p className="text-xs text-green-600">{formatDisplayDate((existingForm as any)?.signed_at)}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleSendConfirmationManual} disabled={sendingConfirmation} className="gap-1">
+            {sendingConfirmation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+            Email Copy
+          </Button>
         </div>
       )}
 
