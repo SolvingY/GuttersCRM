@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
-import { WeeklyLeaderboardTable } from '@/components/dashboard/WeeklyLeaderboardTable';
 import { CommentsSection } from '@/components/dashboard/CommentsSection';
 import { Loader2, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,24 +34,14 @@ interface LeaderboardEntry {
   contestPoints: number;
   wagerPoints: number;
   collections: number;
-}
-
-interface WeeklyLeaderboardEntry {
-  rank: number;
-  name: string;
-  userId: string;
-  approvedRevenue: number;
-  collections: number;
-  leads: number;
-  closedDeals: number;
-  pointsEarned: number;
+  leads?: number;
 }
 
 export default function Leaderboard() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [weeklyEntries, setWeeklyEntries] = useState<WeeklyLeaderboardEntry[]>([]);
-  const [monthlyEntries, setMonthlyEntries] = useState<WeeklyLeaderboardEntry[]>([]);
+  const [weeklyEntries, setWeeklyEntries] = useState<LeaderboardEntry[]>([]);
+  const [monthlyEntries, setMonthlyEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [monthlyLoading, setMonthlyLoading] = useState(true);
@@ -99,6 +88,7 @@ export default function Leaderboard() {
     };
   }, []);
 
+  // YTD fetch - keep existing logic
   useEffect(() => {
     const fetchLeaderboard = async () => {
       // First, get user IDs that are sales reps or admins (not canvassers)
@@ -132,7 +122,6 @@ export default function Leaderboard() {
         .order('metric_date', { ascending: false });
 
       // Also fetch canvass deals, canvass leads, self-gen leads, and approved_revenue from user_metrics for calculation
-      // Order by metric_date and updated_at for deterministic "latest" selection
       const { data: extendedMetricsData } = await supabase
         .from('user_metrics')
         .select('user_id, canvass_deals_closed, canvass_leads, self_generated_leads, contest_points, wager_points, approved_revenue, metric_date, updated_at')
@@ -155,7 +144,7 @@ export default function Leaderboard() {
         return;
       }
 
-      // Create extended metrics map (latest per user) - includes points breakdown and canvass data
+      // Create extended metrics map (latest per user)
       const extendedMetricsMap = new Map<string, { 
         contestPoints: number; 
         wagerPoints: number; 
@@ -187,13 +176,11 @@ export default function Leaderboard() {
       });
 
       // Fetch yearly goals from user_metrics separately
-      // Order by metric_date and updated_at for deterministic "latest" selection
       const { data: goalsData } = await supabase
         .from('user_metrics')
         .select('user_id, yearly_goal, metric_date, updated_at')
         .order('metric_date', { ascending: false })
         .order('updated_at', { ascending: false });
-      // Create goals map (latest goal per user)
       const goalsMap = new Map<string, number>();
       goalsData?.forEach(g => {
         if (g.user_id && !goalsMap.has(g.user_id)) {
@@ -201,8 +188,7 @@ export default function Leaderboard() {
         }
       });
 
-
-      // Get latest metric per user, filtering to only eligible users (sales reps/admins)
+      // Get latest metric per user
       const latestByUser = new Map<string, {
         metricId: string;
         points: number;
@@ -213,12 +199,9 @@ export default function Leaderboard() {
       }>();
       
       for (const item of metricsData) {
-        // Skip if user_id exists but is not eligible (is a canvasser) or is hidden from leaderboard
         if (item.user_id && (!eligibleUserIds.has(item.user_id) || hiddenUserIds.has(item.user_id))) {
           continue;
         }
-        
-        // Use user_id if available, otherwise use metric id as key
         const key = item.user_id || `metric_${item.id}`;
         if (!latestByUser.has(key)) {
           latestByUser.set(key, {
@@ -232,7 +215,6 @@ export default function Leaderboard() {
         }
       }
 
-      // Fetch profiles only for real user_ids (not null)
       const realUserIds = Array.from(latestByUser.keys()).filter(id => !id.startsWith('metric_'));
       const { data: profilesData } = realUserIds.length > 0 
         ? await supabase.from('profiles').select('id, full_name').in('id', realUserIds)
@@ -269,24 +251,17 @@ export default function Leaderboard() {
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => {
           const extendedMetrics = extendedMetricsMap.get(userId) || { 
-            contestPoints: 0, 
-            wagerPoints: 0, 
-            approvedRevenue: 0,
-            canvassDealsClose: 0,
-            canvassLeads: 0,
-            selfGeneratedLeads: 0,
+            contestPoints: 0, wagerPoints: 0, approvedRevenue: 0,
+            canvassDealsClose: 0, canvassLeads: 0, selfGeneratedLeads: 0,
           };
-          // Use approvedRevenue from the view (which now has correct value)
-          // Fall back to extended metrics if available, then to the view data
           const approvedRevenue = data.approvedRevenue || extendedMetrics.approvedRevenue;
-          
-          // Calculate Total Contracts = Self-Gen Deals + Canvass Deals
           const calculatedClosedDeals = data.selfGeneratedDeals + extendedMetrics.canvassDealsClose;
+          const leads = extendedMetrics.canvassLeads + extendedMetrics.selfGeneratedLeads;
           
           return {
             userId,
             points: data.points,
-            approvedRevenue: approvedRevenue,
+            approvedRevenue,
             closedDeals: calculatedClosedDeals,
             yearlyGoal: goalsMap.get(userId) || 0,
             salesRank: data.salesRank,
@@ -295,6 +270,7 @@ export default function Leaderboard() {
             contestPoints: contestPointsFromVictoriesMap.get(userId) || extendedMetrics.contestPoints,
             wagerPoints: extendedMetrics.wagerPoints,
             collections: collectionsMap.get(userId) || 0,
+            leads,
           };
         })
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
@@ -310,11 +286,11 @@ export default function Leaderboard() {
     fetchLeaderboard();
   }, [refreshKey]);
 
+  // Weekly fetch - enriched with YTD fields
   useEffect(() => {
     const fetchWeeklyLeaderboard = async () => {
       setWeeklyLoading(true);
       
-      // First, get user IDs that are sales reps or admins (not canvassers)
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role')
@@ -328,7 +304,6 @@ export default function Leaderboard() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
-      // Fetch profiles to check hidden_from_leaderboard and is_archived status
       const { data: profilesForHidden } = await supabase
         .from('profiles')
         .select('id, hidden_from_leaderboard, is_archived');
@@ -337,7 +312,6 @@ export default function Leaderboard() {
         profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
       );
 
-      // Fetch weekly metrics for selected week
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
 
       const { data: weeklyData, error: weeklyError } = await supabase
@@ -357,55 +331,66 @@ export default function Leaderboard() {
         return;
       }
 
-      // Filter to eligible users only (not canvassers and not hidden)
       const filteredWeekly = weeklyData.filter(w => eligibleUserIds.has(w.user_id) && !hiddenUserIds.has(w.user_id));
-
-      // Fetch profiles for names
       const userIds = filteredWeekly.map(w => w.user_id);
-      const { data: profilesData } = userIds.length > 0 
-        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
-        : { data: [] };
 
-      // Also fetch display names from user_metrics
-      const { data: metricsData } = userIds.length > 0
-        ? await supabase.from('user_metrics').select('user_id, display_name').in('user_id', userIds)
-        : { data: [] };
+      // Fetch profiles, display names, YTD fields, and contest wins in parallel
+      const [profilesRes, metricsRes, contestWinsRes] = await Promise.all([
+        userIds.length > 0 ? supabase.from('profiles').select('id, full_name').in('id', userIds) : { data: [] },
+        userIds.length > 0 ? supabase.from('user_metrics').select('user_id, display_name, sales_rank, yearly_goal, contest_points, wager_points').in('user_id', userIds) : { data: [] },
+        supabase.from('contests').select('winner_user_id').not('winner_user_id', 'is', null),
+      ]);
 
       const profilesMap = new Map<string, string | null>(
-        profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
+        (profilesRes.data || []).map((p: any) => [p.id, p.full_name] as [string, string | null])
       );
 
-      const displayNameMap = new Map<string, string | null>();
-      metricsData?.forEach(m => {
-        if (m.display_name && !displayNameMap.has(m.user_id)) {
-          displayNameMap.set(m.user_id, m.display_name);
+      const ytdMap = new Map<string, { displayName: string | null; salesRank: string; yearlyGoal: number; contestPoints: number; wagerPoints: number }>();
+      (metricsRes.data || []).forEach((m: any) => {
+        if (!ytdMap.has(m.user_id)) {
+          ytdMap.set(m.user_id, {
+            displayName: m.display_name,
+            salesRank: m.sales_rank || 'SR1',
+            yearlyGoal: Number(m.yearly_goal) || 0,
+            contestPoints: Number(m.contest_points) || 0,
+            wagerPoints: Number(m.wager_points) || 0,
+          });
         }
       });
 
-      // Convert to array and sort by weekly approved revenue
+      const contestWinsMap = new Map<string, number>();
+      (contestWinsRes.data || []).forEach((c: any) => {
+        const current = contestWinsMap.get(c.winner_user_id!) || 0;
+        contestWinsMap.set(c.winner_user_id!, current + 1);
+      });
+
       const sorted = filteredWeekly
-        .map(w => ({
-          userId: w.user_id,
-          approvedRevenue: Number(w.approved_revenue) || 0,
-          collections: Number(w.collections) || 0,
-          leads: Number(w.leads) || 0,
-          closedDeals: (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
-          pointsEarned: Number(w.points_earned) || 0,
-          name: displayNameMap.get(w.user_id) || profilesMap.get(w.user_id) || 'Unknown User',
-        }))
-        // Filter out users with zero metrics for weekly
+        .map(w => {
+          const ytd = ytdMap.get(w.user_id) || { displayName: null, salesRank: 'SR1', yearlyGoal: 0, contestPoints: 0, wagerPoints: 0 };
+          const closedDeals = (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0);
+          const leads = Number(w.leads) || 0;
+          const approvedRevenue = Number(w.approved_revenue) || 0;
+          return {
+            userId: w.user_id,
+            approvedRevenue,
+            collections: Number(w.collections) || 0,
+            leads,
+            closedDeals,
+            points: Number(w.points_earned) || 0,
+            name: ytd.displayName || profilesMap.get(w.user_id) || 'Unknown User',
+            salesRank: ytd.salesRank,
+            yearlyGoal: ytd.yearlyGoal,
+            contestsWon: contestWinsMap.get(w.user_id) || 0,
+            contestPoints: ytd.contestPoints,
+            wagerPoints: ytd.wagerPoints,
+          };
+        })
         .filter(entry => 
-          entry.approvedRevenue > 0 || 
-          entry.collections > 0 || 
-          entry.leads > 0 || 
-          entry.closedDeals > 0 || 
-          entry.pointsEarned > 0
+          entry.approvedRevenue > 0 || entry.collections > 0 || entry.leads > 0 || 
+          entry.closedDeals > 0 || entry.points > 0
         )
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
-        .map((entry, index) => ({
-          ...entry,
-          rank: index + 1,
-        }));
+        .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
       setWeeklyEntries(sorted);
       setWeeklyLoading(false);
@@ -414,7 +399,7 @@ export default function Leaderboard() {
     fetchWeeklyLeaderboard();
   }, [selectedDate]);
 
-  // Fetch monthly leaderboard
+  // Monthly fetch - enriched with YTD fields
   useEffect(() => {
     const fetchMonthlyLeaderboard = async () => {
       setMonthlyLoading(true);
@@ -432,7 +417,6 @@ export default function Leaderboard() {
 
       const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
 
-      // Fetch profiles to check hidden_from_leaderboard and is_archived status
       const { data: profilesForHidden } = await supabase
         .from('profiles')
         .select('id, hidden_from_leaderboard, is_archived');
@@ -444,7 +428,6 @@ export default function Leaderboard() {
       const monthStartStr = format(monthStart, 'yyyy-MM-dd');
       const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
-      // Filter weeks where week_start falls within this month
       const { data: weeklyData, error: weeklyError } = await supabase
         .from('weekly_user_metrics')
         .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned')
@@ -463,7 +446,7 @@ export default function Leaderboard() {
         return;
       }
 
-      // Aggregate by user (excluding hidden users)
+      // Aggregate by user
       const aggregated = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; pointsEarned: number }>();
       weeklyData.forEach(w => {
         if (!eligibleUserIds.has(w.user_id) || hiddenUserIds.has(w.user_id)) return;
@@ -478,34 +461,58 @@ export default function Leaderboard() {
       });
 
       const userIds = Array.from(aggregated.keys());
-      const { data: profilesData } = userIds.length > 0 
-        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
-        : { data: [] };
-      const { data: metricsData } = userIds.length > 0
-        ? await supabase.from('user_metrics').select('user_id, display_name').in('user_id', userIds)
-        : { data: [] };
 
-      const profilesMap = new Map<string, string | null>(profilesData?.map(p => [p.id, p.full_name] as [string, string | null]) || []);
-      const displayNameMap = new Map<string, string | null>();
-      metricsData?.forEach(m => {
-        if (m.display_name && !displayNameMap.has(m.user_id)) {
-          displayNameMap.set(m.user_id, m.display_name);
+      // Fetch YTD enrichment data
+      const [profilesRes, metricsRes, contestWinsRes] = await Promise.all([
+        userIds.length > 0 ? supabase.from('profiles').select('id, full_name').in('id', userIds) : { data: [] },
+        userIds.length > 0 ? supabase.from('user_metrics').select('user_id, display_name, sales_rank, yearly_goal, contest_points, wager_points').in('user_id', userIds) : { data: [] },
+        supabase.from('contests').select('winner_user_id').not('winner_user_id', 'is', null),
+      ]);
+
+      const profilesMap = new Map<string, string | null>(
+        (profilesRes.data || []).map((p: any) => [p.id, p.full_name] as [string, string | null])
+      );
+
+      const ytdMap = new Map<string, { displayName: string | null; salesRank: string; yearlyGoal: number; contestPoints: number; wagerPoints: number }>();
+      (metricsRes.data || []).forEach((m: any) => {
+        if (!ytdMap.has(m.user_id)) {
+          ytdMap.set(m.user_id, {
+            displayName: m.display_name,
+            salesRank: m.sales_rank || 'SR1',
+            yearlyGoal: Number(m.yearly_goal) || 0,
+            contestPoints: Number(m.contest_points) || 0,
+            wagerPoints: Number(m.wager_points) || 0,
+          });
         }
       });
 
+      const contestWinsMap = new Map<string, number>();
+      (contestWinsRes.data || []).forEach((c: any) => {
+        const current = contestWinsMap.get(c.winner_user_id!) || 0;
+        contestWinsMap.set(c.winner_user_id!, current + 1);
+      });
+
       const sorted = Array.from(aggregated.entries())
-        .map(([userId, data]) => ({
-          userId,
-          ...data,
-          name: String(displayNameMap.get(userId) || profilesMap.get(userId) || 'Unknown User'),
-        }))
-        // Filter out users with zero metrics for monthly
+        .map(([userId, data]) => {
+          const ytd = ytdMap.get(userId) || { displayName: null, salesRank: 'SR1', yearlyGoal: 0, contestPoints: 0, wagerPoints: 0 };
+          return {
+            userId,
+            approvedRevenue: data.approvedRevenue,
+            collections: data.collections,
+            leads: data.leads,
+            closedDeals: data.closedDeals,
+            points: data.pointsEarned,
+            name: String(ytd.displayName || profilesMap.get(userId) || 'Unknown User'),
+            salesRank: ytd.salesRank,
+            yearlyGoal: ytd.yearlyGoal,
+            contestsWon: contestWinsMap.get(userId) || 0,
+            contestPoints: ytd.contestPoints,
+            wagerPoints: ytd.wagerPoints,
+          };
+        })
         .filter(entry => 
-          entry.approvedRevenue > 0 || 
-          entry.collections > 0 || 
-          entry.leads > 0 || 
-          entry.closedDeals > 0 || 
-          entry.pointsEarned > 0
+          entry.approvedRevenue > 0 || entry.collections > 0 || entry.leads > 0 || 
+          entry.closedDeals > 0 || entry.points > 0
         )
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
@@ -542,7 +549,6 @@ export default function Leaderboard() {
         </TabsContent>
 
         <TabsContent value="monthly" className="mt-4">
-          {/* Month Selector */}
           <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
               <ChevronLeft className="h-4 w-4" />
@@ -574,12 +580,11 @@ export default function Leaderboard() {
               <Loader2 className="h-8 w-8 animate-spin text-accent" />
             </div>
           ) : (
-            <WeeklyLeaderboardTable entries={monthlyEntries} currentUserId={user?.id} />
+            <LeaderboardTable entries={monthlyEntries} currentUserId={user?.id} />
           )}
         </TabsContent>
         
         <TabsContent value="weekly" className="mt-4">
-          {/* Week Selector */}
           <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
               <ChevronLeft className="h-4 w-4" />
@@ -611,7 +616,7 @@ export default function Leaderboard() {
               <Loader2 className="h-8 w-8 animate-spin text-accent" />
             </div>
           ) : (
-            <WeeklyLeaderboardTable entries={weeklyEntries} currentUserId={user?.id} />
+            <LeaderboardTable entries={weeklyEntries} currentUserId={user?.id} />
           )}
         </TabsContent>
       </Tabs>

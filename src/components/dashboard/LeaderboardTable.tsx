@@ -99,6 +99,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Total Contracts</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Close %</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
@@ -173,6 +174,11 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className="font-medium">
+                      {(entry.leads || 0) > 0 ? `${(((entry.closedDeals) / (entry.leads || 1)) * 100).toFixed(1)}%` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="font-medium">
                       {formatCurrency(amountUntilGoal)}
                     </span>
                   </td>
@@ -220,14 +226,15 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <td className="py-3 px-4 text-right">{formatCurrency(totals.totalRevenue)}</td>
               <td className="py-3 px-4 text-right">{formatCurrency(totals.totalCollections)}</td>
               <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
-              <td className="py-3 px-4 text-right">—</td>
               <td className="py-3 px-4 text-right">
                 {totals.totalLeads > 0 ? (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
-                    {totals.closePercent.toFixed(1)}% Close
+                    {totals.closePercent.toFixed(1)}%
                   </span>
                 ) : '—'}
               </td>
+              <td className="py-3 px-4 text-right">—</td>
+              <td className="py-3 px-4 text-right">—</td>
               <td className="py-3 px-4 text-right">—</td>
               <td className="py-3 px-4 text-center">—</td>
             </tr>
