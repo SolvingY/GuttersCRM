@@ -76,6 +76,7 @@ export default function CreateCanvasserLead() {
   const [email, setEmail] = useState("");
   const [serviceInterest, setServiceInterest] = useState("");
   const [notes, setNotes] = useState("");
+  const [sendToHomeowner, setSendToHomeowner] = useState(false);
 
   // Inspection checklist
   const [checklistOpen, setChecklistOpen] = useState(false);
@@ -186,6 +187,25 @@ export default function CreateCanvasserLead() {
         content: "Lead created by canvasser",
       });
 
+      // Send email to homeowner if checked
+      if (sendToHomeowner && email.trim()) {
+        try {
+          await supabase.functions.invoke("send-inspection-email", {
+            body: {
+              clientName: customerName,
+              clientEmail: email,
+              address: `${address}, ${city}, ${state} ${zip}`,
+              appointmentDate: isAppointmentTouched() ? appointmentDate : null,
+              appointmentTime: isAppointmentTouched() ? appointmentTime : null,
+              inspectionData: isChecklistTouched() ? { conditions, perimeterChecks, insideChecks, preExisting, safetyConcerns } : null,
+              serviceInterest,
+            },
+          });
+        } catch {
+          // Don't block submission if email fails
+        }
+      }
+
       toast({ title: "Lead submitted!", description: "Your manager will review and assign it shortly." });
       navigate("/canvasser/stats");
     } catch (err: any) {
@@ -252,6 +272,8 @@ export default function CreateCanvasserLead() {
                 <SelectItem value="gutters">Gutters</SelectItem>
                 <SelectItem value="protection">Protection</SelectItem>
                 <SelectItem value="both">Both</SelectItem>
+                <SelectItem value="roofing">Roofing</SelectItem>
+                <SelectItem value="roofing_gutters">Roofing & Gutters</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
@@ -285,24 +307,26 @@ export default function CreateCanvasserLead() {
             <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{new Date().toLocaleDateString()}</span></div>
           </div>
 
-          {/* Gutter Conditions */}
-          <div>
-            <h3 className="font-heading text-sm uppercase mb-3">Gutter Condition</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {gutterConditions.map(c => (
-                <label key={c.key} className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/30">
-                  <Checkbox
-                    checked={!!conditions[c.key]}
-                    onCheckedChange={(v) => setConditions(prev => ({ ...prev, [c.key]: !!v }))}
-                  />
-                  <div>
-                    <span className="font-medium text-sm">{c.label}</span>
-                    <p className="text-xs text-muted-foreground">{c.desc}</p>
-                  </div>
-                </label>
-              ))}
+          {/* Gutter Conditions - hidden for roofing-only */}
+          {serviceInterest !== "roofing" && (
+            <div>
+              <h3 className="font-heading text-sm uppercase mb-3">Gutter Condition</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {gutterConditions.map(c => (
+                  <label key={c.key} className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/30">
+                    <Checkbox
+                      checked={!!conditions[c.key]}
+                      onCheckedChange={(v) => setConditions(prev => ({ ...prev, [c.key]: !!v }))}
+                    />
+                    <div>
+                      <span className="font-medium text-sm">{c.label}</span>
+                      <p className="text-xs text-muted-foreground">{c.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Perimeter & Inside Checklists */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -322,22 +346,25 @@ export default function CreateCanvasserLead() {
                 ))}
               </div>
             </div>
-            <div>
-              <h3 className="font-heading text-sm uppercase mb-3">What's Inside Your Gutters</h3>
-              <div className="space-y-2">
-                {insideGutterItems.map(item => (
-                  <div key={item} className="flex items-center justify-between text-sm p-2 bg-muted/20 rounded">
-                    <span>{item}</span>
-                    <div className="flex gap-2">
-                      <Button type="button" size="sm" variant={insideChecks[item] === true ? "default" : "outline"} className="h-7 px-2 text-xs"
-                        onClick={() => setInsideChecks(p => ({ ...p, [item]: true }))}>Yes</Button>
-                      <Button type="button" size="sm" variant={insideChecks[item] === false ? "destructive" : "outline"} className="h-7 px-2 text-xs"
-                        onClick={() => setInsideChecks(p => ({ ...p, [item]: false }))}>No</Button>
+            {/* Inside Gutter - hidden for roofing-only */}
+            {serviceInterest !== "roofing" && (
+              <div>
+                <h3 className="font-heading text-sm uppercase mb-3">What's Inside Your Gutters</h3>
+                <div className="space-y-2">
+                  {insideGutterItems.map(item => (
+                    <div key={item} className="flex items-center justify-between text-sm p-2 bg-muted/20 rounded">
+                      <span>{item}</span>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" variant={insideChecks[item] === true ? "default" : "outline"} className="h-7 px-2 text-xs"
+                          onClick={() => setInsideChecks(p => ({ ...p, [item]: true }))}>Yes</Button>
+                        <Button type="button" size="sm" variant={insideChecks[item] === false ? "destructive" : "outline"} className="h-7 px-2 text-xs"
+                          onClick={() => setInsideChecks(p => ({ ...p, [item]: false }))}>No</Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Free text */}
@@ -411,6 +438,17 @@ export default function CreateCanvasserLead() {
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Send to Homeowner option */}
+      {email.trim() && (isChecklistTouched() || isAppointmentTouched()) && (
+        <label className="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/30">
+          <Checkbox checked={sendToHomeowner} onCheckedChange={(v) => setSendToHomeowner(!!v)} />
+          <div>
+            <span className="font-medium text-sm">📧 Email report to homeowner</span>
+            <p className="text-xs text-muted-foreground">Send inspection checklist and appointment details to {email}</p>
+          </div>
+        </label>
+      )}
 
       {/* Submit */}
       <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2" size="lg">
