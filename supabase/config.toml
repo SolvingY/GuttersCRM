@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.send-inspection-email]
 verify_jwt = false
+
+[functions.send-contract-signing-email]
+verify_jwt = false
+
+[functions.notify-contract-signed]
+verify_jwt = false

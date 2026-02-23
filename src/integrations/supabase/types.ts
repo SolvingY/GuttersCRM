@@ -904,46 +904,64 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          customer_signed_at: string | null
+          customer_signed_name: string | null
           form_data: Json
           form_type: string
           id: string
           lead_id: string | null
           pdf_path: string | null
           rep_signature_data: string | null
+          sent_for_signing_at: string | null
           signature_data: string | null
           signed_at: string | null
           signed_by_name: string | null
+          signing_ip: string | null
+          signing_token: string | null
           status: string | null
+          token_expires_at: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          customer_signed_at?: string | null
+          customer_signed_name?: string | null
           form_data?: Json
           form_type: string
           id?: string
           lead_id?: string | null
           pdf_path?: string | null
           rep_signature_data?: string | null
+          sent_for_signing_at?: string | null
           signature_data?: string | null
           signed_at?: string | null
           signed_by_name?: string | null
+          signing_ip?: string | null
+          signing_token?: string | null
           status?: string | null
+          token_expires_at?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
+          customer_signed_at?: string | null
+          customer_signed_name?: string | null
           form_data?: Json
           form_type?: string
           id?: string
           lead_id?: string | null
           pdf_path?: string | null
           rep_signature_data?: string | null
+          sent_for_signing_at?: string | null
           signature_data?: string | null
           signed_at?: string | null
           signed_by_name?: string | null
+          signing_ip?: string | null
+          signing_token?: string | null
           status?: string | null
+          token_expires_at?: string | null
           updated_at?: string | null
         }
         Relationships: [

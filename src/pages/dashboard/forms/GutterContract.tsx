@@ -7,19 +7,43 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/SignaturePad";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Clock, CheckCircle2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-export default function GutterContract() {
+interface GutterContractProps {
+  lead?: any;
+  existingForm?: any;
+  readOnly?: boolean;
+  signingMode?: boolean;
+  onCustomerSign?: (signatureData: string, signedName: string) => void;
+}
+
+export default function GutterContract({
+  lead: propLead,
+  existingForm: propExistingForm,
+  readOnly = false,
+  signingMode = false,
+  onCustomerSign,
+}: GutterContractProps) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const lead = (location.state as any)?.lead;
-  const existingForm = (location.state as any)?.existingForm;
+  const lead = propLead || (location.state as any)?.lead;
+  const existingForm = propExistingForm || (location.state as any)?.existingForm;
+
+  // Customer signing state (for signingMode)
+  const [customerTypedName, setCustomerTypedName] = useState("");
+  const [customerSigData, setCustomerSigData] = useState("");
+  const [customerAgreed, setCustomerAgreed] = useState(false);
+
+  const isRouteBased = !propLead && !propExistingForm;
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile"],
@@ -27,16 +51,17 @@ export default function GutterContract() {
       const { data } = await supabase.from("profiles").select("full_name").eq("id", user!.id).single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !signingMode,
   });
 
   const { data: estimate } = useQuery({
-    queryKey: ["lead-estimate", id],
+    queryKey: ["lead-estimate", id || lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("gutter_estimates").select("*").eq("lead_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const leadId = id || lead?.id;
+      const { data } = await supabase.from("gutter_estimates").select("*").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
       return data;
     },
-    enabled: !!id,
+    enabled: !!(id || lead?.id) && !signingMode,
   });
 
   // Form fields
@@ -106,8 +131,6 @@ export default function GutterContract() {
         const protPrice = md?.protQuoted ? `$${Number(md.protQuoted).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
 
         const lines: string[] = [];
-
-        // What's Included
         lines.push("WHAT'S INCLUDED:");
         lines.push("• All labor and installation");
         lines.push("• Material costs");
@@ -117,26 +140,21 @@ export default function GutterContract() {
         lines.push("• All applicable warranties as listed below");
         lines.push("Note: Removal of existing gutters is included unless otherwise specified.");
         lines.push("");
-
-        // Gutter/Downspout line
         lines.push(`${estimate.gutter_size || '6"'} ${colorLabel} Gutters & ${dsSize} Downspouts${gutterDsPrice ? ` — ${gutterDsPrice}` : ""}`);
         lines.push("  • Lifetime Leak-Free Guarantee — With yearly scheduled inspection");
         lines.push("  • 25-Year Baked-On Paint Warranty — Applies to gutters and downspouts");
-
-        // Protection line
         if (estimate.protection_product && (estimate.protection_footage ?? 0) > 0) {
           lines.push("");
           lines.push(`${estimate.protection_product}${protPrice ? ` — ${protPrice}` : ""}`);
           const prod = estimate.protection_product || "";
           if (prod.includes("Cheap Mesh")) {
-            // No warranty for cheap mesh
+            // no warranty
           } else if (prod.includes("Gutter RX Collector")) {
             lines.push("  • 10-Year Manufacturer Warranty");
           } else {
             lines.push("  • 45-Year Manufacturer Warranty");
           }
         }
-
         setScopeOfWork(lines.join("\n"));
       } else if (md?.description) {
         setScopeOfWork(md.description);
@@ -146,6 +164,15 @@ export default function GutterContract() {
 
   const unpaidBalance = Math.max(0, (parseFloat(contractPrice) || 0) - (parseFloat(downPayment) || 0));
 
+  const buildContractData = () => ({
+    ownerName, streetAddress, city: cityField, state: stateField, zip: zipField,
+    phone: phoneField, email: emailField, contractPrice, downPayment,
+    unpaidBalance: unpaidBalance.toFixed(2), startDate, completionDate,
+    lastFourCC, authPlan, electronicPayment, otherPayTerms, scopeOfWork,
+    repName: profile?.full_name || "", signatureDate,
+    secondOwnerSignature: showSecondOwner ? secondOwnerSignature : null,
+  });
+
   const handleSave = async () => {
     if (!customerSignature) {
       toast({ title: "Signature required", description: "Customer must sign the contract.", variant: "destructive" });
@@ -153,14 +180,8 @@ export default function GutterContract() {
     }
     setSaving(true);
     try {
-      const formData = {
-        ownerName, streetAddress, city: cityField, state: stateField, zip: zipField,
-        phone: phoneField, email: emailField, contractPrice, downPayment,
-        unpaidBalance: unpaidBalance.toFixed(2), startDate, completionDate,
-        lastFourCC, authPlan, electronicPayment, otherPayTerms, scopeOfWork,
-        repName: profile?.full_name || "", signatureDate,
-        secondOwnerSignature: showSecondOwner ? secondOwnerSignature : null,
-      };
+      const formData = buildContractData();
+      const leadId = id || lead?.id;
 
       if (existingForm) {
         await supabase.from("lead_forms").update({
@@ -173,7 +194,7 @@ export default function GutterContract() {
         }).eq("id", existingForm.id);
       } else {
         await supabase.from("lead_forms").insert({
-          lead_id: id,
+          lead_id: leadId,
           form_type: "contract",
           form_data: formData,
           status: "signed",
@@ -184,20 +205,19 @@ export default function GutterContract() {
         });
       }
 
-      // Update lead status to scheduled if won/approved
       if (lead && ["won", "approved"].includes(lead.status)) {
-        await supabase.from("quote_requests").update({ status: "scheduled" }).eq("id", id);
+        await supabase.from("quote_requests").update({ status: "scheduled" }).eq("id", leadId);
       }
 
       await supabase.from("lead_activity_log").insert({
-        lead_id: id,
+        lead_id: leadId,
         user_id: user?.id,
         activity_type: "contract_signed",
         content: `Contract signed by ${ownerName}`,
       });
 
       toast({ title: "Contract saved successfully" });
-      navigate(`/dashboard/leads/${id}`);
+      navigate(`/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -205,68 +225,243 @@ export default function GutterContract() {
     }
   };
 
+  const handleSendForSignature = async () => {
+    setSending(true);
+    try {
+      const formData = buildContractData();
+      const leadId = id || lead?.id;
+      const tokenExpiry = new Date();
+      tokenExpiry.setDate(tokenExpiry.getDate() + 7);
+
+      const upsertData: any = {
+        lead_id: leadId,
+        form_type: "contract",
+        form_data: formData,
+        status: "sent",
+        token_expires_at: tokenExpiry.toISOString(),
+        sent_for_signing_at: new Date().toISOString(),
+        created_by: user?.id,
+        rep_signature_data: customerSignature || null,
+      };
+      if (existingForm?.id) upsertData.id = existingForm.id;
+
+      const { data: form, error } = await supabase
+        .from("lead_forms")
+        .upsert(upsertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase.functions.invoke("send-contract-signing-email", {
+        body: {
+          clientName: lead?.full_name || ownerName,
+          clientEmail: lead?.email || emailField,
+          signingToken: (form as any).signing_token,
+          contractAmount: contractPrice,
+          repName: profile?.full_name || "",
+          expiresAt: tokenExpiry.toISOString(),
+        },
+      });
+
+      await supabase.from("lead_activity_log").insert({
+        lead_id: leadId,
+        user_id: user?.id,
+        activity_type: "contract_sent",
+        content: `Contract sent to customer for signature`,
+      });
+
+      toast({ title: `Contract sent to ${lead?.email || emailField}` });
+      navigate(`/dashboard/leads/${leadId}`);
+    } catch (err: any) {
+      toast({ title: "Failed to send contract", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setSending(true);
+    try {
+      const leadId = id || lead?.id;
+      let token = (existingForm as any)?.signing_token;
+      const tokenExpiry = (existingForm as any)?.token_expires_at;
+      const isExpired = !tokenExpiry || new Date(tokenExpiry) < new Date();
+
+      if (isExpired) {
+        const newExpiry = new Date();
+        newExpiry.setDate(newExpiry.getDate() + 7);
+        const { data, error } = await supabase
+          .from("lead_forms")
+          .update({
+            token_expires_at: newExpiry.toISOString(),
+            sent_for_signing_at: new Date().toISOString(),
+          } as any)
+          .eq("id", existingForm.id)
+          .select()
+          .single();
+        if (error) throw error;
+        token = (data as any).signing_token;
+      }
+
+      await supabase.functions.invoke("send-contract-signing-email", {
+        body: {
+          clientName: lead?.full_name || ownerName,
+          clientEmail: lead?.email || emailField,
+          signingToken: token,
+          contractAmount: contractPrice,
+          repName: profile?.full_name || "",
+          expiresAt: isExpired ? new Date(Date.now() + 7 * 86400000).toISOString() : tokenExpiry,
+        },
+      });
+
+      toast({ title: `Contract resent to ${lead?.email || emailField}` });
+    } catch (err: any) {
+      toast({ title: "Failed to resend", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Helper to render a field as text or input
+  const renderField = (label: string, value: string, onChange: (v: string) => void, props?: any) => (
+    <div className={props?.className}>
+      <label className="text-sm font-medium">{label}</label>
+      {readOnly ? (
+        <p className="py-2 px-3 border border-transparent text-sm min-h-[40px]">{value || "—"}</p>
+      ) : (
+        <Input value={value} onChange={(e) => onChange(e.target.value)} {...(props?.inputProps || {})} />
+      )}
+    </div>
+  );
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  };
+
+  const contractFormStatus = (existingForm as any)?.status;
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Button variant="ghost" onClick={() => navigate(`/dashboard/leads/${id}`)} className="gap-2 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Back to Lead
-      </Button>
+      {isRouteBased && !signingMode && (
+        <Button variant="ghost" onClick={() => navigate(`/dashboard/leads/${id}`)} className="gap-2 -ml-2">
+          <ArrowLeft className="w-4 h-4" /> Back to Lead
+        </Button>
+      )}
       <h1 className="font-heading text-2xl uppercase">Gutter Contract</h1>
+
+      {/* Signing Status Display (rep view only) */}
+      {!signingMode && contractFormStatus === "sent" && (
+        <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <Clock className="w-5 h-5 text-amber-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-700">⏳ Awaiting customer signature</p>
+            <p className="text-xs text-amber-600">Sent {formatDisplayDate((existingForm as any)?.sent_for_signing_at)}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleResend} disabled={sending} className="gap-1">
+            {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+            Resend
+          </Button>
+        </div>
+      )}
+
+      {!signingMode && contractFormStatus === "signed" && (existingForm as any)?.customer_signed_name && (
+        <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <div>
+            <p className="text-sm font-medium text-green-700">✅ Signed by {(existingForm as any).customer_signed_name}</p>
+            <p className="text-xs text-green-600">{formatDisplayDate((existingForm as any).customer_signed_at)}</p>
+          </div>
+        </div>
+      )}
 
       {/* Customer/Property Info */}
       <div className="border border-border rounded-lg p-5 space-y-4">
         <h2 className="font-heading text-lg uppercase">Customer Information</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium">Owner Name</label>
-            <Input value={ownerName} onChange={e => setOwnerName(e.target.value)} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium">Address</label>
-            <Input value={streetAddress} onChange={e => setStreetAddress(e.target.value)} />
-          </div>
-          <div><label className="text-sm font-medium">City</label><Input value={cityField} onChange={e => setCityField(e.target.value)} /></div>
+          {renderField("Owner Name", ownerName, setOwnerName, { className: "sm:col-span-2" })}
+          {renderField("Address", streetAddress, setStreetAddress, { className: "sm:col-span-2" })}
+          {renderField("City", cityField, setCityField)}
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-sm font-medium">State</label><Input value={stateField} onChange={e => setStateField(e.target.value)} /></div>
-            <div><label className="text-sm font-medium">Zip</label><Input value={zipField} onChange={e => setZipField(e.target.value)} /></div>
+            {renderField("State", stateField, setStateField)}
+            {renderField("Zip", zipField, setZipField)}
           </div>
-          <div><label className="text-sm font-medium">Phone</label><Input value={phoneField} onChange={e => setPhoneField(e.target.value)} /></div>
-          <div><label className="text-sm font-medium">Email</label><Input value={emailField} onChange={e => setEmailField(e.target.value)} /></div>
+          {renderField("Phone", phoneField, setPhoneField)}
+          {renderField("Email", emailField, setEmailField)}
         </div>
       </div>
 
       {/* Scope */}
       <div className="border border-border rounded-lg p-5 space-y-3">
         <h2 className="font-heading text-lg uppercase">Scope of Work</h2>
-        <textarea className="w-full border border-border rounded p-3 text-sm bg-background whitespace-pre-wrap" rows={14} value={scopeOfWork} onChange={e => setScopeOfWork(e.target.value)} />
+        {readOnly ? (
+          <div className="w-full border border-transparent rounded p-3 text-sm whitespace-pre-wrap min-h-[200px]">{scopeOfWork || "—"}</div>
+        ) : (
+          <textarea className="w-full border border-border rounded p-3 text-sm bg-background whitespace-pre-wrap" rows={14} value={scopeOfWork} onChange={(e) => setScopeOfWork(e.target.value)} />
+        )}
       </div>
 
       {/* Pricing */}
       <div className="border border-border rounded-lg p-5 space-y-4">
         <h2 className="font-heading text-lg uppercase">Contract Terms</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div><label className="text-sm font-medium">Contract Price ($)</label><Input type="number" value={contractPrice} onChange={e => setContractPrice(e.target.value)} /></div>
-          <div><label className="text-sm font-medium">Down Payment ($)</label><Input type="number" value={downPayment} onChange={e => setDownPayment(e.target.value)} /></div>
+          {readOnly ? (
+            <>
+              <div><label className="text-sm font-medium">Contract Price ($)</label><p className="py-2 px-3 text-sm">{contractPrice ? `$${Number(contractPrice).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}</p></div>
+              <div><label className="text-sm font-medium">Down Payment ($)</label><p className="py-2 px-3 text-sm">{downPayment ? `$${Number(downPayment).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}</p></div>
+            </>
+          ) : (
+            <>
+              <div><label className="text-sm font-medium">Contract Price ($)</label><Input type="number" value={contractPrice} onChange={(e) => setContractPrice(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">Down Payment ($)</label><Input type="number" value={downPayment} onChange={(e) => setDownPayment(e.target.value)} /></div>
+            </>
+          )}
           <div>
             <label className="text-sm font-medium">Unpaid Balance ($)</label>
             <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm font-medium">${unpaidBalance.toFixed(2)}</div>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><label className="text-sm font-medium">Approx Start Date</label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-          <div><label className="text-sm font-medium">Approx Completion Date</label><Input type="date" value={completionDate} onChange={e => setCompletionDate(e.target.value)} /></div>
+          {readOnly ? (
+            <>
+              <div><label className="text-sm font-medium">Approx Start Date</label><p className="py-2 px-3 text-sm">{startDate || "—"}</p></div>
+              <div><label className="text-sm font-medium">Approx Completion Date</label><p className="py-2 px-3 text-sm">{completionDate || "—"}</p></div>
+            </>
+          ) : (
+            <>
+              <div><label className="text-sm font-medium">Approx Start Date</label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">Approx Completion Date</label><Input type="date" value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} /></div>
+            </>
+          )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><label className="text-sm font-medium">Last 4 digits CC / SID #</label><Input value={lastFourCC} onChange={e => setLastFourCC(e.target.value)} maxLength={4} /></div>
-          <div><label className="text-sm font-medium">6-digit Auth Plan #</label><Input value={authPlan} onChange={e => setAuthPlan(e.target.value)} maxLength={6} /></div>
+          {readOnly ? (
+            <>
+              <div><label className="text-sm font-medium">Last 4 digits CC / SID #</label><p className="py-2 px-3 text-sm">{lastFourCC || "—"}</p></div>
+              <div><label className="text-sm font-medium">6-digit Auth Plan #</label><p className="py-2 px-3 text-sm">{authPlan || "—"}</p></div>
+            </>
+          ) : (
+            <>
+              <div><label className="text-sm font-medium">Last 4 digits CC / SID #</label><Input value={lastFourCC} onChange={(e) => setLastFourCC(e.target.value)} maxLength={4} /></div>
+              <div><label className="text-sm font-medium">6-digit Auth Plan #</label><Input value={authPlan} onChange={(e) => setAuthPlan(e.target.value)} maxLength={6} /></div>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Checkbox checked={electronicPayment} onCheckedChange={v => setElectronicPayment(!!v)} />
-          <label className="text-sm">Electronic Payment (CC / Financing)</label>
+          {readOnly ? (
+            <>
+              <span className="text-sm">{electronicPayment ? "☑" : "☐"}</span>
+              <label className="text-sm">Electronic Payment (CC / Financing)</label>
+            </>
+          ) : (
+            <>
+              <Checkbox checked={electronicPayment} onCheckedChange={(v) => setElectronicPayment(!!v)} />
+              <label className="text-sm">Electronic Payment (CC / Financing)</label>
+            </>
+          )}
         </div>
-        <div>
-          <label className="text-sm font-medium">Other Pay Terms</label>
-          <Input value={otherPayTerms} onChange={e => setOtherPayTerms(e.target.value)} />
-        </div>
+        {renderField("Other Pay Terms", otherPayTerms, setOtherPayTerms)}
       </div>
 
       {/* Legal Text */}
@@ -281,31 +476,114 @@ export default function GutterContract() {
         </div>
       </div>
 
-      {/* Signatures */}
-      <div className="border border-border rounded-lg p-5 space-y-4">
-        <h2 className="font-heading text-lg uppercase">Signatures</h2>
-        <div>
-          <label className="text-sm font-medium">Date</label>
-          <Input type="date" value={signatureDate} onChange={e => setSignatureDate(e.target.value)} />
+      {/* Signatures - hide rep signature in signing mode */}
+      {!signingMode && (
+        <div className="border border-border rounded-lg p-5 space-y-4">
+          <h2 className="font-heading text-lg uppercase">Signatures</h2>
+          {readOnly ? (
+            <div>
+              <label className="text-sm font-medium">Date</label>
+              <p className="py-2 px-3 text-sm">{signatureDate || "—"}</p>
+            </div>
+          ) : (
+            <div>
+              <label className="text-sm font-medium">Date</label>
+              <Input type="date" value={signatureDate} onChange={(e) => setSignatureDate(e.target.value)} />
+            </div>
+          )}
+          {readOnly ? (
+            customerSignature ? (
+              <div>
+                <label className="text-sm font-medium">Customer Signature</label>
+                <img src={customerSignature} alt="Customer Signature" className="border border-border rounded-lg max-w-[400px] mt-1" />
+              </div>
+            ) : null
+          ) : (
+            <SignaturePad label="Customer Signature" value={customerSignature} onChange={setCustomerSignature} />
+          )}
+          {!readOnly && (
+            <div className="flex items-center gap-2">
+              <Checkbox checked={showSecondOwner} onCheckedChange={(v) => setShowSecondOwner(!!v)} />
+              <label className="text-sm">Add second owner signature</label>
+            </div>
+          )}
+          {showSecondOwner && (
+            readOnly ? (
+              secondOwnerSignature ? (
+                <div>
+                  <label className="text-sm font-medium">Second Owner Signature</label>
+                  <img src={secondOwnerSignature} alt="Second Owner Signature" className="border border-border rounded-lg max-w-[400px] mt-1" />
+                </div>
+              ) : null
+            ) : (
+              <SignaturePad label="Second Owner Signature" value={secondOwnerSignature} onChange={setSecondOwnerSignature} />
+            )
+          )}
+          <div>
+            <label className="text-sm font-medium">Sales Representative</label>
+            <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm">{profile?.full_name || (existingForm?.form_data as any)?.repName || "—"}</div>
+          </div>
         </div>
-        <SignaturePad label="Customer Signature" value={customerSignature} onChange={setCustomerSignature} />
-        <div className="flex items-center gap-2">
-          <Checkbox checked={showSecondOwner} onCheckedChange={v => setShowSecondOwner(!!v)} />
-          <label className="text-sm">Add second owner signature</label>
-        </div>
-        {showSecondOwner && (
-          <SignaturePad label="Second Owner Signature" value={secondOwnerSignature} onChange={setSecondOwnerSignature} />
-        )}
-        <div>
-          <label className="text-sm font-medium">Sales Representative</label>
-          <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm">{profile?.full_name || "—"}</div>
-        </div>
-      </div>
+      )}
 
-      <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="lg">
-        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {existingForm ? "Update Contract" : "Sign & Save Contract"}
-      </Button>
+      {/* Customer Signing Section (public signing mode) */}
+      {signingMode && (
+        <div className="border-2 border-primary rounded-lg p-6 space-y-5 bg-primary/5">
+          <h2 className="font-heading text-lg uppercase text-center">Please Review & Sign Below</h2>
+          <p className="text-sm text-muted-foreground text-center">Please review the contract above and sign below to confirm your agreement.</p>
+
+          <div>
+            <label className="text-sm font-medium">Type your full legal name</label>
+            <Input
+              value={customerTypedName}
+              onChange={(e) => setCustomerTypedName(e.target.value)}
+              placeholder="Full legal name as it appears above"
+            />
+          </div>
+
+          <SignaturePad label="Your Signature" value={customerSigData} onChange={setCustomerSigData} />
+
+          <div className="flex items-start gap-2">
+            <Checkbox checked={customerAgreed} onCheckedChange={(v) => setCustomerAgreed(!!v)} className="mt-1" />
+            <label className="text-sm">
+              I have read and agree to all terms of this contract. I understand this constitutes a legally binding agreement.
+            </label>
+          </div>
+
+          <Button
+            className="w-full gap-2"
+            size="lg"
+            onClick={() => onCustomerSign?.(customerSigData, customerTypedName)}
+            disabled={!customerTypedName.trim() || !customerSigData || !customerAgreed}
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            ✅ I Agree — Submit Signature
+          </Button>
+        </div>
+      )}
+
+      {/* Action Buttons (rep view only, not read-only, not signing mode) */}
+      {!readOnly && !signingMode && (
+        <div className="space-y-3">
+          <Button onClick={handleSave} disabled={saving} className="w-full gap-2" size="lg">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {existingForm ? "Update Contract" : "Sign & Save Contract"}
+          </Button>
+
+          {lead && (
+            <Button
+              variant="outline"
+              onClick={handleSendForSignature}
+              disabled={sending}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {sending ? "Sending..." : "📧 Send to Customer for Signature"}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -59,6 +59,7 @@ import FlexSchedule from "./pages/dashboard/forms/FlexSchedule";
 import WarrantyDocument from "./pages/dashboard/forms/WarrantyDocument";
 import InspectionChecklist from "./pages/dashboard/forms/InspectionChecklist";
 import AppointmentSheet from "./pages/dashboard/forms/AppointmentSheet";
+import SignContract from "./pages/public/SignContract";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
           <Route path="/apply" element={<JobApplication />} />
           <Route path="/apply/thank-you" element={<ApplicationThankYou />} />
           <Route path="/get-quote" element={<GetQuote />} />
+          <Route path="/sign/:token" element={<SignContract />} />
           
           {/* Protected Dashboard Routes (Sales Reps) */}
           <Route
