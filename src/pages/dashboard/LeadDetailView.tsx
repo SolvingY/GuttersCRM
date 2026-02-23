@@ -25,7 +25,7 @@ const serviceLabels: Record<string, string> = {
 
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
-const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost", "completed"];
+const statusOptions = ["new", "contacted", "quoted", "won", "lost", "scheduled", "completed"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
 
 export default function LeadDetailView() {

@@ -99,12 +99,18 @@ export default function GutterContract() {
   useEffect(() => {
     if (estimate && !existingForm) {
       const md = estimate.measurement_data as any;
-      if (md?.description) setScopeOfWork(md.description);
-      else {
-        const parts = [];
-        if (estimate.gutter_footage) parts.push(`${estimate.gutter_footage}ft ${estimate.gutter_size || "6\""} gutters`);
-        if (estimate.protection_product) parts.push(`${estimate.protection_footage}ft ${estimate.protection_product}`);
-        if (parts.length) setScopeOfWork(parts.join(", "));
+      if (estimate.gutter_footage) {
+        const colorLabel = estimate.gutter_color === "Premium (+$2/ft)" ? "Premium" : "Standard";
+        const dsSize = md?.dsType === '3x4 (= 6")' ? "3x4" : "2x3";
+        const gutterDsPrice = md?.gutterDsQuoted ? `$${Number(md.gutterDsQuoted).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
+        const lines = [`${estimate.gutter_size || '6"'} ${colorLabel} Gutters & ${dsSize} Downspouts${gutterDsPrice ? ` — ${gutterDsPrice}` : ""}`];
+        if (estimate.protection_product && (estimate.protection_footage ?? 0) > 0) {
+          const protPrice = md?.protQuoted ? `$${Number(md.protQuoted).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "";
+          lines.push(`${estimate.protection_product}${protPrice ? ` — ${protPrice}` : ""}`);
+        }
+        setScopeOfWork(lines.join("\n"));
+      } else if (md?.description) {
+        setScopeOfWork(md.description);
       }
     }
   }, [estimate, existingForm]);
