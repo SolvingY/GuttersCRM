@@ -906,7 +906,7 @@ export default function AdminOverview() {
                       <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                      <div className="bg-primary h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
+                      <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
                   </div>
