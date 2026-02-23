@@ -1,22 +1,66 @@
 
 
-# Add Sunday Option and Update Report Time to 6 PM
+# Add Weekly, Monthly, and YTD Company-Wide Stats to the Report
 
-## Changes
+## Problem
 
-### `src/pages/admin/ReportSettings.tsx`
+The scheduled report only queries YTD cumulative tables (`user_metrics`, `canvasser_metrics`). It needs to show company-wide **weekly**, **monthly**, and **yearly** numbers for: Revenue, Contracts (closed deals), Leads, Lead-to-Close Ratio, and Collections.
 
-1. Add "Sunday" as a day option (value "0") to the weekly day-of-week select dropdown, placing it after Friday.
-2. Update the info card text from "8:00 AM" to "6:00 PM" to reflect the new send time.
+## Data Sources
 
-### `supabase/functions/send-scheduled-report/index.ts`
+| Period | Sales Table | Canvasser Table |
+|---|---|---|
+| Weekly | `weekly_user_metrics` where `week_start = current Monday` | `weekly_canvasser_metrics` where `week_start = current Monday` |
+| Monthly | `weekly_user_metrics` where `week_start >= 1st of current month` (sum across weeks) | `weekly_canvasser_metrics` where `week_start >= 1st of current month` |
+| YTD | `user_metrics` (existing logic) | `canvasser_metrics` (existing logic) |
 
-If the cron schedule references 8 AM, update it to 6 PM (18:00 UTC or appropriate timezone offset). This ensures the actual send time matches the UI.
+## Changes to `supabase/functions/send-scheduled-report/index.ts`
+
+### 1. Add a `CompanyPeriodStats` interface
+
+Fields: `revenue`, `collections`, `contracts`, `leads`, `leadToCloseRate` -- one instance for each of weekly, monthly, and YTD.
+
+### 2. Fetch Weekly Sales Data
+
+Query `weekly_user_metrics` for `week_start = current Monday`. Sum `approved_revenue`, `collections`, `closed_deals`, and `leads` across all users to get company-wide weekly totals.
+
+### 3. Fetch Monthly Sales Data
+
+Query `weekly_user_metrics` where `week_start >= first day of current month`. Aggregate same fields across all rows.
+
+### 4. Fetch Weekly Canvasser Data
+
+Already partially fetched for hours. Extend to also sum `leads_set` and `leads_closed` for the weekly company totals.
+
+### 5. Fetch Monthly Canvasser Data
+
+Query `weekly_canvasser_metrics` where `week_start >= first day of current month`. Sum `leads_set` and `leads_closed`.
+
+### 6. Calculate Lead-to-Close Ratio per Period
+
+For each period: `(closedDeals / leads) * 100` using the sales rep leads and closed deals.
+
+### 7. Update Email HTML Template
+
+Add a new **"Company Performance Summary"** section near the top (after Goals Progress) with a 3-row table:
+
+```
+| Period    | Revenue   | Collections | Contracts | Leads | LtC %  |
+|-----------|-----------|-------------|-----------|-------|--------|
+| This Week | $X        | $X          | X         | X     | X.X%   |
+| This Month| $X        | $X          | X         | X     | X.X%   |
+| YTD       | $X        | $X          | X         | X     | X.X%   |
+```
+
+This gives a clear at-a-glance comparison across all three time periods. The existing Top Sales Reps and Top Canvassers tables will continue showing YTD rankings. The Canvasser Hours section remains as-is (weekly only).
+
+### 8. Fix YTD Collections
+
+Currently `totalCollections` is hardcoded to `0`. Will actually sum `collections` from `user_metrics` (the YTD table already has this column).
 
 ## Files Modified
 
 | File | Change |
 |---|---|
-| `src/pages/admin/ReportSettings.tsx` | Add Sunday option (value "0"), change "8:00 AM" to "6:00 PM" |
-| Cron schedule (if applicable) | Update to 6 PM send time |
+| `supabase/functions/send-scheduled-report/index.ts` | Add weekly/monthly data fetching, add CompanyPeriodStats, add company summary table to email HTML, fix collections |
 
