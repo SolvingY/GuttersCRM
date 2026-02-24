@@ -463,7 +463,7 @@ export default function LeadDetail() {
           )}
 
           <CollapsibleSection title="Outcome" defaultOpen={false}>
-            {lead.status === "won" && lead.won_at && (
+            {["won", "scheduled", "completed"].includes(lead.status) && lead.won_at && (
               <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
             )}
             {lead.status === "lost" && lead.lost_at && (
@@ -478,7 +478,7 @@ export default function LeadDetail() {
                 {(lead as any).cancelled_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {(lead as any).cancelled_reason}</p>}
               </div>
             )}
-            {!["won", "lost", "cancelled"].includes(lead.status) && (
+            {!["won", "scheduled", "completed", "lost", "cancelled"].includes(lead.status) && (
               <>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
