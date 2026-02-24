@@ -89,6 +89,9 @@ export default function GetQuote() {
               city: contactData.city.trim(),
               state: contactData.state || "Oklahoma",
               zipCode: contactData.zipCode.trim(),
+              formData,
+              bestContactTime: contactData.bestContactTime || [],
+              referralSource: contactData.referralSource || null,
             },
           }),
         ]);

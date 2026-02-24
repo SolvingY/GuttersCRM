@@ -439,6 +439,23 @@ export default function LeadDetail() {
                     updateLead.mutate({ assigned_to: null, assigned_at: null });
                   } else {
                     updateLead.mutate({ assigned_to: v, assigned_at: new Date().toISOString() });
+                    // Fire-and-forget assignment notification
+                    const rep = salesReps.find(r => r.user_id === v);
+                    supabase.functions.invoke("notify-lead-assigned", {
+                      body: {
+                        clientName: lead.full_name,
+                        clientEmail: lead.email,
+                        clientPhone: lead.phone,
+                        serviceType: lead.service_type,
+                        referenceNumber: lead.reference_number,
+                        streetAddress: lead.street_address,
+                        city: lead.city,
+                        state: lead.state,
+                        zipCode: lead.zip_code,
+                        leadId: lead.id,
+                        assignedRepName: rep?.display_name || "Unknown",
+                      },
+                    }).catch(() => {});
                   }
                 }}
               >

@@ -20,65 +20,15 @@ const serviceLabels: Record<string, string> = {
   repair: "Repair Work",
 };
 
-const formFieldLabels: Record<string, string> = {
-  timeline: "Timeline",
-  urgency: "Urgency",
-  propertyType: "Property Type",
-  roofType: "Roof Type",
-  roofAge: "Roof Age",
-  homeAge: "Home Age",
-  stories: "Number of Stories",
-  squareFootage: "Home Size (sq ft)",
-  knownIssues: "Known Issues",
-  issueDescription: "Issue Description",
-  repairTarget: "Repair Target",
-  gutterMaterial: "Gutter Material",
-  gutterLength: "Gutter Length",
-  hasInsurance: "Insurance Claim",
-  insuranceCompany: "Insurance Company",
-  jobType: "Job Type",
-  hasMortgage: "Has Mortgage",
-  maintenanceHistory: "Maintenance History",
-  additionalNotes: "Additional Notes",
-  description: "Description",
-};
-
-function renderDetailRows(formData: Record<string, any>, bestContactTime?: string[], referralSource?: string): string {
-  const rows: string[] = [];
-
-  for (const [key, label] of Object.entries(formFieldLabels)) {
-    const val = formData[key];
-    if (val !== undefined && val !== null && val !== "") {
-      const display = Array.isArray(val) ? val.join(", ") : String(val);
-      rows.push(`<p style="margin: 4px 0;"><strong>${label}:</strong> ${display}</p>`);
-    }
-  }
-
-  if (bestContactTime && bestContactTime.length > 0) {
-    rows.push(`<p style="margin: 4px 0;"><strong>Best Contact Time:</strong> ${bestContactTime.join(", ")}</p>`);
-  }
-  if (referralSource) {
-    rows.push(`<p style="margin: 4px 0;"><strong>Referral Source:</strong> ${referralSource}</p>`);
-  }
-
-  if (rows.length === 0) return "";
-
-  return `
-    <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; border-left: 4px solid #555; margin-top: 16px;">
-      <p style="margin: 0 0 8px; font-weight: bold; color: #333;">Quote Details</p>
-      ${rows.join("\n      ")}
-    </div>`;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { clientName, clientEmail, clientPhone, serviceType, referenceNumber, streetAddress, city, state, zipCode, leadId, formData, bestContactTime, referralSource } = await req.json();
+    const { clientName, clientEmail, clientPhone, serviceType, referenceNumber, streetAddress, city, state, zipCode, leadId, assignedRepName } = await req.json();
 
-    if (!clientName || !referenceNumber) {
+    if (!clientName || !assignedRepName) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -93,12 +43,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const serviceLabel = serviceLabels[serviceType] || serviceType;
+    const serviceLabel = serviceLabels[serviceType] || serviceType || "N/A";
     const adminUrl = leadId
       ? `https://nextgenroofing.lovable.app/admin/leads/${leadId}`
       : "https://nextgenroofing.lovable.app/admin/leads";
-
-    const detailsHtml = renderDetailRows(formData || {}, bestContactTime, referralSource);
 
     const html = `
 <!DOCTYPE html>
@@ -106,21 +54,24 @@ Deno.serve(async (req) => {
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <div style="background: #000; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; font-size: 24px; margin: 0;">New Internet Lead</h1>
+    <h1 style="color: #fff; font-size: 24px; margin: 0;">Lead Assigned</h1>
     <p style="color: #c91f5e; font-size: 14px; margin: 8px 0 0;">Next Generation Roofing</p>
   </div>
   <div style="border: 1px solid #eee; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
-    <p style="font-size: 16px; margin: 0 0 16px;">A new internet lead has been submitted:</p>
+    <p style="font-size: 16px; margin: 0 0 16px;">A lead has been assigned to a sales representative:</p>
     
+    <div style="background: #e8f5e9; padding: 16px; border-radius: 8px; border-left: 4px solid #4caf50; margin-bottom: 16px;">
+      <p style="margin: 4px 0; font-size: 18px;"><strong>Assigned to:</strong> ${assignedRepName}</p>
+    </div>
+
     <div style="background: #fafafa; padding: 16px; border-radius: 8px; border-left: 4px solid #c91f5e;">
       <p style="margin: 4px 0;"><strong>Name:</strong> ${clientName}</p>
       <p style="margin: 4px 0;"><strong>Service:</strong> ${serviceLabel}</p>
       <p style="margin: 4px 0;"><strong>Phone:</strong> ${clientPhone || "N/A"}</p>
       <p style="margin: 4px 0;"><strong>Email:</strong> ${clientEmail || "N/A"}</p>
       <p style="margin: 4px 0;"><strong>Address:</strong> ${streetAddress || ""}, ${city || ""}, ${state || "OK"} ${zipCode || ""}</p>
-      <p style="margin: 4px 0;"><strong>Reference #:</strong> ${referenceNumber}</p>
+      ${referenceNumber ? `<p style="margin: 4px 0;"><strong>Reference #:</strong> ${referenceNumber}</p>` : ""}
     </div>
-    ${detailsHtml}
     
     <div style="text-align: center; margin: 24px 0;">
       <a href="${adminUrl}" style="display: inline-block; background: #c91f5e; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;">View in Admin Dashboard</a>
@@ -128,7 +79,7 @@ Deno.serve(async (req) => {
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
     <p style="font-size: 12px; color: #999; text-align: center;">
-      Next Generation Roofing • Automated Lead Notification
+      Next Generation Roofing • Automated Assignment Notification
     </p>
   </div>
 </body>
@@ -143,7 +94,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "Next Generation Roofing <notifications@oknextgen.com>",
         to: RECIPIENTS,
-        subject: `🏠 New Internet Lead: ${clientName} — ${serviceLabel}`,
+        subject: `📋 Lead Assigned: ${clientName} — ${assignedRepName}`,
         html,
       }),
     });
