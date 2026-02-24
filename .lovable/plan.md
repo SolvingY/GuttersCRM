@@ -4,27 +4,33 @@
 
 ## Issues from Screenshot
 1. The PDF header only shows "Next Generation Guttering" -- it needs to also show "Next Generation Roofing"
-2. Content on the left side is being cut off/overlapping, likely due to tight margins or label positioning
+2. Content on the left side is being cut off/overlapping due to tight margins and label positioning
 
 ## Changes
 
 ### File: `src/lib/generateContractPDF.ts`
 
-**Header Fix (lines 60-71)**
-- Change the header to show both company names:
-  - Line 1: "Next Generation Roofing" (font size 16)
-  - Line 2: "Next Generation Guttering" (font size 16)
+**Header Fix (lines ~60-71)**
+- Update the header to display two company names:
+  - Line 1: "Next Generation Roofing" (font size 16, bold)
+  - Line 2: "Next Generation Guttering" (font size 16, bold)
   - Line 3: "INSTALLATION CONTRACT" (font size 12)
-  - Line 4: Address/phone/website line
-- Adjust vertical spacing to accommodate the extra line
+  - Line 4: Address / phone / website info line
+- Adjust vertical spacing (y increments) to accommodate the extra line
 
-**Layout/Overlap Fix**
-- Increase left margin from 15mm to 18mm to prevent content cutoff
-- Increase the label offset for Contract Terms from 42mm to 45mm so values don't overlap their labels
-- These small adjustments will prevent the left-side text from being clipped on mobile PDF viewers
+**Layout / Overlap Fix**
+- Increase left margin from 15mm to 18mm to prevent left-side content from being clipped
+- Increase the label-to-value offset in the Contract Terms section from 42mm to 45mm so values don't overlap their labels
+- Recalculate `contentW` based on the new margin value
 
 ## Technical Details
 
-| File | Change |
-|------|--------|
-| `src/lib/generateContractPDF.ts` | Update header to include both company names; widen margins to fix overlap |
+| Section | Current | New |
+|---------|---------|-----|
+| Header line 1 | "Next Generation Guttering" (18pt) | "Next Generation Roofing" (16pt) |
+| Header line 2 | (none) | "Next Generation Guttering" (16pt) |
+| Left margin | 15mm | 18mm |
+| Contract Terms label offset | 42mm | 45mm |
+
+Only one file is modified: `src/lib/generateContractPDF.ts`
+
