@@ -1,85 +1,87 @@
 
+# Lead Detail Enhancements
 
-# Enhanced Lead Notifications and Assignment Email
+## Summary of All Changes
 
-## Three Changes
+### 1. Move Sections to Right Column (Updated Order)
+In both admin (`LeadDetail.tsx`) and rep (`LeadDetailView.tsx`) views, move **Saved Estimates**, **Scheduling / Payments**, and **Files** from the left column to the right column. Updated order:
 
-### 1. Enhance `notify-new-lead` Email with More Details
+**Right column (top to bottom):**
+1. Assignment (admin only)
+2. Outcome
+3. Follow-up
+4. Saved Estimates
+5. Scheduling / Payments
+6. Quote Approval
+7. **Files** (below Quote Approval as requested)
+8. Timeline
+9. Archive (admin only)
+10. Activity Log
+11. Admin Notes (admin only)
 
-The current notification email only shows basic contact info. Update it to also include details from the quote form (`form_data`), such as:
-- Property type, roof type, number of stories, timeline, urgency
-- Known issues, home age, square footage
-- Referral source and best contact time
-- Any additional notes/description
+### 2. Combine "Service Details" + "Contact Information"
+Merge these two collapsible sections into one called **"Service / Client Details"**. The combined section shows the form data (service details) first, followed by a separator, then the contact info (email, phone, address, contact time, referral source). Applies to both admin and rep views.
 
-Also fix the email display so the client's actual email shows correctly (currently it showed "test@example.com" for the test -- this was test data, but we'll ensure the real email is properly passed through and displayed).
+### 3. Fix "Won then Scheduled" Status Bug
+When status changes to "scheduled" via the dropdown, preserve the `won_at` timestamp. If `won_at` isn't already set, set it automatically (since scheduled implies won). This prevents the "Won" status from being visually unchecked when progressing to "Schedule."
 
-The `notify-new-lead` edge function will accept an additional `formData` field and render relevant details in the email body below the existing contact section.
+### 4. Send Assignment Email to Assigned Rep
+Update the `notify-lead-assigned` edge function to accept an optional `assignedRepEmail` field. If provided, add the rep's email to the recipient list. Update the admin `LeadDetail.tsx` to look up the rep's email from the `profiles` table when assigning and pass it to the function. The email body will include a note prompting the rep to log in to their dashboard.
 
-**File:** `supabase/functions/notify-new-lead/index.ts`
+### 5. Fix Contract Signed Badge Position
+In the rep view (`LeadDetailView.tsx`), the contract button wraps the button and badges in a `<div>`, causing the signed badge to appear outside the button box. Restructure so badges are inside the `<Button>` component, matching the pattern used by other document buttons.
 
-### 2. Pass `formData` from GetQuote.tsx to `notify-new-lead`
-
-Update the `notify-new-lead` invocation in `GetQuote.tsx` to also send the `formData` object and the `bestContactTime` / `referralSource` fields so the email includes all available details.
-
-**File:** `src/pages/GetQuote.tsx`
-
-### 3. New Edge Function: `notify-lead-assigned`
-
-Create a new edge function that sends an email to the same 4 recipients when a lead is assigned to a sales rep. The email will include:
-- Lead name, service type, phone, email, address, reference number
-- The assigned rep's name
-- Link to the admin lead detail page
-
-Trigger this from `LeadDetail.tsx` when the assignment dropdown changes to a rep (not "unassigned"). Fire-and-forget so it doesn't block the UI.
-
-**Files:**
-- `supabase/functions/notify-lead-assigned/index.ts` (new)
-- `supabase/config.toml` (add function config)
-- `src/pages/admin/LeadDetail.tsx` (add invocation after assignment)
+### 6. Conditional Document Buttons Based on Service Type
+- **Schedule Appointment**: For residential roofing leads, the button label says "Schedule Roofing Consultation" instead of "Schedule Appointment" (gutter-focused)
+- **20-Point Checklist**: Only show for gutter leads (`service_type === "gutters"`), hide for residential/commercial/repair leads
+- **Appointment Sheet Form**: When opened for a residential roofing lead, show roofing-relevant consultation services instead of gutter inspection services
 
 ---
 
 ## Technical Details
 
-### `notify-new-lead` Updates
-
-Add a new section to the HTML email template after the contact info block that renders form details dynamically. Key fields to display:
-- Timeline / Urgency
-- Property Type
-- Roof Type / Age
-- Number of Stories
-- Home Size
-- Known Issues
-- Additional Notes
-- Referral Source
-- Best Contact Time
-
-Only non-empty fields will be rendered.
-
-### `notify-lead-assigned` Edge Function
-
-| Detail | Value |
-|--------|-------|
-| From | `Next Generation Roofing <notifications@oknextgen.com>` |
-| To | Same 4 recipients |
-| Subject | `Lead Assigned: [Client Name] -- [Rep Name]` |
-| Content | Lead summary + assigned rep name + admin link |
-
-### Frontend Assignment Hook
-
-In `LeadDetail.tsx`, after `updateLead.mutate({ assigned_to: v, ... })` succeeds, fire `supabase.functions.invoke("notify-lead-assigned", ...)` with the lead details and the selected rep's display name. This will be done in the `onSuccess` callback or immediately after the mutate call using the available lead data.
-
-### Files to Create
-| File | Purpose |
-|------|---------|
-| `supabase/functions/notify-lead-assigned/index.ts` | Email notification on lead assignment |
-
 ### Files to Modify
+
 | File | Changes |
 |------|---------|
-| `supabase/functions/notify-new-lead/index.ts` | Add form details section to email template |
-| `src/pages/GetQuote.tsx` | Pass `formData`, `bestContactTime`, `referralSource` to notify-new-lead |
-| `src/pages/admin/LeadDetail.tsx` | Fire notify-lead-assigned on assignment change |
-| `supabase/config.toml` | Add notify-lead-assigned function config |
+| `src/pages/admin/LeadDetail.tsx` | 1) Remove Saved Estimates, Scheduling/Payments, Files from left column (lines 412-428). 2) Insert Saved Estimates and Scheduling/Payments after Follow-up in right column, Files after Quote Approval. 3) Merge Service Details + Contact Info into single "Service / Client Details" section. 4) Add `won_at` preservation when status changes to "scheduled". 5) Fix contract badge to be inside button. 6) Conditionally show 20-point checklist only for gutters. 7) Change appointment label for roofing leads. 8) Look up rep email from profiles on assignment and pass to edge function. |
+| `src/pages/dashboard/LeadDetailView.tsx` | 1) Remove Saved Estimates, Scheduling/Payments, Files from left column (lines 360-395). 2) Insert into right column with Files after Quote Approval. 3) Merge Service Details + Contact Info. 4) Add `won_at` preservation for "scheduled" status. 5) Fix contract badge (move badges inside button). 6) Conditional checklist/appointment labels. |
+| `supabase/functions/notify-lead-assigned/index.ts` | Accept optional `assignedRepEmail`. If present, add to TO list. Add a line in the email body for the rep: "You have been assigned this lead. Please log in to your dashboard to review it." with a link to the rep dashboard. |
+| `src/pages/dashboard/forms/AppointmentSheet.tsx` | Accept service type from location state. When service type is residential/commercial/repair, show roofing consultation services instead of gutter inspection services. Update the title to "Schedule a Roofing Consultation" for roofing leads vs "Schedule a Gutter Consultation" for gutter leads. |
 
+### Status Fix Logic
+
+In the status dropdown `onValueChange` handler, add:
+```text
+if (v === "scheduled") {
+  if (!lead.won_at) updates.won_at = new Date().toISOString();
+}
+```
+This ensures "won" is always set before or when "scheduled" is selected.
+
+### Rep Email Lookup
+
+When assigning a lead in the admin view, after finding the rep from `salesReps`, query `profiles` for their email:
+```text
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("email")
+  .eq("id", v)
+  .single();
+```
+Then pass `assignedRepEmail: profile?.email` to the edge function.
+
+### Conditional Document Buttons
+
+```text
+const isGutters = lead.service_type === "gutters";
+const showInspection = isGutters;  // Only show 20-point checklist for gutters
+const appointmentLabel = isGutters ? "Schedule Appointment" : "Schedule Roofing Consultation";
+```
+
+### Appointment Sheet Service-Aware Content
+
+Pass `lead.service_type` through location state. In `AppointmentSheet.tsx`, conditionally render:
+- Gutters: Current gutter inspection services list
+- Roofing: "Full Roof Inspection", "Shingle & Material Assessment", "Storm Damage Evaluation", "Custom Quote/Estimate"
+- Title: "Schedule a Gutter Consultation" vs "Schedule a Roofing Consultation"
