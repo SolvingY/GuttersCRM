@@ -67,16 +67,31 @@ export default function GetQuote() {
 
       setReferenceNumber(refNumber);
 
-      // Send confirmation email
+      // Send confirmation email and team notification
       try {
-        await supabase.functions.invoke("send-quote-email", {
-          body: {
-            clientName: contactData.fullName.trim(),
-            clientEmail: contactData.email.trim(),
-            serviceType,
-            referenceNumber: refNumber,
-          },
-        });
+        await Promise.allSettled([
+          supabase.functions.invoke("send-quote-email", {
+            body: {
+              clientName: contactData.fullName.trim(),
+              clientEmail: contactData.email.trim(),
+              serviceType,
+              referenceNumber: refNumber,
+            },
+          }),
+          supabase.functions.invoke("notify-new-lead", {
+            body: {
+              clientName: contactData.fullName.trim(),
+              clientEmail: contactData.email.trim(),
+              clientPhone: contactData.phone.trim(),
+              serviceType,
+              referenceNumber: refNumber,
+              streetAddress: contactData.streetAddress.trim(),
+              city: contactData.city.trim(),
+              state: contactData.state || "Oklahoma",
+              zipCode: contactData.zipCode.trim(),
+            },
+          }),
+        ]);
       } catch {
         // Email failure shouldn't block submission
       }
