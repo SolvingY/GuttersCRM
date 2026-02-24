@@ -79,7 +79,7 @@ const serviceLabels: Record<string, string> = {
 
 const serviceIcons: Record<string, any> = { commercial: Building2, residential: Home, gutters: Droplets, repair: Wrench };
 
-const statusOptions = ["new", "contacted", "quoted", "scheduled", "won", "lost", "cancelled", "completed"];
+const statusOptions = ["new", "contacted", "quoted", "won", "scheduled", "completed", "lost", "cancelled"];
 const priorityOptions = ["urgent", "high", "normal", "low"];
 const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
 const cancelledReasons = ["Customer changed mind", "Financing fell through", "Insurance denied", "Scheduling conflict", "Material unavailable", "Weather delay", "Other"];
@@ -182,6 +182,8 @@ export default function LeadDetail() {
     );
   };
 
+  const terminalStatuses = ["won", "scheduled", "completed", "lost", "cancelled"];
+
   const handleLogFollowup = async () => {
     await supabase.from("lead_activity_log").insert({
       lead_id: lead.id,
@@ -189,11 +191,16 @@ export default function LeadDetail() {
       activity_type: "followup",
       content: "Follow-up completed",
     });
-    updateLead.mutate({
-      next_followup_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    const updates: Record<string, any> = {
       last_followup_at: new Date().toISOString(),
       followup_count: (lead.followup_count || 0) + 1,
-    });
+    };
+    if (!terminalStatuses.includes(lead.status)) {
+      updates.next_followup_due = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    } else {
+      updates.next_followup_due = null;
+    }
+    updateLead.mutate(updates);
     queryClient.invalidateQueries({ queryKey: ["lead-activities", lead.id] });
   };
 
@@ -357,11 +364,10 @@ export default function LeadDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left column - lead info (60%) */}
         <div className="lg:col-span-3 space-y-6">
-          <CollapsibleSection title="Service Details" defaultOpen>
+          <CollapsibleSection title="Service Details" defaultOpen={false}>
             {renderFormData()}
           </CollapsibleSection>
-
-          <CollapsibleSection title="Contact Information" defaultOpen>
+          <CollapsibleSection title="Contact Information" defaultOpen={false}>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
@@ -392,7 +398,7 @@ export default function LeadDetail() {
           </CollapsibleSection>
 
           {lead.photo_urls?.length > 0 && (
-            <CollapsibleSection title="Photos" defaultOpen>
+            <CollapsibleSection title="Photos" defaultOpen={false}>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {lead.photo_urls.map((url: string, i: number) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
@@ -403,12 +409,12 @@ export default function LeadDetail() {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Saved Estimates" defaultOpen>
+          <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
             <AdminEstimatesSection leadId={lead.id} />
           </CollapsibleSection>
 
           {/* Scheduling/Payments moved to left column */}
-          <CollapsibleSection title="Scheduling / Payments" defaultOpen>
+          <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
             <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
               queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
               queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
@@ -417,7 +423,7 @@ export default function LeadDetail() {
           </CollapsibleSection>
 
           {/* Files moved to left column */}
-          <CollapsibleSection title="Files" defaultOpen>
+          <CollapsibleSection title="Files" defaultOpen={false}>
             <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
           </CollapsibleSection>
         </div>
@@ -425,7 +431,7 @@ export default function LeadDetail() {
         {/* Right column - lifecycle (40%) */}
         <div className="lg:col-span-2 space-y-6">
           {isAdmin && (
-            <CollapsibleSection title="Assignment" defaultOpen>
+            <CollapsibleSection title="Assignment" defaultOpen={false}>
               <Select
                 value={lead.assigned_to || "unassigned"}
                 onValueChange={(v) => {
@@ -454,39 +460,7 @@ export default function LeadDetail() {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Follow-up" defaultOpen>
-            {lead.next_followup_due ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="w-4 h-4 text-muted-foreground" />
-                  <span className={cn(
-                    "text-sm",
-                    new Date(lead.next_followup_due) < new Date() ? "text-destructive font-medium" : ""
-                  )}>
-                    {new Date(lead.next_followup_due) < new Date() ? "Overdue: " : "Due: "}
-                    {new Date(lead.next_followup_due).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">Follow-ups: {lead.followup_count || 0}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No follow-up scheduled</p>
-            )}
-            <div className="flex gap-2 mt-3">
-              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleLogFollowup} disabled={updateLead.isPending}>
-                <CheckCircle className="w-3 h-3" /> Log Follow-up
-              </Button>
-              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleSnooze} disabled={updateLead.isPending}>
-                <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
-              </Button>
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Quote Approval" defaultOpen={false}>
-            <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Outcome" defaultOpen>
+          <CollapsibleSection title="Outcome" defaultOpen={false}>
             {lead.status === "won" && lead.won_at && (
               <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
             )}
@@ -546,6 +520,38 @@ export default function LeadDetail() {
                 </div>
               </>
             )}
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Follow-up" defaultOpen={false}>
+            {lead.next_followup_due ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-muted-foreground" />
+                  <span className={cn(
+                    "text-sm",
+                    new Date(lead.next_followup_due) < new Date() ? "text-destructive font-medium" : ""
+                  )}>
+                    {new Date(lead.next_followup_due) < new Date() ? "Overdue: " : "Due: "}
+                    {new Date(lead.next_followup_due).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Follow-ups: {lead.followup_count || 0}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No follow-up scheduled</p>
+            )}
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleLogFollowup} disabled={updateLead.isPending}>
+                <CheckCircle className="w-3 h-3" /> Log Follow-up
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={handleSnooze} disabled={updateLead.isPending}>
+                <AlarmClockPlus className="w-3 h-3" /> Snooze 24h
+              </Button>
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Quote Approval" defaultOpen={false}>
+            <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Timeline" defaultOpen={false}>
