@@ -133,6 +133,8 @@ export default function LeadDetailView() {
 
   const ServiceIcon = serviceIcons[lead.service_type] || Building2;
   const formData = (lead.form_data || {}) as Record<string, any>;
+  const isGutters = lead.service_type === "gutters";
+  const appointmentLabel = isGutters ? "Schedule Appointment" : "Schedule Roofing Consultation";
 
   const renderFormData = () => {
     const entries = Object.entries(formData).filter(([k]) => k !== "photoUrls");
@@ -217,6 +219,7 @@ export default function LeadDetailView() {
             if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
             if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
             if (v === "won") updates.won_at = new Date().toISOString();
+            if (v === "scheduled" && !lead.won_at) updates.won_at = new Date().toISOString();
             updateLead.mutate(updates);
           }}>
             <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
@@ -240,14 +243,14 @@ export default function LeadDetailView() {
         const showContract = ["won", "approved", "scheduled"].includes(lead.status);
         const showFlex = ["won", "scheduled"].includes(lead.status);
         const showWarranty = lead.status === "completed";
-        const showInspection = true;
+        const showInspection = isGutters;
         const showAppointment = true;
         
         return (
           <div className="flex flex-wrap gap-2">
             {showAppointment && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null } })}>
-                <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : "📅 Schedule Appointment"}
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null, serviceType: lead.service_type } })}>
+                <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : `📅 ${appointmentLabel}`}
                 {appointmentForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", appointmentForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{appointmentForm.status}</Badge>}
               </Button>
             )}
@@ -258,22 +261,20 @@ export default function LeadDetailView() {
               </Button>
             )}
             {showContract && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
-                  <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
-                </Button>
-                {contractForm && (contractForm as any).status === "sent" && !(contractForm as any).customer_signed_name && (
-                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">⏳ Awaiting Signature</Badge>
-                )}
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
+                <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
                 {contractForm && (contractForm as any).customer_signed_name && (
-                  <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-600 border-green-500/30">
+                  <Badge variant="outline" className="ml-1 text-[10px] bg-green-500/10 text-green-600 border-green-500/30">
                     ✅ Signed by {(contractForm as any).customer_signed_name}
                   </Badge>
                 )}
-                {contractForm && (contractForm as any).status !== "sent" && !(contractForm as any).customer_signed_name && (
-                  <Badge variant="outline" className={cn("text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>
+                {contractForm && (contractForm as any).status === "sent" && !(contractForm as any).customer_signed_name && (
+                  <Badge variant="outline" className="ml-1 text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">⏳ Awaiting Signature</Badge>
                 )}
-              </div>
+                {contractForm && (contractForm as any).status !== "sent" && !(contractForm as any).customer_signed_name && (
+                  <Badge variant="outline" className={cn("ml-1 text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>
+                )}
+              </Button>
             )}
             {showFlex && (
               <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/flex-schedule`, { state: { lead, existingForm: flexForm || null } })}>
@@ -310,13 +311,11 @@ export default function LeadDetailView() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left column - Service Details, Contact Info, Photos, Saved Estimates (60%) */}
+        {/* Left column - Service/Client Details, Photos (60%) */}
         <div className="lg:col-span-3 space-y-6">
-          <CollapsibleSection title="Service Details" defaultOpen={false}>
+          <CollapsibleSection title="Service / Client Details" defaultOpen={false}>
             {renderFormData()}
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Contact Information" defaultOpen={false}>
+            <div className="border-t border-border my-4" />
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
@@ -356,46 +355,9 @@ export default function LeadDetailView() {
               </div>
             </CollapsibleSection>
           )}
-
-          <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
-            {estimates.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No estimates yet</p>
-            ) : (
-              <div className="space-y-3">
-                {(estimates as any[]).map((est: any) => (
-                  <div key={est.id} className="border-b border-border pb-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
-                      <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
-                        Open &amp; Edit
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div><span className="text-muted-foreground text-xs block">Quoted</span><span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span></div>
-                      <div><span className="text-muted-foreground text-xs block">Floor</span><span>${Number(est.total_floor || 0).toFixed(2)}</span></div>
-                      <div><span className="text-muted-foreground text-xs block">Commission</span><span className="text-green-600 font-medium">${Number(est.commission || 0).toFixed(2)}</span></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
-
-          {/* Scheduling/Payments moved to left column */}
-          <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
-            <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
-              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-              queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-            }} />
-          </CollapsibleSection>
-
-          {/* Files moved to left column */}
-          <CollapsibleSection title="Files" defaultOpen={false}>
-            <LeadFilesSection leadId={lead.id} isAdmin={false} />
-          </CollapsibleSection>
         </div>
 
-        {/* Right column - Outcome, Follow-up, Quote, Timeline, Activity Log (40%) */}
+        {/* Right column - Outcome, Follow-up, Estimates, Scheduling, Quote, Files, Timeline, Activity Log (40%) */}
         <div className="lg:col-span-2 space-y-6">
           <CollapsibleSection title="Outcome" defaultOpen={false}>
             {lead.status === "won" && lead.won_at && (
@@ -487,8 +449,43 @@ export default function LeadDetailView() {
             </div>
           </CollapsibleSection>
 
+          <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
+            {estimates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No estimates yet</p>
+            ) : (
+              <div className="space-y-3">
+                {(estimates as any[]).map((est: any) => (
+                  <div key={est.id} className="border-b border-border pb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{new Date(est.created_at).toLocaleDateString()}</span>
+                      <Button size="sm" variant="outline" onClick={() => { setEditingEstimate(est); setShowCalculator(true); }}>
+                        Open &amp; Edit
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div><span className="text-muted-foreground text-xs block">Quoted</span><span className="font-medium">${Number(est.quoted_price || 0).toFixed(2)}</span></div>
+                      <div><span className="text-muted-foreground text-xs block">Floor</span><span>${Number(est.total_floor || 0).toFixed(2)}</span></div>
+                      <div><span className="text-muted-foreground text-xs block">Commission</span><span className="text-green-600 font-medium">${Number(est.commission || 0).toFixed(2)}</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
+            <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+              queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+            }} />
+          </CollapsibleSection>
+
           <CollapsibleSection title="Quote Approval" defaultOpen={false}>
             <QuoteApprovalSection lead={lead} isAdmin={false} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Files" defaultOpen={false}>
+            <LeadFilesSection leadId={lead.id} isAdmin={false} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Timeline" defaultOpen={false}>

@@ -8,10 +8,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-const inspectionServices = [
+const gutterInspectionServices = [
   "Full Gutter Inspection",
   "Downspout & Drainage Evaluation",
   "Soffit & Fascia Health Check",
+  "Custom Quote/Estimate",
+];
+
+const roofingConsultationServices = [
+  "Full Roof Inspection",
+  "Shingle & Material Assessment",
+  "Storm Damage Evaluation",
   "Custom Quote/Estimate",
 ];
 
@@ -33,6 +40,11 @@ export default function AppointmentSheet() {
 
   const lead = (location.state as any)?.lead;
   const existingForm = (location.state as any)?.existingForm;
+  const serviceType = (location.state as any)?.serviceType || lead?.service_type || "gutters";
+
+  const isGutters = serviceType === "gutters";
+  const inspectionServices = isGutters ? gutterInspectionServices : roofingConsultationServices;
+  const pageTitle = isGutters ? "📅 Schedule a Gutter Consultation" : "📅 Schedule a Roofing Consultation";
 
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
@@ -61,6 +73,7 @@ export default function AppointmentSheet() {
         appointmentTime,
         notes: appointmentNotes,
         services: inspectionServices,
+        serviceType,
       };
 
       if (existingForm) {
@@ -102,7 +115,7 @@ export default function AppointmentSheet() {
       </Button>
 
       <div>
-        <h1 className="font-heading text-2xl uppercase">📅 Schedule a Consultation</h1>
+        <h1 className="font-heading text-2xl uppercase">{pageTitle}</h1>
         {lead && <p className="text-sm text-muted-foreground">{lead.full_name} — {lead.street_address}, {lead.city}</p>}
       </div>
 
