@@ -42,5 +42,8 @@ verify_jwt = false
 [functions.notify-new-lead]
 verify_jwt = false
 
+[functions.notify-lead-assigned]
+verify_jwt = false
+
 [functions.send-signed-contract-confirmation]
 verify_jwt = false
