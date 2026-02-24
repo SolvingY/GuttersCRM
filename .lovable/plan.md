@@ -1,69 +1,95 @@
 
 
-# Auto-Update Approved Revenue on Contract Signing and Collections on Job Close
+# Internet Lead Notifications, Layout Restructure, Follow-up Logic, and Status Order Fix
 
-## Overview
-Currently, "Approved Revenue" only updates when a lead status changes to "won" (via the `update_lead_close_stats` database trigger). The user wants two changes:
-1. When a contract is **signed** (gutters or roofing), the assigned rep's Approved Revenue increases by the quote amount
-2. When a job is **closed** (status becomes "completed"), the rep's Collections increases by the total collected amount
+## Summary
+Five changes across a new backend function, two frontend files, and a database trigger update.
 
-## Current Behavior
-- `update_lead_close_stats` trigger fires on status change to "won" and increments `approved_revenue`
-- Collections are aggregated client-side from `lead_payments` joined through `weekly_user_metrics` -- there is no automatic increment on job close
+---
 
-## Changes
+## 1. New Backend Function: `notify-new-lead`
 
-### 1. Database Trigger: Update Approved Revenue on Contract Signing
-Modify the `update_lead_close_stats` trigger to also fire when status changes to "scheduled" (which happens automatically on contract signing). Since contract signing transitions the lead from "won" or "approved" to "scheduled", we need to ensure the approved_revenue is credited at the right moment.
+Create `supabase/functions/notify-new-lead/index.ts` that sends an HTML email notification to the team whenever a new internet lead is submitted through the public quote form.
 
-**Approach**: Rather than changing the trigger (which could double-count if "won" already credited), we will:
-- Keep "won" status incrementing `approved_revenue` and `closed_deals` as-is (since that is when a deal is considered closed)
-- Add a new check: if status changes to "scheduled" and the previous status was NOT "won" (i.e., it went directly from "approved" to "scheduled" via contract signing), also increment `approved_revenue` and `closed_deals`
+**Recipients:**
+- j.whitton@oknextgen.com
+- k.jameson@oknextgen.com
+- a.Whisman@oknextgen.com
+- adam@grateful-services.com
 
-Actually, looking at the flow more carefully:
-- Quote approved -> status stays at current status, `quote_status` changes to "approved"
-- Rep marks as "won" -> status = "won", trigger fires, approved_revenue incremented
-- Contract signed -> status = "scheduled"
+**Email content:** Lead name, service type, phone, email, address, reference number, and a link to the admin lead detail page.
 
-So currently, approved_revenue already updates on "won". The user wants it to update on contract signing instead. This means we should:
-- **Remove** the approved_revenue increment from the "won" status change
-- **Add** it to the "scheduled" status change (contract signed)
+**Triggered from:** `src/pages/GetQuote.tsx` -- add a second function call (alongside the existing `send-quote-email`) after successful submission.
 
-### 2. Database Trigger: Update Collections on Job Close
-Add logic to the trigger so that when status changes to "completed", the system sums all `lead_payments` for that lead and adds the total to the rep's `collections` in `user_metrics`.
+**Verification:** After deployment, invoke the function with the most recent lead to confirm all four recipients get the email.
 
-### 3. Migration SQL
-A single migration that replaces the `update_lead_close_stats` function with the updated logic:
+---
 
-**On status change to "won"**: Only increment `closed_deals` and type-specific close counts (internet_leads_closed, canvass_deals_closed, self_generated_deals). No longer increment `approved_revenue`.
+## 2. Lead Detail Layout Changes (Both Admin and Rep Views)
 
-**On status change to "scheduled"**: Increment `approved_revenue` by `quote_amount` for the assigned rep. This is when the contract is actually signed.
+### Admin (`src/pages/admin/LeadDetail.tsx`) -- Right column reorder:
+1. Assignment (stays)
+2. **Outcome** (moved up from position 4)
+3. **Follow-up** (moved down from position 2)
+4. Quote Approval
+5. Timeline
+6. Archive
+7. Activity Log
+8. Admin Notes
 
-**On status change to "completed"**: Sum all `lead_payments.amount` for the lead and add to `collections` in `user_metrics` for the assigned rep.
+### Rep (`src/pages/dashboard/LeadDetailView.tsx`) -- Right column reorder:
+1. **Outcome** (moved up from position 3)
+2. **Follow-up** (moved down from position 1)
+3. Quote Approval
+4. Timeline
+5. Activity Log
 
-**Reversal logic**: Update the reversal logic to match -- if status changes FROM "scheduled", reverse the approved_revenue. If status changes FROM "completed", reverse collections.
+---
 
-### 4. Frontend: handleCloseJob Enhancement
-No frontend changes needed -- the trigger handles everything automatically when the status changes to "completed" via the existing `handleCloseJob` function.
+## 3. All Sections Start Collapsed
+
+Change all `CollapsibleSection` instances in both lead detail views from `defaultOpen` or `defaultOpen={true}` to `defaultOpen={false}`, so every section starts retracted when opening a lead.
+
+---
+
+## 4. Fix Status Dropdown Order
+
+Both files currently have incorrect status ordering. Update to the correct lifecycle order:
+
+**New order:** `new`, `contacted`, `quoted`, `won`, `scheduled`, `completed`, `lost`, `cancelled`
+
+---
+
+## 5. Stop Follow-up Reminders After "Won"
+
+### Database trigger update
+Modify the `set_followup_on_update` function to clear `next_followup_due` when a lead reaches terminal/post-win statuses (`won`, `scheduled`, `completed`, `lost`, `cancelled`). This stops the 24-hour follow-up cycle once a deal is won.
+
+### Frontend update
+In `handleLogFollowup` in both files, only set the next 24-hour follow-up if the lead status is NOT in `won`, `scheduled`, `completed`, `lost`, or `cancelled`. For won+ leads, just log the follow-up without scheduling another one.
+
+---
 
 ## Technical Details
 
-### Migration: Updated `update_lead_close_stats` function
+### Files to Create
+| File | Purpose |
+|------|---------|
+| `supabase/functions/notify-new-lead/index.ts` | Edge function to email 4 team members on new internet leads |
 
-| Status Change | Action |
-|---------------|--------|
-| To "won" | Increment `closed_deals`, type-specific close counts (no approved_revenue change) |
-| From "won" | Reverse `closed_deals`, type-specific close counts |
-| To "scheduled" | Increment `approved_revenue` by `quote_amount` |
-| From "scheduled" | Reverse `approved_revenue` by `quote_amount` |
-| To "completed" | Sum `lead_payments` for lead, add to `collections` |
-| From "completed" | Reverse `collections` by the same sum |
+### Files to Modify
+| File | Changes |
+|------|---------|
+| `src/pages/GetQuote.tsx` | Add `notify-new-lead` invocation after successful submission |
+| `src/pages/admin/LeadDetail.tsx` | Reorder right column sections, set all `defaultOpen={false}`, fix `statusOptions` order, update `handleLogFollowup` |
+| `src/pages/dashboard/LeadDetailView.tsx` | Reorder right column sections, set all `defaultOpen={false}`, fix `statusOptions` order, update `handleLogFollowup` |
+| `supabase/config.toml` | Add `notify-new-lead` function config |
 
-### Files Changed
+### Database Migration
+| Change | Details |
+|--------|---------|
+| Update `set_followup_on_update` trigger | Clear `next_followup_due` when status changes to `won`, `scheduled`, `completed`, `lost`, or `cancelled` |
 
-| File | Change |
-|------|--------|
-| Database migration (SQL) | Update `update_lead_close_stats` trigger function to move approved_revenue to "scheduled" and add collections on "completed" |
-
-No frontend code changes are needed since the database trigger handles the metric updates automatically.
+### Post-Deploy Verification
+Invoke `notify-new-lead` with the most recent internet lead to confirm all 4 recipients receive the notification email.
 
