@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { clientName, clientEmail, clientPhone, serviceType, referenceNumber, streetAddress, city, state, zipCode, leadId, assignedRepName } = await req.json();
+    const { clientName, clientEmail, clientPhone, serviceType, referenceNumber, streetAddress, city, state, zipCode, leadId, assignedRepName, assignedRepUserId } = await req.json();
 
     if (!clientName || !assignedRepName) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -43,10 +44,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Look up rep email if assignedRepUserId is provided
+    const toList = [...RECIPIENTS];
+    if (assignedRepUserId) {
+      try {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(assignedRepUserId);
+        if (user?.email && !toList.includes(user.email)) {
+          toList.push(user.email);
+        }
+      } catch (_) {
+        // Continue without rep email if lookup fails
+      }
+    }
+
     const serviceLabel = serviceLabels[serviceType] || serviceType || "N/A";
     const adminUrl = leadId
       ? `https://nextgenroofing.lovable.app/admin/leads/${leadId}`
       : "https://nextgenroofing.lovable.app/admin/leads";
+    const repDashboardUrl = leadId
+      ? `https://nextgenroofing.lovable.app/dashboard/leads/${leadId}`
+      : "https://nextgenroofing.lovable.app/dashboard/my-leads";
 
     const html = `
 <!DOCTYPE html>
@@ -62,6 +83,7 @@ Deno.serve(async (req) => {
     
     <div style="background: #e8f5e9; padding: 16px; border-radius: 8px; border-left: 4px solid #4caf50; margin-bottom: 16px;">
       <p style="margin: 4px 0; font-size: 18px;"><strong>Assigned to:</strong> ${assignedRepName}</p>
+      <p style="margin: 4px 0; font-size: 14px; color: #555;">You have been assigned this lead. Please log in to your dashboard to review it.</p>
     </div>
 
     <div style="background: #fafafa; padding: 16px; border-radius: 8px; border-left: 4px solid #c91f5e;">
@@ -74,7 +96,8 @@ Deno.serve(async (req) => {
     </div>
     
     <div style="text-align: center; margin: 24px 0;">
-      <a href="${adminUrl}" style="display: inline-block; background: #c91f5e; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;">View in Admin Dashboard</a>
+      <a href="${repDashboardUrl}" style="display: inline-block; background: #c91f5e; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-right: 8px;">View in Dashboard</a>
+      <a href="${adminUrl}" style="display: inline-block; background: #333; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;">Admin View</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
@@ -93,7 +116,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         from: "Next Generation Roofing <notifications@oknextgen.com>",
-        to: RECIPIENTS,
+        to: toList,
         subject: `📋 Lead Assigned: ${clientName} — ${assignedRepName}`,
         html,
       }),

@@ -162,6 +162,8 @@ export default function LeadDetail() {
   const ServiceIcon = serviceIcons[lead.service_type] || Building2;
   const formData = (lead.form_data || {}) as Record<string, any>;
   const currentNotes = notes ?? lead.admin_notes ?? "";
+  const isGutters = lead.service_type === "gutters";
+  const appointmentLabel = isGutters ? "Schedule Appointment" : "Schedule Roofing Consultation";
 
   const renderFormData = () => {
     const entries = Object.entries(formData).filter(([k]) => k !== "photoUrls");
@@ -279,6 +281,7 @@ export default function LeadDetail() {
             if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
             if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
             if (v === "won") updates.won_at = new Date().toISOString();
+            if (v === "scheduled" && !lead.won_at) updates.won_at = new Date().toISOString();
             updateLead.mutate(updates);
           }}>
             <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
@@ -322,14 +325,14 @@ export default function LeadDetail() {
         const showContract = ["won", "approved", "scheduled"].includes(lead.status);
         const showFlex = ["won", "scheduled"].includes(lead.status);
         const showWarranty = lead.status === "completed";
-        const showInspection = true;
+        const showInspection = isGutters;
         const showAppointment = true;
         
         return (
           <div className="flex flex-wrap gap-2">
             {showAppointment && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null } })}>
-                <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : "📅 Schedule Appointment"}
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null, serviceType: lead.service_type } })}>
+                <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : `📅 ${appointmentLabel}`}
                 {appointmentForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", appointmentForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{appointmentForm.status}</Badge>}
               </Button>
             )}
@@ -364,10 +367,9 @@ export default function LeadDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left column - lead info (60%) */}
         <div className="lg:col-span-3 space-y-6">
-          <CollapsibleSection title="Service Details" defaultOpen={false}>
+          <CollapsibleSection title="Service / Client Details" defaultOpen={false}>
             {renderFormData()}
-          </CollapsibleSection>
-          <CollapsibleSection title="Contact Information" defaultOpen={false}>
+            <div className="border-t border-border my-4" />
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
@@ -408,24 +410,6 @@ export default function LeadDetail() {
               </div>
             </CollapsibleSection>
           )}
-
-          <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
-            <AdminEstimatesSection leadId={lead.id} />
-          </CollapsibleSection>
-
-          {/* Scheduling/Payments moved to left column */}
-          <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
-            <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
-              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
-              queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
-              queryClient.invalidateQueries({ queryKey: ["my-leads"] });
-            }} />
-          </CollapsibleSection>
-
-          {/* Files moved to left column */}
-          <CollapsibleSection title="Files" defaultOpen={false}>
-            <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
-          </CollapsibleSection>
         </div>
 
         {/* Right column - lifecycle (40%) */}
@@ -439,7 +423,7 @@ export default function LeadDetail() {
                     updateLead.mutate({ assigned_to: null, assigned_at: null });
                   } else {
                     updateLead.mutate({ assigned_to: v, assigned_at: new Date().toISOString() });
-                    // Fire-and-forget assignment notification
+                    // Fire-and-forget assignment notification (includes rep email lookup in edge function)
                     const rep = salesReps.find(r => r.user_id === v);
                     supabase.functions.invoke("notify-lead-assigned", {
                       body: {
@@ -454,6 +438,7 @@ export default function LeadDetail() {
                         zipCode: lead.zip_code,
                         leadId: lead.id,
                         assignedRepName: rep?.display_name || "Unknown",
+                        assignedRepUserId: v,
                       },
                     }).catch(() => {});
                   }
@@ -567,8 +552,24 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
+          <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
+            <AdminEstimatesSection leadId={lead.id} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
+            <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
+              queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
+              queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+              queryClient.invalidateQueries({ queryKey: ["my-leads"] });
+            }} />
+          </CollapsibleSection>
+
           <CollapsibleSection title="Quote Approval" defaultOpen={false}>
             <QuoteApprovalSection lead={lead} isAdmin={isAdmin} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Files" defaultOpen={false}>
+            <LeadFilesSection leadId={lead.id} isAdmin={isAdmin} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Timeline" defaultOpen={false}>
@@ -716,9 +717,9 @@ export default function LeadDetail() {
             <Button 
               variant="destructive" 
               onClick={handleArchive} 
-              disabled={archiving || !archiveReason}
+              disabled={archiving}
             >
-              {archiving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {archiving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Archive className="w-4 h-4 mr-2" />}
               Archive Lead
             </Button>
           </DialogFooter>
