@@ -42,7 +42,7 @@ function fmtDate(dateStr: string) {
 export function generateContractPDF(data: ContractPDFData): jsPDF {
   const doc = new jsPDF("p", "mm", "a4");
   const pw = doc.internal.pageSize.getWidth();
-  const margin = 15;
+  const margin = 18;
   const contentW = pw - margin * 2;
   let y = margin;
 
@@ -58,8 +58,10 @@ export function generateContractPDF(data: ContractPDFData): jsPDF {
   };
 
   // ─── HEADER ───
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
+  doc.text("Next Generation Roofing", pw / 2, y, { align: "center" });
+  y += 6;
   doc.text("Next Generation Guttering", pw / 2, y, { align: "center" });
   y += 7;
   doc.setFontSize(12);
@@ -154,7 +156,7 @@ export function generateContractPDF(data: ContractPDFData): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.text(label, margin, y);
     doc.setFont("helvetica", "normal");
-    doc.text(val, margin + 42, y);
+    doc.text(val, margin + 45, y);
     y += 5;
   }
   y += 3;
@@ -203,7 +205,7 @@ export function generateContractPDF(data: ContractPDFData): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.text("Sales Representative:", margin, y);
   doc.setFont("helvetica", "normal");
-  doc.text(data.repName || "—", margin + 42, y);
+  doc.text(data.repName || "—", margin + 45, y);
   y += 8;
 
   // Customer signature image
