@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { startOfWeek, addDays } from 'date-fns';
+import { startOfWeek, addDays, format } from 'date-fns';
 
 /**
  * Shared 3-tier update utility for canvasser hours/doors.
@@ -19,10 +19,10 @@ export async function updateCanvasserHours(
   notInterestedDelta: number = 0,
   leadsSetDelta: number = 0
 ) {
-  const entryDate = shiftDate.toISOString().split('T')[0];
+  const entryDate = format(shiftDate, 'yyyy-MM-dd');
   const weekStartDate = startOfWeek(shiftDate, { weekStartsOn: 4 }); // Thursday
-  const weekStart = weekStartDate.toISOString().split('T')[0];
-  const weekEnd = addDays(weekStartDate, 6).toISOString().split('T')[0];
+  const weekStart = format(weekStartDate, 'yyyy-MM-dd');
+  const weekEnd = format(addDays(weekStartDate, 6), 'yyyy-MM-dd');
 
   // TIER 1: Daily entry
   const { data: existing } = await supabase
