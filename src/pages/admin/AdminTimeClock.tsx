@@ -45,6 +45,9 @@ export default function AdminTimeClock() {
   const [shiftClockIn, setShiftClockIn] = useState('');
   const [shiftClockOut, setShiftClockOut] = useState('');
   const [shiftDoors, setShiftDoors] = useState('');
+  const [shiftConvos, setShiftConvos] = useState('');
+  const [shiftNotInterested, setShiftNotInterested] = useState('');
+  const [shiftLeadsSet, setShiftLeadsSet] = useState('');
   const [shiftNotes, setShiftNotes] = useState('');
   const [shiftCanvasserId, setShiftCanvasserId] = useState('');
   const [savingShift, setSavingShift] = useState(false);
@@ -262,6 +265,9 @@ export default function AdminTimeClock() {
     setShiftClockIn(shift.clock_in_at?.slice(0, 16) || '');
     setShiftClockOut(shift.clock_out_at?.slice(0, 16) || '');
     setShiftDoors(shift.doors_knocked?.toString() || '');
+    setShiftConvos(shift.conversations_had?.toString() || '');
+    setShiftNotInterested(shift.not_interested?.toString() || '');
+    setShiftLeadsSet(shift.leads_set?.toString() || '');
     setShiftNotes(shift.notes || '');
     setEditShiftModalOpen(true);
   };
@@ -272,22 +278,34 @@ export default function AdminTimeClock() {
     try {
       const oldHours = Number(selectedShift.hours_worked) || 0;
       const oldDoors = Number(selectedShift.doors_knocked) || 0;
+      const oldConvos = Number(selectedShift.conversations_had) || 0;
+      const oldNotInterested = Number(selectedShift.not_interested) || 0;
+      const oldLeadsSet = Number(selectedShift.leads_set) || 0;
       const newHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
       const newDoors = parseInt(shiftDoors) || 0;
+      const newConvos = parseInt(shiftConvos) || 0;
+      const newNotInterested = parseInt(shiftNotInterested) || 0;
+      const newLeadsSet = parseInt(shiftLeadsSet) || 0;
       const hoursDelta = newHours - oldHours;
       const doorsDelta = newDoors - oldDoors;
+      const convosDelta = newConvos - oldConvos;
+      const notInterestedDelta = newNotInterested - oldNotInterested;
+      const leadsSetDelta = newLeadsSet - oldLeadsSet;
 
       await supabase.from('canvasser_shifts').update({
         clock_in_at: new Date(shiftClockIn).toISOString(),
         clock_out_at: new Date(shiftClockOut).toISOString(),
         doors_knocked: newDoors || null,
+        conversations_had: newConvos || null,
+        not_interested: newNotInterested || null,
+        leads_set: newLeadsSet || null,
         notes: shiftNotes || null,
         status: 'completed',
         edited_at: new Date().toISOString(),
       }).eq('id', selectedShift.id);
 
-      if (hoursDelta !== 0 || doorsDelta !== 0) {
-        await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta);
+      if (hoursDelta !== 0 || doorsDelta !== 0 || convosDelta !== 0 || notInterestedDelta !== 0 || leadsSetDelta !== 0) {
+        await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
       }
 
       toast.success('Shift updated');
@@ -306,23 +324,32 @@ export default function AdminTimeClock() {
     try {
       const shiftHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
       const doors = parseInt(shiftDoors) || 0;
+      const convos = parseInt(shiftConvos) || 0;
+      const notInt = parseInt(shiftNotInterested) || 0;
+      const leads = parseInt(shiftLeadsSet) || 0;
 
       await supabase.from('canvasser_shifts').insert({
         canvasser_id: shiftCanvasserId,
         clock_in_at: new Date(shiftClockIn).toISOString(),
         clock_out_at: new Date(shiftClockOut).toISOString(),
         doors_knocked: doors || null,
+        conversations_had: convos || null,
+        not_interested: notInt || null,
+        leads_set: leads || null,
         notes: shiftNotes || null,
         status: 'completed',
       });
 
-      await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors);
+      await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
       toast.success(`Manual shift added: ${shiftHours}h`);
       setAddShiftModalOpen(false);
       setShiftCanvasserId('');
       setShiftClockIn('');
       setShiftClockOut('');
       setShiftDoors('');
+      setShiftConvos('');
+      setShiftNotInterested('');
+      setShiftLeadsSet('');
       setShiftNotes('');
       fetchShifts();
       fetchShiftHistory();
@@ -557,7 +584,7 @@ export default function AdminTimeClock() {
                 <Badge variant="secondary" className="ml-2">{activeShifts.length + flaggedShifts.length}</Badge>
               )}
             </CollapsibleTrigger>
-            <Button size="sm" variant="outline" onClick={() => { setSelectedShift(null); setShiftCanvasserId(''); setShiftClockIn(''); setShiftClockOut(''); setShiftDoors(''); setShiftNotes(''); setAddShiftModalOpen(true); }}>
+            <Button size="sm" variant="outline" onClick={() => { setSelectedShift(null); setShiftCanvasserId(''); setShiftClockIn(''); setShiftClockOut(''); setShiftDoors(''); setShiftConvos(''); setShiftNotInterested(''); setShiftLeadsSet(''); setShiftNotes(''); setAddShiftModalOpen(true); }}>
               <Plus className="h-4 w-4 mr-1" /> Add Shift
             </Button>
           </div>
@@ -666,6 +693,7 @@ export default function AdminTimeClock() {
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -691,6 +719,9 @@ export default function AdminTimeClock() {
                             <Badge variant={shift.status === 'completed' ? 'secondary' : shift.status === 'flagged' ? 'destructive' : 'outline'} className="text-xs">
                               {shift.status}
                             </Badge>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <Button size="sm" variant="ghost" onClick={() => handleEditShift(shift)} className="text-xs">Edit</Button>
                           </td>
                         </tr>
                       );
@@ -805,6 +836,9 @@ export default function AdminTimeClock() {
             <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
             <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Doors Knocked</Label><Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Conversations Had</Label><Input type="number" min="0" value={shiftConvos} onChange={e => setShiftConvos(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Not Interested</Label><Input type="number" min="0" value={shiftNotInterested} onChange={e => setShiftNotInterested(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Leads Set</Label><Input type="number" min="0" value={shiftLeadsSet} onChange={e => setShiftLeadsSet(e.target.value)} /></div>
             <div className="space-y-2"><Label>Notes</Label><Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} /></div>
           </div>
           <DialogFooter>
@@ -833,6 +867,9 @@ export default function AdminTimeClock() {
             <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
             <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Doors Knocked</Label><Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Conversations Had</Label><Input type="number" min="0" value={shiftConvos} onChange={e => setShiftConvos(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Not Interested</Label><Input type="number" min="0" value={shiftNotInterested} onChange={e => setShiftNotInterested(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Leads Set</Label><Input type="number" min="0" value={shiftLeadsSet} onChange={e => setShiftLeadsSet(e.target.value)} /></div>
             <div className="space-y-2"><Label>Notes</Label><Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} /></div>
           </div>
           <DialogFooter>
