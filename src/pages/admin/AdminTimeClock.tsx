@@ -578,6 +578,9 @@ export default function AdminTimeClock() {
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock Out</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Doors</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Convos</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Not Int.</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Leads Set</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
@@ -597,6 +600,9 @@ export default function AdminTimeClock() {
                           <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{hrs != null ? `${hrs}h` : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{shift.doors_knocked || '--'}</td>
+                          <td className="py-2 px-3 text-sm text-right text-foreground">{shift.conversations_had || '--'}</td>
+                          <td className="py-2 px-3 text-sm text-right text-foreground">{shift.not_interested || '--'}</td>
+                          <td className="py-2 px-3 text-sm text-right text-foreground">{shift.leads_set || '--'}</td>
                           <td className="py-2 px-3 text-sm text-muted-foreground max-w-[150px] truncate">{shift.notes || '--'}</td>
                           <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}</td>
                           <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_out_lat, shift.clock_out_lng)}</td>
