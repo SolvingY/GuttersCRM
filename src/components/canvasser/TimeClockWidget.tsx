@@ -9,8 +9,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { updateCanvasserHours } from "@/lib/updateCanvasserHours";
 import { toast } from "sonner";
-import { Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { Clock, AlertTriangle, Loader2, MapPin } from "lucide-react";
 import { format } from "date-fns";
+
+function getLocation(): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+}
 
 interface Shift {
   id: string;
@@ -131,9 +145,19 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     if (!user) return;
     setClockingIn(true);
     try {
+      const loc = await getLocation();
+      if (!loc) {
+        toast.warning("Location not captured — enable location for tracking");
+      }
+
       const { data, error } = await supabase
         .from("canvasser_shifts")
-        .insert({ canvasser_id: user.id, status: "active" })
+        .insert({
+          canvasser_id: user.id,
+          status: "active",
+          clock_in_lat: loc?.lat ?? null,
+          clock_in_lng: loc?.lng ?? null,
+        } as any)
         .select()
         .single();
 
@@ -152,6 +176,11 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     if (!user || !activeShift) return;
     setClockingOut(true);
     try {
+      const loc = await getLocation();
+      if (!loc) {
+        toast.warning("Location not captured — enable location for tracking");
+      }
+
       const clockOutTime = new Date();
       const shiftMs = clockOutTime.getTime() - new Date(activeShift.clock_in_at).getTime();
       const roundedHours = Math.round((shiftMs / 3600000) * 4) / 4;
@@ -165,7 +194,9 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           doors_knocked: doors || null,
           notes: notes || null,
           status: activeShift.status === "flagged" ? "flagged" : "completed",
-        })
+          clock_out_lat: loc?.lat ?? null,
+          clock_out_lng: loc?.lng ?? null,
+        } as any)
         .eq("id", activeShift.id);
 
       if (error) throw error;

@@ -186,7 +186,11 @@ export type Database = {
         Row: {
           canvasser_id: string
           clock_in_at: string
+          clock_in_lat: number | null
+          clock_in_lng: number | null
           clock_out_at: string | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
           created_at: string | null
           doors_knocked: number | null
           edited_at: string | null
@@ -200,7 +204,11 @@ export type Database = {
         Insert: {
           canvasser_id: string
           clock_in_at?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
           clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           created_at?: string | null
           doors_knocked?: number | null
           edited_at?: string | null
@@ -214,7 +222,11 @@ export type Database = {
         Update: {
           canvasser_id?: string
           clock_in_at?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
           clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           created_at?: string | null
           doors_knocked?: number | null
           edited_at?: string | null
