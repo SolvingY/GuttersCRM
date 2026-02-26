@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, ChevronDown, ChevronRight, Plus, MapPin, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { updateCanvasserHours } from '@/lib/updateCanvasserHours';
@@ -53,6 +54,16 @@ export default function AdminTimeClock() {
   const [shiftHistory, setShiftHistory] = useState<any[]>([]);
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historyDays, setHistoryDays] = useState(7);
+
+  // Work Zones state
+  const [workZonesOpen, setWorkZonesOpen] = useState(false);
+  const [workZones, setWorkZones] = useState<any[]>([]);
+  const [addZoneModalOpen, setAddZoneModalOpen] = useState(false);
+  const [zoneName, setZoneName] = useState('');
+  const [zoneLat, setZoneLat] = useState('');
+  const [zoneLng, setZoneLng] = useState('');
+  const [zoneRadius, setZoneRadius] = useState('500');
+  const [savingZone, setSavingZone] = useState(false);
 
   const getWeekStartForDate = (dateStr: string): string => {
     const d = new Date(dateStr + 'T00:00:00');
@@ -137,14 +148,23 @@ export default function AdminTimeClock() {
     setShiftHistory(data || []);
   }, [historyFilter, historyDays]);
 
+  const fetchWorkZones = useCallback(async () => {
+    const { data } = await supabase
+      .from('geofence_work_zones')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setWorkZones(data || []);
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       await fetchCanvassers();
       await fetchShifts();
+      await fetchWorkZones();
       setLoading(false);
     };
     init();
-  }, [fetchCanvassers, fetchShifts]);
+  }, [fetchCanvassers, fetchShifts, fetchWorkZones]);
 
   useEffect(() => {
     fetchShiftHistory();
@@ -333,11 +353,45 @@ export default function AdminTimeClock() {
 
   const getCanvasserName = (id: string) => canvassers.find(c => c.userId === id)?.name || 'Unknown';
 
+  const handleAddZone = async () => {
+    if (!zoneName || !zoneLat || !zoneLng) return;
+    setSavingZone(true);
+    try {
+      const { error } = await supabase.from('geofence_work_zones').insert({
+        name: zoneName,
+        lat: parseFloat(zoneLat),
+        lng: parseFloat(zoneLng),
+        radius_meters: parseInt(zoneRadius) || 500,
+      } as any);
+      if (error) throw error;
+      toast.success('Work zone added');
+      setAddZoneModalOpen(false);
+      setZoneName(''); setZoneLat(''); setZoneLng(''); setZoneRadius('500');
+      fetchWorkZones();
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message);
+    }
+    setSavingZone(false);
+  };
+
+  const handleToggleZone = async (zoneId: string, isActive: boolean) => {
+    await supabase.from('geofence_work_zones').update({ is_active: isActive } as any).eq('id', zoneId);
+    fetchWorkZones();
+    toast.success(isActive ? 'Zone activated' : 'Zone deactivated');
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    if (!confirm('Delete this work zone?')) return;
+    await supabase.from('geofence_work_zones').delete().eq('id', zoneId);
+    fetchWorkZones();
+    toast.success('Zone deleted');
+  };
+
   const renderLocationLink = (lat: number | null, lng: number | null) => {
     if (lat == null || lng == null) return <span className="text-muted-foreground">--</span>;
     return (
       <a
-        href={`https://www.google.com/maps?q=${lat},${lng}`}
+        href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1 text-accent hover:underline"
@@ -622,7 +676,101 @@ export default function AdminTimeClock() {
         </div>
       </Collapsible>
 
-      {/* Edit Shift Modal */}
+      {/* Geofence Work Zones */}
+      <Collapsible open={workZonesOpen} onOpenChange={setWorkZonesOpen}>
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+              {workZonesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <ShieldCheck className="h-4 w-4 text-accent" />
+              <h3 className="text-lg font-heading text-foreground">Geofence Work Zones</h3>
+              <Badge variant="secondary" className="ml-2">{workZones.filter(z => z.is_active).length} active</Badge>
+            </CollapsibleTrigger>
+            <Button size="sm" variant="outline" onClick={() => setAddZoneModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Add Zone
+            </Button>
+          </div>
+          <CollapsibleContent>
+            <div className="p-4">
+              {workZones.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No work zones configured. Canvassers can clock in from anywhere.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {workZones.map((zone: any) => (
+                    <div key={zone.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={zone.is_active}
+                          onCheckedChange={(checked) => handleToggleZone(zone.id, checked)}
+                        />
+                        <div>
+                          <p className="font-medium text-foreground">{zone.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {zone.radius_meters}m radius
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${zone.lat}&mlon=${zone.lng}#map=16/${zone.lat}/${zone.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent hover:underline"
+                        >
+                          <MapPin className="h-4 w-4" />
+                        </a>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteZone(zone.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-3">
+                💡 When zones are configured, canvassers will see a warning if they try to clock in outside all active zones. They can still clock in but the warning is logged.
+              </p>
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Add Work Zone Modal */}
+      <Dialog open={addZoneModalOpen} onOpenChange={setAddZoneModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Work Zone</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Zone Name</Label>
+              <Input value={zoneName} onChange={e => setZoneName(e.target.value)} placeholder="e.g. Office, Oak Park" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Latitude</Label>
+                <Input type="number" step="any" value={zoneLat} onChange={e => setZoneLat(e.target.value)} placeholder="35.4676" />
+              </div>
+              <div className="space-y-2">
+                <Label>Longitude</Label>
+                <Input type="number" step="any" value={zoneLng} onChange={e => setZoneLng(e.target.value)} placeholder="-97.5164" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Radius (meters)</Label>
+              <Input type="number" min="100" max="50000" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="500" />
+              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks. Tip: Use OpenStreetMap or Google Maps to find coordinates.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddZoneModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddZone} disabled={savingZone || !zoneName || !zoneLat || !zoneLng}>
+              {savingZone ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Zone
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={editShiftModalOpen} onOpenChange={setEditShiftModalOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>

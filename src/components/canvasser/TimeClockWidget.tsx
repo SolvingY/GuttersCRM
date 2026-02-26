@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { updateCanvasserHours } from "@/lib/updateCanvasserHours";
 import { toast } from "sonner";
-import { Clock, AlertTriangle, Loader2, MapPin } from "lucide-react";
+import { Clock, AlertTriangle, Loader2, MapPin, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 
 function getLocation(): Promise<{ lat: number; lng: number } | null> {
@@ -24,6 +24,16 @@ function getLocation(): Promise<{ lat: number; lng: number } | null> {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
+}
+
+/** Haversine distance in meters between two lat/lng points */
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 interface Shift {
@@ -57,6 +67,10 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
   const [clockingOut, setClockingOut] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [isFlagged, setIsFlagged] = useState(false);
+
+  // Geofence warning state
+  const [geofenceWarning, setGeofenceWarning] = useState(false);
+  const [pendingClockIn, setPendingClockIn] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchShifts = useCallback(async () => {
     if (!user) return;
@@ -144,15 +158,26 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     return `${hours}h ${mins}m`;
   };
 
-  const handleClockIn = async () => {
-    if (!user) return;
-    setClockingIn(true);
-    try {
-      const loc = await getLocation();
-      if (!loc) {
-        toast.warning("Location not captured — enable location for tracking");
-      }
+  /** Check if location is within any active geofence zone */
+  const checkGeofence = async (lat: number, lng: number): Promise<boolean> => {
+    const { data: zones } = await supabase
+      .from("geofence_work_zones")
+      .select("lat, lng, radius_meters")
+      .eq("is_active", true);
 
+    if (!zones || zones.length === 0) {
+      // No zones configured — allow clock-in anywhere
+      return true;
+    }
+
+    return zones.some((zone: any) =>
+      distanceMeters(lat, lng, zone.lat, zone.lng) <= zone.radius_meters
+    );
+  };
+
+  const performClockIn = async (loc: { lat: number; lng: number } | null) => {
+    if (!user) return;
+    try {
       const { data, error } = await supabase
         .from("canvasser_shifts")
         .insert({
@@ -172,7 +197,43 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     } catch (err: any) {
       toast.error("Failed to clock in: " + err.message);
     }
+  };
+
+  const handleClockIn = async () => {
+    if (!user) return;
+    setClockingIn(true);
+    try {
+      const loc = await getLocation();
+      if (!loc) {
+        toast.warning("Location not captured — enable location for tracking");
+        await performClockIn(null);
+      } else {
+        const inZone = await checkGeofence(loc.lat, loc.lng);
+        if (!inZone) {
+          // Show geofence warning — let user confirm or cancel
+          setPendingClockIn(loc);
+          setGeofenceWarning(true);
+        } else {
+          await performClockIn(loc);
+        }
+      }
+    } catch (err: any) {
+      toast.error("Failed to clock in: " + err.message);
+    }
     setClockingIn(false);
+  };
+
+  const handleConfirmOutOfZone = async () => {
+    setGeofenceWarning(false);
+    setClockingIn(true);
+    await performClockIn(pendingClockIn);
+    setPendingClockIn(null);
+    setClockingIn(false);
+  };
+
+  const handleCancelOutOfZone = () => {
+    setGeofenceWarning(false);
+    setPendingClockIn(null);
   };
 
   const handleClockOut = async () => {
@@ -236,6 +297,35 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     }
     setClockingOut(false);
   };
+
+  const geofenceWarningModal = (
+    <Dialog open={geofenceWarning} onOpenChange={setGeofenceWarning}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-yellow-600">
+            <ShieldAlert className="h-5 w-5" />
+            Outside Approved Work Zone
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            You are not within any approved work zone. Your manager will be able to see your clock-in location.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Do you still want to clock in from this location?
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancelOutOfZone}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleConfirmOutOfZone}>
+            Clock In Anyway
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   const clockOutModal = (
     <Dialog open={clockOutModalOpen} onOpenChange={setClockOutModalOpen}>
@@ -348,6 +438,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           </CardContent>
         </Card>
         {clockOutModal}
+        {geofenceWarningModal}
       </>
     );
   }
@@ -372,6 +463,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           </CardContent>
         </Card>
         {clockOutModal}
+        {geofenceWarningModal}
       </>
     );
   }
@@ -403,6 +495,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         </CardContent>
       </Card>
       {clockOutModal}
+      {geofenceWarningModal}
     </>
   );
 }
