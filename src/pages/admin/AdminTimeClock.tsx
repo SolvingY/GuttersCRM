@@ -318,6 +318,31 @@ export default function AdminTimeClock() {
     setSavingShift(false);
   };
 
+  const handleDeleteShift = async (shift: any) => {
+    if (!confirm(`Delete this shift for ${getCanvasserName(shift.canvasser_id)}? This will reverse all metrics.`)) return;
+    try {
+      const hours = shift.clock_out_at
+        ? Math.round(((new Date(shift.clock_out_at).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4
+        : 0;
+      const doors = Number(shift.doors_knocked) || 0;
+      const convos = Number(shift.conversations_had) || 0;
+      const notInt = Number(shift.not_interested) || 0;
+      const leads = Number(shift.leads_set) || 0;
+
+      await supabase.from('canvasser_shifts').delete().eq('id', shift.id);
+
+      if (hours > 0 || doors > 0 || convos > 0 || notInt > 0 || leads > 0) {
+        await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), -hours, -doors, -convos, -notInt, -leads);
+      }
+
+      toast.success('Shift deleted and metrics reversed');
+      fetchShifts();
+      fetchShiftHistory();
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message);
+    }
+  };
+
   const handleAddManualShift = async () => {
     if (!shiftCanvasserId || !shiftClockIn || !shiftClockOut) return;
     setSavingShift(true);
@@ -721,7 +746,12 @@ export default function AdminTimeClock() {
                             </Badge>
                           </td>
                           <td className="py-2 px-3 text-center">
-                            <Button size="sm" variant="ghost" onClick={() => handleEditShift(shift)} className="text-xs">Edit</Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEditShift(shift)} className="text-xs">Edit</Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteShift(shift)} className="text-xs text-destructive hover:text-destructive">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
