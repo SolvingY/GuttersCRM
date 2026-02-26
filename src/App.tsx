@@ -37,6 +37,7 @@ import LeadDetail from "./pages/admin/LeadDetail";
 import ContractorManagement from "./pages/admin/ContractorManagement";
 import LeadflowStatistics from "./pages/admin/LeadflowStatistics";
 import AdminTimeClock from "./pages/admin/AdminTimeClock";
+import NotificationRouting from "./pages/admin/NotificationRouting";
 import GetQuote from "./pages/GetQuote";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
@@ -174,6 +175,7 @@ const App = () => (
             <Route path="leadflow" element={<LeadflowStatistics />} />
             <Route path="team" element={<ContractorManagement />} />
             <Route path="timeclock" element={<AdminTimeClock />} />
+            <Route path="notifications" element={<NotificationRouting />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

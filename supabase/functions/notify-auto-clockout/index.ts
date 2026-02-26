@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { canvasserId, canvasserName, clockInAt, hoursOpen } = await req.json();
+    const { canvasserId, canvasserName, clockInAt, hoursWorked } = await req.json();
 
     if (!canvasserId || !canvasserName) {
       return new Response(
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const { data: routes } = await supabaseAdmin
       .from("notification_routing")
       .select("email")
-      .eq("notification_type", "flagged_shift")
+      .eq("notification_type", "auto_clockout")
       .eq("is_active", true);
 
     const recipientEmails = routes && routes.length > 0
@@ -68,28 +68,33 @@ Deno.serve(async (req) => {
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <div style="background: #000; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; font-size: 24px; margin: 0;">⚠️ Flagged Shift</h1>
+    <h1 style="color: #fff; font-size: 24px; margin: 0;">🔴 Auto Clock-Out</h1>
     <p style="color: #c91f5e; font-size: 14px; margin: 8px 0 0;">Next Generation Roofing</p>
   </div>
   <div style="border: 1px solid #eee; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
     <p style="font-size: 16px; margin: 0 0 16px;">
-      <strong>${canvasserName}</strong> has an open shift that has been automatically flagged.
+      <strong>${canvasserName}</strong> was automatically clocked out after exceeding 4 hours without a manual clock-out.
     </p>
-    <div style="background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+    
+    <div style="background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #ef4444;">
       <p style="margin: 4px 0;"><strong>Clocked in:</strong> ${formattedClockIn}</p>
-      <p style="margin: 4px 0;"><strong>Hours open:</strong> ${hoursOpen} hours</p>
+      <p style="margin: 4px 0;"><strong>Hours recorded:</strong> ${hoursWorked} hours (capped)</p>
+      <p style="margin: 4px 0;"><strong>Status:</strong> Auto-closed</p>
     </div>
+    
     <p style="margin: 16px 0; color: #666;">
-      Please review and correct this shift in the admin panel.
+      Please review this shift in the admin panel. The canvasser may need to adjust their hours.
     </p>
+    
     <div style="text-align: center; margin: 24px 0;">
-      <a href="${APP_URL}/admin" style="display: inline-block; background: #f59e0b; color: #fff; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px;">
-        VIEW SHIFTS
+      <a href="${APP_URL}/admin/timeclock" style="display: inline-block; background: #ef4444; color: #fff; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px;">
+        REVIEW SHIFT
       </a>
     </div>
+    
     <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
     <p style="font-size: 12px; color: #999; text-align: center;">
-      Next Generation Roofing • Flagged Shift Notification
+      Next Generation Roofing • Auto Clock-Out Notification
     </p>
   </div>
 </body>
@@ -104,7 +109,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "Next Generation Roofing <notifications@oknextgen.com>",
         to: recipientEmails,
-        subject: `⚠️ Flagged Shift — ${canvasserName}`,
+        subject: `🔴 Auto Clock-Out — ${canvasserName}`,
         html,
       }),
     });
@@ -114,7 +119,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("notify-flagged-shift error:", error);
+    console.error("notify-auto-clockout error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
