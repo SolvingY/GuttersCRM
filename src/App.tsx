@@ -35,6 +35,7 @@ import ApplicantDetail from "./pages/admin/ApplicantDetail";
 import Leads from "./pages/admin/Leads";
 import LeadDetail from "./pages/admin/LeadDetail";
 import ContractorManagement from "./pages/admin/ContractorManagement";
+import LeadflowStatistics from "./pages/admin/LeadflowStatistics";
 import GetQuote from "./pages/GetQuote";
 import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
 import CanvasserStats from "./pages/canvasser/CanvasserStats";
@@ -169,6 +170,7 @@ const App = () => (
             <Route path="applicants/:id" element={<ApplicantDetail />} />
             <Route path="leads" element={<Leads />} />
             <Route path="leads/:id" element={<LeadDetail />} />
+            <Route path="leadflow" element={<LeadflowStatistics />} />
             <Route path="team" element={<ContractorManagement />} />
           </Route>
 

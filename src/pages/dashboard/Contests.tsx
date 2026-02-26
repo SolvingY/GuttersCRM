@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, isFuture } from 'date-fns';
 import { cn } from '@/lib/utils';
 import contestBackground from '@/assets/contest-background.jpg';
+import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 
 interface Contest {
   id: string;
@@ -1233,6 +1234,9 @@ export default function Contests() {
         </TabsContent>
       </Tabs>
       </div>
+
+      {/* Recent Point Activity */}
+      <RecentPointTransactionsWidget />
     </div>
   );
 }
