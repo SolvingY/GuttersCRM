@@ -49,7 +49,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const handleSubmitForApproval = () => {
+  const handleSubmitForApproval = async () => {
     const amount = parseFloat(quoteAmount);
     if (!amount || amount <= 0) {
       toast({ title: "Enter a valid amount", variant: "destructive" });
@@ -63,6 +63,35 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       quoted_at: lead.quoted_at || new Date().toISOString(),
       status: lead.status === "new" || lead.status === "contacted" ? "quoted" : lead.status,
     });
+
+    // Get submitter's display name for the notification email
+    let submitterName = "A team member";
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user?.id || "")
+        .single();
+      if (profile?.full_name) submitterName = profile.full_name;
+    } catch {}
+
+    // Notify admins via edge function
+    try {
+      await supabase.functions.invoke("notify-quote-pending", {
+        body: {
+          leadId: lead.id,
+          clientName: lead.full_name,
+          address: `${lead.street_address || ""}, ${lead.city || ""}, ${lead.state || "OK"}`,
+          quoteAmount: amount,
+          serviceType: lead.service_type,
+          submittedBy: submitterName,
+          submittedAt: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      console.error("Failed to notify admins:", err);
+    }
+
     toast({ title: "Quote submitted for approval" });
   };
 
@@ -169,7 +198,21 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         }
       }
 
-      // 6. Call edge function to send email
+      // 6. Auto-set lead status to Won
+      await supabase.from("quote_requests").update({
+        status: "won",
+        won_at: new Date().toISOString(),
+      }).eq("id", lead.id);
+
+      // Log activity for auto-won
+      await supabase.from("lead_activity_log").insert({
+        lead_id: lead.id,
+        user_id: user?.id,
+        activity_type: "status_change",
+        content: "Quote approved — lead automatically marked as Won",
+      });
+
+      // 7. Call edge function to send email
       await supabase.functions.invoke("send-quote-approval-email", {
         body: {
           clientName: lead.full_name,
@@ -186,7 +229,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       queryClient.invalidateQueries({ queryKey: ["lead-detail", lead.id] });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
       queryClient.invalidateQueries({ queryKey: ["lead-files", lead.id] });
-      toast({ title: "Quote approved and estimate emailed to customer" });
+      toast({ title: "Quote approved, lead marked Won, estimate emailed to customer" });
     } catch (err: any) {
       console.error("Approval failed:", err);
       toast({ title: "Approval failed", description: err.message, variant: "destructive" });

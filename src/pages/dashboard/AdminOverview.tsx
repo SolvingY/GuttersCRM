@@ -18,6 +18,8 @@ import { addMonths, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
+import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -857,6 +859,9 @@ export default function AdminOverview() {
         }}
       />
 
+      {/* Stale Contracts Alert - shown above tabs for all admin */}
+      <StaleContractsWidget isAdmin={true} />
+
       <Tabs defaultValue="sales" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="sales">Sales Reps ({aggregates.totalUsers})</TabsTrigger>
@@ -878,6 +883,9 @@ export default function AdminOverview() {
               icon={Percent} 
             />
           </div>
+
+          {/* Outstanding Collections */}
+          <CollectionsPipelineWidget isAdmin={true} />
 
           {/* Contract Source Comparison Card */}
           <Collapsible open={contractSourcesOpen} onOpenChange={setContractSourcesOpen}>
