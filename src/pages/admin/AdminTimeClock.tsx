@@ -70,13 +70,13 @@ export default function AdminTimeClock() {
     const day = d.getDay();
     const diff = d.getDate() - ((day + 3) % 7);
     const thursday = new Date(d.getFullYear(), d.getMonth(), diff);
-    return thursday.toISOString().split('T')[0];
+    return format(thursday, 'yyyy-MM-dd');
   };
 
   const getWeekEndForDate = (weekStartStr: string): string => {
     const d = new Date(weekStartStr + 'T00:00:00');
     d.setDate(d.getDate() + 6);
-    return d.toISOString().split('T')[0];
+    return format(d, 'yyyy-MM-dd');
   };
 
   const fetchCanvassers = useCallback(async () => {
@@ -483,7 +483,7 @@ export default function AdminTimeClock() {
                       const weekDays = Array.from({ length: 7 }, (_, i) => {
                         const date = new Date(selectedHoursWeek);
                         date.setDate(date.getDate() + i);
-                        return date.toISOString().split('T')[0];
+                        return format(date, 'yyyy-MM-dd');
                       });
                       const dailyHours = weekDays.map(date => {
                         const entries = canvasserHoursData.filter(e => e.user_id === canvasser.userId && e.entry_date === date);

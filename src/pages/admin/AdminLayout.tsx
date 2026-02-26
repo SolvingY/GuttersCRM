@@ -96,7 +96,6 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { icon: Trophy, label: 'Contests', path: '/admin/contests' },
       { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
-      { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
     ],
   },
 ];
