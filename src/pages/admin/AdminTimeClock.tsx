@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, ChevronDown, ChevronRight, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2 } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { updateCanvasserHours } from '@/lib/updateCanvasserHours';
@@ -387,19 +387,46 @@ export default function AdminTimeClock() {
     toast.success('Zone deleted');
   };
 
+  const handleCopyCoords = async (lat: number, lng: number) => {
+    const coords = `${lat}, ${lng}`;
+    try {
+      await navigator.clipboard.writeText(coords);
+      toast.success('Coordinates copied');
+    } catch {
+      const input = document.createElement('input');
+      input.value = coords;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      toast.success('Coordinates copied');
+    }
+  };
+
   const renderLocationLink = (lat: number | null, lng: number | null) => {
     if (lat == null || lng == null) return <span className="text-muted-foreground">--</span>;
     return (
-      <a
-        href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-accent hover:underline"
-        title={`${lat.toFixed(4)}, ${lng.toFixed(4)}`}
-      >
-        <MapPin className="h-3.5 w-3.5" />
-        View
-      </a>
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <a
+            href={`https://maps.google.com/maps?q=${lat},${lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-accent hover:underline text-xs"
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            View on Maps
+          </a>
+          <button
+            onClick={() => handleCopyCoords(lat, lng)}
+            className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground text-xs"
+            title="Copy coordinates"
+          >
+            <Copy className="h-3 w-3" />
+          </button>
+        </div>
+        <span className="text-[10px] text-muted-foreground">{lat.toFixed(4)}, {lng.toFixed(4)}</span>
+      </div>
     );
   };
 
@@ -714,7 +741,7 @@ export default function AdminTimeClock() {
                       </div>
                       <div className="flex items-center gap-2">
                         <a
-                          href={`https://www.openstreetmap.org/?mlat=${zone.lat}&mlon=${zone.lng}#map=16/${zone.lat}/${zone.lng}`}
+                          href={`https://maps.google.com/maps?q=${zone.lat},${zone.lng}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-accent hover:underline"
@@ -759,7 +786,7 @@ export default function AdminTimeClock() {
             <div className="space-y-2">
               <Label>Radius (meters)</Label>
               <Input type="number" min="100" max="50000" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="500" />
-              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks. Tip: Use OpenStreetMap or Google Maps to find coordinates.</p>
+              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks. Tip: Use Google Maps to find coordinates.</p>
             </div>
           </div>
           <DialogFooter>
