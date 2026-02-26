@@ -1,39 +1,42 @@
 
 
-# Fix Duplicate Error on Re-Add and Add Report Settings Tab
+# Add Edit Button to Shift History
 
-## Issue 1: "Email already exists" after removing and re-adding
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-The delete mutation invalidates the query cache, but the re-fetch may not complete before the user adds the same email back. The insert then hits the database's unique constraint because the old row hasn't been fully removed from the cache/UI yet -- or the delete itself may be failing silently.
+## Changes
 
-**Fix in `src/pages/admin/NotificationRouting.tsx`:**
-- Add `onMutate` optimistic update to `deleteMutation` so the entry is immediately removed from the local cache (no waiting for refetch)
-- Add `onMutate` optimistic update to `addMutation` so the entry appears immediately
-- Add `onError` rollback for both mutations to restore previous cache state if the operation fails
-- This eliminates the race condition between delete completing and the user trying to re-add
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-## Issue 2: Report Settings as a tab at the top
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-Replace the bottom "Weekly Reports" card with a tabbed interface at the top of the page using the existing Tabs component.
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-**Changes to `src/pages/admin/NotificationRouting.tsx`:**
-- Import `Tabs, TabsContent, TabsList, TabsTrigger` from `@/components/ui/tabs`
-- Import `ReportSettings` component directly (lazy or inline)
-- Wrap the page content in a `Tabs` component with two tabs:
-  - **"Notification Routing"** -- contains the existing notification type cards
-  - **"Report Settings"** -- renders the `ReportSettings` component inline
-- Remove the "Weekly Reports" card at the bottom (no longer needed)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-Layout:
-```text
-[Notification Routing]  [Report Settings]
--------------------------------------------
-(tab content here)
-```
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-## Files Modified
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-| File | Change |
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
 |------|--------|
-| `src/pages/admin/NotificationRouting.tsx` | Add optimistic updates to delete/add mutations; add tabbed layout with Report Settings |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
