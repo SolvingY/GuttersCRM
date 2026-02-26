@@ -50,6 +50,9 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
   const [clockingIn, setClockingIn] = useState(false);
   const [clockOutModalOpen, setClockOutModalOpen] = useState(false);
   const [doorsKnocked, setDoorsKnocked] = useState("");
+  const [conversationsHad, setConversationsHad] = useState("");
+  const [notInterested, setNotInterested] = useState("");
+  const [leadsSet, setLeadsSet] = useState("");
   const [notes, setNotes] = useState("");
   const [clockingOut, setClockingOut] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -186,12 +189,18 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
       const roundedHours = Math.round((shiftMs / 3600000) * 4) / 4;
       const finalHours = roundedHours === 0 && shiftMs > 0 ? 0.25 : roundedHours;
       const doors = doorsKnocked ? parseInt(doorsKnocked, 10) : 0;
+      const convos = conversationsHad ? parseInt(conversationsHad, 10) : 0;
+      const ni = notInterested ? parseInt(notInterested, 10) : 0;
+      const ls = leadsSet ? parseInt(leadsSet, 10) : 0;
 
       const { error } = await supabase
         .from("canvasser_shifts")
         .update({
           clock_out_at: clockOutTime.toISOString(),
           doors_knocked: doors || null,
+          conversations_had: convos || null,
+          not_interested: ni || null,
+          leads_set: ls || null,
           notes: notes || null,
           status: activeShift.status === "flagged" ? "flagged" : "completed",
           clock_out_lat: loc?.lat ?? null,
@@ -205,12 +214,18 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         user.id,
         new Date(activeShift.clock_in_at),
         finalHours,
-        doors
+        doors,
+        convos,
+        ni,
+        ls
       );
 
       toast.success(`Shift recorded: ${finalHours}h`);
       setClockOutModalOpen(false);
       setDoorsKnocked("");
+      setConversationsHad("");
+      setNotInterested("");
+      setLeadsSet("");
       setNotes("");
       setActiveShift(null);
       setIsFlagged(false);
@@ -242,6 +257,39 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
               min="0"
               value={doorsKnocked}
               onChange={(e) => setDoorsKnocked(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="convos">Conversations Had (optional)</Label>
+            <Input
+              id="convos"
+              type="number"
+              min="0"
+              value={conversationsHad}
+              onChange={(e) => setConversationsHad(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="notInterested">Not Interested (optional)</Label>
+            <Input
+              id="notInterested"
+              type="number"
+              min="0"
+              value={notInterested}
+              onChange={(e) => setNotInterested(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="leadsSet">Leads Set (optional)</Label>
+            <Input
+              id="leadsSet"
+              type="number"
+              min="0"
+              value={leadsSet}
+              onChange={(e) => setLeadsSet(e.target.value)}
               placeholder="0"
             />
           </div>
