@@ -1177,6 +1177,33 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_routing: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          is_active: boolean | null
+          notification_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          is_active?: boolean | null
+          notification_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          notification_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       performance_reviews: {
         Row: {
           action_items: string | null
