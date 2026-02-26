@@ -1,94 +1,157 @@
 
-# Phase 3 Reorganization: Dashboard Widget Relocation and Hours Tracker Fix
+# Canvasser Time Clock System — Complete Implementation
 
 ## Overview
 
-Four changes: move widgets between admin sections, create a new "Leadflow Statistics" page, and fix the canvasser hours tracker week display.
+Build a full clock-in/clock-out system for canvassers that integrates with the existing 3-tier hours tracking (daily_canvasser_metric_entries -> weekly_canvasser_metrics -> canvasser_metrics). Includes canvasser-facing widget, shift history, admin shift management, and a flagged-shift notification edge function.
 
 ---
 
-## 1. Move Overdue Follow-ups to Leads page
+## Step 1: Database Migration
 
-**File: `src/pages/admin/Leads.tsx`**
-- Import and render `OverdueFollowupsWidget` at the top of the leads page (before the leads table)
-- Pass `isAdmin={true}`
+Create `canvasser_shifts` table with computed `hours_worked` column:
 
-**File: `src/pages/dashboard/AdminOverview.tsx`**
-- Remove the `<OverdueFollowupsWidget isAdmin={true} />` line (line 891)
-- Remove the import if no longer used here
+```sql
+CREATE TABLE public.canvasser_shifts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  canvasser_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  clock_in_at timestamptz NOT NULL DEFAULT now(),
+  clock_out_at timestamptz,
+  hours_worked numeric GENERATED ALWAYS AS (
+    CASE 
+      WHEN clock_out_at IS NOT NULL 
+      THEN ROUND(EXTRACT(EPOCH FROM (clock_out_at - clock_in_at)) / 3600.0, 2)
+      ELSE NULL 
+    END
+  ) STORED,
+  doors_knocked integer,
+  notes text,
+  status text DEFAULT 'active',
+  flagged_reason text,
+  edited_by uuid REFERENCES auth.users(id),
+  edited_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
 
----
+ALTER TABLE public.canvasser_shifts ENABLE ROW LEVEL SECURITY;
 
-## 2. Create "Leadflow Statistics" page under Leads & Sales
+CREATE POLICY "Canvassers can manage own shifts"
+  ON public.canvasser_shifts FOR ALL
+  USING (auth.uid() = canvasser_id);
 
-**New file: `src/pages/admin/LeadflowStatistics.tsx`**
-- A new page containing:
-  - Pipeline Funnel (collapsible, default expanded) -- moved from AdminOverview
-  - Average Time to Close (collapsible, default expanded) -- moved from AdminOverview
-- Imports `PipelineFunnelWidget` and `TimeToCloseWidget`
-- Simple page with heading "Leadflow Statistics" and both collapsible sections
+CREATE POLICY "Admins can manage all shifts"
+  ON public.canvasser_shifts FOR ALL
+  USING (public.has_role(auth.uid(), 'admin'));
+```
 
-**File: `src/pages/dashboard/AdminOverview.tsx`**
-- Remove the Pipeline Funnel collapsible section (lines 896-910)
-- Remove the Time-to-Close collapsible section (lines 912-926)
-- Remove related state variables (`pipelineFunnelOpen`, `timeToCloseOpen`) and imports (`PipelineFunnelWidget`, `TimeToCloseWidget`) if no longer used
-
-**File: `src/App.tsx`**
-- Import `LeadflowStatistics` and add route: `<Route path="leadflow" element={<LeadflowStatistics />} />`
-
-**File: `src/pages/admin/AdminLayout.tsx`**
-- Add nav item under "Leads & Sales" group:
-  ```
-  { icon: TrendingUp, label: 'Leadflow Statistics', path: '/admin/leadflow' }
-  ```
-- Import `TrendingUp` from lucide-react
-
----
-
-## 3. Move "Recent Point Activity" to Contests page
-
-**File: `src/pages/dashboard/AdminOverview.tsx`**
-- Remove `<RecentPointTransactionsWidget />` (line 1447)
-- Remove the import if no longer used
-
-**File: `src/pages/dashboard/Contests.tsx`**
-- Import and render `RecentPointTransactionsWidget` at the bottom of the contests page
+Key details:
+- `hours_worked` is GENERATED ALWAYS -- never write to it directly
+- `status` values: 'active', 'completed', 'flagged'
+- No manager policy (no manager role in enum)
 
 ---
 
-## 4. Change Canvasser Hours Tracker to Thursday-Wednesday
+## Step 2: Create `src/lib/updateCanvasserHours.ts`
 
-**File: `src/pages/dashboard/AdminOverview.tsx`**
+Shared 3-tier update utility used by both clock-out and admin edit flows:
 
-The week currently starts on Monday. Changes needed:
-
-- **`selectedHoursWeek` initialization** (lines 143-148): Change to find the most recent Thursday instead of Monday
-  ```
-  const d = new Date();
-  const day = d.getDay(); // 0=Sun, 4=Thu
-  const diff = d.getDate() - ((day + 3) % 7); // days back to last Thursday
-  return new Date(d.getFullYear(), d.getMonth(), diff);
-  ```
-
-- **Day headers** (line 1252): Change from `['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']` to `['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed']`
-
-- **Move-day labels** (line 1308): Change from `['M', 'T', 'W', 'T', 'F', 'S', 'S']` to `['T', 'F', 'S', 'S', 'M', 'T', 'W']` and update matching move-day titles (line 1318)
-
-- **`getWeekStartForDate` helper** (lines 159-165): Update to calculate Thursday-based week start instead of Monday
-
-- The 7-day iteration (`weekDays` array at line 1260) stays the same since it always generates 7 consecutive days from `selectedHoursWeek` -- it just now starts on Thursday instead of Monday
-
-- **Weekly metrics sync** (`getWeekEndForDate` at lines 167-171): The +6 day calculation stays the same but now represents Thu-Wed range
+- **Tier 1**: Upsert `daily_canvasser_metric_entries` (hours_worked_delta, doors_knocked_delta)
+- **Tier 2**: Upsert `weekly_canvasser_metrics` with `weekStartsOn: 4` (Thursday) and **always include week_end** (weekStart + 6 days)
+- **Tier 3**: Update `canvasser_metrics` YTD totals
+- All values clamped with `Math.max(0, ...)`
+- Accepts positive or negative deltas
 
 ---
 
-## Summary of Files
+## Step 3: Create `src/components/canvasser/TimeClockWidget.tsx`
+
+Self-contained clock widget with three visual states:
+
+**State A (Clocked Out):** "You are not clocked in" with large green Clock In button. Shows last shift summary below.
+
+**State B (Clocked In):** Live timer updating every 60s via `setInterval` (with cleanup on unmount). Shows clock-in time and red Clock Out button. Clock Out opens a modal with optional doors knocked and notes fields. On confirm:
+- Calculate hours from timestamps (not computed column): `Math.round((shiftMs / 3600000) * 4) / 4`
+- Update shift record (never write `hours_worked`)
+- Call `updateCanvasserHours()` with rounded hours and doors
+
+**State C (Flagged):** Amber warning card for shifts open 12+ hours. Shows "Close Shift" button (opens clock-out modal) only. On mount, if active shift > 12h AND status is still 'active', auto-flag and invoke `notify-flagged-shift` once. If already 'flagged', just show warning UI without re-notifying.
+
+---
+
+## Step 4: Modify `src/pages/canvasser/CanvasserStats.tsx`
+
+Insert `TimeClockWidget` after the "My Stats" heading (line 252) and before the Contests collapsible.
+
+Add "My Recent Shifts" collapsible section after the TimeClockWidget:
+- Queries last 20 shifts from `canvasser_shifts` for current user
+- Table columns: Date, In, Out, Hours, Doors, Notes
+- Flagged shifts highlighted amber; active shifts show "In Progress"
+- Footer: "This Week: X hrs | This Month: X hrs" calculated client-side from shifts array
+
+---
+
+## Step 5: Modify `src/pages/dashboard/AdminOverview.tsx`
+
+Add "Shift Management" collapsible section on the Canvasser tab, placed after the hours tracker grid (line 1311) and before the "Canvassers Needing Attention" alert (line 1313).
+
+Three sub-sections:
+
+**Active Status Table:**
+- Queries `canvasser_shifts` where status = 'active' to find who is clocked in
+- Shows all canvassers with status (Clocked In with live timer / Off / Flagged), today's hours, this week total
+
+**Flagged Shifts Queue:**
+- Queries `canvasser_shifts` where status = 'flagged' and clock_out_at IS NULL
+- Lists with Edit and Dismiss buttons
+- Dismiss sets status to 'completed' with admin-entered clock-out time
+
+**Edit Shift Modal + Add Manual Shift:**
+- Edit: reads old `hours_worked` from computed column, calculates delta to new times, calls `updateCanvasserHours` with delta
+- Add: canvasser selector dropdown, clock in/out datetime inputs, doors, notes. Creates completed shift and calls `updateCanvasserHours` with full hours (no delta since starting from 0)
+- Both track `edited_by` and `edited_at`
+
+New state variables: `shiftManagementOpen`, `activeShifts`, `flaggedShifts`, `editShiftModalOpen`, `addShiftModalOpen`, `selectedShift`, etc.
+
+---
+
+## Step 6: Create `supabase/functions/notify-flagged-shift/index.ts`
+
+Edge function following existing patterns (same as `notify-deal-won`):
+- Accepts: canvasserId, canvasserName, clockInAt, hoursOpen
+- Fetches admin emails via user_roles + auth.admin.getUserById
+- Sends HTML email via Resend from `notifications@oknextgen.com`
+- Subject: "Flagged Shift -- [Canvasser Name]"
+
+---
+
+## Step 7: Update `supabase/config.toml`
+
+Add entry:
+```toml
+[functions.notify-flagged-shift]
+verify_jwt = false
+```
+
+---
+
+## Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `src/pages/admin/LeadflowStatistics.tsx` |
-| Modify | `src/pages/dashboard/AdminOverview.tsx` -- remove 3 widgets, fix hours tracker week |
-| Modify | `src/pages/admin/AdminLayout.tsx` -- add Leadflow Statistics nav item |
-| Modify | `src/App.tsx` -- add leadflow route |
-| Modify | `src/pages/admin/Leads.tsx` -- add OverdueFollowupsWidget |
-| Modify | `src/pages/dashboard/Contests.tsx` -- add RecentPointTransactionsWidget |
+| Migration | Create `canvasser_shifts` table + RLS |
+| Create | `src/lib/updateCanvasserHours.ts` |
+| Create | `src/components/canvasser/TimeClockWidget.tsx` |
+| Create | `supabase/functions/notify-flagged-shift/index.ts` |
+| Modify | `src/pages/canvasser/CanvasserStats.tsx` -- add TimeClockWidget + shift history |
+| Modify | `src/pages/dashboard/AdminOverview.tsx` -- add shift management section |
+| Modify | `supabase/config.toml` -- add notify-flagged-shift |
+
+## Critical Implementation Notes
+
+1. **Never write to `hours_worked`** on canvasser_shifts -- it is GENERATED ALWAYS STORED
+2. **Always include `week_end`** when inserting weekly_canvasser_metrics rows (NOT NULL constraint)
+3. **Clean up setInterval** on unmount to prevent memory leaks
+4. **Flag notification fires once** -- only when status transitions from 'active' to 'flagged'
+5. **Admin delta calculation** reads old hours from computed column, calculates new hours from timestamps
+6. **Manual shift uses clock_in date** for tier placement, not today's date
+7. **Existing hours tracker grid is untouched** -- both systems coexist writing to the same 3 tables
