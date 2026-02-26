@@ -14,6 +14,7 @@ import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { OverdueFollowupsWidget } from "@/components/dashboard/OverdueFollowupsWidget";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -108,6 +109,8 @@ export default function Leads() {
 
   return (
     <div className="space-y-6">
+      <OverdueFollowupsWidget isAdmin={true} />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl uppercase">Lead Management</h1>

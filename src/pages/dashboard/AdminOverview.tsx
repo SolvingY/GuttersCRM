@@ -4,7 +4,6 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
-import { RecentPointTransactionsWidget } from '@/components/dashboard/RecentPointTransactionsWidget';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
 import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
@@ -20,9 +19,6 @@ import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConve
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
-import { OverdueFollowupsWidget } from '@/components/dashboard/OverdueFollowupsWidget';
-import { PipelineFunnelWidget } from '@/components/dashboard/PipelineFunnelWidget';
-import { TimeToCloseWidget } from '@/components/dashboard/TimeToCloseWidget';
 import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
 
 interface AggregateMetrics {
@@ -142,8 +138,8 @@ export default function AdminOverview() {
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
   const [selectedHoursWeek, setSelectedHoursWeek] = useState<Date>(() => {
     const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const day = d.getDay(); // 0=Sun, 4=Thu
+    const diff = d.getDate() - ((day + 3) % 7); // days back to last Thursday
     return new Date(d.getFullYear(), d.getMonth(), diff);
   });
   const [canvasserHoursData, setCanvasserHoursData] = useState<any[]>([]);
@@ -153,15 +149,14 @@ export default function AdminOverview() {
   const [conversionFunnelOpen, setConversionFunnelOpen] = useState(false);
   const [hoursTrackerOpen, setHoursTrackerOpen] = useState(false);
   const [canvasserPerfOpen, setCanvasserPerfOpen] = useState(false);
-  const [pipelineFunnelOpen, setPipelineFunnelOpen] = useState(true);
-  const [timeToCloseOpen, setTimeToCloseOpen] = useState(true);
+
 
   const getWeekStartForDate = (dateStr: string): string => {
     const d = new Date(dateStr + 'T00:00:00');
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.getFullYear(), d.getMonth(), diff);
-    return monday.toISOString().split('T')[0];
+    const day = d.getDay(); // 0=Sun, 4=Thu
+    const diff = d.getDate() - ((day + 3) % 7); // days back to last Thursday
+    const thursday = new Date(d.getFullYear(), d.getMonth(), diff);
+    return thursday.toISOString().split('T')[0];
   };
 
   const getWeekEndForDate = (weekStartStr: string): string => {
@@ -887,43 +882,8 @@ export default function AdminOverview() {
         }}
       />
 
-      {/* Overdue Follow-ups Alert */}
-      <OverdueFollowupsWidget isAdmin={true} />
-
       {/* Stale Contracts Alert - shown above tabs for all admin */}
       <StaleContractsWidget isAdmin={true} />
-
-      {/* Pipeline Funnel */}
-      <Collapsible open={pipelineFunnelOpen} onOpenChange={setPipelineFunnelOpen}>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
-            {pipelineFunnelOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-            <TrendingUp className="h-5 w-5 text-accent" />
-            <h3 className="font-heading font-semibold text-foreground">Pipeline Funnel</h3>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-3">
-              <PipelineFunnelWidget />
-            </div>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
-
-      {/* Time-to-Close Analytics */}
-      <Collapsible open={timeToCloseOpen} onOpenChange={setTimeToCloseOpen}>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
-            {timeToCloseOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-            <Clock className="h-5 w-5 text-accent" />
-            <h3 className="font-heading font-semibold text-foreground">Average Time to Close</h3>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-3">
-              <TimeToCloseWidget />
-            </div>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
 
       <Tabs defaultValue="sales" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
@@ -1249,7 +1209,7 @@ export default function AdminOverview() {
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                      {['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'].map(day => (
                         <th key={day} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">{day}</th>
                       ))}
                       <th className="text-center py-3 px-4 text-sm font-bold text-foreground">Total</th>
@@ -1305,7 +1265,7 @@ export default function AdminOverview() {
                                     />
                                     {hours > 0 && (
                                       <div className="flex gap-0.5 flex-wrap justify-center">
-                                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayLabel, dayIdx) => {
+                                        {['T', 'F', 'S', 'S', 'M', 'T', 'W'].map((dayLabel, dayIdx) => {
                                           if (dayIdx === i) return null;
                                           return (
                                             <button
@@ -1315,7 +1275,7 @@ export default function AdminOverview() {
                                                 handleMoveHoursDay(canvasser.realUserId!, weekDays[i], weekDays[dayIdx], hours);
                                               }}
                                               className="w-5 h-5 text-[10px] rounded bg-muted hover:bg-primary hover:text-primary-foreground transition-colors text-muted-foreground"
-                                              title={`Move to ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIdx]}`}
+                                              title={`Move to ${['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'][dayIdx]}`}
                                             >
                                               {dayLabel}
                                             </button>
@@ -1442,9 +1402,6 @@ export default function AdminOverview() {
 
         </TabsContent>
       </Tabs>
-
-      {/* Recent Point Activity Widget */}
-      <RecentPointTransactionsWidget />
 
       <UserStatsModal
         open={viewModalOpen}

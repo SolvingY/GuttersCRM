@@ -23,7 +23,8 @@ import {
   Flame,
   Briefcase,
   Bell,
-  ClipboardList
+  ClipboardList,
+  TrendingUp
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -83,6 +84,7 @@ const adminNavGroups: NavGroup[] = [
     icon: ClipboardList,
     items: [
       { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
+      { icon: TrendingUp, label: 'Leadflow Statistics', path: '/admin/leadflow' },
     ],
   },
   {
