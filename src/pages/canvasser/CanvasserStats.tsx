@@ -15,6 +15,8 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { getRandomQuote } from "@/lib/motivationalQuotes";
 import { CanvasserConversionFunnel } from "@/components/canvasser/CanvasserConversionFunnel";
 import { CanvasserYTDRankingWidget } from "@/components/canvasser/CanvasserYTDRankingWidget";
+import { TimeClockWidget } from "@/components/canvasser/TimeClockWidget";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -67,6 +69,8 @@ export default function CanvasserStats() {
   const [progressOpen, setProgressOpen] = useState(false);
   const [canvassedLeadsOpen, setCanvassedLeadsOpen] = useState(false);
   const [canvassedLeads, setCanvassedLeads] = useState<any[]>([]);
+  const [shiftsOpen, setShiftsOpen] = useState(false);
+  const [shifts, setShifts] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -127,6 +131,15 @@ export default function CanvasserStats() {
       .eq("canvasser_id", user.id)
       .order("created_at", { ascending: false });
     setCanvassedLeads(leadsData || []);
+
+    // Fetch shifts
+    const { data: shiftsData } = await supabase
+      .from("canvasser_shifts")
+      .select("*")
+      .eq("canvasser_id", user.id)
+      .order("clock_in_at", { ascending: false })
+      .limit(20);
+    setShifts(shiftsData || []);
 
     // Fetch revenue from closed leads
     const { data: revenueData } = await supabase
@@ -250,6 +263,100 @@ export default function CanvasserStats() {
           Welcome back{metrics?.display_name ? `, ${metrics.display_name}` : ""}! Track your canvassing performance
         </p>
       </div>
+
+      {/* Time Clock Widget — always visible */}
+      <TimeClockWidget />
+
+      {/* My Recent Shifts */}
+      <Collapsible open={shiftsOpen} onOpenChange={setShiftsOpen}>
+        <CollapsibleTrigger asChild>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader className="py-4">
+              <CollapsibleHeader isOpen={shiftsOpen} title="My Recent Shifts" icon={Clock} />
+            </CardHeader>
+          </Card>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <Card>
+            <CardContent className="pt-4">
+              {shifts.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>In</TableHead>
+                          <TableHead>Out</TableHead>
+                          <TableHead>Hours</TableHead>
+                          <TableHead>Doors</TableHead>
+                          <TableHead>Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {shifts.map((shift: any) => (
+                          <TableRow
+                            key={shift.id}
+                            className={shift.status === 'flagged' ? 'bg-yellow-500/10' : ''}
+                          >
+                            <TableCell className="whitespace-nowrap text-sm">
+                              {format(new Date(shift.clock_in_at), "MMM d")}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm">
+                              {format(new Date(shift.clock_in_at), "h:mm a")}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm">
+                              {shift.clock_out_at
+                                ? format(new Date(shift.clock_out_at), "h:mm a")
+                                : shift.status === 'flagged'
+                                  ? <span className="text-yellow-600">⚠️ Flagged</span>
+                                  : <span className="text-green-600">In Progress</span>
+                              }
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {shift.hours_worked != null ? `${shift.hours_worked}h` : '—'}
+                            </TableCell>
+                            <TableCell className="text-sm">{shift.doors_knocked || '—'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                              {shift.notes || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex gap-4 mt-3 text-xs text-muted-foreground border-t pt-3">
+                    <span>
+                      This Week: {shifts
+                        .filter((s: any) => {
+                          const d = new Date(s.clock_in_at);
+                          const now = new Date();
+                          const weekAgo = new Date(now);
+                          weekAgo.setDate(weekAgo.getDate() - 7);
+                          return d >= weekAgo && s.hours_worked != null;
+                        })
+                        .reduce((sum: number, s: any) => sum + Number(s.hours_worked || 0), 0)
+                        .toFixed(1)} hrs
+                    </span>
+                    <span>
+                      This Month: {shifts
+                        .filter((s: any) => {
+                          const d = new Date(s.clock_in_at);
+                          const now = new Date();
+                          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && s.hours_worked != null;
+                        })
+                        .reduce((sum: number, s: any) => sum + Number(s.hours_worked || 0), 0)
+                        .toFixed(1)} hrs
+                    </span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* 1. Contests */}
       <Collapsible open={contestsOpen} onOpenChange={setContestsOpen}>
