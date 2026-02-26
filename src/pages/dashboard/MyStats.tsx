@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
 import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronRight, UserPlus, Quote, HelpCircle } from 'lucide-react';
+import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
+import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { 
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend 
 } from 'recharts';
@@ -293,6 +295,12 @@ export default function MyStats() {
         </div>
       ) : (
         <>
+          {/* Stale Contracts Alert */}
+          <StaleContractsWidget isAdmin={false} />
+
+          {/* Collections Due */}
+          <CollectionsPipelineWidget isAdmin={false} />
+
           {/* 1. Contests */}
           <Collapsible open={contestsOpen} onOpenChange={setContestsOpen}>
             <CollapsibleTrigger asChild>
