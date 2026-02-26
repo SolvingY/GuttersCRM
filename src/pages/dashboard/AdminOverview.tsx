@@ -21,6 +21,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { OverdueFollowupsWidget } from '@/components/dashboard/OverdueFollowupsWidget';
+import { PipelineFunnelWidget } from '@/components/dashboard/PipelineFunnelWidget';
+import { TimeToCloseWidget } from '@/components/dashboard/TimeToCloseWidget';
+import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -150,6 +153,8 @@ export default function AdminOverview() {
   const [conversionFunnelOpen, setConversionFunnelOpen] = useState(false);
   const [hoursTrackerOpen, setHoursTrackerOpen] = useState(false);
   const [canvasserPerfOpen, setCanvasserPerfOpen] = useState(false);
+  const [pipelineFunnelOpen, setPipelineFunnelOpen] = useState(true);
+  const [timeToCloseOpen, setTimeToCloseOpen] = useState(true);
 
   const getWeekStartForDate = (dateStr: string): string => {
     const d = new Date(dateStr + 'T00:00:00');
@@ -888,6 +893,38 @@ export default function AdminOverview() {
       {/* Stale Contracts Alert - shown above tabs for all admin */}
       <StaleContractsWidget isAdmin={true} />
 
+      {/* Pipeline Funnel */}
+      <Collapsible open={pipelineFunnelOpen} onOpenChange={setPipelineFunnelOpen}>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
+            {pipelineFunnelOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+            <TrendingUp className="h-5 w-5 text-accent" />
+            <h3 className="font-heading font-semibold text-foreground">Pipeline Funnel</h3>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-3">
+              <PipelineFunnelWidget />
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Time-to-Close Analytics */}
+      <Collapsible open={timeToCloseOpen} onOpenChange={setTimeToCloseOpen}>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
+            {timeToCloseOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+            <Clock className="h-5 w-5 text-accent" />
+            <h3 className="font-heading font-semibold text-foreground">Average Time to Close</h3>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-3">
+              <TimeToCloseWidget />
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
       <Tabs defaultValue="sales" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="sales">Sales Reps ({aggregates.totalUsers})</TabsTrigger>
@@ -912,6 +949,9 @@ export default function AdminOverview() {
 
           {/* Outstanding Collections */}
           <CollectionsPipelineWidget isAdmin={true} />
+
+          {/* Revenue Analytics */}
+          <RevenueAnalyticsWidget />
 
           {/* Contract Source Comparison Card */}
           <Collapsible open={contractSourcesOpen} onOpenChange={setContractSourcesOpen}>
