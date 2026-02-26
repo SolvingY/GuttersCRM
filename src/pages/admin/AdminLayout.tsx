@@ -24,7 +24,8 @@ import {
   Briefcase,
   Bell,
   ClipboardList,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -76,6 +77,7 @@ const adminNavGroups: NavGroup[] = [
       { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
       { icon: UserCog, label: 'User Roles', path: '/admin/users' },
       { icon: Users, label: 'Contractor Mgmt', path: '/admin/team' },
+      { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
       { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
     ],
   },
