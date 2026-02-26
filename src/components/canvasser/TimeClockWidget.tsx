@@ -24,7 +24,11 @@ interface Shift {
   flagged_reason: string | null;
 }
 
-export function TimeClockWidget() {
+interface TimeClockWidgetProps {
+  onShiftChange?: () => void;
+}
+
+export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
   const { user } = useAuth();
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
   const [lastShift, setLastShift] = useState<Shift | null>(null);
@@ -137,6 +141,7 @@ export function TimeClockWidget() {
       setActiveShift(data as Shift);
       setElapsed(0);
       toast.success("Clocked in!");
+      onShiftChange?.();
     } catch (err: any) {
       toast.error("Failed to clock in: " + err.message);
     }
@@ -150,6 +155,7 @@ export function TimeClockWidget() {
       const clockOutTime = new Date();
       const shiftMs = clockOutTime.getTime() - new Date(activeShift.clock_in_at).getTime();
       const roundedHours = Math.round((shiftMs / 3600000) * 4) / 4;
+      const finalHours = roundedHours === 0 && shiftMs > 0 ? 0.25 : roundedHours;
       const doors = doorsKnocked ? parseInt(doorsKnocked, 10) : 0;
 
       const { error } = await supabase
@@ -167,17 +173,18 @@ export function TimeClockWidget() {
       await updateCanvasserHours(
         user.id,
         new Date(activeShift.clock_in_at),
-        roundedHours,
+        finalHours,
         doors
       );
 
-      toast.success(`Shift recorded: ${roundedHours}h`);
+      toast.success(`Shift recorded: ${finalHours}h`);
       setClockOutModalOpen(false);
       setDoorsKnocked("");
       setNotes("");
       setActiveShift(null);
       setIsFlagged(false);
       fetchShifts();
+      onShiftChange?.();
     } catch (err: any) {
       toast.error("Failed to clock out: " + err.message);
     }

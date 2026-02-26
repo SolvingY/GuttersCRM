@@ -265,7 +265,7 @@ export default function CanvasserStats() {
       </div>
 
       {/* Time Clock Widget — always visible */}
-      <TimeClockWidget />
+      <TimeClockWidget onShiftChange={fetchMetrics} />
 
       {/* My Recent Shifts */}
       <Collapsible open={shiftsOpen} onOpenChange={setShiftsOpen}>
