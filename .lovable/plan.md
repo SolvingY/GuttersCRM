@@ -1,40 +1,39 @@
 
 
-# Fix Hours on Wrong Day + Move Report Settings to Notifications
+# Fix Duplicate Error on Re-Add and Add Report Settings Tab
 
-## Part 1: Fix UTC Timezone Bug (Hours Recorded on Wrong Day)
+## Issue 1: "Email already exists" after removing and re-adding
 
-### Problem
-`toISOString().split('T')[0]` converts to UTC, shifting dates forward for evening US timezone shifts (e.g., 9 PM CST Thursday becomes Friday in UTC).
+The delete mutation invalidates the query cache, but the re-fetch may not complete before the user adds the same email back. The insert then hits the database's unique constraint because the old row hasn't been fully removed from the cache/UI yet -- or the delete itself may be failing silently.
 
-### Fix
-Replace all `.toISOString().split('T')[0]` with `format(date, 'yyyy-MM-dd')` from date-fns (which uses local timezone).
+**Fix in `src/pages/admin/NotificationRouting.tsx`:**
+- Add `onMutate` optimistic update to `deleteMutation` so the entry is immediately removed from the local cache (no waiting for refetch)
+- Add `onMutate` optimistic update to `addMutation` so the entry appears immediately
+- Add `onError` rollback for both mutations to restore previous cache state if the operation fails
+- This eliminates the race condition between delete completing and the user trying to re-add
 
-**File: `src/lib/updateCanvasserHours.ts`** (lines 22-25)
-- Add `format` to the date-fns import
-- Fix `entryDate`, `weekStart`, and `weekEnd` to use `format(date, 'yyyy-MM-dd')`
+## Issue 2: Report Settings as a tab at the top
 
-**File: `src/pages/admin/AdminTimeClock.tsx`**
-- Fix `getWeekStartForDate` and `getWeekEndForDate` helpers
-- Fix the hours tracker grid date generation
+Replace the bottom "Weekly Reports" card with a tabbed interface at the top of the page using the existing Tabs component.
 
-## Part 2: Move Report Settings to Notifications Page
+**Changes to `src/pages/admin/NotificationRouting.tsx`:**
+- Import `Tabs, TabsContent, TabsList, TabsTrigger` from `@/components/ui/tabs`
+- Import `ReportSettings` component directly (lazy or inline)
+- Wrap the page content in a `Tabs` component with two tabs:
+  - **"Notification Routing"** -- contains the existing notification type cards
+  - **"Report Settings"** -- renders the `ReportSettings` component inline
+- Remove the "Weekly Reports" card at the bottom (no longer needed)
 
-### Changes
-
-**File: `src/pages/admin/AdminLayout.tsx`** (lines 93-101)
-- Remove `{ icon: BarChart3, label: 'Report Settings', path: '/admin/reports' }` from "Competitions and Tracking"
-
-**File: `src/pages/admin/NotificationRouting.tsx`**
-- The existing "Weekly Reports" card at the bottom already links to Report Settings -- this stays as-is and serves as the entry point
-
-This means "Report Settings" is accessed exclusively through the Notifications page (HR Management > Notifications > "Go to Report Settings" link), keeping all email/report routing in one logical place.
+Layout:
+```text
+[Notification Routing]  [Report Settings]
+-------------------------------------------
+(tab content here)
+```
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/lib/updateCanvasserHours.ts` | Replace 3 UTC date conversions with local `format()` |
-| `src/pages/admin/AdminTimeClock.tsx` | Replace 3 UTC date conversions with local `format()` |
-| `src/pages/admin/AdminLayout.tsx` | Remove Report Settings from Competitions and Tracking nav group |
+| `src/pages/admin/NotificationRouting.tsx` | Add optimistic updates to delete/add mutations; add tabbed layout with Report Settings |
 
