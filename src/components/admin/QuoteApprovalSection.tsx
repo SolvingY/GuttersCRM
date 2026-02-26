@@ -198,7 +198,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         }
       }
 
-      // 6. Auto-set lead status to Won
+      // 6. Auto-set lead status to Won (with _silent flag to prevent duplicate notification)
       await supabase.from("quote_requests").update({
         status: "won",
         won_at: new Date().toISOString(),
