@@ -5,7 +5,7 @@ import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, ChevronDown, ChevronRight as ChevronRightIcon, Plus } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
+import { updateCanvasserHours } from '@/lib/updateCanvasserHours';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -149,6 +154,18 @@ export default function AdminOverview() {
   const [conversionFunnelOpen, setConversionFunnelOpen] = useState(false);
   const [hoursTrackerOpen, setHoursTrackerOpen] = useState(false);
   const [canvasserPerfOpen, setCanvasserPerfOpen] = useState(false);
+  const [shiftMgmtOpen, setShiftMgmtOpen] = useState(false);
+  const [activeShifts, setActiveShifts] = useState<any[]>([]);
+  const [flaggedShifts, setFlaggedShifts] = useState<any[]>([]);
+  const [editShiftModalOpen, setEditShiftModalOpen] = useState(false);
+  const [addShiftModalOpen, setAddShiftModalOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<any>(null);
+  const [shiftClockIn, setShiftClockIn] = useState('');
+  const [shiftClockOut, setShiftClockOut] = useState('');
+  const [shiftDoors, setShiftDoors] = useState('');
+  const [shiftNotes, setShiftNotes] = useState('');
+  const [shiftCanvasserId, setShiftCanvasserId] = useState('');
+  const [savingShift, setSavingShift] = useState(false);
 
 
   const getWeekStartForDate = (dateStr: string): string => {
@@ -667,7 +684,117 @@ export default function AdminOverview() {
       setCanvasserDetails(activeCanvassers.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
+    // Fetch shift data for shift management
+    const { data: activeShiftsData } = await supabase
+      .from('canvasser_shifts')
+      .select('*')
+      .in('status', ['active', 'flagged'])
+      .is('clock_out_at', null)
+      .order('clock_in_at', { ascending: true });
+    setActiveShifts(activeShiftsData || []);
+
+    const { data: flaggedShiftsData } = await supabase
+      .from('canvasser_shifts')
+      .select('*')
+      .eq('status', 'flagged')
+      .order('clock_in_at', { ascending: true });
+    setFlaggedShifts(flaggedShiftsData || []);
+
     setLoading(false);
+  };
+
+  const handleEditShift = (shift: any) => {
+    setSelectedShift(shift);
+    setShiftClockIn(shift.clock_in_at?.slice(0, 16) || '');
+    setShiftClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setShiftDoors(shift.doors_knocked?.toString() || '');
+    setShiftNotes(shift.notes || '');
+    setEditShiftModalOpen(true);
+  };
+
+  const handleSaveEditShift = async () => {
+    if (!selectedShift || !shiftClockIn || !shiftClockOut) return;
+    setSavingShift(true);
+    try {
+      const oldHours = Number(selectedShift.hours_worked) || 0;
+      const oldDoors = Number(selectedShift.doors_knocked) || 0;
+      const newHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
+      const newDoors = parseInt(shiftDoors) || 0;
+      const hoursDelta = newHours - oldHours;
+      const doorsDelta = newDoors - oldDoors;
+
+      await supabase.from('canvasser_shifts').update({
+        clock_in_at: new Date(shiftClockIn).toISOString(),
+        clock_out_at: new Date(shiftClockOut).toISOString(),
+        doors_knocked: newDoors || null,
+        notes: shiftNotes || null,
+        status: 'completed',
+        edited_at: new Date().toISOString(),
+      }).eq('id', selectedShift.id);
+
+      if (hoursDelta !== 0 || doorsDelta !== 0) {
+        await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta);
+      }
+
+      toast.success('Shift updated');
+      setEditShiftModalOpen(false);
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error('Failed to update shift: ' + err.message);
+    }
+    setSavingShift(false);
+  };
+
+  const handleAddManualShift = async () => {
+    if (!shiftCanvasserId || !shiftClockIn || !shiftClockOut) return;
+    setSavingShift(true);
+    try {
+      const shiftHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
+      const doors = parseInt(shiftDoors) || 0;
+
+      await supabase.from('canvasser_shifts').insert({
+        canvasser_id: shiftCanvasserId,
+        clock_in_at: new Date(shiftClockIn).toISOString(),
+        clock_out_at: new Date(shiftClockOut).toISOString(),
+        doors_knocked: doors || null,
+        notes: shiftNotes || null,
+        status: 'completed',
+      });
+
+      await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors);
+
+      toast.success(`Manual shift added: ${shiftHours}h`);
+      setAddShiftModalOpen(false);
+      setShiftCanvasserId('');
+      setShiftClockIn('');
+      setShiftClockOut('');
+      setShiftDoors('');
+      setShiftNotes('');
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error('Failed to add shift: ' + err.message);
+    }
+    setSavingShift(false);
+  };
+
+  const handleDismissShift = async (shift: any) => {
+    const clockOut = prompt('Enter clock-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    if (!clockOut) return;
+    try {
+      const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
+
+      await supabase.from('canvasser_shifts').update({
+        clock_out_at: new Date(clockOut).toISOString(),
+        status: 'completed',
+        edited_at: new Date().toISOString(),
+      }).eq('id', shift.id);
+
+      await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
+      toast.success('Shift dismissed');
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message);
+    }
   };
 
   // Generate monthly progress data for the graph
@@ -1310,6 +1437,81 @@ export default function AdminOverview() {
           </div>
           </Collapsible>
 
+          {/* Shift Management */}
+          <Collapsible open={shiftMgmtOpen} onOpenChange={setShiftMgmtOpen}>
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+                  {shiftMgmtOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                  <h3 className="text-lg font-heading text-foreground">Shift Management</h3>
+                  {(activeShifts.length > 0 || flaggedShifts.length > 0) && (
+                    <Badge variant="secondary" className="ml-2">{activeShifts.length + flaggedShifts.length}</Badge>
+                  )}
+                </CollapsibleTrigger>
+                <Button size="sm" variant="outline" onClick={() => { setSelectedShift(null); setShiftCanvasserId(''); setShiftClockIn(''); setShiftClockOut(''); setShiftDoors(''); setShiftNotes(''); setAddShiftModalOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Shift
+                </Button>
+              </div>
+              <CollapsibleContent>
+                <div className="p-4 space-y-4">
+                  {/* Active Shifts */}
+                  {activeShifts.filter(s => s.status === 'active').length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                      <div className="space-y-2">
+                        {activeShifts.filter(s => s.status === 'active').map((shift: any) => {
+                          const canvasser = canvasserDetails.find(c => c.realUserId === shift.canvasser_id);
+                          const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
+                          const hours = Math.floor(elapsed / 3600000);
+                          const mins = Math.floor((elapsed % 3600000) / 60000);
+                          return (
+                            <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                              <div>
+                                <span className="font-medium text-foreground">{canvasser?.name || 'Unknown'}</span>
+                                <span className="text-sm text-muted-foreground ml-2">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                              </div>
+                              <Badge variant="outline" className="text-green-600">{hours}h {mins}m</Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Flagged Shifts */}
+                  {flaggedShifts.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-600 mb-2">⚠️ Flagged Shifts</h4>
+                      <div className="space-y-2">
+                        {flaggedShifts.map((shift: any) => {
+                          const canvasser = canvasserDetails.find(c => c.realUserId === shift.canvasser_id);
+                          return (
+                            <div key={shift.id} className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
+                              <div>
+                                <span className="font-medium text-foreground">{canvasser?.name || 'Unknown'}</span>
+                                <span className="text-sm text-muted-foreground ml-2">
+                                  {format(new Date(shift.clock_in_at), "MMM d 'at' h:mm a")}
+                                </span>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>Edit</Button>
+                                <Button size="sm" variant="secondary" onClick={() => handleDismissShift(shift)}>Dismiss</Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeShifts.length === 0 && flaggedShifts.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No active or flagged shifts</p>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
           {canvassersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -1436,6 +1638,79 @@ export default function AdminOverview() {
         } : null}
         onSuccess={handleEditSuccess}
       />
+
+      {/* Edit Shift Modal */}
+      <Dialog open={editShiftModalOpen} onOpenChange={setEditShiftModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Clock In</Label>
+              <Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Clock Out</Label>
+              <Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Doors Knocked</Label>
+              <Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditShiftModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEditShift} disabled={savingShift}>
+              {savingShift ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Manual Shift Modal */}
+      <Dialog open={addShiftModalOpen} onOpenChange={setAddShiftModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Manual Shift</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Canvasser</Label>
+              <Select value={shiftCanvasserId} onValueChange={setShiftCanvasserId}>
+                <SelectTrigger><SelectValue placeholder="Select canvasser" /></SelectTrigger>
+                <SelectContent>
+                  {canvasserDetails.map(c => (
+                    <SelectItem key={c.metricId} value={c.realUserId || ''}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Clock In</Label>
+              <Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Clock Out</Label>
+              <Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Doors Knocked</Label>
+              <Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea value={shiftNotes} onChange={e => setShiftNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddShiftModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddManualShift} disabled={savingShift || !shiftCanvasserId}>
+              {savingShift ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Shift
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

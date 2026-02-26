@@ -182,6 +182,51 @@ export type Database = {
         }
         Relationships: []
       }
+      canvasser_shifts: {
+        Row: {
+          canvasser_id: string
+          clock_in_at: string
+          clock_out_at: string | null
+          created_at: string | null
+          doors_knocked: number | null
+          edited_at: string | null
+          edited_by: string | null
+          flagged_reason: string | null
+          hours_worked: number | null
+          id: string
+          notes: string | null
+          status: string | null
+        }
+        Insert: {
+          canvasser_id: string
+          clock_in_at?: string
+          clock_out_at?: string | null
+          created_at?: string | null
+          doors_knocked?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
+          flagged_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+        }
+        Update: {
+          canvasser_id?: string
+          clock_in_at?: string
+          clock_out_at?: string | null
+          created_at?: string | null
+          doors_knocked?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
+          flagged_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       company_goals: {
         Row: {
           canvasser_leads_goal: number | null
