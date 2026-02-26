@@ -53,6 +53,7 @@ export default function CanvasserStats() {
   const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [allWeeklyMetrics, setAllWeeklyMetrics] = useState<WeeklyCanvasserMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   const [quote] = useState(getRandomQuote());
   
   // Collapsible states
@@ -126,6 +127,15 @@ export default function CanvasserStats() {
       .eq("canvasser_id", user.id)
       .order("created_at", { ascending: false });
     setCanvassedLeads(leadsData || []);
+
+    // Fetch revenue from closed leads
+    const { data: revenueData } = await supabase
+      .from("quote_requests")
+      .select("quote_amount")
+      .eq("canvasser_id", user.id)
+      .in("status", ["won", "scheduled", "completed"]);
+    const revenue = (revenueData || []).reduce((sum: number, l: any) => sum + (Number(l.quote_amount) || 0), 0);
+    setTotalRevenue(revenue);
 
     setLoading(false);
   };
@@ -296,6 +306,12 @@ export default function CanvasserStats() {
             />
             <StatsCard title="Conversion Rate" value={`${conversionRate}%`} icon={Percent} />
             <StatsCard title="Damage Rate" value={`${damageRate}%`} icon={AlertTriangle} />
+            <StatsCard 
+              title="💰 Revenue Generated" 
+              value={formatCurrency(totalRevenue)} 
+              icon={DollarSign}
+              valueClassName="text-green-500"
+            />
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,12 +142,66 @@ export default function LeadDetail() {
     enabled: !!id,
   });
 
+  const previousStatusRef = useRef(lead?.status);
+
+  if (lead && previousStatusRef.current !== lead.status) {
+    previousStatusRef.current = lead.status;
+  }
+
+  const fireStatusNotification = useCallback(async (newStatus: string, updates: Record<string, any>) => {
+    if (!lead) return;
+    const prevStatus = previousStatusRef.current;
+    if (!newStatus || newStatus === prevStatus) return;
+    if (updates._silent) return;
+
+    try {
+      let repName = "Unknown";
+      if (lead.assigned_to) {
+        const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", lead.assigned_to).single();
+        if (profile?.full_name) repName = profile.full_name;
+      }
+
+      if (newStatus === "won") {
+        await supabase.functions.invoke("notify-deal-won", {
+          body: {
+            leadId: lead.id,
+            customerName: lead.full_name,
+            quoteAmount: lead.quote_amount,
+            serviceType: lead.service_type,
+            repName,
+            leadSource: (lead as any).lead_source || "internet",
+          },
+        });
+      }
+      if (newStatus === "lost") {
+        await supabase.functions.invoke("notify-deal-lost", {
+          body: {
+            leadId: lead.id,
+            customerName: lead.full_name,
+            quoteAmount: lead.quote_amount,
+            repName,
+            lostReason: updates.lost_reason || lead.lost_reason || "Not specified",
+            leadSource: (lead as any).lead_source || "internet",
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to send status notification:", err);
+    }
+  }, [lead]);
+
   const updateLead = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
-      const { error } = await supabase.from("quote_requests").update(updates).eq("id", id);
+      const { _silent, ...dbUpdates } = updates;
+      const { error } = await supabase.from("quote_requests").update(dbUpdates).eq("id", id);
       if (error) throw error;
+      return updates;
     },
-    onSuccess: () => {
+    onSuccess: (updates) => {
+      if (updates?.status) {
+        fireStatusNotification(updates.status, updates);
+      }
+      previousStatusRef.current = updates?.status || lead?.status;
       queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
       queryClient.invalidateQueries({ queryKey: ["my-leads"] });

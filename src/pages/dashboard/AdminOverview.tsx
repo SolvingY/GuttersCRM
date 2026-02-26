@@ -20,6 +20,7 @@ import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConve
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
+import { OverdueFollowupsWidget } from '@/components/dashboard/OverdueFollowupsWidget';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -83,6 +84,7 @@ interface CanvasserDetail {
   income: number;
   yearlyGoal: number;
   conversionRate: number;
+  revenue: number;
   role: 'canvasser';
 }
 
@@ -612,8 +614,29 @@ export default function AdminOverview() {
           income: data.income,
           yearlyGoal: data.yearlyGoal,
           conversionRate,
+          revenue: 0,
           role: 'canvasser' as const,
         };
+      });
+
+      // Batch query for canvasser revenue attribution
+      const { data: revenueData } = await supabase
+        .from("quote_requests")
+        .select("canvasser_id, quote_amount")
+        .in("status", ["won", "scheduled", "completed"])
+        .not("canvasser_id", "is", null);
+
+      const revenueByCanvasser = new Map<string, number>();
+      revenueData?.forEach((lead: any) => {
+        const current = revenueByCanvasser.get(lead.canvasser_id) || 0;
+        revenueByCanvasser.set(lead.canvasser_id, current + (Number(lead.quote_amount) || 0));
+      });
+
+      // Apply revenue to each canvasser
+      canvassers.forEach(c => {
+        if (c.realUserId) {
+          c.revenue = revenueByCanvasser.get(c.realUserId) || 0;
+        }
       });
 
       const canvasserTotals = canvassers.reduce(
@@ -858,6 +881,9 @@ export default function AdminOverview() {
           }
         }}
       />
+
+      {/* Overdue Follow-ups Alert */}
+      <OverdueFollowupsWidget isAdmin={true} />
 
       {/* Stale Contracts Alert - shown above tabs for all admin */}
       <StaleContractsWidget isAdmin={true} />
@@ -1322,6 +1348,7 @@ export default function AdminOverview() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Revenue</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
                     </tr>
@@ -1353,6 +1380,7 @@ export default function AdminOverview() {
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.revenue)}</td>
                           <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
                             {canvasser.conversionRate.toFixed(1)}%
                           </td>
