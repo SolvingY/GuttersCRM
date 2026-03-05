@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#000000" rx="64"/>
+  <!-- Roof shape -->
+  <polygon points="256,80 64,240 96,240 96,420 416,420 416,240 448,240" fill="#D91239"/>
+  <!-- Ridge cap -->
+  <polygon points="256,80 64,240 96,240 256,116 416,240 448,240" fill="#a50d28"/>
+  <!-- "NGR" text -->
+  <text
+    x="256"
+    y="390"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="72"
+    font-weight="900"
+    fill="#ffffff"
+    text-anchor="middle"
+    letter-spacing="4"
+  >NGR</text>
+</svg>
