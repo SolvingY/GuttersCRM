@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
@@ -212,21 +212,18 @@ export default function MyStats() {
     }).format(value);
   };
 
-  const get52WeekData = () => {
+  const weeklyChartData = useMemo(() => {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const weeklyGoalPace = yearlyGoal / 52;
     const weeks: { week: string; weekLabel: string; approvedRevenue: number; goalPace: number; cumulativeGoal: number }[] = [];
-    
+
     for (let i = 0; i < 52; i++) {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
-      
-      // Format as yyyy-MM-dd string for comparison (avoids UTC/local timezone issues)
+
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-      
-      // Compare week_start strings directly to avoid date parsing issues
       const weeklyMetric = allWeeklyMetrics.find(w => w.week_start === weekStartStr);
-      
+
       weeks.push({
         week: `W${i + 1}`,
         weekLabel: format(weekStart, 'MMM d'),
@@ -235,13 +232,13 @@ export default function MyStats() {
         cumulativeGoal: weeklyGoalPace * (i + 1),
       });
     }
-    
+
     let cumulative = 0;
     return weeks.map(w => {
       cumulative += w.approvedRevenue;
       return { ...w, cumulativeRevenue: cumulative };
     });
-  };
+  }, [allWeeklyMetrics, yearlyGoal]);
 
   const getGoalColor = () => {
     if (goalPercentage >= 75) return 'text-green-600';
@@ -566,7 +563,7 @@ export default function MyStats() {
                   <CardContent>
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={get52WeekData()}>
+                        <ComposedChart data={weeklyChartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                           <XAxis 
                             dataKey="week" 

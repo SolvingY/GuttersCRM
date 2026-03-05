@@ -112,9 +112,10 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-shadow group">
       <div className="h-48 bg-section-alt flex items-center justify-center overflow-hidden">
-        <img 
-          src={member.image} 
+        <img
+          src={member.image}
           alt={member.name}
+          loading="lazy"
           className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
         />
       </div>
