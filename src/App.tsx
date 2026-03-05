@@ -1,70 +1,101 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import JobApplication from "./pages/apply/JobApplication";
-import ApplicationThankYou from "./pages/apply/ApplicationThankYou";
-import DashboardLayout from "./pages/dashboard/DashboardLayout";
-import MyStats from "./pages/dashboard/MyStats";
-import Leaderboard from "./pages/dashboard/Leaderboard";
-import Contests from "./pages/dashboard/Contests";
-import Settings from "./pages/dashboard/Settings";
-import ThePit from "./pages/dashboard/ThePit";
-import PointsHistory from "./pages/dashboard/PointsHistory";
-import MyLeads from "./pages/dashboard/MyLeads";
-import LeadDetailView from "./pages/dashboard/LeadDetailView";
-import GutterEstimator from "./pages/dashboard/GutterEstimator";
-import ToolsHub from "./pages/dashboard/ToolsHub";
-import MyEstimates from "./pages/dashboard/MyEstimates";
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminOverview from "./pages/dashboard/AdminOverview";
-import InviteUsers from "./pages/dashboard/InviteUsers";
-import WeeklyUpdates from "./pages/admin/WeeklyUpdates";
-import AdminLeaderboards from "./pages/admin/AdminLeaderboards";
-import UserRoles from "./pages/admin/UserRoles";
-import Announcements from "./pages/admin/Announcements";
-import CompanyGoals from "./pages/admin/CompanyGoals";
-import PitManagement from "./pages/admin/PitManagement";
-import ReportSettings from "./pages/admin/ReportSettings";
-import FutureTeamMates from "./pages/admin/FutureTeamMates";
-import ApplicantDetail from "./pages/admin/ApplicantDetail";
-import Leads from "./pages/admin/Leads";
-import LeadDetail from "./pages/admin/LeadDetail";
-import ContractorManagement from "./pages/admin/ContractorManagement";
-import LeadflowStatistics from "./pages/admin/LeadflowStatistics";
-import AdminTimeClock from "./pages/admin/AdminTimeClock";
-import NotificationRouting from "./pages/admin/NotificationRouting";
-import GetQuote from "./pages/GetQuote";
-import CanvasserLayout from "./pages/canvasser/CanvasserLayout";
-import CanvasserStats from "./pages/canvasser/CanvasserStats";
-import CanvasserLeaderboard from "./pages/canvasser/CanvasserLeaderboard";
-import CanvasserContests from "./pages/canvasser/CanvasserContests";
-import CanvasserSettings from "./pages/canvasser/CanvasserSettings";
-import CanvasserPit from "./pages/canvasser/CanvasserPit";
-import CanvasserPointsHistory from "./pages/canvasser/CanvasserPointsHistory";
-import CreateCanvasserLead from "./pages/canvasser/CreateCanvasserLead";
-import SupplementerLayout from "./pages/supplementer/SupplementerLayout";
-import SupplementerDashboard from "./pages/supplementer/SupplementerDashboard";
-import SupplementerLeaderboard from "./pages/supplementer/SupplementerLeaderboard";
-import SupplementerJobsList from "./pages/supplementer/SupplementerJobsList";
-import SupplementerJobDetail from "./pages/supplementer/SupplementerJobDetail";
-import SupplementerSettings from "./pages/supplementer/SupplementerSettings";
-import SupplementerPit from "./pages/supplementer/SupplementerPit";
-import SupplementerPointsHistory from "./pages/supplementer/SupplementerPointsHistory";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import InternalAssessment from "./pages/dashboard/InternalAssessment";
-import GutterContract from "./pages/dashboard/forms/GutterContract";
-import FlexSchedule from "./pages/dashboard/forms/FlexSchedule";
-import WarrantyDocument from "./pages/dashboard/forms/WarrantyDocument";
-import InspectionChecklist from "./pages/dashboard/forms/InspectionChecklist";
-import AppointmentSheet from "./pages/dashboard/forms/AppointmentSheet";
-import SignContract from "./pages/public/SignContract";
+import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Eagerly loaded — small, always needed
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+
+// Lazy-loaded pages — split into separate chunks per route group
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Auth = lazy(() => import("./pages/Auth"));
+const GetQuote = lazy(() => import("./pages/GetQuote"));
+const SignContract = lazy(() => import("./pages/public/SignContract"));
+
+// Apply routes
+const JobApplication = lazy(() => import("./pages/apply/JobApplication"));
+const ApplicationThankYou = lazy(() => import("./pages/apply/ApplicationThankYou"));
+
+// Dashboard routes
+const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
+const MyStats = lazy(() => import("./pages/dashboard/MyStats"));
+const Leaderboard = lazy(() => import("./pages/dashboard/Leaderboard"));
+const Contests = lazy(() => import("./pages/dashboard/Contests"));
+const Settings = lazy(() => import("./pages/dashboard/Settings"));
+const ThePit = lazy(() => import("./pages/dashboard/ThePit"));
+const PointsHistory = lazy(() => import("./pages/dashboard/PointsHistory"));
+const MyLeads = lazy(() => import("./pages/dashboard/MyLeads"));
+const LeadDetailView = lazy(() => import("./pages/dashboard/LeadDetailView"));
+const GutterEstimator = lazy(() => import("./pages/dashboard/GutterEstimator"));
+const ToolsHub = lazy(() => import("./pages/dashboard/ToolsHub"));
+const MyEstimates = lazy(() => import("./pages/dashboard/MyEstimates"));
+const AdminOverview = lazy(() => import("./pages/dashboard/AdminOverview"));
+const InviteUsers = lazy(() => import("./pages/dashboard/InviteUsers"));
+const InternalAssessment = lazy(() => import("./pages/dashboard/InternalAssessment"));
+const GutterContract = lazy(() => import("./pages/dashboard/forms/GutterContract"));
+const FlexSchedule = lazy(() => import("./pages/dashboard/forms/FlexSchedule"));
+const WarrantyDocument = lazy(() => import("./pages/dashboard/forms/WarrantyDocument"));
+const InspectionChecklist = lazy(() => import("./pages/dashboard/forms/InspectionChecklist"));
+const AppointmentSheet = lazy(() => import("./pages/dashboard/forms/AppointmentSheet"));
+
+// Admin routes
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const WeeklyUpdates = lazy(() => import("./pages/admin/WeeklyUpdates"));
+const AdminLeaderboards = lazy(() => import("./pages/admin/AdminLeaderboards"));
+const UserRoles = lazy(() => import("./pages/admin/UserRoles"));
+const Announcements = lazy(() => import("./pages/admin/Announcements"));
+const CompanyGoals = lazy(() => import("./pages/admin/CompanyGoals"));
+const PitManagement = lazy(() => import("./pages/admin/PitManagement"));
+const ReportSettings = lazy(() => import("./pages/admin/ReportSettings"));
+const FutureTeamMates = lazy(() => import("./pages/admin/FutureTeamMates"));
+const ApplicantDetail = lazy(() => import("./pages/admin/ApplicantDetail"));
+const Leads = lazy(() => import("./pages/admin/Leads"));
+const LeadDetail = lazy(() => import("./pages/admin/LeadDetail"));
+const ContractorManagement = lazy(() => import("./pages/admin/ContractorManagement"));
+const LeadflowStatistics = lazy(() => import("./pages/admin/LeadflowStatistics"));
+const AdminTimeClock = lazy(() => import("./pages/admin/AdminTimeClock"));
+const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting"));
+
+// Canvasser routes
+const CanvasserLayout = lazy(() => import("./pages/canvasser/CanvasserLayout"));
+const CanvasserStats = lazy(() => import("./pages/canvasser/CanvasserStats"));
+const CanvasserLeaderboard = lazy(() => import("./pages/canvasser/CanvasserLeaderboard"));
+const CanvasserContests = lazy(() => import("./pages/canvasser/CanvasserContests"));
+const CanvasserSettings = lazy(() => import("./pages/canvasser/CanvasserSettings"));
+const CanvasserPit = lazy(() => import("./pages/canvasser/CanvasserPit"));
+const CanvasserPointsHistory = lazy(() => import("./pages/canvasser/CanvasserPointsHistory"));
+const CreateCanvasserLead = lazy(() => import("./pages/canvasser/CreateCanvasserLead"));
+
+// Supplementer routes
+const SupplementerLayout = lazy(() => import("./pages/supplementer/SupplementerLayout"));
+const SupplementerDashboard = lazy(() => import("./pages/supplementer/SupplementerDashboard"));
+const SupplementerLeaderboard = lazy(() => import("./pages/supplementer/SupplementerLeaderboard"));
+const SupplementerJobsList = lazy(() => import("./pages/supplementer/SupplementerJobsList"));
+const SupplementerJobDetail = lazy(() => import("./pages/supplementer/SupplementerJobDetail"));
+const SupplementerSettings = lazy(() => import("./pages/supplementer/SupplementerSettings"));
+const SupplementerPit = lazy(() => import("./pages/supplementer/SupplementerPit"));
+const SupplementerPointsHistory = lazy(() => import("./pages/supplementer/SupplementerPointsHistory"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes — avoids refetch on every tab focus
+      retry: 1,
+    },
+  },
+});
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -72,115 +103,117 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/apply" element={<JobApplication />} />
-          <Route path="/apply/thank-you" element={<ApplicationThankYou />} />
-          <Route path="/get-quote" element={<GetQuote />} />
-          <Route path="/sign/:token" element={<SignContract />} />
-          
-          {/* Protected Dashboard Routes (Sales Reps) */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard/stats" replace />} />
-            <Route path="stats" element={<MyStats />} />
-            <Route path="leaderboard" element={<Leaderboard />} />
-            <Route path="contests" element={<Contests />} />
-            <Route path="pit" element={<ThePit />} />
-            <Route path="points-history" element={<PointsHistory />} />
-            <Route path="my-leads" element={<MyLeads />} />
-            <Route path="tools" element={<ToolsHub />} />
-            <Route path="tools/estimator" element={<GutterEstimator />} />
-            <Route path="tools/my-estimates" element={<MyEstimates />} />
-            <Route path="leads/:id" element={<LeadDetailView />} />
-            <Route path="leads/:id/contract" element={<GutterContract />} />
-            <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
-            <Route path="leads/:id/warranty" element={<WarrantyDocument />} />
-            <Route path="leads/:id/inspection" element={<InspectionChecklist />} />
-            <Route path="leads/:id/appointment" element={<AppointmentSheet />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="assessment" element={<InternalAssessment />} />
-          </Route>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/apply" element={<JobApplication />} />
+            <Route path="/apply/thank-you" element={<ApplicationThankYou />} />
+            <Route path="/get-quote" element={<GetQuote />} />
+            <Route path="/sign/:token" element={<SignContract />} />
 
-          {/* Canvasser Portal Routes */}
-          <Route
-            path="/canvasser"
-            element={
-              <ProtectedRoute requireCanvasser>
-                <CanvasserLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/canvasser/stats" replace />} />
-            <Route path="stats" element={<CanvasserStats />} />
-            <Route path="leaderboard" element={<CanvasserLeaderboard />} />
-            <Route path="contests" element={<CanvasserContests />} />
-            <Route path="pit" element={<CanvasserPit />} />
-            <Route path="points-history" element={<CanvasserPointsHistory />} />
-            <Route path="create-lead" element={<CreateCanvasserLead />} />
-            <Route path="settings" element={<CanvasserSettings />} />
-            <Route path="assessment" element={<InternalAssessment />} />
-          </Route>
+            {/* Protected Dashboard Routes (Sales Reps) */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard/stats" replace />} />
+              <Route path="stats" element={<MyStats />} />
+              <Route path="leaderboard" element={<Leaderboard />} />
+              <Route path="contests" element={<Contests />} />
+              <Route path="pit" element={<ThePit />} />
+              <Route path="points-history" element={<PointsHistory />} />
+              <Route path="my-leads" element={<MyLeads />} />
+              <Route path="tools" element={<ToolsHub />} />
+              <Route path="tools/estimator" element={<GutterEstimator />} />
+              <Route path="tools/my-estimates" element={<MyEstimates />} />
+              <Route path="leads/:id" element={<LeadDetailView />} />
+              <Route path="leads/:id/contract" element={<GutterContract />} />
+              <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
+              <Route path="leads/:id/warranty" element={<WarrantyDocument />} />
+              <Route path="leads/:id/inspection" element={<InspectionChecklist />} />
+              <Route path="leads/:id/appointment" element={<AppointmentSheet />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="assessment" element={<InternalAssessment />} />
+            </Route>
 
-          {/* Supplementer Portal Routes */}
-          <Route
-            path="/supplementer"
-            element={
-              <ProtectedRoute requireSupplementer>
-                <SupplementerLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/supplementer/stats" replace />} />
-            <Route path="stats" element={<SupplementerDashboard />} />
-            <Route path="leaderboard" element={<SupplementerLeaderboard />} />
-            <Route path="jobs" element={<SupplementerJobsList />} />
-            <Route path="jobs/:id" element={<SupplementerJobDetail />} />
-            <Route path="pit" element={<SupplementerPit />} />
-            <Route path="points-history" element={<SupplementerPointsHistory />} />
-            <Route path="settings" element={<SupplementerSettings />} />
-          </Route>
+            {/* Canvasser Portal Routes */}
+            <Route
+              path="/canvasser"
+              element={
+                <ProtectedRoute requireCanvasser>
+                  <CanvasserLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/canvasser/stats" replace />} />
+              <Route path="stats" element={<CanvasserStats />} />
+              <Route path="leaderboard" element={<CanvasserLeaderboard />} />
+              <Route path="contests" element={<CanvasserContests />} />
+              <Route path="pit" element={<CanvasserPit />} />
+              <Route path="points-history" element={<CanvasserPointsHistory />} />
+              <Route path="create-lead" element={<CreateCanvasserLead />} />
+              <Route path="settings" element={<CanvasserSettings />} />
+              <Route path="assessment" element={<InternalAssessment />} />
+            </Route>
 
-          {/* Admin Portal Routes */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute requireAdmin>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/admin/overview" replace />} />
-            <Route path="overview" element={<AdminOverview />} />
-            <Route path="leaderboards" element={<AdminLeaderboards />} />
-            <Route path="goals" element={<CompanyGoals />} />
-            <Route path="invites" element={<InviteUsers />} />
-            <Route path="users" element={<UserRoles />} />
-            <Route path="weekly" element={<WeeklyUpdates />} />
-            <Route path="announcements" element={<Announcements />} />
-            <Route path="contests" element={<Contests />} />
-            <Route path="pit" element={<PitManagement />} />
-            <Route path="reports" element={<ReportSettings />} />
-            <Route path="applicants" element={<FutureTeamMates />} />
-            <Route path="applicants/:id" element={<ApplicantDetail />} />
-            <Route path="leads" element={<Leads />} />
-            <Route path="leads/:id" element={<LeadDetail />} />
-            <Route path="leadflow" element={<LeadflowStatistics />} />
-            <Route path="team" element={<ContractorManagement />} />
-            <Route path="timeclock" element={<AdminTimeClock />} />
-            <Route path="notifications" element={<NotificationRouting />} />
-          </Route>
+            {/* Supplementer Portal Routes */}
+            <Route
+              path="/supplementer"
+              element={
+                <ProtectedRoute requireSupplementer>
+                  <SupplementerLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/supplementer/stats" replace />} />
+              <Route path="stats" element={<SupplementerDashboard />} />
+              <Route path="leaderboard" element={<SupplementerLeaderboard />} />
+              <Route path="jobs" element={<SupplementerJobsList />} />
+              <Route path="jobs/:id" element={<SupplementerJobDetail />} />
+              <Route path="pit" element={<SupplementerPit />} />
+              <Route path="points-history" element={<SupplementerPointsHistory />} />
+              <Route path="settings" element={<SupplementerSettings />} />
+            </Route>
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* Admin Portal Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/admin/overview" replace />} />
+              <Route path="overview" element={<AdminOverview />} />
+              <Route path="leaderboards" element={<AdminLeaderboards />} />
+              <Route path="goals" element={<CompanyGoals />} />
+              <Route path="invites" element={<InviteUsers />} />
+              <Route path="users" element={<UserRoles />} />
+              <Route path="weekly" element={<WeeklyUpdates />} />
+              <Route path="announcements" element={<Announcements />} />
+              <Route path="contests" element={<Contests />} />
+              <Route path="pit" element={<PitManagement />} />
+              <Route path="reports" element={<ReportSettings />} />
+              <Route path="applicants" element={<FutureTeamMates />} />
+              <Route path="applicants/:id" element={<ApplicantDetail />} />
+              <Route path="leads" element={<Leads />} />
+              <Route path="leads/:id" element={<LeadDetail />} />
+              <Route path="leadflow" element={<LeadflowStatistics />} />
+              <Route path="team" element={<ContractorManagement />} />
+              <Route path="timeclock" element={<AdminTimeClock />} />
+              <Route path="notifications" element={<NotificationRouting />} />
+            </Route>
+
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -68,62 +68,67 @@ export default function MyStats() {
     if (!user) return;
 
     const fetchMetrics = async () => {
-      const { data, error } = await supabase
-        .from('user_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('metric_date', { ascending: true })
-        .limit(90);
+      const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
+      const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+      const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
 
-      if (error) {
-        console.error('Error fetching metrics:', error);
+      // Run all independent queries in parallel
+      const [
+        metricsResult,
+        weeklyResult,
+        allWeeklyResult,
+        myLeadsResult,
+      ] = await Promise.all([
+        supabase
+          .from('user_metrics')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('metric_date', { ascending: true })
+          .limit(90),
+        supabase
+          .from('weekly_user_metrics')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('week_start', eightWeeksAgo)
+          .order('week_start', { ascending: false }),
+        supabase
+          .from('weekly_user_metrics')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('week_start', fiscalStartStr)
+          .order('week_start', { ascending: true }),
+        supabase
+          .from("quote_requests")
+          .select("id")
+          .eq("assigned_to", user.id),
+      ]);
+
+      if (metricsResult.error) {
+        console.error('Error fetching metrics:', metricsResult.error);
       } else {
-        setMetrics(data || []);
-        // Get display name from latest metric
-        if (data && data.length > 0) {
-          const latestWithName = data.find(m => m.display_name);
+        setMetrics(metricsResult.data || []);
+        if (metricsResult.data && metricsResult.data.length > 0) {
+          const latestWithName = metricsResult.data.find(m => m.display_name);
           if (latestWithName) {
             setDisplayName(latestWithName.display_name || '');
           }
         }
       }
 
-      const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
-      const { data: weeklyData, error: weeklyError } = await supabase
-        .from('weekly_user_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('week_start', eightWeeksAgo)
-        .order('week_start', { ascending: false });
-
-      if (weeklyError) {
-        console.error('Error fetching weekly metrics:', weeklyError);
+      if (weeklyResult.error) {
+        console.error('Error fetching weekly metrics:', weeklyResult.error);
       } else {
-        setWeeklyMetrics(weeklyData || []);
+        setWeeklyMetrics(weeklyResult.data || []);
       }
 
-      const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
-      const { data: allWeeklyData, error: allWeeklyError } = await supabase
-        .from('weekly_user_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('week_start', fiscalStartStr)
-        .order('week_start', { ascending: true });
-
-      if (allWeeklyError) {
-        console.error('Error fetching all weekly metrics:', allWeeklyError);
+      if (allWeeklyResult.error) {
+        console.error('Error fetching all weekly metrics:', allWeeklyResult.error);
       } else {
-      setAllWeeklyMetrics(allWeeklyData || []);
+        setAllWeeklyMetrics(allWeeklyResult.data || []);
       }
 
-      // Fetch collections this month
-      const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
-      // Get leads assigned to this user, then fetch their payments
-      const { data: myLeads } = await supabase
-        .from("quote_requests")
-        .select("id")
-        .eq("assigned_to", user.id);
-      const myLeadIds = (myLeads || []).map(l => l.id);
+      // Fetch monthly payments — depends on myLeads result above
+      const myLeadIds = (myLeadsResult.data || []).map(l => l.id);
       let monthTotal = 0;
       if (myLeadIds.length > 0) {
         const { data: monthlyPayments } = await supabase
