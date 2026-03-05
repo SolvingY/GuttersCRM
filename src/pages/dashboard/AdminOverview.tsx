@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
+import { FISCAL_YEAR } from '@/lib/constants';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -443,12 +444,13 @@ export default function AdminOverview() {
         };
       });
 
-      // Batch query for canvasser revenue attribution
+      // Batch query for canvasser revenue attribution — scoped to fiscal year
       const { data: revenueData } = await supabase
         .from("quote_requests")
         .select("canvasser_id, quote_amount")
         .in("status", ["won", "scheduled", "completed"])
-        .not("canvasser_id", "is", null);
+        .not("canvasser_id", "is", null)
+        .gte("created_at", FISCAL_YEAR.CURRENT_YEAR_START.toISOString());
 
       const revenueByCanvasser = new Map<string, number>();
       revenueData?.forEach((lead: any) => {
