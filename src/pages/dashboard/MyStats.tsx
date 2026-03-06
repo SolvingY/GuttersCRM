@@ -162,6 +162,7 @@ export default function MyStats() {
   const approvedRevenue = Number(latestMetric?.approved_revenue) || 0;
   const collectionsYtd = Number(latestMetric?.collections) || 0;
   const earningsYtd = Number(latestMetric?.earnings_ytd) || 0;
+  const yearlyGoal = Number(latestMetric?.yearly_goal) || 0;
   const goalPercentage = yearlyGoal > 0 ? (approvedRevenue / yearlyGoal) * 100 : 0;
   const amountRemaining = Math.max(0, yearlyGoal - approvedRevenue);
 
