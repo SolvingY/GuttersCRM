@@ -1008,6 +1008,7 @@ export default function AdminOverview() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Income</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Revenue</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
@@ -1040,6 +1041,7 @@ export default function AdminOverview() {
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
                           <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.income)}</td>
                           <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.revenue)}</td>
                           <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
                             {canvasser.conversionRate.toFixed(1)}%
