@@ -88,13 +88,21 @@ export default function ModelReleaseForm({ isCompleted, onComplete, isCompleting
           </div>
 
           {/* Agreement text */}
-          <div className="bg-muted/30 rounded p-4 text-sm border border-border mt-4">
+          <div className="bg-muted/30 rounded p-4 text-sm border border-border mt-4 space-y-3">
             <p>
-              I hereby grant NextGen Roofing and its subsidiaries, agents, and assigns the irrevocable right
-              and permission to use my name, photograph, image, likeness, voice, and biographical information
-              in any and all media, including but not limited to digital, print, video, and social media, for
-              marketing, promotional, and commercial purposes. This release is perpetual, worldwide, and
-              royalty-free. I waive any right to inspect or approve the finished product.
+              {form.legalName || "_________________________ "} (the "Model"), for good and valuable consideration, the receipt of which is acknowledged, hereby grants to Next Generation Roofing, its legal representatives, assignees, and those acting under its authority, the unrestricted right and permission to copyright and/or use, and/or publish photographic and videographic portraits, pictures, and videos of the Model, and the negatives, transparencies, prints, or digital information pertaining to them, in still, single, multiple, moving or video format, or in which Model may be included in whole or in part, or composite, or distorted in form, or reproductions thereof, in color or otherwise, in any media for advertising or any other lawful purpose.
+            </p>
+            <p>
+              Model hereby relinquishes any right that he/she may have to examine or approve the finished product or products or the advertising copy or printed matter that may be used in connection with an image or video that Next Generation Roofing has taken of the Model, or the use to which it may be applied. Model waives any ownership and publication right he/she might be entitled to in connection with the Pictures/Videos, with the exception of personal portfolio. Model agrees he/she has no right to sell, license, or publish any of the pictures/videos to any person or entity.
+            </p>
+            <p>
+              Model further releases Next Generation Roofing its parent company, subsidiaries, affiliates, officers, agents, servants, or employees from any claims for remuneration associated with any form of damage, foreseen or unforeseen, associated with the proper commercial or artistic use of these images unless it can be shown that said reproduction was maliciously caused, produced and published for the sole purpose of subjecting the talent to conspicuous ridicule, scandal, reproach, scorn and indignity. Model also waives any and all claims, demands, actions and causes of action whatsoever arising out of or related to any loss, damage, or injury, that may be sustained by Model, or any of the property belonging to Model, whether caused by the negligence of the Releases, or otherwise, while performing the session, or while in, on or upon the premises where the session was performed.
+            </p>
+            <p>
+              It is the express intent of Model that this document shall bind all members of the Model's family, heirs, assignees and personal representatives.
+            </p>
+            <p>
+              Model represents and warrants that he/she is 18 years of age or older, that the session was conducted in a competent and professional manner, and this release was willingly signed.
             </p>
           </div>
 

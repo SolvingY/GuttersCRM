@@ -17,11 +17,15 @@ interface DirectDepositFormProps {
 export default function DirectDepositForm({ isCompleted, onComplete, isCompleting, metadata }: DirectDepositFormProps) {
   const [form, setForm] = useState({
     accountHolderName: "",
+    email: "",
+    phone: "",
+    ssn: "",
     bankName: "",
     routingNumber: "",
     accountNumber: "",
     confirmAccountNumber: "",
-    accountType: "checking",
+    accountType: "personal",
+    mailingAddress: "",
     authorized: false,
     signatureName: "",
   });
