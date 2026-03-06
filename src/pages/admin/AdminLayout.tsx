@@ -3,14 +3,14 @@ import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { 
-  Users, 
-  UserPlus, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Users,
+  UserPlus,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
-  X, 
+  X,
   Menu,
   ArrowLeft,
   KeyRound,
@@ -25,7 +25,7 @@ import {
   Bell,
   ClipboardList,
   TrendingUp,
-  Clock
+  Clock,
 } from 'lucide-react';
 import {
   DropdownMenu,

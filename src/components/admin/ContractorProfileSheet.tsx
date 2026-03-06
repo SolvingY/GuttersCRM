@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts";
@@ -49,6 +50,9 @@ import {
   Briefcase,
   Lock,
   FolderOpen,
+  Circle,
+  Send,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { PerformanceReviewForm, ReviewScoreBreakdown, defaultReviewFormData } from "./PerformanceReviewForm";
@@ -241,6 +245,36 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch onboarding progress
+  const { data: onboardingProgress = [] } = useQuery({
+    queryKey: ["contractor-onboarding", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_onboarding_progress")
+        .select("*, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)")
+        .eq("user_id", user!.id)
+        .order("step(sort_order)");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Fetch pending mandatory actions for this user
+  const { data: memberMandatoryActions = [], refetch: refetchActions } = useQuery({
+    queryKey: ["contractor-mandatory-actions", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mandatory_actions")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -558,6 +592,86 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Onboarding Status Section */}
+          {onboardingProgress.length > 0 && (() => {
+            const completed = onboardingProgress.filter((p: any) => p.status === "completed").length;
+            const total = onboardingProgress.length;
+            const pct = Math.round((completed / total) * 100);
+            const isComplete = pct === 100;
+            const pendingActions = memberMandatoryActions.filter((a: any) => a.status === "pending");
+
+            return (
+              <div className={`border rounded-lg overflow-hidden ${isComplete ? "border-green-200" : "border-amber-200"}`}>
+                <div className={`px-4 py-3 flex items-center justify-between ${isComplete ? "bg-green-50" : "bg-amber-50"}`}>
+                  <h3 className="font-heading uppercase text-sm flex items-center gap-2">
+                    {isComplete ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-500" />
+                    )}
+                    Onboarding {isComplete ? "Complete" : `In Progress (${pct}%)`}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{completed}/{total} steps</span>
+                    <Progress value={pct} className="w-20 h-1.5" />
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {onboardingProgress
+                      .sort((a: any, b: any) => (a.step?.sort_order || 0) - (b.step?.sort_order || 0))
+                      .map((p: any) => (
+                        <div
+                          key={p.id}
+                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded ${
+                            p.status === "completed"
+                              ? "bg-green-50 text-green-700"
+                              : "bg-muted/50 text-muted-foreground"
+                          }`}
+                        >
+                          {p.status === "completed" ? (
+                            <CheckCircle className="w-3 h-3 shrink-0" />
+                          ) : (
+                            <Circle className="w-3 h-3 shrink-0" />
+                          )}
+                          <span className="truncate">{p.step?.step_name}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Pending mandatory actions */}
+                  {pendingActions.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Pending Mandatory Actions</p>
+                      {pendingActions.map((a: any) => (
+                        <div key={a.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200 text-sm">
+                          <span>{a.title}</span>
+                          <div className="flex items-center gap-1.5">
+                            {a.blocks_access && (
+                              <Badge className="bg-red-100 text-red-800 text-[10px]">Blocks</Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-xs"
+                              onClick={async () => {
+                                await supabase.from("mandatory_actions").update({ status: "dismissed" }).eq("id", a.id);
+                                refetchActions();
+                                toast({ title: "Action dismissed" });
+                              }}
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Personal Information Section */}
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="bg-muted/30 px-4 py-3">

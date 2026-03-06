@@ -6,11 +6,33 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getScoreColor } from "@/lib/dnaAssessment";
 import { format } from "date-fns";
-import { ChevronDown, ClipboardList, ExternalLink, UserCheck, Users } from "lucide-react";
+import {
+  ChevronDown,
+  ClipboardList,
+  ExternalLink,
+  UserCheck,
+  Users,
+  CheckCircle,
+  Circle,
+  AlertTriangle,
+  Send,
+  Loader2,
+  Bell,
+  FileText,
+  Upload,
+  PenLine,
+} from "lucide-react";
 import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
+import { useAuth } from "@/hooks/useAuth";
 
 type TabValue = "active" | "onboarding" | "archived";
 
@@ -39,19 +61,51 @@ const DNA_CATEGORIES = [
 ] as const;
 
 export default function ContractorManagement() {
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabValue>("active");
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [mandatoryTarget, setMandatoryTarget] = useState<string | null>(null);
+  const [showMandatoryDialog, setShowMandatoryDialog] = useState(false);
+  const [mandatoryDialogType, setMandatoryDialogType] = useState<string>("document_upload");
 
   // Fetch all data in parallel
   const { data: profiles = [] } = useQuery({
     queryKey: ["cm-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count, start_date");
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count, start_date, onboarding_complete");
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Onboarding progress for all users
+  const { data: allOnboardingProgress = [] } = useQuery({
+    queryKey: ["cm-onboarding-progress"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_onboarding_progress")
+        .select("user_id, step_id, status, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Pending mandatory actions for all users
+  const { data: pendingMandatoryActions = [], refetch: refetchActions } = useQuery({
+    queryKey: ["cm-pending-mandatory-actions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mandatory_actions")
+        .select("*")
+        .eq("status", "pending")
+        .eq("blocks_access", true);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -180,6 +234,7 @@ export default function ContractorManagement() {
         hasSalesMetrics: !!sales,
         hasCanvasserMetrics: !!canvasser,
         dnaPending,
+        onboardingComplete: (p as any).onboarding_complete ?? true,
       };
     });
   }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps]);
@@ -188,10 +243,10 @@ export default function ContractorManagement() {
     let list: typeof users;
     switch (tab) {
       case "active":
-        list = users.filter((u) => !u.isArchived && u.hasAssessment && !u.dnaPending);
+        list = users.filter((u) => !u.isArchived && u.onboardingComplete);
         break;
       case "onboarding":
-        list = users.filter((u) => !u.isArchived && (!u.hasAssessment || u.dnaPending));
+        list = users.filter((u) => !u.isArchived && !u.onboardingComplete);
         break;
       case "archived":
         list = users.filter((u) => u.isArchived);
@@ -203,10 +258,22 @@ export default function ContractorManagement() {
   }, [users, tab]);
 
   const stats = useMemo(() => ({
-    active: users.filter((u) => !u.isArchived && u.hasAssessment && !u.dnaPending).length,
-    onboarding: users.filter((u) => !u.isArchived && (!u.hasAssessment || u.dnaPending)).length,
+    active: users.filter((u) => !u.isArchived && u.onboardingComplete).length,
+    onboarding: users.filter((u) => !u.isArchived && !u.onboardingComplete).length,
     archived: users.filter((u) => u.isArchived).length,
   }), [users]);
+
+  // Per-user onboarding helpers
+  const getUserOnboarding = (userId: string) => allOnboardingProgress.filter((p: any) => p.user_id === userId);
+  const getUserCompletionPct = (userId: string) => {
+    const prog = getUserOnboarding(userId);
+    if (prog.length === 0) return 0;
+    return Math.round((prog.filter((p: any) => p.status === "completed").length / prog.length) * 100);
+  };
+  const getUserMissingDocs = (userId: string) =>
+    getUserOnboarding(userId).filter((p: any) => (p.step as any)?.step_type === "document_upload" && p.status !== "completed");
+  const getUserPendingActions = (userId: string) =>
+    pendingMandatoryActions.filter((a: any) => a.user_id === userId);
 
   // Team DNA heat map stats (Active tab only)
   const teamDNAStats = useMemo(() => {
@@ -313,10 +380,131 @@ export default function ContractorManagement() {
 
       {/* Tab description */}
       <p className="text-sm text-muted-foreground -mt-2">
-        {tab === "active" && "Team members with accounts and completed DNA assessments."}
-        {tab === "onboarding" && "Team members who haven't yet completed their DNA assessment."}
+        {tab === "active" && "Team members who have completed onboarding."}
+        {tab === "onboarding" && "Team members currently working through their onboarding checklist."}
         {tab === "archived" && "Former team members no longer active."}
       </p>
+
+      {/* Onboarding Overview — Onboarding tab only */}
+      {tab === "onboarding" && filteredUsers.length > 0 && (
+        <Collapsible defaultOpen>
+          <div className="bg-card border border-amber-200 rounded-lg overflow-hidden">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 rounded-full bg-amber-400" />
+                <div className="text-left">
+                  <p className="font-heading text-sm uppercase tracking-wide flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-amber-500" />
+                    Onboarding Alerts
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {filteredUsers.length} member{filteredUsers.length !== 1 ? "s" : ""} in progress
+                    {pendingMandatoryActions.length > 0 && ` · ${pendingMandatoryActions.length} pending mandatory action${pendingMandatoryActions.length !== 1 ? "s" : ""}`}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-4 border-t border-border space-y-3 pt-4">
+                {filteredUsers.map((member) => {
+                  const pct = getUserCompletionPct(member.id);
+                  const missingDocs = getUserMissingDocs(member.id);
+                  const pending = getUserPendingActions(member.id);
+                  const prog = getUserOnboarding(member.id);
+                  return (
+                    <div key={member.id} className="border border-border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-bold shrink-0">
+                            {member.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{member.name}</p>
+                            {member.startDate && (
+                              <p className="text-xs text-muted-foreground">
+                                Started {format(new Date(member.startDate), "MMM d, yyyy")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">{pct}%</p>
+                            <Progress value={pct} className="w-20 h-1.5 mt-0.5" />
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setMandatoryTarget(member.id);
+                              setMandatoryDialogType("document_sign");
+                              setShowMandatoryDialog(true);
+                            }}
+                          >
+                            <FileText className="w-3 h-3 mr-1" /> Send Doc
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setMandatoryTarget(member.id);
+                              setMandatoryDialogType("document_upload");
+                              setShowMandatoryDialog(true);
+                            }}
+                          >
+                            <Send className="w-3 h-3 mr-1" /> Request
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Step grid */}
+                      {prog.length > 0 && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-1">
+                          {[...prog]
+                            .sort((a: any, b: any) => (a.step?.sort_order || 0) - (b.step?.sort_order || 0))
+                            .map((p: any) => (
+                              <div
+                                key={p.step_id}
+                                className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
+                                  p.status === "completed"
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-muted/50 text-muted-foreground"
+                                }`}
+                              >
+                                {p.status === "completed"
+                                  ? <CheckCircle className="w-2.5 h-2.5 shrink-0" />
+                                  : <Circle className="w-2.5 h-2.5 shrink-0" />}
+                                <span className="truncate">{(p.step as any)?.step_name}</span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* Alerts row */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {missingDocs.map((d: any) => (
+                          <Badge key={d.step_id} variant="outline" className="text-[10px] text-amber-700 border-amber-300 bg-amber-50">
+                            <AlertTriangle className="w-2.5 h-2.5 mr-1" />
+                            Missing: {(d.step as any)?.step_name}
+                          </Badge>
+                        ))}
+                        {pending.map((a: any) => (
+                          <Badge key={a.id} variant="outline" className="text-[10px] text-red-700 border-red-300 bg-red-50">
+                            Pending: {a.title}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
 
       {/* DNA Heat Map — Active tab only */}
       {tab === "active" && teamDNAStats && (
@@ -602,6 +790,252 @@ export default function ContractorManagement() {
         onClose={() => setSheetOpen(false)}
         onAssignAssessment={handleAssignAssessment}
       />
+
+      {/* Create Mandatory Action Dialog */}
+      <CreateMandatoryActionDialog
+        isOpen={showMandatoryDialog}
+        onClose={() => { setShowMandatoryDialog(false); setMandatoryTarget(null); }}
+        targetUserId={mandatoryTarget}
+        defaultActionType={mandatoryDialogType}
+        members={users.filter((u) => !u.isArchived)}
+        currentUserId={currentUser?.id || ""}
+        onCreated={() => {
+          refetchActions();
+          queryClient.invalidateQueries({ queryKey: ["cm-pending-mandatory-actions"] });
+        }}
+      />
     </div>
+  );
+}
+
+// ── Mandatory Action Dialog ──────────────────────────────────────────────────
+function CreateMandatoryActionDialog({
+  isOpen,
+  onClose,
+  targetUserId,
+  defaultActionType = "document_upload",
+  members,
+  currentUserId,
+  onCreated,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  targetUserId: string | null;
+  defaultActionType?: string;
+  members: { id: string; name: string }[];
+  currentUserId: string;
+  onCreated: () => void;
+}) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [form, setForm] = useState({
+    userId: targetUserId || "",
+    actionType: defaultActionType,
+    title: "",
+    description: "",
+    dueDate: "",
+    blocksAccess: true,
+  });
+
+  // Sync when props change (dialog re-opened for a new member)
+  useMemo(() => {
+    setForm((f) => ({
+      ...f,
+      userId: targetUserId || f.userId,
+      actionType: defaultActionType,
+    }));
+    setFileToUpload(null);
+  }, [targetUserId, defaultActionType]);
+
+  const handleCreate = async () => {
+    if (!form.userId || !form.title) {
+      toast({ title: "Please select a member and enter a title", variant: "destructive" });
+      return;
+    }
+    if (form.actionType === "document_sign" && !fileToUpload) {
+      toast({ title: "Please attach a document for the contractor to sign", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      let fileUrl: string | null = null;
+
+      // Upload document if provided
+      if (fileToUpload) {
+        const filePath = `signed-docs/${form.userId}/${Date.now()}_${fileToUpload.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("contractor-files")
+          .upload(filePath, fileToUpload);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("contractor-files").getPublicUrl(filePath);
+        fileUrl = urlData.publicUrl;
+
+        // Track in contractor_files
+        await supabase.from("contractor_files").insert({
+          user_id: form.userId,
+          file_name: fileToUpload.name,
+          file_path: filePath,
+          file_type: fileToUpload.type,
+          file_size: fileToUpload.size,
+          uploaded_by: currentUserId,
+          description: form.title,
+          requires_signature: form.actionType === "document_sign",
+        } as any);
+      }
+
+      const { error } = await supabase.from("mandatory_actions").insert({
+        user_id: form.userId,
+        requested_by: currentUserId,
+        action_type: form.actionType,
+        title: form.title,
+        description: form.description || null,
+        due_date: form.dueDate || null,
+        blocks_access: form.blocksAccess,
+        file_url: fileUrl,
+      });
+      if (error) throw error;
+
+      onCreated();
+      toast({ title: "Action created", description: `"${form.title}" sent to team member.` });
+      onClose();
+      setForm({ userId: "", actionType: "document_upload", title: "", description: "", dueDate: "", blocksAccess: true });
+      setFileToUpload(null);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isDocSign = form.actionType === "document_sign";
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-heading uppercase flex items-center gap-2">
+            {isDocSign ? <PenLine className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+            {isDocSign ? "Send Document for Signing" : "Request Mandatory Action"}
+          </DialogTitle>
+          <DialogDescription>
+            {isDocSign
+              ? "Upload a document (offer letter, contract, etc.) — the contractor will review and e-sign it on their next login."
+              : "Creates a required action that blocks dashboard access until the team member completes it."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div>
+            <Label>Team Member</Label>
+            <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
+              <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
+              <SelectContent>
+                {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Action Type</Label>
+            <Select value={form.actionType} onValueChange={(v) => setForm({ ...form, actionType: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="document_sign">Document for Signing (e-signature)</SelectItem>
+                <SelectItem value="document_upload">Document Upload (contractor uploads)</SelectItem>
+                <SelectItem value="info_update">Information Update</SelectItem>
+                <SelectItem value="policy_ack">Policy Acknowledgment</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Title *</Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder={isDocSign ? "e.g., Offer Letter — Sign to Accept" : "e.g., Upload updated W-9"}
+            />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={2}
+              placeholder={isDocSign ? "Instructions for the contractor before signing..." : "Additional details..."}
+            />
+          </div>
+
+          {/* Document upload — required for document_sign, optional otherwise */}
+          {(isDocSign || form.actionType === "document_upload") && (
+            <div>
+              <Label>{isDocSign ? "Document to Sign *" : "Attach Document (optional)"}</Label>
+              <div
+                className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                  fileToUpload ? "border-green-400 bg-green-50" : "border-border hover:border-accent"
+                }`}
+                onClick={() => document.getElementById("admin-doc-upload")?.click()}
+              >
+                {fileToUpload ? (
+                  <div className="flex items-center justify-center gap-2 text-green-700">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-sm font-medium">{fileToUpload.name}</span>
+                    <span className="text-xs text-muted-foreground">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                    <Upload className="w-6 h-6" />
+                    <p className="text-sm">Click to choose file</p>
+                    <p className="text-xs">PDF, DOC, DOCX, PNG, JPG</p>
+                  </div>
+                )}
+              </div>
+              <input
+                id="admin-doc-upload"
+                type="file"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+              />
+              {fileToUpload && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-destructive mt-1"
+                  onClick={() => setFileToUpload(null)}
+                >
+                  Remove file
+                </button>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label>Due Date (optional)</Label>
+            <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="blocks"
+              checked={form.blocksAccess}
+              onChange={(e) => setForm({ ...form, blocksAccess: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="blocks" className="text-sm">Block dashboard access until completed</label>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleCreate} disabled={loading} className="flex-1">
+              {loading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {isDocSign ? "Uploading..." : "Creating..."}</>
+              ) : isDocSign ? (
+                <><PenLine className="w-4 h-4 mr-2" /> Send for Signing</>
+              ) : (
+                <><Send className="w-4 h-4 mr-2" /> Create Action</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

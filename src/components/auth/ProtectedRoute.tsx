@@ -7,10 +7,11 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
   requireCanvasser?: boolean;
   requireSupplementer?: boolean;
+  skipOnboardingCheck?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false, requireSupplementer = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, hasSupplementerRole, isSupplementerOnly, activeView } = useAuth();
+export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false, requireSupplementer = false, skipOnboardingCheck = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, hasSupplementerRole, isSupplementerOnly, activeView, onboardingComplete, hasPendingMandatoryActions } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -35,6 +36,25 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
 
   if (requireSupplementer && !hasSupplementerRole && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // Onboarding gate: non-admin users with incomplete onboarding get redirected
+  // Skip this check for the /onboarding route itself and for admins
+  if (!skipOnboardingCheck && !isAdmin && !onboardingComplete) {
+    const isOnboardingRoute = location.pathname.startsWith('/onboarding');
+    if (!isOnboardingRoute) {
+      return <Navigate to="/onboarding" replace />;
+    }
+  }
+
+  // Mandatory actions gate: non-admin users with blocking mandatory actions
+  // get redirected to the mandatory actions page
+  if (!skipOnboardingCheck && !isAdmin && hasPendingMandatoryActions) {
+    const isMandatoryRoute = location.pathname.startsWith('/mandatory-actions');
+    const isOnboardingRoute = location.pathname.startsWith('/onboarding');
+    if (!isMandatoryRoute && !isOnboardingRoute) {
+      return <Navigate to="/mandatory-actions" replace />;
+    }
   }
 
   // Handle multi-role users - they can access portals they have roles for

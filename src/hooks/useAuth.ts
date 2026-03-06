@@ -9,6 +9,8 @@ interface AuthState {
   session: Session | null;
   roles: AppRole[];
   activeView: 'sales' | 'canvasser' | 'supplementer';
+  onboardingComplete: boolean;
+  hasPendingMandatoryActions: boolean;
   sessionLoading: boolean;
   roleLoading: boolean;
 }
@@ -19,6 +21,8 @@ export function useAuth() {
     session: null,
     roles: [],
     activeView: 'sales',
+    onboardingComplete: true,
+    hasPendingMandatoryActions: false,
     sessionLoading: true,
     roleLoading: true,
   });
@@ -42,18 +46,31 @@ export function useAuth() {
     return data.map(r => r.role as AppRole);
   }, []);
 
-  const fetchPreferredView = useCallback(async (userId: string): Promise<'sales' | 'canvasser' | 'supplementer'> => {
+  const fetchProfileData = useCallback(async (userId: string): Promise<{
+    preferredView: 'sales' | 'canvasser' | 'supplementer';
+    onboardingComplete: boolean;
+  }> => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('preferred_view')
+      .select('preferred_view, onboarding_complete')
       .eq('id', userId)
       .maybeSingle();
 
-    if (error || !data?.preferred_view) {
-      return 'sales';
-    }
+    return {
+      preferredView: (data?.preferred_view as 'sales' | 'canvasser' | 'supplementer') || 'sales',
+      onboardingComplete: data?.onboarding_complete ?? true,
+    };
+  }, []);
 
-    return data.preferred_view as 'sales' | 'canvasser' | 'supplementer';
+  const fetchMandatoryActions = useCallback(async (userId: string): Promise<boolean> => {
+    const { count, error } = await supabase
+      .from('mandatory_actions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .eq('blocks_access', true);
+
+    return (count ?? 0) > 0;
   }, []);
 
   useEffect(() => {
@@ -71,15 +88,18 @@ export function useAuth() {
         // Defer role fetch to avoid deadlock
         if (session?.user) {
           setTimeout(async () => {
-            const [roles, preferredView] = await Promise.all([
+            const [roles, profileData, hasMandatory] = await Promise.all([
               fetchUserRoles(session.user.id),
-              fetchPreferredView(session.user.id),
+              fetchProfileData(session.user.id),
+              fetchMandatoryActions(session.user.id),
             ]);
-            setAuthState(prev => ({ 
-              ...prev, 
-              roles, 
-              activeView: preferredView,
-              roleLoading: false 
+            setAuthState(prev => ({
+              ...prev,
+              roles,
+              activeView: profileData.preferredView,
+              onboardingComplete: profileData.onboardingComplete,
+              hasPendingMandatoryActions: hasMandatory,
+              roleLoading: false
             }));
           }, 0);
         } else {
@@ -99,15 +119,18 @@ export function useAuth() {
       }));
 
       if (session?.user) {
-        const [roles, preferredView] = await Promise.all([
+        const [roles, profileData, hasMandatory] = await Promise.all([
           fetchUserRoles(session.user.id),
-          fetchPreferredView(session.user.id),
+          fetchProfileData(session.user.id),
+          fetchMandatoryActions(session.user.id),
         ]);
-        setAuthState(prev => ({ 
-          ...prev, 
-          roles, 
-          activeView: preferredView,
-          roleLoading: false 
+        setAuthState(prev => ({
+          ...prev,
+          roles,
+          activeView: profileData.preferredView,
+          onboardingComplete: profileData.onboardingComplete,
+          hasPendingMandatoryActions: hasMandatory,
+          roleLoading: false
         }));
       } else {
         setAuthState(prev => ({ ...prev, roleLoading: false }));
@@ -115,7 +138,7 @@ export function useAuth() {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchUserRoles, fetchPreferredView]);
+  }, [fetchUserRoles, fetchProfileData, fetchMandatoryActions]);
 
   // Loading is true until both session AND role are resolved
   const loading = authState.sessionLoading || authState.roleLoading;
@@ -190,6 +213,19 @@ export function useAuth() {
   const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : 'user';
   const isCanvasser = hasCanvasserRole && !hasSalesRole && !isAdmin;
 
+  const refreshOnboardingStatus = useCallback(async () => {
+    if (!authState.user) return;
+    const [profileData, hasMandatory] = await Promise.all([
+      fetchProfileData(authState.user.id),
+      fetchMandatoryActions(authState.user.id),
+    ]);
+    setAuthState(prev => ({
+      ...prev,
+      onboardingComplete: profileData.onboardingComplete,
+      hasPendingMandatoryActions: hasMandatory,
+    }));
+  }, [authState.user, fetchProfileData, fetchMandatoryActions]);
+
   return {
     user: authState.user,
     session: authState.session,
@@ -204,7 +240,10 @@ export function useAuth() {
     isSupplementerOnly,
     isDualRole,
     activeView: authState.activeView,
+    onboardingComplete: authState.onboardingComplete,
+    hasPendingMandatoryActions: authState.hasPendingMandatoryActions,
     setActiveView,
+    refreshOnboardingStatus,
     signIn,
     signUp,
     signOut,
