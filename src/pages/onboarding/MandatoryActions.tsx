@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SignaturePad } from "@/components/SignaturePad";
 import {
   AlertTriangle,
   Upload,
@@ -18,6 +19,9 @@ import {
   Clock,
   Shield,
   LogOut,
+  PenLine,
+  Download,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -56,13 +60,26 @@ export default function MandatoryActions() {
   });
 
   const completeMutation = useMutation({
-    mutationFn: async ({ actionId, metadata }: { actionId: string; metadata?: Record<string, any> }) => {
+    mutationFn: async ({
+      actionId,
+      signatureData,
+      signerName,
+    }: {
+      actionId: string;
+      signatureData?: string;
+      signerName?: string;
+    }) => {
+      const update: Record<string, any> = {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      };
+      if (signatureData) update.signature_data = signatureData;
+      if (signerName) update.signed_by_name = signerName;
+      if (signatureData) update.signed_at = new Date().toISOString();
+
       const { error } = await supabase
         .from("mandatory_actions")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        })
+        .update(update)
         .eq("id", actionId);
       if (error) throw error;
     },
@@ -111,7 +128,9 @@ export default function MandatoryActions() {
             key={action.id}
             action={action}
             userId={user.id}
-            onComplete={(metadata) => completeMutation.mutate({ actionId: action.id, metadata })}
+            onComplete={(sig, name) =>
+              completeMutation.mutate({ actionId: action.id, signatureData: sig, signerName: name })
+            }
             isCompleting={completeMutation.isPending}
           />
         ))}
@@ -138,11 +157,15 @@ function ActionCard({
 }: {
   action: MandatoryAction;
   userId: string;
-  onComplete: (metadata?: Record<string, any>) => void;
+  onComplete: (signatureData?: string, signerName?: string) => void;
   isCompleting: boolean;
 }) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [signature, setSignature] = useState("");
+  const [signerName, setSignerName] = useState("");
+  const [docAccepted, setDocAccepted] = useState(false);
+  const [showDoc, setShowDoc] = useState(false);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -157,7 +180,6 @@ function ActionCard({
 
       if (uploadError) throw uploadError;
 
-      // Create contractor_files record
       await supabase.from("contractor_files").insert({
         user_id: userId,
         file_name: file.name,
@@ -168,7 +190,7 @@ function ActionCard({
         description: `Mandatory action: ${action.title}`,
       } as any);
 
-      onComplete({ file_name: file.name, file_path: filePath });
+      onComplete(undefined, undefined);
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
@@ -176,19 +198,36 @@ function ActionCard({
     }
   };
 
+  const handleSign = () => {
+    if (!signerName.trim()) {
+      toast({ title: "Please type your full name to sign", variant: "destructive" });
+      return;
+    }
+    if (!signature) {
+      toast({ title: "Please draw your signature", variant: "destructive" });
+      return;
+    }
+    onComplete(signature, signerName.trim());
+  };
+
   const typeIcons: Record<string, React.ReactNode> = {
     document_upload: <Upload className="w-5 h-5" />,
-    document_sign: <FileText className="w-5 h-5" />,
+    document_sign: <PenLine className="w-5 h-5" />,
     info_update: <Shield className="w-5 h-5" />,
     policy_ack: <Shield className="w-5 h-5" />,
     custom: <AlertTriangle className="w-5 h-5" />,
   };
 
+  // --- document_sign with admin-provided document ---
+  const isDocSign = action.action_type === "document_sign" && !!action.file_url;
+
   return (
-    <Card className="border-amber-200">
+    <Card className={isDocSign ? "border-blue-200" : "border-amber-200"}>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+            isDocSign ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
+          }`}>
             {typeIcons[action.action_type] || <AlertTriangle className="w-5 h-5" />}
           </div>
           <div className="flex-1">
@@ -205,42 +244,162 @@ function ActionCard({
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        {/* If admin provided a file for the user to review */}
-        {action.file_url && (
-          <div className="mb-4 bg-muted/30 rounded-lg p-3 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-muted-foreground" />
-            <a href={action.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">
-              View attached document
-            </a>
-          </div>
-        )}
 
-        {(action.action_type === "document_upload" || action.action_type === "document_sign") && (
-          <div className="space-y-3">
-            <div>
-              <Label className="text-sm">Upload document</Label>
-              <Input
-                type="file"
-                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                onChange={handleUpload}
-                disabled={uploading || isCompleting}
-                className="mt-1"
-              />
+      <CardContent className="space-y-4">
+
+        {/* ── Document Sign Flow ───────────────────────────── */}
+        {isDocSign && (
+          <>
+            {/* Document viewer */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="bg-muted/40 px-4 py-3 flex items-center justify-between border-b border-border">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  Document to Review & Sign
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => setShowDoc(!showDoc)}
+                  >
+                    <Eye className="w-3 h-3 mr-1" />
+                    {showDoc ? "Hide" : "View"}
+                  </Button>
+                  <a href={action.file_url!} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant="outline" className="h-7 text-xs">
+                      <Download className="w-3 h-3 mr-1" /> Download
+                    </Button>
+                  </a>
+                </div>
+              </div>
+
+              {showDoc && (
+                <div className="w-full bg-muted/20" style={{ height: 480 }}>
+                  <iframe
+                    src={action.file_url!}
+                    className="w-full h-full border-0"
+                    title="Document Preview"
+                  />
+                </div>
+              )}
+
+              {!showDoc && (
+                <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+                  <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p>Click <strong>View</strong> to read the document, or <strong>Download</strong> to open it.</p>
+                  <p className="text-xs mt-1">You must review it before signing.</p>
+                </div>
+              )}
             </div>
-            {uploading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
+
+            {/* Acceptance checkbox */}
+            <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <input
+                type="checkbox"
+                id={`accept-${action.id}`}
+                checked={docAccepted}
+                onChange={(e) => setDocAccepted(e.target.checked)}
+                className="mt-0.5 rounded"
+              />
+              <label htmlFor={`accept-${action.id}`} className="text-sm leading-snug">
+                I have read and understood this document and agree to the terms contained within it.
+              </label>
+            </div>
+
+            {/* Signature capture */}
+            {docAccepted && (
+              <div className="space-y-4 border border-border rounded-lg p-4 bg-muted/20">
+                <div>
+                  <Label className="text-sm font-medium">Full Legal Name *</Label>
+                  <Input
+                    value={signerName}
+                    onChange={(e) => setSignerName(e.target.value)}
+                    placeholder="Type your full name as it appears on the document"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Typing your name confirms your intent to sign this document electronically.
+                  </p>
+                </div>
+
+                <SignaturePad
+                  label="Draw Your Signature *"
+                  value={signature}
+                  onChange={setSignature}
+                  height={140}
+                />
+
+                <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 leading-relaxed">
+                  By clicking "Sign & Submit" you agree that your electronic signature is the legal
+                  equivalent of your manual signature on this document, and that you are entering
+                  into this agreement voluntarily.
+                </div>
+
+                <Button
+                  className="w-full"
+                  onClick={handleSign}
+                  disabled={isCompleting || !signature || !signerName.trim()}
+                >
+                  {isCompleting ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</>
+                  ) : (
+                    <><PenLine className="w-4 h-4 mr-2" /> Sign & Submit</>
+                  )}
+                </Button>
               </div>
             )}
-          </div>
+          </>
         )}
 
+        {/* ── Upload Flow (document_upload or document_sign without file) ── */}
+        {!isDocSign && (action.action_type === "document_upload" || action.action_type === "document_sign") && (
+          <>
+            {action.file_url && (
+              <div className="mb-2 bg-muted/30 rounded-lg p-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <a href={action.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">
+                  View attached document
+                </a>
+              </div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm">Upload your document</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  onChange={handleUpload}
+                  disabled={uploading || isCompleting}
+                  className="mt-1"
+                />
+              </div>
+              {uploading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Acknowledge / Custom Flow ─────────────────────── */}
         {(action.action_type === "policy_ack" || action.action_type === "info_update" || action.action_type === "custom") && (
-          <Button onClick={() => onComplete()} disabled={isCompleting}>
-            {isCompleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-            Mark as Complete
-          </Button>
+          <>
+            {action.file_url && (
+              <div className="bg-muted/30 rounded-lg p-3 flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <a href={action.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">
+                  View attached document
+                </a>
+              </div>
+            )}
+            <Button onClick={() => onComplete()} disabled={isCompleting}>
+              {isCompleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Mark as Complete
+            </Button>
+          </>
         )}
       </CardContent>
     </Card>

@@ -27,6 +27,9 @@ import {
   Send,
   Loader2,
   Bell,
+  FileText,
+  Upload,
+  PenLine,
 } from "lucide-react";
 import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +69,7 @@ export default function ContractorManagement() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [mandatoryTarget, setMandatoryTarget] = useState<string | null>(null);
   const [showMandatoryDialog, setShowMandatoryDialog] = useState(false);
+  const [mandatoryDialogType, setMandatoryDialogType] = useState<string>("document_upload");
 
   // Fetch all data in parallel
   const { data: profiles = [] } = useQuery({
@@ -435,6 +439,19 @@ export default function ContractorManagement() {
                             className="h-7 text-xs"
                             onClick={() => {
                               setMandatoryTarget(member.id);
+                              setMandatoryDialogType("document_sign");
+                              setShowMandatoryDialog(true);
+                            }}
+                          >
+                            <FileText className="w-3 h-3 mr-1" /> Send Doc
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setMandatoryTarget(member.id);
+                              setMandatoryDialogType("document_upload");
                               setShowMandatoryDialog(true);
                             }}
                           >
@@ -779,6 +796,7 @@ export default function ContractorManagement() {
         isOpen={showMandatoryDialog}
         onClose={() => { setShowMandatoryDialog(false); setMandatoryTarget(null); }}
         targetUserId={mandatoryTarget}
+        defaultActionType={mandatoryDialogType}
         members={users.filter((u) => !u.isArchived)}
         currentUserId={currentUser?.id || ""}
         onCreated={() => {
@@ -795,6 +813,7 @@ function CreateMandatoryActionDialog({
   isOpen,
   onClose,
   targetUserId,
+  defaultActionType = "document_upload",
   members,
   currentUserId,
   onCreated,
@@ -802,33 +821,69 @@ function CreateMandatoryActionDialog({
   isOpen: boolean;
   onClose: () => void;
   targetUserId: string | null;
+  defaultActionType?: string;
   members: { id: string; name: string }[];
   currentUserId: string;
   onCreated: () => void;
 }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [form, setForm] = useState({
     userId: targetUserId || "",
-    actionType: "document_upload",
+    actionType: defaultActionType,
     title: "",
     description: "",
     dueDate: "",
     blocksAccess: true,
   });
 
-  // Sync userId when targetUserId prop changes
+  // Sync when props change (dialog re-opened for a new member)
   useMemo(() => {
-    if (targetUserId) setForm((f) => ({ ...f, userId: targetUserId }));
-  }, [targetUserId]);
+    setForm((f) => ({
+      ...f,
+      userId: targetUserId || f.userId,
+      actionType: defaultActionType,
+    }));
+    setFileToUpload(null);
+  }, [targetUserId, defaultActionType]);
 
   const handleCreate = async () => {
     if (!form.userId || !form.title) {
       toast({ title: "Please select a member and enter a title", variant: "destructive" });
       return;
     }
+    if (form.actionType === "document_sign" && !fileToUpload) {
+      toast({ title: "Please attach a document for the contractor to sign", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
+      let fileUrl: string | null = null;
+
+      // Upload document if provided
+      if (fileToUpload) {
+        const filePath = `signed-docs/${form.userId}/${Date.now()}_${fileToUpload.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("contractor-files")
+          .upload(filePath, fileToUpload);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("contractor-files").getPublicUrl(filePath);
+        fileUrl = urlData.publicUrl;
+
+        // Track in contractor_files
+        await supabase.from("contractor_files").insert({
+          user_id: form.userId,
+          file_name: fileToUpload.name,
+          file_path: filePath,
+          file_type: fileToUpload.type,
+          file_size: fileToUpload.size,
+          uploaded_by: currentUserId,
+          description: form.title,
+          requires_signature: form.actionType === "document_sign",
+        } as any);
+      }
+
       const { error } = await supabase.from("mandatory_actions").insert({
         user_id: form.userId,
         requested_by: currentUserId,
@@ -837,12 +892,15 @@ function CreateMandatoryActionDialog({
         description: form.description || null,
         due_date: form.dueDate || null,
         blocks_access: form.blocksAccess,
+        file_url: fileUrl,
       });
       if (error) throw error;
+
       onCreated();
-      toast({ title: "Action created", description: `"${form.title}" assigned to team member.` });
+      toast({ title: "Action created", description: `"${form.title}" sent to team member.` });
       onClose();
       setForm({ userId: "", actionType: "document_upload", title: "", description: "", dueDate: "", blocksAccess: true });
+      setFileToUpload(null);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -850,13 +908,20 @@ function CreateMandatoryActionDialog({
     }
   };
 
+  const isDocSign = form.actionType === "document_sign";
+
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading uppercase">Request Mandatory Action</DialogTitle>
+          <DialogTitle className="font-heading uppercase flex items-center gap-2">
+            {isDocSign ? <PenLine className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+            {isDocSign ? "Send Document for Signing" : "Request Mandatory Action"}
+          </DialogTitle>
           <DialogDescription>
-            Creates a required action that blocks dashboard access until the team member completes it.
+            {isDocSign
+              ? "Upload a document (offer letter, contract, etc.) — the contractor will review and e-sign it on their next login."
+              : "Creates a required action that blocks dashboard access until the team member completes it."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
@@ -874,8 +939,8 @@ function CreateMandatoryActionDialog({
             <Select value={form.actionType} onValueChange={(v) => setForm({ ...form, actionType: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="document_upload">Document Upload</SelectItem>
-                <SelectItem value="document_sign">Document Sign</SelectItem>
+                <SelectItem value="document_sign">Document for Signing (e-signature)</SelectItem>
+                <SelectItem value="document_upload">Document Upload (contractor uploads)</SelectItem>
                 <SelectItem value="info_update">Information Update</SelectItem>
                 <SelectItem value="policy_ack">Policy Acknowledgment</SelectItem>
                 <SelectItem value="custom">Custom</SelectItem>
@@ -884,25 +949,89 @@ function CreateMandatoryActionDialog({
           </div>
           <div>
             <Label>Title *</Label>
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g., Upload updated W-9" />
+            <Input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder={isDocSign ? "e.g., Offer Letter — Sign to Accept" : "e.g., Upload updated W-9"}
+            />
           </div>
           <div>
             <Label>Description</Label>
-            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Additional details..." />
+            <Textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={2}
+              placeholder={isDocSign ? "Instructions for the contractor before signing..." : "Additional details..."}
+            />
           </div>
+
+          {/* Document upload — required for document_sign, optional otherwise */}
+          {(isDocSign || form.actionType === "document_upload") && (
+            <div>
+              <Label>{isDocSign ? "Document to Sign *" : "Attach Document (optional)"}</Label>
+              <div
+                className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                  fileToUpload ? "border-green-400 bg-green-50" : "border-border hover:border-accent"
+                }`}
+                onClick={() => document.getElementById("admin-doc-upload")?.click()}
+              >
+                {fileToUpload ? (
+                  <div className="flex items-center justify-center gap-2 text-green-700">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-sm font-medium">{fileToUpload.name}</span>
+                    <span className="text-xs text-muted-foreground">({(fileToUpload.size / 1024).toFixed(0)} KB)</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                    <Upload className="w-6 h-6" />
+                    <p className="text-sm">Click to choose file</p>
+                    <p className="text-xs">PDF, DOC, DOCX, PNG, JPG</p>
+                  </div>
+                )}
+              </div>
+              <input
+                id="admin-doc-upload"
+                type="file"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+              />
+              {fileToUpload && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-destructive mt-1"
+                  onClick={() => setFileToUpload(null)}
+                >
+                  Remove file
+                </button>
+              )}
+            </div>
+          )}
+
           <div>
             <Label>Due Date (optional)</Label>
             <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
           </div>
           <div className="flex items-center gap-2">
-            <input type="checkbox" id="blocks" checked={form.blocksAccess} onChange={(e) => setForm({ ...form, blocksAccess: e.target.checked })} className="rounded" />
+            <input
+              type="checkbox"
+              id="blocks"
+              checked={form.blocksAccess}
+              onChange={(e) => setForm({ ...form, blocksAccess: e.target.checked })}
+              className="rounded"
+            />
             <label htmlFor="blocks" className="text-sm">Block dashboard access until completed</label>
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
             <Button onClick={handleCreate} disabled={loading} className="flex-1">
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-              {loading ? "Creating..." : "Create Action"}
+              {loading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {isDocSign ? "Uploading..." : "Creating..."}</>
+              ) : isDocSign ? (
+                <><PenLine className="w-4 h-4 mr-2" /> Send for Signing</>
+              ) : (
+                <><Send className="w-4 h-4 mr-2" /> Create Action</>
+              )}
             </Button>
           </div>
         </div>
