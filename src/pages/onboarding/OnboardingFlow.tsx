@@ -143,13 +143,9 @@ export default function OnboardingFlow() {
     },
     onSuccess: async () => {
       await refetchProgress();
-      // Check if all done
-      const { data } = await supabase.rpc("check_onboarding_complete", { p_user_id: user!.id });
-      if (data === true) {
-        await refreshOnboardingStatus();
-        toast({ title: "Onboarding Complete!", description: "Welcome to the team! Redirecting to your dashboard..." });
-        setTimeout(() => navigate("/dashboard"), 1500);
-      }
+      toast({ title: "Step completed!", description: "Moving to the next step." });
+      // Advance to next step if available
+      setCurrentStepIndex((prev) => Math.min(prev + 1, steps.length - 1));
     },
   });
 
@@ -157,18 +153,20 @@ export default function OnboardingFlow() {
   const currentProgress = currentStep ? getStepProgress(currentStep.id) : null;
   const isCurrentCompleted = currentProgress?.status === "completed";
 
-  // Auto-advance past completed steps on load
+  // Auto-advance to first incomplete step on initial load only
+  const [initializedRef] = useState({ done: false });
   useEffect(() => {
-    if (steps.length > 0 && progress.length > 0) {
+    if (steps.length > 0 && progress.length >= 0 && !initializedRef.done) {
+      initializedRef.done = true;
       const firstIncomplete = steps.findIndex((s) => {
         const p = getStepProgress(s.id);
         return p?.status !== "completed";
       });
-      if (firstIncomplete >= 0 && firstIncomplete !== currentStepIndex) {
+      if (firstIncomplete >= 0) {
         setCurrentStepIndex(firstIncomplete);
       }
     }
-  }, [steps.length, progress.length]);
+  }, [steps.length]);
 
   if (!user || steps.length === 0) {
     return (
