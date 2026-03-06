@@ -20,6 +20,10 @@ const SignContract = lazy(() => import("./pages/public/SignContract"));
 const JobApplication = lazy(() => import("./pages/apply/JobApplication"));
 const ApplicationThankYou = lazy(() => import("./pages/apply/ApplicationThankYou"));
 
+// Onboarding routes
+const OnboardingFlow = lazy(() => import("./pages/onboarding/OnboardingFlow"));
+const MandatoryActions = lazy(() => import("./pages/onboarding/MandatoryActions"));
+
 // Dashboard routes
 const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
 const MyStats = lazy(() => import("./pages/dashboard/MyStats"));
@@ -59,6 +63,7 @@ const ContractorManagement = lazy(() => import("./pages/admin/ContractorManageme
 const LeadflowStatistics = lazy(() => import("./pages/admin/LeadflowStatistics"));
 const AdminTimeClock = lazy(() => import("./pages/admin/AdminTimeClock"));
 const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting"));
+const OnboardingManagement = lazy(() => import("./pages/admin/OnboardingManagement"));
 
 // Canvasser routes
 const CanvasserLayout = lazy(() => import("./pages/canvasser/CanvasserLayout"));
@@ -111,6 +116,24 @@ const App = () => (
             <Route path="/apply/thank-you" element={<ApplicationThankYou />} />
             <Route path="/get-quote" element={<GetQuote />} />
             <Route path="/sign/:token" element={<SignContract />} />
+
+            {/* Onboarding & Mandatory Actions (protected but skip onboarding check) */}
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute skipOnboardingCheck>
+                  <OnboardingFlow />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mandatory-actions"
+              element={
+                <ProtectedRoute skipOnboardingCheck>
+                  <MandatoryActions />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Protected Dashboard Routes (Sales Reps) */}
             <Route
@@ -208,6 +231,7 @@ const App = () => (
               <Route path="team" element={<ContractorManagement />} />
               <Route path="timeclock" element={<AdminTimeClock />} />
               <Route path="notifications" element={<NotificationRouting />} />
+              <Route path="onboarding" element={<OnboardingManagement />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

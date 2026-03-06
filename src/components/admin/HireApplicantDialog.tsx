@@ -92,7 +92,40 @@ export function HireApplicantDialog({ isOpen, onClose, applicant, onSuccess }: H
 
       if (updateError) throw updateError;
 
-      toast({ title: "Account created successfully!", description: `User account for ${applicant.full_name} is ready.` });
+      // Initialize onboarding checklist for new hire
+      const roleForOnboarding = role === "canvasser" ? "canvasser" : role === "supplementer" ? "supplementer" : "user";
+      await supabase.rpc("initialize_user_onboarding", {
+        p_user_id: newUserId,
+        p_role: roleForOnboarding,
+      });
+
+      // If they already completed DNA assessment during application, auto-complete that step
+      const { data: dnaStep } = await supabase
+        .from("onboarding_steps")
+        .select("id")
+        .eq("step_key", "dna_assessment")
+        .maybeSingle();
+
+      if (dnaStep) {
+        // Check if applicant had a DNA score
+        const { data: appData } = await supabase
+          .from("job_applications")
+          .select("dna_score")
+          .eq("id", applicant.id)
+          .maybeSingle();
+
+        if (appData?.dna_score) {
+          await supabase.from("user_onboarding_progress").upsert({
+            user_id: newUserId,
+            step_id: dnaStep.id,
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            metadata: { source: "job_application", score: appData.dna_score },
+          }, { onConflict: "user_id,step_id" });
+        }
+      }
+
+      toast({ title: "Account created successfully!", description: `User account for ${applicant.full_name} is ready. Onboarding checklist initialized.` });
       onSuccess(newUserId);
       onClose();
     } catch (err: any) {
