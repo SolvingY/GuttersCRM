@@ -306,7 +306,35 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     },
   });
 
-  // Load profile data into personal info state
+  // Fetch offer letters for this contractor
+  const { data: offerLetters = [], refetch: refetchOfferLetters } = useQuery({
+    queryKey: ["contractor-offer-letters", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contractor_offer_letters")
+        .select("*")
+        .eq("contractor_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Fetch offer letter templates
+  const { data: offerTemplates = [] } = useQuery({
+    queryKey: ["offer-letter-templates"],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("offer_letter_templates")
+        .select("*")
+        .eq("is_active", true)
+        .order("position_title");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   useEffect(() => {
     if (profileData) {
       setPersonalInfo(profileData as any);
