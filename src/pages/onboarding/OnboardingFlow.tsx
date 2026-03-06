@@ -144,7 +144,7 @@ export default function OnboardingFlow() {
     onSuccess: async () => {
       await refetchProgress();
       // Check if all done
-      const { data } = await supabase.rpc("check_onboarding_complete", { p_user_id: user!.id });
+      const { data } = await (supabase as any).rpc("check_onboarding_complete", { p_user_id: user!.id });
       if (data === true) {
         await refreshOnboardingStatus();
         toast({ title: "Onboarding Complete!", description: "Welcome to the team! Redirecting to your dashboard..." });
@@ -280,7 +280,7 @@ export default function OnboardingFlow() {
                   ) : (
                     <Button
                       onClick={async () => {
-                        const { data } = await supabase.rpc("check_onboarding_complete", { p_user_id: user.id });
+                        const { data } = await (supabase as any).rpc("check_onboarding_complete", { p_user_id: user.id });
                         if (data === true) {
                           await refreshOnboardingStatus();
                           toast({ title: "All done! Redirecting..." });
