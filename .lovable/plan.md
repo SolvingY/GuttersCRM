@@ -1,42 +1,32 @@
 
 
-# Add Edit Button to Shift History
+# Apply Onboarding System Database Migrations
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Current State
+The database is missing all onboarding infrastructure:
+- No `onboarding_steps` table
+- No `user_onboarding_progress` table
+- No `mandatory_actions` table
+- No `onboarding_complete` / `onboarding_completed_at` columns on `profiles`
 
-## Changes
+Two migration files already exist in the codebase and contain the correct SQL.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+## Plan
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+### Step 1: Apply Migration 1 — Onboarding System
+Run the SQL from `supabase/migrations/20260306100000_onboarding_system.sql` via the database migration tool. This creates:
+- `onboarding_complete` and `onboarding_completed_at` columns on `profiles`
+- `onboarding_steps` table with 13 seeded steps
+- `user_onboarding_progress` table
+- `mandatory_actions` table
+- All indexes, RLS policies, and two RPC functions (`initialize_user_onboarding`, `check_onboarding_complete`)
+- Marks all existing users as onboarding complete
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+### Step 2: Apply Migration 2 — Document Signing Columns
+Run the SQL from `supabase/migrations/20260306200000_document_signing.sql` to add `signature_data`, `signed_at`, `signed_by_name` to `mandatory_actions` and `signature_data`, `signed_by_name` to `contractor_files`.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+### Step 3: Regenerate Types
+After both migrations are applied, the auto-generated `src/integrations/supabase/types.ts` will update to include the new tables and columns, removing the need for `as any` casts.
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+No code file changes are needed — the frontend already references these tables (with `as any` casts). Once the schema exists, everything will work.
 
