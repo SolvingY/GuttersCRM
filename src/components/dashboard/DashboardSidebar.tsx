@@ -1,11 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Trophy, Settings, ChevronLeft, ChevronRight, Gift, X, Flame, History, ClipboardList, Wrench } from 'lucide-react';
+import { BarChart3, Trophy, Settings, ChevronLeft, ChevronRight, Gift, X, Flame, History, ClipboardList, Wrench, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { icon: BarChart3, label: 'My Stats', path: '/dashboard/stats' },
+  { icon: ClipboardCheck, label: 'Onboarding', path: '/onboarding' },
   { icon: ClipboardList, label: 'My Leads', path: '/dashboard/my-leads' },
   { icon: Wrench, label: 'Tools', path: '/dashboard/tools' },
   { icon: Trophy, label: 'Leaderboard', path: '/dashboard/leaderboard' },
