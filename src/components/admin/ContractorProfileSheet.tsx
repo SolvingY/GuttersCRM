@@ -255,9 +255,21 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("user_onboarding_progress" as any) as any)
-        .select("*, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)")
-        .eq("user_id", user!.id)
-        .order("step(sort_order)");
+        .select("*")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: allOnboardingSteps = [] } = useQuery({
+    queryKey: ["onboarding-steps"],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("onboarding_steps" as any) as any)
+        .select("id, step_key, step_name, step_type, required, sort_order")
+        .eq("is_active", true)
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -593,9 +605,11 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
 
         <div className="p-6 space-y-6">
           {/* Onboarding Status Section */}
-          {onboardingProgress.length > 0 && (() => {
-            const completed = onboardingProgress.filter((p: any) => p.status === "completed").length;
-            const total = onboardingProgress.length;
+          {allOnboardingSteps.length > 0 && (() => {
+            const total = allOnboardingSteps.length;
+            const completed = allOnboardingSteps.filter((step: any) =>
+              onboardingProgress.some((p: any) => p.step_id === step.id && p.status === "completed")
+            ).length;
             const pct = Math.round((completed / total) * 100);
             const isComplete = pct === 100;
             const pendingActions = memberMandatoryActions.filter((a: any) => a.status === "pending");
@@ -618,25 +632,28 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {onboardingProgress
-                      .sort((a: any, b: any) => (a.step?.sort_order || 0) - (b.step?.sort_order || 0))
-                      .map((p: any) => (
+                    {allOnboardingSteps.map((step: any) => {
+                      const isCompleted = onboardingProgress.some(
+                        (p: any) => p.step_id === step.id && p.status === "completed"
+                      );
+                      return (
                         <div
-                          key={p.id}
+                          key={step.id}
                           className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded ${
-                            p.status === "completed"
+                            isCompleted
                               ? "bg-green-50 text-green-700"
                               : "bg-muted/50 text-muted-foreground"
                           }`}
                         >
-                          {p.status === "completed" ? (
+                          {isCompleted ? (
                             <CheckCircle className="w-3 h-3 shrink-0" />
                           ) : (
                             <Circle className="w-3 h-3 shrink-0" />
                           )}
-                          <span className="truncate">{p.step?.step_name}</span>
+                          <span className="truncate">{step.step_name}</span>
                         </div>
-                      ))}
+                      );
+                    })}
                   </div>
 
                   {/* Pending mandatory actions */}
