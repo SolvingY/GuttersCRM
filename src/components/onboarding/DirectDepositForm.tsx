@@ -17,11 +17,15 @@ interface DirectDepositFormProps {
 export default function DirectDepositForm({ isCompleted, onComplete, isCompleting, metadata }: DirectDepositFormProps) {
   const [form, setForm] = useState({
     accountHolderName: "",
+    email: "",
+    phone: "",
+    ssn: "",
     bankName: "",
     routingNumber: "",
     accountNumber: "",
     confirmAccountNumber: "",
-    accountType: "checking",
+    accountType: "personal",
+    mailingAddress: "",
     authorized: false,
     signatureName: "",
   });
@@ -79,13 +83,43 @@ export default function DirectDepositForm({ isCompleted, onComplete, isCompletin
     <div className="space-y-6">
       <div className="border border-border rounded-lg p-5 bg-white shadow-sm">
         <h3 className="font-heading text-base uppercase mb-4 text-center border-b border-border pb-3">
-          Direct Deposit Authorization Form
+          Next Generation Direct Deposit Form
         </h3>
 
         <div className="space-y-4">
           <div>
-            <Label className="font-medium">Account Holder Full Name *</Label>
+            <Label className="font-medium">Full Legal Name *</Label>
             <Input value={form.accountHolderName} onChange={(e) => update("accountHolderName", e.target.value)} className="mt-1" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="font-medium">Email Address</Label>
+              <Input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="font-medium">Phone Number</Label>
+              <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="(555) 123-4567" className="mt-1" />
+            </div>
+          </div>
+
+          <div>
+            <Label className="font-medium">Social Security Number</Label>
+            <Input
+              value={form.ssn}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 9);
+                const formatted = v.length > 5 ? `${v.slice(0,3)}-${v.slice(3,5)}-${v.slice(5)}` : v.length > 3 ? `${v.slice(0,3)}-${v.slice(3)}` : v;
+                update("ssn", formatted);
+              }}
+              placeholder="XXX-XX-XXXX"
+              className="mt-1 max-w-xs"
+            />
+          </div>
+
+          <div>
+            <Label className="font-medium">Mailing Address</Label>
+            <Input value={form.mailingAddress} onChange={(e) => update("mailingAddress", e.target.value)} className="mt-1" />
           </div>
 
           <div>
@@ -132,12 +166,12 @@ export default function DirectDepositForm({ isCompleted, onComplete, isCompletin
             <Label className="font-medium">Account Type *</Label>
             <RadioGroup value={form.accountType} onValueChange={(v) => update("accountType", v)} className="mt-2 flex gap-6">
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="checking" id="acct-checking" />
-                <label htmlFor="acct-checking" className="text-sm cursor-pointer">Checking</label>
+                <RadioGroupItem value="personal" id="acct-personal" />
+                <label htmlFor="acct-personal" className="text-sm cursor-pointer">Personal</label>
               </div>
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="savings" id="acct-savings" />
-                <label htmlFor="acct-savings" className="text-sm cursor-pointer">Savings</label>
+                <RadioGroupItem value="business" id="acct-business" />
+                <label htmlFor="acct-business" className="text-sm cursor-pointer">Business</label>
               </div>
             </RadioGroup>
           </div>
