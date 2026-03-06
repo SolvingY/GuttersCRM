@@ -53,7 +53,13 @@ import {
   Circle,
   Send,
   AlertCircle,
+  FileText,
+  Clock,
+  Eye,
+  EyeOff,
+  Calendar,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { PerformanceReviewForm, ReviewScoreBreakdown, defaultReviewFormData } from "./PerformanceReviewForm";
 import type { ReviewFormData } from "./PerformanceReviewForm";
