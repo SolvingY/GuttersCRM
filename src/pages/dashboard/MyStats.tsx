@@ -146,14 +146,6 @@ export default function MyStats() {
     fetchMetrics();
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-
   const latestMetric = metrics[metrics.length - 1];
   const previousMetric = metrics[metrics.length - 2];
 
@@ -239,6 +231,14 @@ export default function MyStats() {
       return { ...w, cumulativeRevenue: cumulative };
     });
   }, [allWeeklyMetrics, yearlyGoal]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   const getGoalColor = () => {
     if (goalPercentage >= 75) return 'text-green-600';
