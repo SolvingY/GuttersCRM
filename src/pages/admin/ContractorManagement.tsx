@@ -75,11 +75,9 @@ export default function ContractorManagement() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["cm-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count, start_date, onboarding_complete");
+      const { data, error } = await supabase.from("profiles").select("*");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -87,8 +85,8 @@ export default function ContractorManagement() {
   const { data: allOnboardingProgress = [] } = useQuery({
     queryKey: ["cm-onboarding-progress"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_onboarding_progress")
+      const { data, error } = await (supabase
+        .from("user_onboarding_progress" as any) as any)
         .select("user_id, step_id, status, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)");
       if (error) throw error;
       return data ?? [];
@@ -99,8 +97,8 @@ export default function ContractorManagement() {
   const { data: pendingMandatoryActions = [], refetch: refetchActions } = useQuery({
     queryKey: ["cm-pending-mandatory-actions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mandatory_actions")
+      const { data, error } = await (supabase
+        .from("mandatory_actions" as any) as any)
         .select("*")
         .eq("status", "pending")
         .eq("blocks_access", true);
@@ -234,10 +232,19 @@ export default function ContractorManagement() {
         hasSalesMetrics: !!sales,
         hasCanvasserMetrics: !!canvasser,
         dnaPending,
-        onboardingComplete: (p as any).onboarding_complete ?? true,
+        // Derive from progress data: no records = legacy user = treat as complete.
+        // A user is onboarding if they have at least one pending required step.
+        onboardingComplete: (() => {
+          const userProgress = allOnboardingProgress.filter((op) => op.user_id === p.id);
+          if (userProgress.length === 0) return true; // legacy user, no onboarding records
+          const hasIncomplete = userProgress.some(
+            (op) => (op.step as any)?.required && op.status !== "completed"
+          );
+          return !hasIncomplete;
+        })(),
       };
     });
-  }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps]);
+  }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps, allOnboardingProgress]);
 
   const filteredUsers = useMemo(() => {
     let list: typeof users;
@@ -884,7 +891,7 @@ function CreateMandatoryActionDialog({
         } as any);
       }
 
-      const { error } = await supabase.from("mandatory_actions").insert({
+      const { error } = await (supabase.from("mandatory_actions" as any) as any).insert({
         user_id: form.userId,
         requested_by: currentUserId,
         action_type: form.actionType,

@@ -46,15 +46,15 @@ export default function MandatoryActions() {
     queryKey: ["mandatory-actions", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("mandatory_actions")
+      const { data, error } = await (supabase
+        .from("mandatory_actions" as any) as any)
         .select("*")
         .eq("user_id", user.id)
         .eq("status", "pending")
         .eq("blocks_access", true)
         .order("created_at");
       if (error) throw error;
-      return data as MandatoryAction[];
+      return data as unknown as MandatoryAction[];
     },
     enabled: !!user,
   });
@@ -77,8 +77,8 @@ export default function MandatoryActions() {
       if (signerName) update.signed_by_name = signerName;
       if (signatureData) update.signed_at = new Date().toISOString();
 
-      const { error } = await supabase
-        .from("mandatory_actions")
+      const { error } = await (supabase
+        .from("mandatory_actions" as any) as any)
         .update(update)
         .eq("id", actionId);
       if (error) throw error;

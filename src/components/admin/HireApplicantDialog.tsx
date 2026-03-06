@@ -94,14 +94,14 @@ export function HireApplicantDialog({ isOpen, onClose, applicant, onSuccess }: H
 
       // Initialize onboarding checklist for new hire
       const roleForOnboarding = role === "canvasser" ? "canvasser" : role === "supplementer" ? "supplementer" : "user";
-      await supabase.rpc("initialize_user_onboarding", {
+      await (supabase as any).rpc("initialize_user_onboarding", {
         p_user_id: newUserId,
         p_role: roleForOnboarding,
       });
 
       // If they already completed DNA assessment during application, auto-complete that step
-      const { data: dnaStep } = await supabase
-        .from("onboarding_steps")
+      const { data: dnaStep } = await (supabase
+        .from("onboarding_steps" as any) as any)
         .select("id")
         .eq("step_key", "dna_assessment")
         .maybeSingle();
@@ -115,7 +115,7 @@ export function HireApplicantDialog({ isOpen, onClose, applicant, onSuccess }: H
           .maybeSingle();
 
         if (appData?.dna_score) {
-          await supabase.from("user_onboarding_progress").upsert({
+          await (supabase.from("user_onboarding_progress" as any) as any).upsert({
             user_id: newUserId,
             step_id: dnaStep.id,
             status: "completed",

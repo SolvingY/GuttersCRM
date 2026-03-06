@@ -74,8 +74,8 @@ export default function OnboardingFlow() {
   const { data: steps = [] } = useQuery({
     queryKey: ["onboarding-steps"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("onboarding_steps")
+      const { data, error } = await (supabase
+        .from("onboarding_steps" as any) as any)
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
@@ -89,12 +89,12 @@ export default function OnboardingFlow() {
     queryKey: ["onboarding-progress", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("user_onboarding_progress")
+      const { data, error } = await (supabase
+        .from("user_onboarding_progress" as any) as any)
         .select("*")
         .eq("user_id", user.id);
       if (error) throw error;
-      return data as UserProgress[];
+      return data as unknown as UserProgress[];
     },
     enabled: !!user,
   });
@@ -130,8 +130,8 @@ export default function OnboardingFlow() {
   const completeMutation = useMutation({
     mutationFn: async ({ stepId, metadata }: { stepId: string; metadata?: Record<string, any> }) => {
       if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase
-        .from("user_onboarding_progress")
+      const { error } = await (supabase
+        .from("user_onboarding_progress" as any) as any)
         .upsert({
           user_id: user.id,
           step_id: stepId,
@@ -144,7 +144,7 @@ export default function OnboardingFlow() {
     onSuccess: async () => {
       await refetchProgress();
       // Check if all done
-      const { data } = await supabase.rpc("check_onboarding_complete", { p_user_id: user!.id });
+      const { data } = await (supabase as any).rpc("check_onboarding_complete", { p_user_id: user!.id });
       if (data === true) {
         await refreshOnboardingStatus();
         toast({ title: "Onboarding Complete!", description: "Welcome to the team! Redirecting to your dashboard..." });
@@ -280,7 +280,7 @@ export default function OnboardingFlow() {
                   ) : (
                     <Button
                       onClick={async () => {
-                        const { data } = await supabase.rpc("check_onboarding_complete", { p_user_id: user.id });
+                        const { data } = await (supabase as any).rpc("check_onboarding_complete", { p_user_id: user.id });
                         if (data === true) {
                           await refreshOnboardingStatus();
                           toast({ title: "All done! Redirecting..." });

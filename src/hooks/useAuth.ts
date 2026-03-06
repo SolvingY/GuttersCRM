@@ -50,8 +50,8 @@ export function useAuth() {
     preferredView: 'sales' | 'canvasser' | 'supplementer';
     onboardingComplete: boolean;
   }> => {
-    const { data, error } = await supabase
-      .from('profiles')
+    const { data, error } = await (supabase
+      .from('profiles') as any)
       .select('preferred_view, onboarding_complete')
       .eq('id', userId)
       .maybeSingle();
@@ -63,8 +63,8 @@ export function useAuth() {
   }, []);
 
   const fetchMandatoryActions = useCallback(async (userId: string): Promise<boolean> => {
-    const { count, error } = await supabase
-      .from('mandatory_actions')
+    const { count, error } = await (supabase
+      .from('mandatory_actions' as any) as any)
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'pending')
@@ -178,6 +178,8 @@ export function useAuth() {
       session: null,
       roles: [],
       activeView: 'sales',
+      onboardingComplete: true,
+      hasPendingMandatoryActions: false,
       sessionLoading: false,
       roleLoading: false,
     });
