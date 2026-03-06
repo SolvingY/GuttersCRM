@@ -85,8 +85,8 @@ export default function ContractorManagement() {
   const { data: allOnboardingProgress = [] } = useQuery({
     queryKey: ["cm-onboarding-progress"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_onboarding_progress")
+      const { data, error } = await (supabase
+        .from("user_onboarding_progress" as any) as any)
         .select("user_id, step_id, status, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)");
       if (error) throw error;
       return data ?? [];
@@ -97,8 +97,8 @@ export default function ContractorManagement() {
   const { data: pendingMandatoryActions = [], refetch: refetchActions } = useQuery({
     queryKey: ["cm-pending-mandatory-actions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mandatory_actions")
+      const { data, error } = await (supabase
+        .from("mandatory_actions" as any) as any)
         .select("*")
         .eq("status", "pending")
         .eq("blocks_access", true);

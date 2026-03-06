@@ -253,8 +253,8 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     queryKey: ["contractor-onboarding", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_onboarding_progress")
+      const { data, error } = await (supabase
+        .from("user_onboarding_progress" as any) as any)
         .select("*, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)")
         .eq("user_id", user!.id)
         .order("step(sort_order)");
@@ -268,8 +268,8 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     queryKey: ["contractor-mandatory-actions", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mandatory_actions")
+      const { data, error } = await (supabase
+        .from("mandatory_actions" as any) as any)
         .select("*")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -655,7 +655,7 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                               variant="ghost"
                               className="h-6 text-xs"
                               onClick={async () => {
-                                await supabase.from("mandatory_actions").update({ status: "dismissed" }).eq("id", a.id);
+                                await (supabase.from("mandatory_actions" as any) as any).update({ status: "dismissed" }).eq("id", a.id);
                                 refetchActions();
                                 toast({ title: "Action dismissed" });
                               }}
