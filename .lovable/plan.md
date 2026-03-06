@@ -1,42 +1,30 @@
 
 
-# Add Edit Button to Shift History
+# Add Offer Letter Access from Contractor Profile
 
 ## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+The "Send Offer Letter" functionality is only accessible from Admin → Onboarding Management → Offer Letters tab. When viewing a contractor profile in Contractor MGMT, there's no way to send or view offer letters — forcing admins to navigate away.
 
-## Changes
+## Plan
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### Add an "Offer Letter" section to ContractorProfileSheet.tsx
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+Inside the existing contractor profile sheet, add a new collapsible section (like the existing Documents, Performance Reviews sections) called **"Offer Letter"** that:
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+1. **Queries `contractor_offer_letters`** for the selected contractor
+2. **If no letter exists**: Shows a "Send Offer Letter" button that opens the existing `SendOfferLetterDialog` (extracted as a shared component or duplicated inline)
+3. **If letter exists**: Shows status badge (Pending / Signed / Declined), position title, sent date, signed date, and a preview/expand of the letter content or PDF link
+4. **Quick send option**: A simplified inline form — select template or upload PDF, fill position/start date, send — without needing to navigate to OnboardingManagement
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+### File Changes
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+- **`src/components/admin/ContractorProfileSheet.tsx`**: Add a new "Offer Letter" collapsible section after the onboarding checklist section. Query `contractor_offer_letters` for the contractor. Show status or send button. Include a mini send dialog inline.
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+- **No database changes needed** — the `contractor_offer_letters` table and RLS policies already exist.
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+### Section Layout
+- Collapsible header: "Offer Letter" with FileText icon + status badge
+- If no letter: "No offer letter sent" message + "Send Offer Letter" button
+- If letter exists: Card showing position, status, dates, with expandable content preview
+- Send dialog reuses the same pattern from OnboardingManagement (template select or PDF upload, start date, position title)
 
