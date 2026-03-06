@@ -1177,6 +1177,54 @@ export type Database = {
         }
         Relationships: []
       }
+      mandatory_actions: {
+        Row: {
+          action_type: string
+          blocks_access: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          file_url: string | null
+          id: string
+          requested_by: string
+          status: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          blocks_access?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          file_url?: string | null
+          id?: string
+          requested_by: string
+          status?: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          blocks_access?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          file_url?: string | null
+          id?: string
+          requested_by?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_routing: {
         Row: {
           created_at: string | null
@@ -1201,6 +1249,45 @@ export type Database = {
           is_active?: boolean | null
           notification_type?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      onboarding_steps: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          required: boolean | null
+          role_applicable: string[] | null
+          sort_order: number
+          step_key: string
+          step_name: string
+          step_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          required?: boolean | null
+          role_applicable?: string[] | null
+          sort_order?: number
+          step_key: string
+          step_name: string
+          step_type: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          required?: boolean | null
+          role_applicable?: string[] | null
+          sort_order?: number
+          step_key?: string
+          step_name?: string
+          step_type?: string
         }
         Relationships: []
       }
@@ -1490,6 +1577,8 @@ export type Database = {
           last_login_at: string | null
           login_count: number | null
           manager_id: string | null
+          onboarding_complete: boolean | null
+          onboarding_completed_at: string | null
           phone: string | null
           preferred_view: string | null
           profit_split_percentage: number | null
@@ -1522,6 +1611,8 @@ export type Database = {
           last_login_at?: string | null
           login_count?: number | null
           manager_id?: string | null
+          onboarding_complete?: boolean | null
+          onboarding_completed_at?: string | null
           phone?: string | null
           preferred_view?: string | null
           profit_split_percentage?: number | null
@@ -1554,6 +1645,8 @@ export type Database = {
           last_login_at?: string | null
           login_count?: number | null
           manager_id?: string | null
+          onboarding_complete?: boolean | null
+          onboarding_completed_at?: string | null
           phone?: string | null
           preferred_view?: string | null
           profit_split_percentage?: number | null
@@ -2073,6 +2166,44 @@ export type Database = {
         }
         Relationships: []
       }
+      user_onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          status: string
+          step_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          step_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          step_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_onboarding_progress_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -2431,6 +2562,10 @@ export type Database = {
         Args: { p_lead_id: string; p_new_type: string }
         Returns: undefined
       }
+      check_onboarding_complete: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       create_manual_lead: {
         Args: {
           p_admin_notes?: string
@@ -2463,6 +2598,10 @@ export type Database = {
         Returns: undefined
       }
       increment_login_count: { Args: { uid: string }; Returns: undefined }
+      initialize_user_onboarding: {
+        Args: { p_role?: string; p_user_id: string }
+        Returns: undefined
+      }
       submit_quote_request: {
         Args: {
           p_best_contact_time?: string[]
