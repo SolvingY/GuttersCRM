@@ -75,11 +75,9 @@ export default function ContractorManagement() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["cm-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count, start_date");
+      const { data, error } = await supabase.from("profiles").select("*");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
