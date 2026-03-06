@@ -1118,7 +1118,7 @@ export default function CompanyGoals() {
 
             {(() => {
               const budget = parseFloat(targetAdSpendBudget) || 0;
-              const monthsElapsed = currentMonthIndex + 1;
+              const monthsElapsed = monthlyBreakdown.length;
               const expectedBudget = budget * monthsElapsed;
               if (budget > 0 && ytdTotal > 0) {
                 const variance = expectedBudget - ytdTotal;
