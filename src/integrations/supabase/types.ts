@@ -522,6 +522,88 @@ export type Database = {
           },
         ]
       }
+      contractor_offer_letters: {
+        Row: {
+          additional_terms: string | null
+          admin_id: string | null
+          contractor_id: string
+          created_at: string | null
+          declined_at: string | null
+          file_path: string | null
+          file_url: string | null
+          id: string
+          letter_content: string | null
+          pay_structure: string | null
+          position_title: string
+          sent_at: string | null
+          signed_at: string | null
+          signed_by_name: string | null
+          start_date: string | null
+          status: string
+          template_id: string | null
+        }
+        Insert: {
+          additional_terms?: string | null
+          admin_id?: string | null
+          contractor_id: string
+          created_at?: string | null
+          declined_at?: string | null
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          letter_content?: string | null
+          pay_structure?: string | null
+          position_title: string
+          sent_at?: string | null
+          signed_at?: string | null
+          signed_by_name?: string | null
+          start_date?: string | null
+          status?: string
+          template_id?: string | null
+        }
+        Update: {
+          additional_terms?: string | null
+          admin_id?: string | null
+          contractor_id?: string
+          created_at?: string | null
+          declined_at?: string | null
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          letter_content?: string | null
+          pay_structure?: string | null
+          position_title?: string
+          sent_at?: string | null
+          signed_at?: string | null
+          signed_by_name?: string | null
+          start_date?: string | null
+          status?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_offer_letters_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_offer_letters_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_offer_letters_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "offer_letter_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_canvasser_metric_entries: {
         Row: {
           cancelled_leads_delta: number | null
@@ -1266,6 +1348,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      offer_letter_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          pay_structure_description: string | null
+          position_title: string
+          template_content: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          pay_structure_description?: string | null
+          position_title: string
+          template_content: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          pay_structure_description?: string | null
+          position_title?: string
+          template_content?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_letter_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onboarding_steps: {
         Row: {
