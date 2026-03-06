@@ -89,7 +89,7 @@ export function PipelineFunnelWidget() {
     };
 
     fetchFunnel();
-  }, [dateRange]);
+  }, [dateRange, sourceFilter]);
 
   if (loading) {
     return (

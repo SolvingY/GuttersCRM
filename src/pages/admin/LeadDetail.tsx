@@ -721,7 +721,6 @@ export default function LeadDetail() {
               Save Notes
             </Button>
           </CollapsibleSection>
-        </div>
       </div>
 
       {/* Archive Dialog */}
