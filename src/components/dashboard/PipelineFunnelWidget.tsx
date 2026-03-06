@@ -17,6 +17,7 @@ const STAGE_COLORS = [
   'hsl(200, 70%, 50%)',
   'hsl(150, 60%, 45%)',
   'hsl(120, 50%, 45%)',
+  'hsl(0, 0%, 55%)',
 ];
 
 const getDateRange = (range: string): string | null => {
