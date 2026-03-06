@@ -47,7 +47,7 @@ export function CollectionsPipelineWidget({ isAdmin }: CollectionsPipelineWidget
         install_date, status,
         lead_payments(amount)
       `)
-      .in('status', ['won', 'scheduled'])
+      .in('status', ['won', 'scheduled', 'completed'])
       .not('quote_amount', 'is', null);
 
     if (!isAdmin) {

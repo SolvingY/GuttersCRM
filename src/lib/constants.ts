@@ -1,12 +1,30 @@
 // Fiscal Year Configuration
-// The fiscal year runs from December 15 to December 15
+// The fiscal year runs December 15 → December 14 of the following year.
+// CURRENT_YEAR_START / CURRENT_YEAR_END are computed dynamically so they
+// never need to be manually updated each year.
+function computeFiscalYear() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const fiscalCutoff = new Date(year, 11, 15); // Dec 15 of the current calendar year
+
+  // If today is before Dec 15 of this year, the fiscal year started on Dec 15 of last year.
+  // If today is on or after Dec 15 of this year, the fiscal year started today's Dec 15.
+  const startYear = today < fiscalCutoff ? year - 1 : year;
+  return {
+    start: new Date(startYear, 11, 15),       // Dec 15 of startYear
+    end: new Date(startYear + 1, 11, 15),     // Dec 15 of the following year
+  };
+}
+
+const _fy = computeFiscalYear();
+
 export const FISCAL_YEAR = {
   START_MONTH: 11, // December (0-indexed)
   START_DAY: 15,
   END_MONTH: 11,
   END_DAY: 15,
-  CURRENT_YEAR_START: new Date(2025, 11, 15), // December 15, 2025
-  CURRENT_YEAR_END: new Date(2026, 11, 15),   // December 15, 2026
+  CURRENT_YEAR_START: _fy.start,
+  CURRENT_YEAR_END: _fy.end,
 };
 
 // Sales Rank Options

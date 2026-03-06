@@ -13,6 +13,7 @@ import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
 import { format, addMonths, startOfMonth, subMonths } from 'date-fns';
 import { AdSpendDialog } from '@/components/admin/AdSpendDialog';
+import { FISCAL_YEAR } from '@/lib/constants';
 
 interface CompanyGoal {
   id: string;
@@ -81,33 +82,37 @@ export default function CompanyGoals() {
   const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
 
-  const fiscalStart = new Date(2025, 11, 15);
-  const fiscalEnd = new Date(2026, 11, 15);
+  const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
+  const fiscalEnd = FISCAL_YEAR.CURRENT_YEAR_END;
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-  // YTD Ad Spend query - fetch all months for the current calendar year
-  const currentYear = new Date().getFullYear();
-  const yearStart = `${currentYear}-01-01`;
-  const yearEnd = `${currentYear}-12-01`;
+  // YTD Ad Spend query — fetch all months within the current fiscal year
+  const fyYearStart = format(fiscalStart, 'yyyy-MM-dd');
+  const fyYearEnd = format(fiscalEnd, 'yyyy-MM-dd');
 
   const { data: adSpendYTD = [] } = useQuery({
-    queryKey: ['ad-spend-ytd', currentYear],
+    queryKey: ['ad-spend-ytd', fyYearStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ad_spend_tracking')
         .select('*')
-        .gte('month', yearStart)
-        .lte('month', yearEnd)
+        .gte('month', fyYearStart)
+        .lte('month', fyYearEnd)
         .order('month', { ascending: true });
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Build monthly breakdown for Jan through current month
-  const currentMonthIndex = new Date().getMonth(); // 0-based
-  const monthlyBreakdown = Array.from({ length: currentMonthIndex + 1 }, (_, i) => {
-    const monthDate = new Date(currentYear, i, 1);
+  // Build monthly breakdown from fiscal start through current month
+  const now = new Date();
+  // Number of full months elapsed since fiscal start (capped at 12)
+  const monthsElapsedSinceFiscalStart = Math.min(
+    12,
+    (now.getFullYear() - fiscalStart.getFullYear()) * 12 + now.getMonth() - fiscalStart.getMonth() + 1
+  );
+  const monthlyBreakdown = Array.from({ length: monthsElapsedSinceFiscalStart }, (_, i) => {
+    const monthDate = addMonths(fiscalStart, i);
     const monthKey = format(monthDate, 'yyyy-MM-dd');
     const entry = adSpendYTD.find(e => e.month === monthKey);
     return {
@@ -172,7 +177,7 @@ export default function CompanyGoals() {
 
   const internetData = {
     adSpend: ytdTotal,
-    currentMonthAdSpend: monthlyBreakdown[currentMonthIndex]?.amount || 0,
+    currentMonthAdSpend: monthlyBreakdown[monthlyBreakdown.length - 1]?.amount || 0,
     internetLeadCount: internetLeadCount || 0,
     internetContractsWon: internetContractsWon || 0,
     internetClosedCount: internetClosedFromMetrics?.totalClosed || 0,
@@ -1090,12 +1095,12 @@ export default function CompanyGoals() {
                   {ytdTotal > 0 ? formatCurrency(ytdTotal) : '$0'}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Cumulative spend Jan–{format(new Date(), 'MMM yyyy')}
+                  Cumulative spend {format(fiscalStart, 'MMM yyyy')}–{format(new Date(), 'MMM yyyy')}
                 </p>
               </div>
               {(() => {
                 const budget = parseFloat(targetAdSpendBudget) || 0;
-                const monthsElapsed = currentMonthIndex + 1;
+                const monthsElapsed = monthlyBreakdown.length;
                 const expectedBudget = budget * monthsElapsed;
                 if (budget > 0 && ytdTotal > 0) {
                   const variance = expectedBudget - ytdTotal;

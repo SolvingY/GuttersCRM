@@ -8,18 +8,19 @@ import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from '@/co
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { 
-  format, 
-  startOfWeek, 
-  endOfWeek, 
-  startOfMonth, 
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
   endOfMonth,
   startOfYear,
-  addWeeks, 
+  addWeeks,
   subWeeks,
   addMonths,
   subMonths
 } from 'date-fns';
+import { FISCAL_YEAR } from '@/lib/constants';
 
 interface SalesRepEntry {
   rank: number;
@@ -143,13 +144,12 @@ export default function AdminLeaderboards() {
         return;
       }
 
-      // Also fetch collections from weekly_user_metrics to aggregate YTD
-      const currentYear = new Date().getFullYear();
-      const yearStart = `${currentYear}-01-01`;
+      // Also fetch collections from weekly_user_metrics to aggregate fiscal-YTD
+      const fiscalYearStart = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
       const { data: weeklyData } = await supabase
         .from('weekly_user_metrics')
         .select('user_id, collections')
-        .gte('week_start', yearStart);
+        .gte('week_start', fiscalYearStart);
 
       // Aggregate collections by user
       const collectionsMap = new Map<string, number>();

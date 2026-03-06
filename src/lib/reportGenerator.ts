@@ -35,6 +35,8 @@ export interface CanvasserData {
   conversionRate: number;
   // Additional fields
   doorsKnocked?: number;
+  conversationsHad?: number;
+  notInterested?: number;
   yearlyGoal?: number;
   contestPoints?: number;
   wagerPoints?: number;
@@ -154,11 +156,12 @@ export function exportToExcel(
 
   if (salesReps.length > 0) {
     rows.push(['SALES REPS']);
-    rows.push(['Name', 'Rank', 'Approved Revenue', 'Collections', 'YTD Earnings', 'Points', 'Leads', 'Contracts', 'Avg Job Size', 'Close %', 'Yearly Goal']);
+    rows.push(['Name', 'Rank', 'Approved Revenue', 'Collections', 'YTD Earnings', 'Points', 'Leads (Close %)', 'Contracts', 'Self-Gen Contracts', 'Canvass Contracts', 'Avg Job Size', 'Close %', 'Yearly Goal']);
     salesReps.forEach(rep => {
       rows.push([
         rep.name, rep.salesRank, formatCurrency(rep.approvedRevenue), formatCurrency(rep.collections),
         formatCurrency(rep.earningsYtd), rep.points, rep.leads, rep.closedDeals,
+        rep.selfGeneratedDeals ?? 0, rep.canvassDealsClose ?? 0,
         formatCurrency(rep.avgJobSize), `${rep.leadToClosePercent.toFixed(1)}%`, formatCurrency(rep.yearlyGoal),
       ]);
     });
@@ -167,11 +170,12 @@ export function exportToExcel(
 
   if (canvassers.length > 0) {
     rows.push(['CANVASSERS']);
-    rows.push(['Name', 'Leads Set', 'Leads Closed', 'Leads w/ Damage', 'Hours Worked', 'Points', 'Income', 'Conversion %', 'Doors Knocked']);
+    rows.push(['Name', 'Leads Set', 'Leads Closed', 'Leads w/ Damage', 'Hours Worked', 'Doors Knocked', 'Convos Had', 'Not Interested', 'Points', 'Income', 'Conversion %']);
     canvassers.forEach(c => {
       rows.push([
         c.name, c.leadsSet, c.leadsClosed, c.leadsWithDamage, c.hoursWorked,
-        c.points, formatCurrency(c.income), `${c.conversionRate.toFixed(1)}%`, c.doorsKnocked || 0,
+        c.doorsKnocked ?? 0, c.conversationsHad ?? 0, c.notInterested ?? 0,
+        c.points, formatCurrency(c.income), `${c.conversionRate.toFixed(1)}%`,
       ]);
     });
   }
@@ -408,20 +412,15 @@ export function exportToPDF(
       
       autoTable(doc, {
         startY: 24,
-        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Hours', 'Points', 'Income', 'Conv %']],
+        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Hours', 'Doors', 'Convos', 'Not Int.', 'Points', 'Income', 'Conv %']],
         body: canvassers.map(c => [
-          c.name,
-          c.leadsSet,
-          c.leadsClosed,
-          c.leadsWithDamage,
-          c.hoursWorked,
-          c.points.toLocaleString(),
-          formatCurrency(c.income),
-          `${c.conversionRate.toFixed(1)}%`,
+          c.name, c.leadsSet, c.leadsClosed, c.leadsWithDamage, c.hoursWorked,
+          c.doorsKnocked ?? 0, c.conversationsHad ?? 0, c.notInterested ?? 0,
+          c.points.toLocaleString(), formatCurrency(c.income), `${c.conversionRate.toFixed(1)}%`,
         ]),
         theme: 'striped',
         headStyles: { fillColor: [79, 70, 229] },
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7 },
       });
     } else {
       doc.setFontSize(14);
@@ -429,20 +428,15 @@ export function exportToPDF(
 
       autoTable(doc, {
         startY: canvasserStartY + 4,
-        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Hours', 'Points', 'Income', 'Conv %']],
+        head: [['Name', 'Leads Set', 'Leads Closed', 'Damage', 'Hours', 'Doors', 'Convos', 'Not Int.', 'Points', 'Income', 'Conv %']],
         body: canvassers.map(c => [
-          c.name,
-          c.leadsSet,
-          c.leadsClosed,
-          c.leadsWithDamage,
-          c.hoursWorked,
-          c.points.toLocaleString(),
-          formatCurrency(c.income),
-          `${c.conversionRate.toFixed(1)}%`,
+          c.name, c.leadsSet, c.leadsClosed, c.leadsWithDamage, c.hoursWorked,
+          c.doorsKnocked ?? 0, c.conversationsHad ?? 0, c.notInterested ?? 0,
+          c.points.toLocaleString(), formatCurrency(c.income), `${c.conversionRate.toFixed(1)}%`,
         ]),
         theme: 'striped',
         headStyles: { fillColor: [79, 70, 229] },
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7 },
       });
     }
   }

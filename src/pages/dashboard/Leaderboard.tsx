@@ -88,50 +88,49 @@ export default function Leaderboard() {
     };
   }, []);
 
-  // YTD fetch - keep existing logic
+  // YTD fetch - parallelized independent queries
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      // First, get user IDs that are sales reps or admins (not canvassers)
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('role', ['user', 'admin']);
+      // Run all independent queries in parallel — eliminates ~6 sequential round trips
+      const [
+        rolesResult,
+        profilesHiddenResult,
+        metricsResult,
+        extendedMetricsResult,
+        collectionsResult,
+        contestWinsResult,
+        victoriesResult,
+      ] = await Promise.all([
+        supabase.from('user_roles').select('user_id, role').in('role', ['user', 'admin']),
+        supabase.from('profiles').select('id, hidden_from_leaderboard, is_archived'),
+        supabase
+          .from('user_metrics_leaderboard')
+          .select('id, user_id, display_name, points, approved_revenue, closed_deals, sales_rank, metric_date, self_generated_deals')
+          .order('metric_date', { ascending: false }),
+        // Merged query: fetch extended fields + yearly_goal in one round trip
+        supabase
+          .from('user_metrics')
+          .select('user_id, canvass_deals_closed, canvass_leads, self_generated_leads, contest_points, wager_points, approved_revenue, yearly_goal, metric_date, updated_at')
+          .order('metric_date', { ascending: false })
+          .order('updated_at', { ascending: false }),
+        supabase.from('weekly_user_metrics').select('user_id, collections'),
+        supabase.from('contests').select('winner_user_id').not('winner_user_id', 'is', null),
+        supabase.from('contest_victories').select('user_id, points_awarded'),
+      ]);
 
-      if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
+      if (rolesResult.error) {
+        console.error('Error fetching roles:', rolesResult.error);
         setLoading(false);
         return;
       }
 
-      // Create a set of eligible user IDs
-      const eligibleUserIds = new Set(rolesData?.map(r => r.user_id) || []);
+      const eligibleUserIds = new Set(rolesResult.data?.map(r => r.user_id) || []);
 
-      // Fetch profiles to check hidden_from_leaderboard and is_archived status
-      const { data: profilesForHidden } = await supabase
-        .from('profiles')
-        .select('id, hidden_from_leaderboard, is_archived');
-      
       const hiddenUserIds = new Set(
-        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
+        profilesHiddenResult.data?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
       );
 
-      // Fetch metrics from the leaderboard view (bypasses RLS for all users visibility)
-      const { data: metricsData, error: metricsError } = await supabase
-        .from('user_metrics_leaderboard')
-        .select('id, user_id, display_name, points, approved_revenue, closed_deals, sales_rank, metric_date, self_generated_deals')
-        .order('metric_date', { ascending: false });
-
-      // Also fetch canvass deals, canvass leads, self-gen leads, and approved_revenue from user_metrics for calculation
-      const { data: extendedMetricsData } = await supabase
-        .from('user_metrics')
-        .select('user_id, canvass_deals_closed, canvass_leads, self_generated_leads, contest_points, wager_points, approved_revenue, metric_date, updated_at')
-        .order('metric_date', { ascending: false })
-        .order('updated_at', { ascending: false });
-      // Fetch collections aggregated from weekly_user_metrics
-      const { data: collectionsData } = await supabase
-        .from('weekly_user_metrics')
-        .select('user_id, collections');
-
+      const { data: metricsData, error: metricsError } = metricsResult;
       if (metricsError) {
         console.error('Error fetching leaderboard:', metricsError);
         setLoading(false);
@@ -144,16 +143,17 @@ export default function Leaderboard() {
         return;
       }
 
-      // Create extended metrics map (latest per user)
-      const extendedMetricsMap = new Map<string, { 
-        contestPoints: number; 
-        wagerPoints: number; 
+      // Build extended metrics map (latest per user) — includes yearly_goal (merged)
+      const extendedMetricsMap = new Map<string, {
+        contestPoints: number;
+        wagerPoints: number;
         approvedRevenue: number;
-        canvassDealsClose: number; 
+        canvassDealsClose: number;
         canvassLeads: number;
         selfGeneratedLeads: number;
+        yearlyGoal: number;
       }>();
-      extendedMetricsData?.forEach(p => {
+      extendedMetricsResult.data?.forEach(p => {
         if (p.user_id && !extendedMetricsMap.has(p.user_id)) {
           extendedMetricsMap.set(p.user_id, {
             contestPoints: Number(p.contest_points) || 0,
@@ -162,30 +162,32 @@ export default function Leaderboard() {
             canvassDealsClose: Number(p.canvass_deals_closed) || 0,
             canvassLeads: Number(p.canvass_leads) || 0,
             selfGeneratedLeads: Number(p.self_generated_leads) || 0,
+            yearlyGoal: Number(p.yearly_goal) || 0,
           });
         }
       });
 
       // Aggregate collections per user from weekly data
       const collectionsMap = new Map<string, number>();
-      collectionsData?.forEach(c => {
+      collectionsResult.data?.forEach(c => {
         if (c.user_id) {
           const current = collectionsMap.get(c.user_id) || 0;
           collectionsMap.set(c.user_id, current + (Number(c.collections) || 0));
         }
       });
 
-      // Fetch yearly goals from user_metrics separately
-      const { data: goalsData } = await supabase
-        .from('user_metrics')
-        .select('user_id, yearly_goal, metric_date, updated_at')
-        .order('metric_date', { ascending: false })
-        .order('updated_at', { ascending: false });
-      const goalsMap = new Map<string, number>();
-      goalsData?.forEach(g => {
-        if (g.user_id && !goalsMap.has(g.user_id)) {
-          goalsMap.set(g.user_id, Number(g.yearly_goal) || 0);
-        }
+      // Build contest wins map
+      const contestWinsMap = new Map<string, number>();
+      contestWinsResult.data?.forEach(c => {
+        const current = contestWinsMap.get(c.winner_user_id!) || 0;
+        contestWinsMap.set(c.winner_user_id!, current + 1);
+      });
+
+      // Build contest victories points map
+      const contestPointsFromVictoriesMap = new Map<string, number>();
+      victoriesResult.data?.forEach(v => {
+        const current = contestPointsFromVictoriesMap.get(v.user_id) || 0;
+        contestPointsFromVictoriesMap.set(v.user_id, current + v.points_awarded);
       });
 
       // Get latest metric per user
@@ -197,7 +199,7 @@ export default function Leaderboard() {
         displayName: string | null;
         selfGeneratedDeals: number;
       }>();
-      
+
       for (const item of metricsData) {
         if (item.user_id && (!eligibleUserIds.has(item.user_id) || hiddenUserIds.has(item.user_id))) {
           continue;
@@ -216,7 +218,7 @@ export default function Leaderboard() {
       }
 
       const realUserIds = Array.from(latestByUser.keys()).filter(id => !id.startsWith('metric_'));
-      const { data: profilesData } = realUserIds.length > 0 
+      const { data: profilesData } = realUserIds.length > 0
         ? await supabase.from('profiles').select('id, full_name').in('id', realUserIds)
         : { data: [] };
 
@@ -224,46 +226,23 @@ export default function Leaderboard() {
         profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
       );
 
-      // Fetch contest wins
-      const { data: contestWinsData } = await supabase
-        .from('contests')
-        .select('winner_user_id')
-        .not('winner_user_id', 'is', null);
-
-      const contestWinsMap = new Map<string, number>();
-      contestWinsData?.forEach(c => {
-        const current = contestWinsMap.get(c.winner_user_id!) || 0;
-        contestWinsMap.set(c.winner_user_id!, current + 1);
-      });
-
-      // Fetch contest points from contest_victories
-      const { data: victoriesData } = await supabase
-        .from('contest_victories')
-        .select('user_id, points_awarded');
-
-      const contestPointsFromVictoriesMap = new Map<string, number>();
-      victoriesData?.forEach(v => {
-        const current = contestPointsFromVictoriesMap.get(v.user_id) || 0;
-        contestPointsFromVictoriesMap.set(v.user_id, current + v.points_awarded);
-      });
-
       // Convert to array and sort by approved revenue (YTD Revenue)
       const sorted = Array.from(latestByUser.entries())
         .map(([userId, data]) => {
-          const extendedMetrics = extendedMetricsMap.get(userId) || { 
+          const extendedMetrics = extendedMetricsMap.get(userId) || {
             contestPoints: 0, wagerPoints: 0, approvedRevenue: 0,
-            canvassDealsClose: 0, canvassLeads: 0, selfGeneratedLeads: 0,
+            canvassDealsClose: 0, canvassLeads: 0, selfGeneratedLeads: 0, yearlyGoal: 0,
           };
           const approvedRevenue = data.approvedRevenue || extendedMetrics.approvedRevenue;
           const calculatedClosedDeals = data.selfGeneratedDeals + extendedMetrics.canvassDealsClose;
           const leads = extendedMetrics.canvassLeads + extendedMetrics.selfGeneratedLeads;
-          
+
           return {
             userId,
             points: data.points,
             approvedRevenue,
             closedDeals: calculatedClosedDeals,
-            yearlyGoal: goalsMap.get(userId) || 0,
+            yearlyGoal: extendedMetrics.yearlyGoal,
             salesRank: data.salesRank,
             name: data.displayName || profilesMap.get(userId) || 'Unknown User',
             contestsWon: contestWinsMap.get(userId) || 0,
