@@ -1,20 +1,42 @@
 
 
-# Fix Two Issues: Build Error + React Hooks Violation
+# Add Edit Button to Shift History
 
-## Issue 1: Build Error in `CompanyGoals.tsx` (line 1121)
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-**Problem**: `currentMonthIndex` is undefined. The IIFE at line 1119 uses `currentMonthIndex + 1` but that variable doesn't exist. The identical IIFE just above (line 1101) correctly uses `monthlyBreakdown.length`.
+## Changes
 
-**Fix**: Replace `currentMonthIndex + 1` with `monthlyBreakdown.length` on line 1121 to match the pattern used in the sibling IIFE at line 1103.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-## Issue 2: React Hooks Violation in `MyStats.tsx` (line 215)
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-**Problem**: `useMemo` is called on line 215, **after** the early `if (loading) return ...` on line 149. This violates React's Rules of Hooks — hooks must be called unconditionally on every render, in the same order.
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-**Fix**: Move the `useMemo` call (lines 215-241) to **before** the `if (loading)` early return at line 149. All the derived variables it depends on (`allWeeklyMetrics`, `yearlyGoal`) are computed after the early return currently, so those also need to move up — or the `useMemo` can use the raw state values directly since `yearlyGoal` is derived from `metrics`. Specifically:
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-1. Move `const latestMetric = metrics[metrics.length - 1]` and `const yearlyGoal = Number(latestMetric?.yearly_goal) || 0` to before line 149
-2. Move the `useMemo` block (lines 215-241) to right after those declarations, before the `if (loading)` return
-3. Keep everything else where it is (the remaining derived variables don't use hooks)
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
