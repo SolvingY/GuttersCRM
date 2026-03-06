@@ -17,6 +17,7 @@ const STAGE_COLORS = [
   'hsl(200, 70%, 50%)',
   'hsl(150, 60%, 45%)',
   'hsl(120, 50%, 45%)',
+  'hsl(0, 0%, 55%)',
 ];
 
 const getDateRange = (range: string): string | null => {
@@ -68,23 +69,42 @@ export function PipelineFunnelWidget() {
 
       const leads = data || [];
       const total = leads.length;
-      const contacted = leads.filter(l => l.contacted_at).length;
-      const quoted = leads.filter(l => l.quoted_at).length;
-      const won = leads.filter(l => ['won', 'scheduled', 'completed'].includes(l.status)).length;
-      const scheduled = leads.filter(l => ['scheduled', 'completed'].includes(l.status)).length;
-      const completed = leads.filter(l => l.status === 'completed').length;
+
+      // Use cumulative logic: if a lead reached a later stage, count it in all prior stages
+      const wonStatuses = ['won', 'scheduled', 'completed'];
+      const scheduledStatuses = ['scheduled', 'completed'];
+
+      const isWon = (l: any) => wonStatuses.includes(l.status);
+      const isScheduled = (l: any) => scheduledStatuses.includes(l.status);
+      const isCompleted = (l: any) => l.status === 'completed';
+      const isLost = (l: any) => l.status === 'lost';
+
+      // Cumulative: contacted includes anyone who was contacted OR progressed further
+      const contacted = leads.filter(l => l.contacted_at || l.quoted_at || isWon(l)).length;
+      // Quoted includes anyone who was quoted OR progressed further
+      const quoted = leads.filter(l => l.quoted_at || isWon(l)).length;
+      const won = leads.filter(l => isWon(l)).length;
+      const scheduled = leads.filter(l => isScheduled(l)).length;
+      const completed = leads.filter(l => isCompleted(l)).length;
+      const lost = leads.filter(l => isLost(l)).length;
 
       const calcRate = (current: number, previous: number) =>
         previous > 0 ? `${((current / previous) * 100).toFixed(1)}%` : 'N/A';
 
-      setFunnelData([
+      const stages: FunnelStage[] = [
         { stage: 'Total Leads', count: total, rate: '100%' },
         { stage: 'Contacted', count: contacted, rate: calcRate(contacted, total) },
         { stage: 'Quoted', count: quoted, rate: calcRate(quoted, contacted) },
         { stage: 'Won', count: won, rate: calcRate(won, quoted) },
         { stage: 'Scheduled', count: scheduled, rate: calcRate(scheduled, won) },
         { stage: 'Completed', count: completed, rate: calcRate(completed, scheduled) },
-      ]);
+      ];
+
+      if (lost > 0) {
+        stages.push({ stage: 'Lost', count: lost, rate: calcRate(lost, total) });
+      }
+
+      setFunnelData(stages);
       setLoading(false);
     };
 
