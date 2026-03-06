@@ -75,11 +75,9 @@ export default function ContractorManagement() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["cm-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, is_archived, created_at, dna_assessment_pending, last_login_at, login_count, start_date, onboarding_complete");
+      const { data, error } = await supabase.from("profiles").select("*");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -234,10 +232,19 @@ export default function ContractorManagement() {
         hasSalesMetrics: !!sales,
         hasCanvasserMetrics: !!canvasser,
         dnaPending,
-        onboardingComplete: (p as any).onboarding_complete ?? true,
+        // Derive from progress data: no records = legacy user = treat as complete.
+        // A user is onboarding if they have at least one pending required step.
+        onboardingComplete: (() => {
+          const userProgress = allOnboardingProgress.filter((op) => op.user_id === p.id);
+          if (userProgress.length === 0) return true; // legacy user, no onboarding records
+          const hasIncomplete = userProgress.some(
+            (op) => (op.step as any)?.required && op.status !== "completed"
+          );
+          return !hasIncomplete;
+        })(),
       };
     });
-  }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps]);
+  }, [profiles, userRoles, salesMetrics, canvasserMetrics, hiredApps, allOnboardingProgress]);
 
   const filteredUsers = useMemo(() => {
     let list: typeof users;

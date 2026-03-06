@@ -148,6 +148,7 @@ export default function MyStats() {
 
   const latestMetric = metrics[metrics.length - 1];
   const previousMetric = metrics[metrics.length - 2];
+  const yearlyGoal = Number(latestMetric?.yearly_goal) || 0;
 
   const calculateTrend = (current: number, previous: number) => {
     if (!previous) return undefined;
@@ -204,6 +205,34 @@ export default function MyStats() {
   };
 
 
+
+  const weeklyChartData = useMemo(() => {
+    const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
+    const weeklyGoalPace = yearlyGoal / 52;
+    const weeks: { week: string; weekLabel: string; approvedRevenue: number; goalPace: number; cumulativeGoal: number }[] = [];
+
+    for (let i = 0; i < 52; i++) {
+      const weekStart = new Date(fiscalStart);
+      weekStart.setDate(weekStart.getDate() + (i * 7));
+
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      const weeklyMetric = allWeeklyMetrics.find(w => w.week_start === weekStartStr);
+
+      weeks.push({
+        week: `W${i + 1}`,
+        weekLabel: format(weekStart, 'MMM d'),
+        approvedRevenue: Number(weeklyMetric?.approved_revenue) || 0,
+        goalPace: weeklyGoalPace,
+        cumulativeGoal: weeklyGoalPace * (i + 1),
+      });
+    }
+
+    let cumulative = 0;
+    return weeks.map(w => {
+      cumulative += w.approvedRevenue;
+      return { ...w, cumulativeRevenue: cumulative };
+    });
+  }, [allWeeklyMetrics, yearlyGoal]);
 
   if (loading) {
     return (
