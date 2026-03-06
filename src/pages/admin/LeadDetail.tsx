@@ -418,9 +418,7 @@ export default function LeadDetail() {
         );
       })()}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left column - lead info (60%) */}
-        <div className="lg:col-span-3 space-y-6">
+      <div className="space-y-6">
           <CollapsibleSection title="Service / Client Details" defaultOpen={false}>
             {renderFormData()}
             <div className="border-t border-border my-4" />
@@ -464,10 +462,6 @@ export default function LeadDetail() {
               </div>
             </CollapsibleSection>
           )}
-        </div>
-
-        {/* Right column - lifecycle (40%) */}
-        <div className="lg:col-span-2 space-y-6">
           {isAdmin && (
             <CollapsibleSection title="Assignment" defaultOpen={false}>
               <Select
@@ -727,7 +721,6 @@ export default function LeadDetail() {
               Save Notes
             </Button>
           </CollapsibleSection>
-        </div>
       </div>
 
       {/* Archive Dialog */}

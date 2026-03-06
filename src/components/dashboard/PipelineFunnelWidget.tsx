@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { leadSourceConfig } from '@/lib/leadSourceConfig';
 
 interface FunnelStage {
   stage: string;
@@ -11,7 +11,7 @@ interface FunnelStage {
 }
 
 const STAGE_COLORS = [
-  'hsl(348, 83%, 47%)',  // accent
+  'hsl(348, 83%, 47%)',
   'hsl(348, 83%, 55%)',
   'hsl(348, 70%, 60%)',
   'hsl(200, 70%, 50%)',
@@ -36,6 +36,7 @@ const getDateRange = (range: string): string | null => {
 
 export function PipelineFunnelWidget() {
   const [dateRange, setDateRange] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [funnelData, setFunnelData] = useState<FunnelStage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,10 +47,15 @@ export function PipelineFunnelWidget() {
 
       let query = supabase
         .from('quote_requests')
-        .select('status, contacted_at, quoted_at, won_at');
+        .select('status, contacted_at, quoted_at, won_at, lead_source')
+        .not('status', 'eq', 'archived');
 
       if (dateFrom) {
         query = query.gte('created_at', dateFrom);
+      }
+
+      if (sourceFilter !== 'all') {
+        query = query.eq('lead_source', sourceFilter);
       }
 
       const { data, error } = await query;
@@ -83,7 +89,7 @@ export function PipelineFunnelWidget() {
     };
 
     fetchFunnel();
-  }, [dateRange]);
+  }, [dateRange, sourceFilter]);
 
   if (loading) {
     return (
@@ -95,19 +101,32 @@ export function PipelineFunnelWidget() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-muted-foreground">Conversion rates between pipeline stages</p>
-        <Select value={dateRange} onValueChange={setDateRange}>
-          <SelectTrigger className="w-36 h-8">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">This Month</SelectItem>
-            <SelectItem value="quarter">This Quarter</SelectItem>
-            <SelectItem value="ytd">Year to Date</SelectItem>
-            <SelectItem value="all">All Time</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-40 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              {Object.entries(leadSourceConfig).map(([key, cfg]) => (
+                <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-36 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="quarter">This Quarter</SelectItem>
+              <SelectItem value="ytd">Year to Date</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {funnelData[0]?.count === 0 ? (
