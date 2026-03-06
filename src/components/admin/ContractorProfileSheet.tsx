@@ -53,7 +53,13 @@ import {
   Circle,
   Send,
   AlertCircle,
+  FileText,
+  Clock,
+  Eye,
+  EyeOff,
+  Calendar,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { PerformanceReviewForm, ReviewScoreBreakdown, defaultReviewFormData } from "./PerformanceReviewForm";
 import type { ReviewFormData } from "./PerformanceReviewForm";
@@ -140,6 +146,16 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
   const [savingReview, setSavingReview] = useState(false);
   const [uploadCategoryId, setUploadCategoryId] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [showSendOfferDialog, setShowSendOfferDialog] = useState(false);
+  const [offerMethod, setOfferMethod] = useState<"template" | "pdf">("template");
+  const [offerTemplateId, setOfferTemplateId] = useState("");
+  const [offerPosition, setOfferPosition] = useState("");
+  const [offerStartDate, setOfferStartDate] = useState("");
+  const [offerPayStructure, setOfferPayStructure] = useState("");
+  const [offerAdditionalTerms, setOfferAdditionalTerms] = useState("");
+  const [offerPdfFile, setOfferPdfFile] = useState<File | null>(null);
+  const [sendingOffer, setSendingOffer] = useState(false);
+  const [offerLetterExpanded, setOfferLetterExpanded] = useState(false);
 
   // Personal/contract info state
   const [personalInfo, setPersonalInfo] = useState<Record<string, any>>({});
@@ -290,7 +306,35 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
     },
   });
 
-  // Load profile data into personal info state
+  // Fetch offer letters for this contractor
+  const { data: offerLetters = [], refetch: refetchOfferLetters } = useQuery({
+    queryKey: ["contractor-offer-letters", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contractor_offer_letters")
+        .select("*")
+        .eq("contractor_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Fetch offer letter templates
+  const { data: offerTemplates = [] } = useQuery({
+    queryKey: ["offer-letter-templates"],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("offer_letter_templates")
+        .select("*")
+        .eq("is_active", true)
+        .order("position_title");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   useEffect(() => {
     if (profileData) {
       setPersonalInfo(profileData as any);
@@ -315,6 +359,15 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
       setReviewForm(defaultReviewFormData());
       setCategoryFilter("all");
       setUploadCategoryId("");
+      setShowSendOfferDialog(false);
+      setOfferMethod("template");
+      setOfferTemplateId("");
+      setOfferPosition("");
+      setOfferStartDate("");
+      setOfferPayStructure("");
+      setOfferAdditionalTerms("");
+      setOfferPdfFile(null);
+      setOfferLetterExpanded(false);
     }
   }, [open]);
 
@@ -688,6 +741,268 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
               </div>
             );
           })()}
+
+          {/* Offer Letter Section */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
+              <h3 className="font-heading uppercase text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Offer Letter
+                {offerLetters.length > 0 && (
+                  <Badge className={`text-[10px] ml-1 ${
+                    offerLetters[0].status === "signed" ? "bg-green-100 text-green-800" :
+                    offerLetters[0].status === "declined" ? "bg-destructive/10 text-destructive" :
+                    "bg-yellow-100 text-yellow-800"
+                  }`}>
+                    {offerLetters[0].status === "signed" ? "Signed" :
+                     offerLetters[0].status === "declined" ? "Declined" : "Pending"}
+                  </Badge>
+                )}
+              </h3>
+              {offerLetters.length === 0 && (
+                <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => setShowSendOfferDialog(true)}>
+                  <Send className="w-3.5 h-3.5" />
+                  Send Offer Letter
+                </Button>
+              )}
+            </div>
+
+            {offerLetters.length === 0 ? (
+              <div className="p-6 text-center space-y-3">
+                <FileText className="w-10 h-10 text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground">No offer letter has been sent to this team member.</p>
+                <Button size="sm" variant="outline" onClick={() => setShowSendOfferDialog(true)}>
+                  <Send className="w-3.5 h-3.5 mr-1" />
+                  Send Offer Letter
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {offerLetters.map((letter: any) => (
+                  <div key={letter.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-heading font-bold text-sm">{letter.position_title}</p>
+                        {letter.pay_structure && (
+                          <p className="text-xs text-muted-foreground">{letter.pay_structure}</p>
+                        )}
+                      </div>
+                      <Badge className={`text-xs ${
+                        letter.status === "signed" ? "bg-green-100 text-green-800" :
+                        letter.status === "declined" ? "bg-destructive/10 text-destructive" :
+                        "bg-yellow-100 text-yellow-800"
+                      }`}>
+                        {letter.status === "signed" ? "Signed" :
+                         letter.status === "declined" ? "Declined" :
+                         "Pending Review"}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      {letter.sent_at && (
+                        <span className="flex items-center gap-1">
+                          <Send className="w-3 h-3" />
+                          Sent: {format(new Date(letter.sent_at), "MMM d, yyyy")}
+                        </span>
+                      )}
+                      {letter.start_date && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Start: {format(new Date(letter.start_date), "MMM d, yyyy")}
+                        </span>
+                      )}
+                      {letter.signed_at && (
+                        <span className="flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Signed: {format(new Date(letter.signed_at), "MMM d, yyyy")}
+                          {letter.signed_by_name && ` by ${letter.signed_by_name}`}
+                        </span>
+                      )}
+                      {letter.declined_at && (
+                        <span className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-destructive" />
+                          Declined: {format(new Date(letter.declined_at), "MMM d, yyyy")}
+                        </span>
+                      )}
+                    </div>
+                    {letter.file_url && (
+                      <a href={letter.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> View PDF
+                      </a>
+                    )}
+                    {letter.letter_content && (
+                      <Collapsible open={offerLetterExpanded} onOpenChange={setOfferLetterExpanded}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="w-full justify-between text-xs">
+                            {offerLetterExpanded ? <><EyeOff className="w-3 h-3 mr-1" /> Hide Letter Content</> : <><Eye className="w-3 h-3 mr-1" /> View Letter Content</>}
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${offerLetterExpanded ? "rotate-180" : ""}`} />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2 p-3 bg-muted/30 rounded border border-border text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
+                            {letter.letter_content}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                ))}
+                <div className="p-3 text-center">
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowSendOfferDialog(true)}>
+                    <Send className="w-3 h-3 mr-1" /> Send New Offer Letter
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Send Offer Letter Dialog */}
+          <Dialog open={showSendOfferDialog} onOpenChange={setShowSendOfferDialog}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Send Offer Letter to {user.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button size="sm" variant={offerMethod === "template" ? "default" : "outline"} onClick={() => setOfferMethod("template")} className="text-xs">
+                    Use Template
+                  </Button>
+                  <Button size="sm" variant={offerMethod === "pdf" ? "default" : "outline"} onClick={() => setOfferMethod("pdf")} className="text-xs">
+                    Upload PDF
+                  </Button>
+                </div>
+
+                {offerMethod === "template" && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Template</Label>
+                      <Select value={offerTemplateId} onValueChange={(v) => {
+                        setOfferTemplateId(v);
+                        const tpl = offerTemplates.find((t: any) => t.id === v);
+                        if (tpl) {
+                          setOfferPosition(tpl.position_title);
+                          setOfferPayStructure(tpl.pay_structure_description || "");
+                        }
+                      }}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Select a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {offerTemplates.map((t: any) => (
+                            <SelectItem key={t.id} value={t.id}>{t.position_title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {offerMethod === "pdf" && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Upload PDF</Label>
+                    <Input type="file" accept=".pdf" className="h-8 text-sm" onChange={(e) => setOfferPdfFile(e.target.files?.[0] || null)} />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Position Title</Label>
+                    <Input value={offerPosition} onChange={(e) => setOfferPosition(e.target.value)} className="h-8 text-sm" placeholder="e.g. Sales Rep" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Start Date</Label>
+                    <Input type="date" value={offerStartDate} onChange={(e) => setOfferStartDate(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Pay Structure</Label>
+                  <Input value={offerPayStructure} onChange={(e) => setOfferPayStructure(e.target.value)} className="h-8 text-sm" placeholder="e.g. Commission-based" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Additional Terms (optional)</Label>
+                  <Textarea value={offerAdditionalTerms} onChange={(e) => setOfferAdditionalTerms(e.target.value)} rows={2} placeholder="Any additional terms..." />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowSendOfferDialog(false)}>Cancel</Button>
+                <Button
+                  disabled={sendingOffer || !offerPosition}
+                  onClick={async () => {
+                    if (!user) return;
+                    setSendingOffer(true);
+                    try {
+                      const { data: { user: authUser } } = await supabase.auth.getUser();
+                      let letterContent: string | null = null;
+                      let filePath: string | null = null;
+                      let fileUrl: string | null = null;
+
+                      if (offerMethod === "template" && offerTemplateId) {
+                        const tpl = offerTemplates.find((t: any) => t.id === offerTemplateId);
+                        if (tpl) {
+                          letterContent = (tpl.template_content || "")
+                            .replace(/\{\{contractor_name\}\}/g, user.name)
+                            .replace(/\{\{position_title\}\}/g, offerPosition)
+                            .replace(/\{\{start_date\}\}/g, offerStartDate ? format(new Date(offerStartDate), "MMMM d, yyyy") : "TBD")
+                            .replace(/\{\{pay_structure\}\}/g, offerPayStructure)
+                            .replace(/\{\{date\}\}/g, format(new Date(), "MMMM d, yyyy"));
+                        }
+                      }
+
+                      if (offerMethod === "pdf" && offerPdfFile) {
+                        const path = `offer-letters/${user.id}/${Date.now()}-${offerPdfFile.name}`;
+                        const { error: upErr } = await supabase.storage.from("contractor-files").upload(path, offerPdfFile);
+                        if (upErr) throw upErr;
+                        const { data: urlData } = await supabase.storage.from("contractor-files").getPublicUrl(path);
+                        filePath = path;
+                        fileUrl = urlData.publicUrl;
+                      }
+
+                      const { error } = await supabase.from("contractor_offer_letters").insert({
+                        contractor_id: user.id,
+                        template_id: offerMethod === "template" ? offerTemplateId || null : null,
+                        position_title: offerPosition,
+                        start_date: offerStartDate || null,
+                        pay_structure: offerPayStructure || null,
+                        additional_terms: offerAdditionalTerms || null,
+                        letter_content: letterContent,
+                        file_path: filePath,
+                        file_url: fileUrl,
+                        admin_id: authUser?.id,
+                        status: "pending_review",
+                      });
+                      if (error) throw error;
+
+                      // Also upsert onboarding progress for contract_sign step
+                      const contractStep = allOnboardingSteps.find((s: any) => s.step_key === "contract_sign");
+                      if (contractStep) {
+                        await (supabase.from("user_onboarding_progress" as any) as any).upsert({
+                          user_id: user.id,
+                          step_id: contractStep.id,
+                          status: "in_progress",
+                        }, { onConflict: "user_id,step_id" });
+                      }
+
+                      refetchOfferLetters();
+                      setShowSendOfferDialog(false);
+                      setOfferTemplateId("");
+                      setOfferPosition("");
+                      setOfferStartDate("");
+                      setOfferPayStructure("");
+                      setOfferAdditionalTerms("");
+                      setOfferPdfFile(null);
+                      toast({ title: "Offer letter sent successfully" });
+                    } catch (err: any) {
+                      toast({ title: "Failed to send offer letter", description: err.message, variant: "destructive" });
+                    } finally {
+                      setSendingOffer(false);
+                    }
+                  }}
+                >
+                  {sendingOffer ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                  Send Offer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Personal Information Section */}
           <div className="border border-border rounded-lg overflow-hidden">
