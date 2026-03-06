@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { leadSourceConfig } from '@/lib/leadSourceConfig';
 
 interface FunnelStage {
   stage: string;
@@ -11,7 +11,7 @@ interface FunnelStage {
 }
 
 const STAGE_COLORS = [
-  'hsl(348, 83%, 47%)',  // accent
+  'hsl(348, 83%, 47%)',
   'hsl(348, 83%, 55%)',
   'hsl(348, 70%, 60%)',
   'hsl(200, 70%, 50%)',
@@ -36,6 +36,7 @@ const getDateRange = (range: string): string | null => {
 
 export function PipelineFunnelWidget() {
   const [dateRange, setDateRange] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [funnelData, setFunnelData] = useState<FunnelStage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,10 +47,15 @@ export function PipelineFunnelWidget() {
 
       let query = supabase
         .from('quote_requests')
-        .select('status, contacted_at, quoted_at, won_at');
+        .select('status, contacted_at, quoted_at, won_at, lead_source')
+        .not('status', 'eq', 'archived');
 
       if (dateFrom) {
         query = query.gte('created_at', dateFrom);
+      }
+
+      if (sourceFilter !== 'all') {
+        query = query.eq('lead_source', sourceFilter);
       }
 
       const { data, error } = await query;
