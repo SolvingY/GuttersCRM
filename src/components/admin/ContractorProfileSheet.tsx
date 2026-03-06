@@ -146,6 +146,16 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
   const [savingReview, setSavingReview] = useState(false);
   const [uploadCategoryId, setUploadCategoryId] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [showSendOfferDialog, setShowSendOfferDialog] = useState(false);
+  const [offerMethod, setOfferMethod] = useState<"template" | "pdf">("template");
+  const [offerTemplateId, setOfferTemplateId] = useState("");
+  const [offerPosition, setOfferPosition] = useState("");
+  const [offerStartDate, setOfferStartDate] = useState("");
+  const [offerPayStructure, setOfferPayStructure] = useState("");
+  const [offerAdditionalTerms, setOfferAdditionalTerms] = useState("");
+  const [offerPdfFile, setOfferPdfFile] = useState<File | null>(null);
+  const [sendingOffer, setSendingOffer] = useState(false);
+  const [offerLetterExpanded, setOfferLetterExpanded] = useState(false);
 
   // Personal/contract info state
   const [personalInfo, setPersonalInfo] = useState<Record<string, any>>({});
