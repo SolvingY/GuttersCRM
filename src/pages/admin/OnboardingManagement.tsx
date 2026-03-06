@@ -79,13 +79,13 @@ export default function OnboardingManagement() {
   const { data: members = [] } = useQuery({
     queryKey: ["admin-onboarding-members"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
+      const { data, error } = await (supabase
+        .from("profiles") as any)
         .select("id, full_name, onboarding_complete, onboarding_completed_at, start_date, is_archived")
         .eq("is_archived", false)
         .order("full_name");
       if (error) throw error;
-      return (data || []) as (TeamMember & { is_archived: boolean })[];
+      return (data || []) as unknown as (TeamMember & { is_archived: boolean })[];
     },
   });
 
@@ -93,8 +93,8 @@ export default function OnboardingManagement() {
   const { data: allProgress = [] } = useQuery({
     queryKey: ["admin-all-onboarding-progress"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_onboarding_progress")
+      const { data, error } = await (supabase
+        .from("user_onboarding_progress" as any) as any)
         .select("*, step:onboarding_steps(step_key, step_name, step_type, required, sort_order)")
         .order("step(sort_order)");
       if (error) throw error;
@@ -106,13 +106,13 @@ export default function OnboardingManagement() {
   const { data: pendingActions = [] } = useQuery({
     queryKey: ["admin-pending-mandatory-actions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mandatory_actions")
+      const { data, error } = await (supabase
+        .from("mandatory_actions" as any) as any)
         .select("*")
         .eq("status", "pending")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as MandatoryAction[];
+      return data as unknown as MandatoryAction[];
     },
   });
 
@@ -361,8 +361,8 @@ function DismissActionButton({ actionId }: { actionId: string }) {
   const handleDismiss = async () => {
     setLoading(true);
     try {
-      await supabase
-        .from("mandatory_actions")
+      await (supabase
+        .from("mandatory_actions" as any) as any)
         .update({ status: "dismissed" })
         .eq("id", actionId);
       queryClient.invalidateQueries({ queryKey: ["admin-pending-mandatory-actions"] });
@@ -419,7 +419,7 @@ function CreateMandatoryActionDialog({
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("mandatory_actions").insert({
+      const { error } = await (supabase.from("mandatory_actions" as any) as any).insert({
         user_id: form.userId,
         requested_by: currentUserId,
         action_type: form.actionType,

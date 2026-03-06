@@ -891,7 +891,7 @@ function CreateMandatoryActionDialog({
         } as any);
       }
 
-      const { error } = await supabase.from("mandatory_actions").insert({
+      const { error } = await (supabase.from("mandatory_actions" as any) as any).insert({
         user_id: form.userId,
         requested_by: currentUserId,
         action_type: form.actionType,
