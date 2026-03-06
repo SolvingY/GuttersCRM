@@ -469,8 +469,10 @@ export type Database = {
           id: string
           is_sensitive: boolean | null
           requires_signature: boolean | null
+          signature_data: string | null
           signed_at: string | null
           signed_by: string | null
+          signed_by_name: string | null
           uploaded_by: string | null
           user_id: string
         }
@@ -485,8 +487,10 @@ export type Database = {
           id?: string
           is_sensitive?: boolean | null
           requires_signature?: boolean | null
+          signature_data?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signed_by_name?: string | null
           uploaded_by?: string | null
           user_id: string
         }
@@ -501,8 +505,10 @@ export type Database = {
           id?: string
           is_sensitive?: boolean | null
           requires_signature?: boolean | null
+          signature_data?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signed_by_name?: string | null
           uploaded_by?: string | null
           user_id?: string
         }
@@ -1188,6 +1194,9 @@ export type Database = {
           file_url: string | null
           id: string
           requested_by: string
+          signature_data: string | null
+          signed_at: string | null
+          signed_by_name: string | null
           status: string
           title: string
           updated_at: string | null
@@ -1203,6 +1212,9 @@ export type Database = {
           file_url?: string | null
           id?: string
           requested_by: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by_name?: string | null
           status?: string
           title: string
           updated_at?: string | null
@@ -1218,6 +1230,9 @@ export type Database = {
           file_url?: string | null
           id?: string
           requested_by?: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by_name?: string | null
           status?: string
           title?: string
           updated_at?: string | null
