@@ -287,14 +287,16 @@ function calculateLtcRate(canvassDeals: number, internetClosed: number, canvassL
   return totalLeads > 0 ? (totalDeals / totalLeads) * 100 : 0;
 }
 
-function getWeekStartMonday(): string {
+// Week starts on Thursday to match the company's Thu–Wed pay period
+function getWeekStartThursday(): string {
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() + mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
-  return weekStart.toISOString().split('T')[0];
+  // getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+  // We want the most recent Thursday: offset = (day + 3) % 7 days back
+  const offset = (now.getDay() + 3) % 7;
+  const thursday = new Date(now);
+  thursday.setDate(now.getDate() - offset);
+  thursday.setHours(0, 0, 0, 0);
+  return thursday.toISOString().split('T')[0];
 }
 
 function getMonthStart(): string {
@@ -311,44 +313,50 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const cronSecret = Deno.env.get("CRON_SECRET");
 
-    // Verify caller is authenticated and is an admin
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Allow pg_cron invocation via CRON_SECRET (no user JWT required)
+    const isCronCall = cronSecret && authHeader === `Bearer ${cronSecret}`;
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!isCronCall) {
+      // Standard admin-user JWT flow
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    const userId = claimsData.claims.sub;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
+      const token = authHeader.replace("Bearer ", "");
+      const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    if (!roleData) {
-      return new Response(
-        JSON.stringify({ error: "Admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const userId = claimsData.claims.sub;
+      const adminCheck = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: roleData } = await adminCheck
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (!roleData) {
+        return new Response(
+          JSON.stringify({ error: "Admin access required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -406,8 +414,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending report to ${adminEmails.length} recipients`);
 
-    // Date calculations
-    const weekStartStr = getWeekStartMonday();
+    // Date calculations — week starts Thursday to match the Thu–Wed pay period
+    const weekStartStr = getWeekStartThursday();
     const monthStartStr = getMonthStart();
 
     // ─── Fetch all data in parallel ───

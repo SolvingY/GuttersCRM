@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Loader2, ChevronDown, ChevronRight, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, subDays } from 'date-fns';
+import { format, subDays, addDays } from 'date-fns';
 import { updateCanvasserHours } from '@/lib/updateCanvasserHours';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +51,17 @@ export default function AdminTimeClock() {
   const [shiftNotes, setShiftNotes] = useState('');
   const [shiftCanvasserId, setShiftCanvasserId] = useState('');
   const [savingShift, setSavingShift] = useState(false);
+
+  // Pay Period Daily Activity state
+  const [dailyActivityOpen, setDailyActivityOpen] = useState(true);
+  const [selectedPayPeriod, setSelectedPayPeriod] = useState<Date>(() => {
+    // Same Thursday-anchored week calculation used throughout the app
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - ((day + 3) % 7);
+    return new Date(d.getFullYear(), d.getMonth(), diff);
+  });
+  const [dailyActivityData, setDailyActivityData] = useState<any[]>([]);
 
   // Shift History state
   const [historyOpen, setHistoryOpen] = useState(true);
@@ -173,7 +184,7 @@ export default function AdminTimeClock() {
     fetchShiftHistory();
   }, [fetchShiftHistory]);
 
-  // Fetch hours for selected week
+  // Fetch hours for selected week (Hours Tracker — hours only)
   useEffect(() => {
     const fetchHours = async () => {
       const weekStart = selectedHoursWeek;
@@ -188,6 +199,21 @@ export default function AdminTimeClock() {
     };
     fetchHours();
   }, [selectedHoursWeek]);
+
+  // Fetch all daily metrics for the selected pay period (Daily Activity Log)
+  useEffect(() => {
+    const fetchDailyActivity = async () => {
+      const periodEnd = new Date(selectedPayPeriod);
+      periodEnd.setDate(periodEnd.getDate() + 6);
+      const { data } = await supabase
+        .from('daily_canvasser_metric_entries')
+        .select('user_id, entry_date, hours_worked_delta, leads_set_delta, leads_closed_delta, doors_knocked_delta, conversations_had_delta, not_interested_delta, income_delta')
+        .gte('entry_date', selectedPayPeriod.toISOString().split('T')[0])
+        .lte('entry_date', periodEnd.toISOString().split('T')[0]);
+      setDailyActivityData(data || []);
+    };
+    fetchDailyActivity();
+  }, [selectedPayPeriod]);
 
   const handleSaveHoursCell = async (userId: string, date: string, hours: number, oldHours: number) => {
     setEditingHoursCell(null);
@@ -592,6 +618,129 @@ export default function AdminTimeClock() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Pay Period Daily Activity */}
+      <Collapsible open={dailyActivityOpen} onOpenChange={setDailyActivityOpen}>
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="p-4 border-b border-border">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
+                {dailyActivityOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <h3 className="text-lg font-heading text-foreground">Pay Period Daily Activity</h3>
+              </CollapsibleTrigger>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" onClick={() => setSelectedPayPeriod(prev => { const w = new Date(prev); w.setDate(w.getDate() - 7); return w; })}>← Prev</Button>
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                  {format(selectedPayPeriod, 'MMM d')} – {format(addDays(selectedPayPeriod, 6), 'MMM d, yyyy')}
+                  <span className="text-muted-foreground ml-1 text-xs">(Thu–Wed)</span>
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setSelectedPayPeriod(prev => { const w = new Date(prev); w.setDate(w.getDate() + 7); return w; })}>Next →</Button>
+              </div>
+            </div>
+          </div>
+          <CollapsibleContent>
+            {canvassers.length === 0 ? (
+              <div className="p-8 text-center"><p className="text-muted-foreground">No canvasser data available.</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Canvasser</th>
+                      {['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'].map((day, i) => (
+                        <th key={day} className="text-center py-2 px-2 text-xs font-medium text-muted-foreground min-w-[64px]">
+                          <div>{day}</div>
+                          <div className="text-muted-foreground/60">{format(addDays(selectedPayPeriod, i), 'M/d')}</div>
+                        </th>
+                      ))}
+                      <th className="text-center py-3 px-3 text-xs font-bold text-foreground">Total Hrs</th>
+                      <th className="text-center py-3 px-3 text-xs font-bold text-foreground">Leads Set</th>
+                      <th className="text-right py-3 px-4 text-xs font-bold text-foreground">Income</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {canvassers.map(canvasser => {
+                      const periodDays = Array.from({ length: 7 }, (_, i) =>
+                        format(addDays(selectedPayPeriod, i), 'yyyy-MM-dd')
+                      );
+                      const entries = dailyActivityData.filter(e => e.user_id === canvasser.userId);
+                      const totalHrs = entries.reduce((sum, e) => sum + (Number(e.hours_worked_delta) || 0), 0);
+                      const totalLeads = entries.reduce((sum, e) => sum + (Number(e.leads_set_delta) || 0), 0);
+                      const totalIncome = entries.reduce((sum, e) => sum + (Number(e.income_delta) || 0), 0);
+
+                      return (
+                        <tr key={canvasser.userId} className="border-t border-border hover:bg-muted/20 transition-colors">
+                          <td className="py-3 px-4 font-medium text-foreground">{canvasser.name}</td>
+                          {periodDays.map(date => {
+                            const entry = entries.find(e => e.entry_date === date);
+                            const hrs = Number(entry?.hours_worked_delta) || 0;
+                            const leadsSet = Number(entry?.leads_set_delta) || 0;
+                            const leadsClosed = Number(entry?.leads_closed_delta) || 0;
+                            const doors = Number(entry?.doors_knocked_delta) || 0;
+                            const hasData = hrs > 0 || leadsSet > 0 || doors > 0;
+                            return (
+                              <td key={date} className={cn('py-2 px-1 text-center align-top', hasData ? 'bg-green-500/5' : '')}>
+                                {hasData ? (
+                                  <div className="space-y-0.5 leading-tight">
+                                    {hrs > 0 && <div className="font-medium text-foreground text-xs">{hrs}h</div>}
+                                    {leadsSet > 0 && <div className="text-emerald-600 dark:text-emerald-400 text-xs">{leadsSet}L</div>}
+                                    {leadsClosed > 0 && <div className="text-blue-600 dark:text-blue-400 text-xs">✓{leadsClosed}</div>}
+                                    {doors > 0 && <div className="text-muted-foreground text-xs">{doors}D</div>}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground/30 text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="py-3 px-3 text-center font-bold text-foreground">{totalHrs > 0 ? totalHrs.toFixed(1) : '—'}</td>
+                          <td className="py-3 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400">{totalLeads > 0 ? totalLeads : '—'}</td>
+                          <td className="py-3 px-4 text-right text-foreground">{totalIncome > 0 ? `$${totalIncome.toFixed(0)}` : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                    {/* Team totals row */}
+                    {(() => {
+                      const periodDays = Array.from({ length: 7 }, (_, i) =>
+                        format(addDays(selectedPayPeriod, i), 'yyyy-MM-dd')
+                      );
+                      const allHrs = dailyActivityData.reduce((sum, e) => sum + (Number(e.hours_worked_delta) || 0), 0);
+                      const allLeads = dailyActivityData.reduce((sum, e) => sum + (Number(e.leads_set_delta) || 0), 0);
+                      const allIncome = dailyActivityData.reduce((sum, e) => sum + (Number(e.income_delta) || 0), 0);
+                      return (
+                        <tr className="border-t-2 border-border bg-muted/40">
+                          <td className="py-3 px-4 font-bold text-foreground text-sm">Team Total</td>
+                          {periodDays.map(date => {
+                            const dayEntries = dailyActivityData.filter(e => e.entry_date === date);
+                            const dayHrs = dayEntries.reduce((sum, e) => sum + (Number(e.hours_worked_delta) || 0), 0);
+                            const dayLeads = dayEntries.reduce((sum, e) => sum + (Number(e.leads_set_delta) || 0), 0);
+                            return (
+                              <td key={date} className="py-2 px-1 text-center">
+                                {dayHrs > 0 || dayLeads > 0 ? (
+                                  <div className="space-y-0.5 leading-tight">
+                                    {dayHrs > 0 && <div className="font-bold text-foreground text-xs">{dayHrs.toFixed(1)}h</div>}
+                                    {dayLeads > 0 && <div className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">{dayLeads}L</div>}
+                                  </div>
+                                ) : <span className="text-muted-foreground/30 text-xs">—</span>}
+                              </td>
+                            );
+                          })}
+                          <td className="py-3 px-3 text-center font-bold text-foreground">{allHrs > 0 ? allHrs.toFixed(1) : '—'}</td>
+                          <td className="py-3 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400">{allLeads > 0 ? allLeads : '—'}</td>
+                          <td className="py-3 px-4 text-right font-bold text-foreground">{allIncome > 0 ? `$${allIncome.toFixed(0)}` : '—'}</td>
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+                <p className="text-xs text-muted-foreground p-3 border-t border-border">
+                  h = hours worked · L = leads set · ✓ = leads closed · D = doors knocked · Pay period runs Thu through Wed
+                </p>
               </div>
             )}
           </CollapsibleContent>

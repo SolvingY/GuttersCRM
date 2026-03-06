@@ -636,6 +636,8 @@ export default function AdminOverview() {
             leadsWithDamage: c.leadsWithDamage,
             hoursWorked: c.hoursWorked,
             doorsKnocked: c.doorsKnocked,
+            conversationsHad: c.conversationsHad,
+            notInterested: c.notInterested,
             points: c.points,
             income: c.income,
             conversionRate: c.conversionRate,
