@@ -359,6 +359,15 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
       setReviewForm(defaultReviewFormData());
       setCategoryFilter("all");
       setUploadCategoryId("");
+      setShowSendOfferDialog(false);
+      setOfferMethod("template");
+      setOfferTemplateId("");
+      setOfferPosition("");
+      setOfferStartDate("");
+      setOfferPayStructure("");
+      setOfferAdditionalTerms("");
+      setOfferPdfFile(null);
+      setOfferLetterExpanded(false);
     }
   }, [open]);
 
