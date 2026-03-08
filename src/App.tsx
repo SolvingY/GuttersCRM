@@ -233,6 +233,7 @@ const App = () => (
               <Route path="team" element={<ContractorManagement />} />
               <Route path="timeclock" element={<AdminTimeClock />} />
               <Route path="notifications" element={<NotificationRouting />} />
+              <Route path="presets" element={<AdminPresets />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
