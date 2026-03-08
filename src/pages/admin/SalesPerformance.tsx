@@ -11,7 +11,7 @@ export default function SalesPerformance() {
     queryFn: async () => {
       const { data: wonDeals, error } = await supabase
         .from('quote_requests')
-        .select('id, contract_value, assigned_to, status, created_at')
+        .select('id, quote_amount, assigned_to, status, created_at')
         .eq('status', 'won');
       if (error) throw error;
 
@@ -19,7 +19,7 @@ export default function SalesPerformance() {
         .from('quote_requests')
         .select('*', { count: 'exact', head: true });
 
-      const totalRevenue = (wonDeals || []).reduce((sum, d) => sum + (Number(d.contract_value) || 0), 0);
+      const totalRevenue = (wonDeals || []).reduce((sum, d) => sum + (Number(d.quote_amount) || 0), 0);
       const dealsWon = wonDeals?.length || 0;
       const closeRate = totalLeads && totalLeads > 0 ? ((dealsWon / totalLeads) * 100).toFixed(1) : '0';
       const avgDealSize = dealsWon > 0 ? Math.round(totalRevenue / dealsWon) : 0;
