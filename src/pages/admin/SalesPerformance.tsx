@@ -64,10 +64,10 @@ export default function SalesPerformance() {
       const repIds = Array.from(repMap.keys());
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, display_name')
+        .select('id, full_name')
         .in('id', repIds);
 
-      const nameMap = new Map((profiles || []).map((p) => [p.id, p.display_name || 'Unknown']));
+      const nameMap = new Map((profiles || []).map((p) => [p.id, p.full_name || 'Unknown']));
 
       return Array.from(repMap.entries())
         .map(([id, stats]) => ({
