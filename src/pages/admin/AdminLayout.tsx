@@ -226,6 +226,42 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
 
+  // Fetch user's admin preset
+  const { data: userPreset } = useQuery({
+    queryKey: ['admin-user-preset', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('admin_preset_id')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.admin_preset_id) return null;
+      const { data: preset } = await supabase
+        .from('admin_presets')
+        .select('*')
+        .eq('id', profile.admin_preset_id)
+        .single();
+      return preset ? {
+        ...preset,
+        visible_menu_items: Array.isArray(preset.visible_menu_items) ? preset.visible_menu_items as string[] : [],
+      } : null;
+    },
+    enabled: !!user,
+  });
+
+  // Redirect to preset landing page if at /admin root
+  useEffect(() => {
+    if (userPreset?.default_landing_page && location.pathname === '/admin') {
+      navigate(userPreset.default_landing_page, { replace: true });
+    }
+  }, [userPreset, location.pathname]);
+
+  // Filter nav groups based on preset
+  const filteredNavGroups = userPreset?.visible_menu_items?.length
+    ? adminNavGroups.filter(g => (userPreset.visible_menu_items as string[]).includes(g.groupId))
+    : adminNavGroups;
+
   // Track login on mount
   useEffect(() => {
     if (!user) return;
