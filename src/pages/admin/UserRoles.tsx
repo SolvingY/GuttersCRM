@@ -48,6 +48,7 @@ interface UserWithRole {
   isArchived: boolean;
   archivedAt: string | null;
   hiddenFromLeaderboard: boolean;
+  adminPresetId: string | null;
 }
 
 export default function UserRoles() {
