@@ -26,6 +26,10 @@ import {
   ClipboardList,
   TrendingUp,
   Clock,
+  LayoutDashboard,
+  FileText,
+  Settings,
+  Activity,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -60,42 +64,45 @@ interface NavGroup {
 
 const adminNavGroups: NavGroup[] = [
   {
-    label: 'Master Overview',
-    icon: BarChart3,
-    items: [
-      { icon: Users, label: 'Master Overview', path: '/admin/overview' },
-      { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
-      { icon: Target, label: 'Company Goals', path: '/admin/goals' },
-      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
-      { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
-    ],
-  },
-  {
-    label: 'HR Management',
-    icon: UserCog,
-    items: [
-      { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
-      { icon: UserCog, label: 'User Roles', path: '/admin/users' },
-      { icon: Users, label: 'Contractor Mgmt', path: '/admin/team' },
-      { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
-      { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
-      { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
-    ],
-  },
-  {
-    label: 'Leads & Sales',
+    label: 'Pipeline & Revenue',
     icon: ClipboardList,
     items: [
-      { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
-      { icon: TrendingUp, label: 'Leadflow Statistics', path: '/admin/leadflow' },
+      { icon: ClipboardList, label: 'Lead Management', path: '/admin/leads' },
+      { icon: FileText, label: 'Quote Requests', path: '/admin/leads?status=new' },
+      { icon: TrendingUp, label: 'Lead Analytics', path: '/admin/leadflow' },
     ],
   },
   {
-    label: 'Competitions & Tracking',
-    icon: Trophy,
+    label: 'Performance & Culture',
+    icon: Activity,
     items: [
-      { icon: Trophy, label: 'Contests', path: '/admin/contests' },
+      { icon: BarChart3, label: 'Sales Performance', path: '/admin/sales-performance' },
+      { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
+      { icon: Trophy, label: 'Competitions', path: '/admin/contests' },
       { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
+      { icon: Target, label: 'Company Goals', path: '/admin/goals' },
+      { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
+      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
+    ],
+  },
+  {
+    label: 'Team Operations',
+    icon: Users,
+    items: [
+      { icon: Users, label: 'Contractor MGMT', path: '/admin/team' },
+      { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
+      { icon: Briefcase, label: 'HR / Onboarding', path: '/admin/applicants' },
+      { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
+      { icon: UserCog, label: 'User Roles', path: '/admin/users' },
+    ],
+  },
+  {
+    label: 'System Settings',
+    icon: Settings,
+    items: [
+      { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
+      { icon: Calendar, label: 'Calendar Setup', path: '/admin/reports' },
+      { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
     ],
   },
 ];
@@ -114,8 +121,12 @@ function getGroupBadge(group: NavGroup, newCount: number, newLeadsCount: number)
   return count;
 }
 
-function groupContainsPath(group: NavGroup, pathname: string) {
-  return group.items.some((item) => pathname === item.path);
+function groupContainsPath(group: NavGroup, pathname: string, search?: string) {
+  return group.items.some((item) => {
+    const [itemPath, itemQuery] = item.path.split('?');
+    if (itemQuery) return pathname === itemPath && search === `?${itemQuery}`;
+    return pathname === itemPath;
+  });
 }
 
 // -- Sidebar nav group (desktop expanded + mobile) --
@@ -357,8 +368,23 @@ export default function AdminLayout() {
           </div>
 
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {collapsed
-              ? adminNavGroups.map((group) => {
+            {collapsed ? (
+              <>
+                {/* Scoreboard icon */}
+                <button
+                  title="Scoreboard"
+                  onClick={() => navigate('/admin/overview')}
+                  className={cn(
+                    'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
+                    location.pathname === '/admin/overview'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                </button>
+                <div className="border-b border-accent-foreground/10 my-1" />
+                {adminNavGroups.map((group) => {
                   const badge = getGroupBadge(group, newCount, newLeadsCount);
                   return (
                     <button
@@ -367,7 +393,7 @@ export default function AdminLayout() {
                       onClick={() => navigate(group.items[0].path)}
                       className={cn(
                         'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
-                        groupContainsPath(group, location.pathname)
+                        groupContainsPath(group, location.pathname, location.search)
                           ? 'bg-background text-foreground'
                           : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
                       )}
@@ -380,8 +406,25 @@ export default function AdminLayout() {
                       )}
                     </button>
                   );
-                })
-              : adminNavGroups.map((group) => (
+                })}
+              </>
+            ) : (
+              <>
+                {/* Scoreboard direct link */}
+                <NavLink
+                  to="/admin/overview"
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors',
+                    location.pathname === '/admin/overview'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  <span>Scoreboard</span>
+                </NavLink>
+                <div className="border-b border-accent-foreground/10 my-1" />
+                {adminNavGroups.map((group) => (
                   <SidebarNavGroup
                     key={group.label}
                     group={group}
@@ -390,6 +433,8 @@ export default function AdminLayout() {
                     newLeadsCount={newLeadsCount}
                   />
                 ))}
+              </>
+            )}
           </nav>
         </aside>
 
@@ -413,6 +458,21 @@ export default function AdminLayout() {
           </div>
 
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+            {/* Scoreboard direct link */}
+            <NavLink
+              to="/admin/overview"
+              onClick={() => setMobileMenuOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors',
+                location.pathname === '/admin/overview'
+                  ? 'bg-background text-foreground'
+                  : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+              )}
+            >
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              <span>Scoreboard</span>
+            </NavLink>
+            <div className="border-b border-accent-foreground/10 my-1" />
             {adminNavGroups.map((group) => (
               <SidebarNavGroup
                 key={group.label}
