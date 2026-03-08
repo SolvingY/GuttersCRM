@@ -34,7 +34,7 @@ export default function SalesPerformance() {
     queryFn: async () => {
       const { data: wonDeals } = await supabase
         .from('quote_requests')
-        .select('assigned_to, contract_value')
+        .select('assigned_to, quote_amount')
         .eq('status', 'won')
         .not('assigned_to', 'is', null);
 
