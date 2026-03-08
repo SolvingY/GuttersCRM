@@ -228,6 +228,7 @@ const App = () => (
               <Route path="leads" element={<Leads />} />
               <Route path="leads/:id" element={<LeadDetail />} />
               <Route path="leadflow" element={<LeadflowStatistics />} />
+              <Route path="sales-performance" element={<SalesPerformance />} />
               <Route path="team" element={<ContractorManagement />} />
               <Route path="timeclock" element={<AdminTimeClock />} />
               <Route path="notifications" element={<NotificationRouting />} />
