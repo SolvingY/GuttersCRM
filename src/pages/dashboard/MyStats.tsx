@@ -18,6 +18,7 @@ import { format, subWeeks } from 'date-fns';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
 
 interface UserMetric {
   id: string;
@@ -629,6 +630,8 @@ export default function MyStats() {
           )}
         </>
       )}
+
+      <GoogleCalendarWidget />
     </div>
   );
 }

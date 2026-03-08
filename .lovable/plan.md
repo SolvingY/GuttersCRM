@@ -1,63 +1,42 @@
 
 
-# Add Google Calendar Embed Widget to All Dashboards
+# Add Edit Button to Shift History
 
-## Overview
-Create a shared Google Calendar widget component and an admin settings page to configure the embed URL. The widget will appear on all four dashboard types (Sales Rep, Canvasser, Supplementer, Admin).
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Database Change
-Create an `app_settings` table (single-row key-value config) to store the Google Calendar embed URL. This avoids hardcoding and lets admins update it anytime.
+## Changes
 
-```sql
-CREATE TABLE public.app_settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_by UUID REFERENCES auth.users(id)
-);
-ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
--- All authenticated users can read settings
-CREATE POLICY "Authenticated users can read settings"
-  ON public.app_settings FOR SELECT TO authenticated USING (true);
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
--- Only admins can insert/update
-CREATE POLICY "Admins can manage settings"
-  ON public.app_settings FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
-```
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-## New Components
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### 1. `src/components/dashboard/GoogleCalendarWidget.tsx`
-- Collapsible card with a Calendar icon header
-- Fetches `google_calendar_embed_url` from `app_settings`
-- If URL exists: renders an `<iframe>` with the embed URL (responsive, ~400px height)
-- If no URL: shows a muted message ("No team calendar configured" — admins see a link to settings)
-- Reusable across all dashboards
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### 2. Admin Settings for Calendar URL
-- Add a "Team Calendar" section to `src/pages/admin/ReportSettings.tsx` (or a new general settings page)
-- Simple input field for the Google Calendar embed URL with a Save button
-- Upserts to `app_settings` with key `google_calendar_embed_url`
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-## Integration Points
-Add `<GoogleCalendarWidget />` to these pages as a collapsible section at the bottom:
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-1. **`src/pages/dashboard/MyStats.tsx`** — after the last collapsible section
-2. **`src/pages/canvasser/CanvasserStats.tsx`** — after existing widgets
-3. **`src/pages/supplementer/SupplementerDashboard.tsx`** — after existing widgets
-4. **`src/pages/dashboard/AdminOverview.tsx`** — after existing widgets
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-## File Summary
-| File | Change |
+## Summary
+
+| Area | Change |
 |------|--------|
-| Migration | Create `app_settings` table + RLS |
-| `GoogleCalendarWidget.tsx` | New shared component |
-| `ReportSettings.tsx` | Add calendar URL input section |
-| `MyStats.tsx` | Import + render widget |
-| `CanvasserStats.tsx` | Import + render widget |
-| `SupplementerDashboard.tsx` | Import + render widget |
-| `AdminOverview.tsx` | Import + render widget |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
