@@ -725,6 +725,8 @@ export default function CanvasserStats() {
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      <GoogleCalendarWidget />
     </div>
   );
 }
