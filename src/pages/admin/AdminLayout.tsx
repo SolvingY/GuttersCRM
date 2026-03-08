@@ -64,42 +64,45 @@ interface NavGroup {
 
 const adminNavGroups: NavGroup[] = [
   {
-    label: 'Master Overview',
-    icon: BarChart3,
-    items: [
-      { icon: Users, label: 'Master Overview', path: '/admin/overview' },
-      { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
-      { icon: Target, label: 'Company Goals', path: '/admin/goals' },
-      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
-      { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
-    ],
-  },
-  {
-    label: 'HR Management',
-    icon: UserCog,
-    items: [
-      { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
-      { icon: UserCog, label: 'User Roles', path: '/admin/users' },
-      { icon: Users, label: 'Contractor Mgmt', path: '/admin/team' },
-      { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
-      { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
-      { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
-    ],
-  },
-  {
-    label: 'Leads & Sales',
+    label: 'Pipeline & Revenue',
     icon: ClipboardList,
     items: [
-      { icon: ClipboardList, label: 'Leads', path: '/admin/leads' },
-      { icon: TrendingUp, label: 'Leadflow Statistics', path: '/admin/leadflow' },
+      { icon: ClipboardList, label: 'Lead Management', path: '/admin/leads' },
+      { icon: FileText, label: 'Quote Requests', path: '/admin/leads?status=new' },
+      { icon: TrendingUp, label: 'Lead Analytics', path: '/admin/leadflow' },
     ],
   },
   {
-    label: 'Competitions & Tracking',
-    icon: Trophy,
+    label: 'Performance & Culture',
+    icon: Activity,
     items: [
-      { icon: Trophy, label: 'Contests', path: '/admin/contests' },
+      { icon: BarChart3, label: 'Sales Performance', path: '/admin/sales-performance' },
+      { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
+      { icon: Trophy, label: 'Competitions', path: '/admin/contests' },
       { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
+      { icon: Target, label: 'Company Goals', path: '/admin/goals' },
+      { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
+      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
+    ],
+  },
+  {
+    label: 'Team Operations',
+    icon: Users,
+    items: [
+      { icon: Users, label: 'Contractor MGMT', path: '/admin/team' },
+      { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
+      { icon: Briefcase, label: 'HR / Onboarding', path: '/admin/applicants' },
+      { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
+      { icon: UserCog, label: 'User Roles', path: '/admin/users' },
+    ],
+  },
+  {
+    label: 'System Settings',
+    icon: Settings,
+    items: [
+      { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
+      { icon: Calendar, label: 'Calendar Setup', path: '/admin/reports' },
+      { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
     ],
   },
 ];
