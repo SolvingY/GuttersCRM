@@ -82,7 +82,6 @@ const adminNavGroups: NavGroup[] = [
       { icon: Flame, label: 'Pit Management', path: '/admin/pit' },
       { icon: Target, label: 'Company Goals', path: '/admin/goals' },
       { icon: Megaphone, label: 'Announcements', path: '/admin/announcements' },
-      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
     ],
   },
   {
@@ -94,6 +93,7 @@ const adminNavGroups: NavGroup[] = [
       { icon: Briefcase, label: 'HR / Onboarding', path: '/admin/applicants' },
       { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
       { icon: UserCog, label: 'User Roles', path: '/admin/users' },
+      { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
     ],
   },
   {
