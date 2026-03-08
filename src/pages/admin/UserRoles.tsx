@@ -78,7 +78,7 @@ export default function UserRoles() {
     
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, is_archived, archived_at, hidden_from_leaderboard');
+      .select('id, full_name, is_archived, archived_at, hidden_from_leaderboard, admin_preset_id');
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
