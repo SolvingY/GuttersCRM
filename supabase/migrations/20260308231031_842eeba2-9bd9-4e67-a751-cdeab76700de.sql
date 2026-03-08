@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN admin_preset_id uuid REFERENCES public.admin_presets(id) ON DELETE SET NULL;
