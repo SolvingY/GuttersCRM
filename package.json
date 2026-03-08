@@ -13,7 +13,6 @@
   "dependencies": {
     "@fontsource/oswald": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
-    "@radix-ui/react-menubar": "^1.1.15",
     "@radix-ui/react-navigation-menu": "^1.2.13",
     "@radix-ui/react-popover": "^1.1.14",
     "@radix-ui/react-progress": "^1.1.7",
