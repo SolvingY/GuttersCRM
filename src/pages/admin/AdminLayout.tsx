@@ -515,7 +515,7 @@ export default function AdminLayout() {
               <span>Scoreboard</span>
             </NavLink>
             <div className="border-b border-accent-foreground/10 my-1" />
-            {adminNavGroups.map((group) => (
+            {filteredNavGroups.map((group) => (
               <SidebarNavGroup
                 key={group.label}
                 group={group}
