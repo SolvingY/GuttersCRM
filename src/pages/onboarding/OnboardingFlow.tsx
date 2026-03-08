@@ -76,8 +76,15 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function OnboardingFlow() {
-  const { user, refreshOnboardingStatus } = useAuth();
+  const { user, refreshOnboardingStatus, isAdmin, hasCanvasserRole, hasSupplementerRole, hasSalesRole } = useAuth();
   const navigate = useNavigate();
+
+  const getBackPath = () => {
+    if (isAdmin) return '/admin/onboarding';
+    if (hasCanvasserRole && !hasSalesRole) return '/canvasser/stats';
+    if (hasSupplementerRole && !hasSalesRole) return '/supplementer/dashboard';
+    return '/dashboard/stats';
+  };
   const { toast } = useToast();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
