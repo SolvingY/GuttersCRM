@@ -1100,6 +1100,7 @@ export default function AdminOverview() {
         onSuccess={handleEditSuccess}
       />
 
+      <GoogleCalendarWidget />
     </div>
   );
 }

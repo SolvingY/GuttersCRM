@@ -7,8 +7,80 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Mail, Calendar, Clock, Send, FileText, X } from 'lucide-react';
+import { Loader2, Save, Mail, Calendar, Clock, Send, FileText, X, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+
+function CalendarSettingsCard() {
+  const { toast } = useToast();
+  const [calendarUrl, setCalendarUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'google_calendar_embed_url')
+      .maybeSingle()
+      .then(({ data }) => {
+        setCalendarUrl(data?.value || '');
+        setLoaded(true);
+      });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: 'google_calendar_embed_url', value: calendarUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (error) throw error;
+      toast({ title: 'Saved', description: 'Calendar embed URL updated.' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="h-5 w-5 text-accent" />
+          Team Calendar
+        </CardTitle>
+        <CardDescription>
+          Paste your Google Calendar embed URL to display it on all dashboards
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Google Calendar Embed URL</Label>
+          <Input
+            placeholder="https://calendar.google.com/calendar/embed?src=..."
+            value={calendarUrl}
+            onChange={(e) => setCalendarUrl(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            In Google Calendar, go to Settings → your calendar → "Integrate calendar" → copy the embed URL.
+          </p>
+        </div>
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          Save Calendar URL
+        </Button>
+        {calendarUrl && (
+          <div className="mt-4 rounded-md overflow-hidden border">
+            <iframe src={calendarUrl} className="w-full border-0" style={{ height: '300px' }} title="Calendar Preview" loading="lazy" />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 interface ReportSettings {
   scheduled_report_enabled: boolean;

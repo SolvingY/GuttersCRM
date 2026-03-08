@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Bar } from 'recharts';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from "@/lib/constants";
 import { format } from "date-fns";
+import { GoogleCalendarWidget } from "@/components/dashboard/GoogleCalendarWidget";
 
 interface SupplementerMetrics {
   display_name: string | null;

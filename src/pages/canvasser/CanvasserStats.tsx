@@ -17,6 +17,7 @@ import { CanvasserConversionFunnel } from "@/components/canvasser/CanvasserConve
 import { CanvasserYTDRankingWidget } from "@/components/canvasser/CanvasserYTDRankingWidget";
 import { TimeClockWidget } from "@/components/canvasser/TimeClockWidget";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { GoogleCalendarWidget } from "@/components/dashboard/GoogleCalendarWidget";
 
 interface CanvasserMetrics {
   display_name: string | null;
