@@ -59,6 +59,7 @@ interface NavItem {
 interface NavGroup {
   label: string;
   icon: LucideIcon;
+  groupId: string;
   items: NavItem[];
 }
 
