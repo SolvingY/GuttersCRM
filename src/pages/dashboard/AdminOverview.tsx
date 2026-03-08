@@ -21,6 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
+import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
