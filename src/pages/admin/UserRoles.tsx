@@ -126,6 +126,7 @@ export default function UserRoles() {
       isArchived: profile.is_archived || false,
       archivedAt: profile.archived_at,
       hiddenFromLeaderboard: (profile as any).hidden_from_leaderboard || false,
+      adminPresetId: (profile as any).admin_preset_id || null,
     }));
 
     combined.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
