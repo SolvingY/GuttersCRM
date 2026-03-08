@@ -76,6 +76,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'Performance & Culture',
     icon: Activity,
+    groupId: 'performance-culture',
     items: [
       { icon: BarChart3, label: 'Sales Performance', path: '/admin/sales-performance' },
       { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
