@@ -59,6 +59,7 @@ interface NavItem {
 interface NavGroup {
   label: string;
   icon: LucideIcon;
+  groupId: string;
   items: NavItem[];
 }
 
@@ -66,6 +67,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'Pipeline & Revenue',
     icon: ClipboardList,
+    groupId: 'pipeline-revenue',
     items: [
       { icon: ClipboardList, label: 'Lead Management', path: '/admin/leads' },
       { icon: FileText, label: 'Quote Requests', path: '/admin/leads?status=new' },
@@ -75,6 +77,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'Performance & Culture',
     icon: Activity,
+    groupId: 'performance-culture',
     items: [
       { icon: BarChart3, label: 'Sales Performance', path: '/admin/sales-performance' },
       { icon: BarChart3, label: 'Leaderboards', path: '/admin/leaderboards' },
@@ -87,6 +90,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'Team Operations',
     icon: Users,
+    groupId: 'team-operations',
     items: [
       { icon: Users, label: 'Contractor MGMT', path: '/admin/team' },
       { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
@@ -99,10 +103,12 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'System Settings',
     icon: Settings,
+    groupId: 'system-settings',
     items: [
       { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
       { icon: Calendar, label: 'Calendar Setup', path: '/admin/reports' },
       { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
+      { icon: Settings, label: 'Admin Presets', path: '/admin/presets' },
     ],
   },
 ];
@@ -219,6 +225,42 @@ export default function AdminLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+
+  // Fetch user's admin preset
+  const { data: userPreset } = useQuery({
+    queryKey: ['admin-user-preset', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('admin_preset_id')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.admin_preset_id) return null;
+      const { data: preset } = await supabase
+        .from('admin_presets')
+        .select('*')
+        .eq('id', profile.admin_preset_id)
+        .single();
+      return preset ? {
+        ...preset,
+        visible_menu_items: Array.isArray(preset.visible_menu_items) ? preset.visible_menu_items as string[] : [],
+      } : null;
+    },
+    enabled: !!user,
+  });
+
+  // Redirect to preset landing page if at /admin root
+  useEffect(() => {
+    if (userPreset?.default_landing_page && location.pathname === '/admin') {
+      navigate(userPreset.default_landing_page, { replace: true });
+    }
+  }, [userPreset, location.pathname]);
+
+  // Filter nav groups based on preset
+  const filteredNavGroups = userPreset?.visible_menu_items?.length
+    ? adminNavGroups.filter(g => (userPreset.visible_menu_items as string[]).includes(g.groupId))
+    : adminNavGroups;
 
   // Track login on mount
   useEffect(() => {
@@ -384,7 +426,7 @@ export default function AdminLayout() {
                   <LayoutDashboard className="h-4 w-4" />
                 </button>
                 <div className="border-b border-accent-foreground/10 my-1" />
-                {adminNavGroups.map((group) => {
+                {filteredNavGroups.map((group) => {
                   const badge = getGroupBadge(group, newCount, newLeadsCount);
                   return (
                     <button
@@ -424,7 +466,7 @@ export default function AdminLayout() {
                   <span>Scoreboard</span>
                 </NavLink>
                 <div className="border-b border-accent-foreground/10 my-1" />
-                {adminNavGroups.map((group) => (
+                {filteredNavGroups.map((group) => (
                   <SidebarNavGroup
                     key={group.label}
                     group={group}
@@ -473,7 +515,7 @@ export default function AdminLayout() {
               <span>Scoreboard</span>
             </NavLink>
             <div className="border-b border-accent-foreground/10 my-1" />
-            {adminNavGroups.map((group) => (
+            {filteredNavGroups.map((group) => (
               <SidebarNavGroup
                 key={group.label}
                 group={group}

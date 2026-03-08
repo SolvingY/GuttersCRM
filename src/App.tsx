@@ -64,6 +64,7 @@ const LeadflowStatistics = lazy(() => import("./pages/admin/LeadflowStatistics")
 const AdminTimeClock = lazy(() => import("./pages/admin/AdminTimeClock"));
 const SalesPerformance = lazy(() => import("./pages/admin/SalesPerformance"));
 const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting"));
+const AdminPresets = lazy(() => import("./pages/admin/AdminPresets"));
 
 // Canvasser routes
 const CanvasserLayout = lazy(() => import("./pages/canvasser/CanvasserLayout"));
@@ -232,6 +233,7 @@ const App = () => (
               <Route path="team" element={<ContractorManagement />} />
               <Route path="timeclock" element={<AdminTimeClock />} />
               <Route path="notifications" element={<NotificationRouting />} />
+              <Route path="presets" element={<AdminPresets />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

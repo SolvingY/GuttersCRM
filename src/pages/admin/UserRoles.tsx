@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound, Mail } from 'lucide-react';
+import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound, Mail, Settings2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EditUserRoleModal } from '@/components/admin/EditUserRoleModal';
 import { SetPasswordModal } from '@/components/admin/SetPasswordModal';
+import { AssignPresetModal } from '@/components/admin/AssignPresetModal';
 import { format } from 'date-fns';
 
 interface UserWithRole {
@@ -47,6 +48,7 @@ interface UserWithRole {
   isArchived: boolean;
   archivedAt: string | null;
   hiddenFromLeaderboard: boolean;
+  adminPresetId: string | null;
 }
 
 export default function UserRoles() {
@@ -67,13 +69,15 @@ export default function UserRoles() {
   const [editEmailUser, setEditEmailUser] = useState<UserWithRole | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
+  const [presetUser, setPresetUser] = useState<UserWithRole | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
     
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, is_archived, archived_at, hidden_from_leaderboard');
+      .select('id, full_name, is_archived, archived_at, hidden_from_leaderboard, admin_preset_id');
 
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
@@ -121,6 +125,7 @@ export default function UserRoles() {
       isArchived: profile.is_archived || false,
       archivedAt: profile.archived_at,
       hiddenFromLeaderboard: (profile as any).hidden_from_leaderboard || false,
+      adminPresetId: (profile as any).admin_preset_id || null,
     }));
 
     combined.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
@@ -358,6 +363,9 @@ export default function UserRoles() {
                               <Button variant="ghost" size="sm" onClick={() => { setPasswordUser(user); setPasswordModalOpen(true); }} disabled={actionLoading === user.id} title="Set password">
                                 <KeyRound className="h-4 w-4" />
                               </Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setPresetUser(user); setPresetModalOpen(true); }} disabled={actionLoading === user.id} title="Assign preset">
+                                <Settings2 className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setTargetUser(user); setDeleteDialogOpen(true); }} disabled={actionLoading === user.id}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -444,6 +452,16 @@ export default function UserRoles() {
 
       {/* Set Password Modal */}
       <SetPasswordModal open={passwordModalOpen} onOpenChange={setPasswordModalOpen} user={passwordUser} />
+
+      {/* Assign Preset Modal */}
+      <AssignPresetModal
+        open={presetModalOpen}
+        onOpenChange={setPresetModalOpen}
+        userId={presetUser?.id || null}
+        userName={presetUser?.fullName || null}
+        currentPresetId={presetUser?.adminPresetId || null}
+        onSuccess={fetchUsers}
+      />
 
       {/* Edit Email Dialog */}
       <Dialog open={editEmailDialogOpen} onOpenChange={setEditEmailDialogOpen}>

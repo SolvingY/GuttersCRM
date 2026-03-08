@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_presets: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          default_landing_page: string
+          id: string
+          name: string
+          updated_at: string | null
+          visible_menu_items: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          default_landing_page?: string
+          id?: string
+          name: string
+          updated_at?: string | null
+          visible_menu_items?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          default_landing_page?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+          visible_menu_items?: Json | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
@@ -1716,6 +1746,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_preset_id: string | null
           archived_at: string | null
           archived_by: string | null
           avatar_url: string | null
@@ -1750,6 +1781,7 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          admin_preset_id?: string | null
           archived_at?: string | null
           archived_by?: string | null
           avatar_url?: string | null
@@ -1784,6 +1816,7 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          admin_preset_id?: string | null
           archived_at?: string | null
           archived_by?: string | null
           avatar_url?: string | null
@@ -1817,7 +1850,15 @@ export type Database = {
           updated_at?: string
           zip_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_admin_preset_id_fkey"
+            columns: ["admin_preset_id"]
+            isOneToOne: false
+            referencedRelation: "admin_presets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_requests: {
         Row: {
