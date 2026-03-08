@@ -95,7 +95,7 @@ export default function SalesPerformance() {
       const monthMap = new Map<string, number>();
       for (const deal of wonDeals) {
         const month = deal.created_at.slice(0, 7); // YYYY-MM
-        monthMap.set(month, (monthMap.get(month) || 0) + (Number(deal.contract_value) || 0));
+        monthMap.set(month, (monthMap.get(month) || 0) + (Number(deal.quote_amount) || 0));
       }
 
       return Array.from(monthMap.entries())
