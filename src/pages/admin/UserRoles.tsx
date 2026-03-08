@@ -69,6 +69,9 @@ export default function UserRoles() {
   const [editEmailUser, setEditEmailUser] = useState<UserWithRole | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
+  const [presetUser, setPresetUser] = useState<UserWithRole | null>(null);
+  const [emailSaving, setEmailSaving] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
