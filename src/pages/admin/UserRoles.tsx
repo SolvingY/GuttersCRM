@@ -364,6 +364,9 @@ export default function UserRoles() {
                               <Button variant="ghost" size="sm" onClick={() => { setPasswordUser(user); setPasswordModalOpen(true); }} disabled={actionLoading === user.id} title="Set password">
                                 <KeyRound className="h-4 w-4" />
                               </Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setPresetUser(user); setPresetModalOpen(true); }} disabled={actionLoading === user.id} title="Assign preset">
+                                <Settings2 className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setTargetUser(user); setDeleteDialogOpen(true); }} disabled={actionLoading === user.id}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
