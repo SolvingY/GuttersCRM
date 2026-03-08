@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_presets: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          default_landing_page: string
+          id: string
+          name: string
+          updated_at: string | null
+          visible_menu_items: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          default_landing_page?: string
+          id?: string
+          name: string
+          updated_at?: string | null
+          visible_menu_items?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          default_landing_page?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+          visible_menu_items?: Json | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
