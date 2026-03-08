@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound, Mail } from 'lucide-react';
+import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound, Mail, Settings2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
