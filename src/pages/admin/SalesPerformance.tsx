@@ -86,7 +86,7 @@ export default function SalesPerformance() {
     queryFn: async () => {
       const { data: wonDeals } = await supabase
         .from('quote_requests')
-        .select('contract_value, created_at')
+        .select('quote_amount, created_at')
         .eq('status', 'won')
         .order('created_at', { ascending: true });
 
