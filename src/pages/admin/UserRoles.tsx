@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EditUserRoleModal } from '@/components/admin/EditUserRoleModal';
 import { SetPasswordModal } from '@/components/admin/SetPasswordModal';
+import { AssignPresetModal } from '@/components/admin/AssignPresetModal';
 import { format } from 'date-fns';
 
 interface UserWithRole {
