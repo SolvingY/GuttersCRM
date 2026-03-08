@@ -426,7 +426,7 @@ export default function AdminLayout() {
                   <LayoutDashboard className="h-4 w-4" />
                 </button>
                 <div className="border-b border-accent-foreground/10 my-1" />
-                {adminNavGroups.map((group) => {
+                {filteredNavGroups.map((group) => {
                   const badge = getGroupBadge(group, newCount, newLeadsCount);
                   return (
                     <button
