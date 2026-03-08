@@ -454,6 +454,16 @@ export default function UserRoles() {
       {/* Set Password Modal */}
       <SetPasswordModal open={passwordModalOpen} onOpenChange={setPasswordModalOpen} user={passwordUser} />
 
+      {/* Assign Preset Modal */}
+      <AssignPresetModal
+        open={presetModalOpen}
+        onOpenChange={setPresetModalOpen}
+        userId={presetUser?.id || null}
+        userName={presetUser?.fullName || null}
+        currentPresetId={presetUser?.adminPresetId || null}
+        onSuccess={fetchUsers}
+      />
+
       {/* Edit Email Dialog */}
       <Dialog open={editEmailDialogOpen} onOpenChange={setEditEmailDialogOpen}>
         <DialogContent className="sm:max-w-md">
