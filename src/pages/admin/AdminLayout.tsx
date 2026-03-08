@@ -368,8 +368,23 @@ export default function AdminLayout() {
           </div>
 
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {collapsed
-              ? adminNavGroups.map((group) => {
+            {collapsed ? (
+              <>
+                {/* Scoreboard icon */}
+                <button
+                  title="Scoreboard"
+                  onClick={() => navigate('/admin/overview')}
+                  className={cn(
+                    'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
+                    location.pathname === '/admin/overview'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                </button>
+                <div className="border-b border-accent-foreground/10 my-1" />
+                {adminNavGroups.map((group) => {
                   const badge = getGroupBadge(group, newCount, newLeadsCount);
                   return (
                     <button
@@ -378,7 +393,7 @@ export default function AdminLayout() {
                       onClick={() => navigate(group.items[0].path)}
                       className={cn(
                         'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
-                        groupContainsPath(group, location.pathname)
+                        groupContainsPath(group, location.pathname, location.search)
                           ? 'bg-background text-foreground'
                           : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
                       )}
@@ -391,8 +406,25 @@ export default function AdminLayout() {
                       )}
                     </button>
                   );
-                })
-              : adminNavGroups.map((group) => (
+                })}
+              </>
+            ) : (
+              <>
+                {/* Scoreboard direct link */}
+                <NavLink
+                  to="/admin/overview"
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors',
+                    location.pathname === '/admin/overview'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  <span>Scoreboard</span>
+                </NavLink>
+                <div className="border-b border-accent-foreground/10 my-1" />
+                {adminNavGroups.map((group) => (
                   <SidebarNavGroup
                     key={group.label}
                     group={group}
@@ -401,6 +433,8 @@ export default function AdminLayout() {
                     newLeadsCount={newLeadsCount}
                   />
                 ))}
+              </>
+            )}
           </nav>
         </aside>
 
