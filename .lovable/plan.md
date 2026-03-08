@@ -1,42 +1,63 @@
 
 
-# Add Edit Button to Shift History
+# Phase 1: Restructure Admin Sidebar Navigation
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Sidebar Structure
 
-## Changes
+**📌 Scoreboard** — Direct `NavLink` to `/admin/overview` (no collapsible group, always visible at top)
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+**📂 Pipeline & Revenue** (Collapsible)
+| Label | Route | Icon |
+|---|---|---|
+| Lead Management | `/admin/leads` | ClipboardList |
+| Quote Requests | `/admin/leads?status=new` | FileText |
+| Lead Analytics | `/admin/leadflow` | TrendingUp |
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**📂 Performance & Culture** (Collapsible)
+| Label | Route | Icon |
+|---|---|---|
+| Sales Performance | `/admin/sales-performance` | **NEW PAGE** |
+| Leaderboards | `/admin/leaderboards` | BarChart3 |
+| Competitions | `/admin/contests` | Trophy |
+| Pit Management | `/admin/pit` | Flame |
+| Company Goals | `/admin/goals` | Target |
+| Announcements | `/admin/announcements` | Megaphone |
+| Weekly Updates | `/admin/weekly` | Calendar |
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**📂 Team Operations** (Collapsible)
+| Label | Route | Icon |
+|---|---|---|
+| Contractor MGMT | `/admin/team` | Users |
+| TimeClock | `/admin/timeclock` | Clock |
+| HR / Onboarding | `/admin/applicants` | Briefcase |
+| Invite Users | `/admin/invites` | UserPlus |
+| User Roles | `/admin/users` | UserCog |
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+**📂 System Settings** (Collapsible)
+| Label | Route | Icon |
+|---|---|---|
+| Report Settings | `/admin/reports` | BarChart3 |
+| Calendar Setup | `/admin/reports` (scroll/tab to calendar section) | Calendar |
+| Notifications | `/admin/notifications` | Bell |
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+## New: Sales Performance Page
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+Create `src/pages/admin/SalesPerformance.tsx` — a dashboard pulling from `weekly_user_metrics` and `quote_requests` showing:
+- Total revenue (won deals), close rate, avg deal size
+- Per-rep breakdown table (deals won, revenue, close rate)
+- Trend chart (weekly/monthly revenue over time using Recharts)
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+Register route in `App.tsx` as `/admin/sales-performance`.
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+## Back Button Fix
 
-## Summary
+The "Back to Dashboard" button in the admin header already uses `navigate('/dashboard/stats')`. The onboarding back button was already fixed to `navigate(-1)`. No further changes needed here.
 
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+## Files Changed
+
+| File | Change |
+|---|---|
+| `AdminLayout.tsx` | Replace `adminNavGroups` array with new structure; add Scoreboard as a standalone NavLink above groups |
+| `App.tsx` | Add `<Route path="sales-performance" element={<SalesPerformance />} />` |
+| `SalesPerformance.tsx` | **New** — Sales performance dashboard page |
 
