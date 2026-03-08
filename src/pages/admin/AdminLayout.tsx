@@ -89,6 +89,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'Team Operations',
     icon: Users,
+    groupId: 'team-operations',
     items: [
       { icon: Users, label: 'Contractor MGMT', path: '/admin/team' },
       { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
