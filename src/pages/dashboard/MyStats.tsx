@@ -629,6 +629,8 @@ export default function MyStats() {
           )}
         </>
       )}
+
+      <GoogleCalendarWidget />
     </div>
   );
 }
