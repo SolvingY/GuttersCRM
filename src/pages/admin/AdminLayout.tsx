@@ -121,8 +121,12 @@ function getGroupBadge(group: NavGroup, newCount: number, newLeadsCount: number)
   return count;
 }
 
-function groupContainsPath(group: NavGroup, pathname: string) {
-  return group.items.some((item) => pathname === item.path);
+function groupContainsPath(group: NavGroup, pathname: string, search?: string) {
+  return group.items.some((item) => {
+    const [itemPath, itemQuery] = item.path.split('?');
+    if (itemQuery) return pathname === itemPath && search === `?${itemQuery}`;
+    return pathname === itemPath;
+  });
 }
 
 // -- Sidebar nav group (desktop expanded + mobile) --
