@@ -62,6 +62,7 @@ const LeadDetail = lazy(() => import("./pages/admin/LeadDetail"));
 const ContractorManagement = lazy(() => import("./pages/admin/ContractorManagement"));
 const LeadflowStatistics = lazy(() => import("./pages/admin/LeadflowStatistics"));
 const AdminTimeClock = lazy(() => import("./pages/admin/AdminTimeClock"));
+const SalesPerformance = lazy(() => import("./pages/admin/SalesPerformance"));
 const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting"));
 
 // Canvasser routes
