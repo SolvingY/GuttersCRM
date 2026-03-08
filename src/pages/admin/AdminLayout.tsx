@@ -99,10 +99,12 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'System Settings',
     icon: Settings,
+    groupId: 'system-settings',
     items: [
       { icon: BarChart3, label: 'Report Settings', path: '/admin/reports' },
       { icon: Calendar, label: 'Calendar Setup', path: '/admin/reports' },
       { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
+      { icon: Settings, label: 'Admin Presets', path: '/admin/presets' },
     ],
   },
 ];
