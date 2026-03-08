@@ -329,6 +329,8 @@ export default function SupplementerDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <GoogleCalendarWidget />
     </div>
   );
 }
