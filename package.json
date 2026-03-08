@@ -13,7 +13,6 @@
   "dependencies": {
     "@fontsource/oswald": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
-    "@radix-ui/react-collapsible": "^1.1.11",
     "@radix-ui/react-context-menu": "^2.2.15",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-dropdown-menu": "^2.1.15",
