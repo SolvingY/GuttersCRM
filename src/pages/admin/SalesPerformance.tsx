@@ -57,7 +57,7 @@ export default function SalesPerformance() {
         if (!repMap.has(rid)) repMap.set(rid, { won: 0, revenue: 0, total: 0 });
         const entry = repMap.get(rid)!;
         entry.won++;
-        entry.revenue += Number(deal.contract_value) || 0;
+        entry.revenue += Number(deal.quote_amount) || 0;
       }
 
       // Get display names
