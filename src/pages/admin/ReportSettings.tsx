@@ -370,6 +370,9 @@ export default function ReportSettings() {
         </Button>
       </div>
 
+      {/* Team Calendar Card */}
+      <CalendarSettingsCard />
+
       {/* Info Card */}
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
