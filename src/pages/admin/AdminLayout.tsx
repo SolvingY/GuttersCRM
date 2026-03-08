@@ -26,6 +26,10 @@ import {
   ClipboardList,
   TrendingUp,
   Clock,
+  LayoutDashboard,
+  FileText,
+  Settings,
+  Activity,
 } from 'lucide-react';
 import {
   DropdownMenu,
