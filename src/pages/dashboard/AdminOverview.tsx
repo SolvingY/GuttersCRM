@@ -410,7 +410,9 @@ export default function AdminOverview() {
         }
       });
 
-      const canvasserTotals = canvassers.reduce(
+      const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId));
+
+      const canvasserTotals = activeCanvassers.reduce(
         (acc, c) => ({
           totalCanvassers: acc.totalCanvassers + 1,
           totalLeadsSet: acc.totalLeadsSet + c.leadsSet,
@@ -427,10 +429,9 @@ export default function AdminOverview() {
           totalDoorsKnocked: 0, totalHoursWorked: 0 }
       );
 
-      const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
+      const totalIncome = activeCanvassers.reduce((sum, c) => sum + c.income, 0);
       setTotalCanvasserIncome(totalIncome);
       setCanvasserAggregates(canvasserTotals);
-      const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId));
       setCanvasserDetails(activeCanvassers.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
