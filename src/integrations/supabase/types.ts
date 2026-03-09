@@ -299,6 +299,38 @@ export type Database = {
         }
         Relationships: []
       }
+      canvasser_zone_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          canvasser_id: string
+          id: string
+          zone_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          canvasser_id: string
+          id?: string
+          zone_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          canvasser_id?: string
+          id?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvasser_zone_assignments_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "geofence_work_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_goals: {
         Row: {
           canvasser_leads_goal: number | null

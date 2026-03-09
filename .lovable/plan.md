@@ -1,72 +1,42 @@
 
 
-# Assign Geofence Zones to Canvassers
+# Add Edit Button to Shift History
 
-Currently, all active geofence zones apply to all canvassers globally. This adds the ability to assign specific zones to specific canvassers, so each canvasser is only checked against their assigned zones.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Database Change
+## Changes
 
-Create a junction table `canvasser_zone_assignments`:
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-```sql
-CREATE TABLE public.canvasser_zone_assignments (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  canvasser_id uuid NOT NULL,
-  zone_id uuid NOT NULL REFERENCES public.geofence_work_zones(id) ON DELETE CASCADE,
-  assigned_at timestamptz NOT NULL DEFAULT now(),
-  assigned_by uuid,
-  UNIQUE (canvasser_id, zone_id)
-);
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-ALTER TABLE public.canvasser_zone_assignments ENABLE ROW LEVEL SECURITY;
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-CREATE POLICY "Admins can manage zone assignments" ON public.canvasser_zone_assignments FOR ALL USING (has_role(auth.uid(), 'admin'::app_role));
-CREATE POLICY "Users can view own zone assignments" ON public.canvasser_zone_assignments FOR SELECT USING (canvasser_id = auth.uid());
-```
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## Behavior
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-- **No assignments for a zone** = zone applies to everyone (backward compatible)
-- **Assignments exist for a zone** = zone only applies to assigned canvassers
-- This way existing zones keep working without needing to assign everyone
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-## UI Changes (`src/pages/admin/AdminTimeClock.tsx`)
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-**1. Zone card gets an "Assign" button** that opens a modal showing a checklist of all canvassers with toggles for who is assigned to that zone. Shows current assignment count on the card (e.g. "All canvassers" or "3 assigned").
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-**2. New state + fetch for assignments**: Fetch all `canvasser_zone_assignments` rows. Add modal state for the assignment editor.
+## Summary
 
-**3. Assignment modal**: Lists all canvassers with checkboxes. Save inserts/deletes rows in the junction table.
-
-## Clock-In Logic Change (`src/components/canvasser/TimeClockWidget.tsx`)
-
-Update `checkGeofence` to:
-1. Fetch active zones
-2. For each zone, check if it has assignments — if it does, only include it if the current user is assigned
-3. If no qualifying zones remain, allow clock-in anywhere (same as current "no zones" behavior)
-
-```typescript
-const { data: zones } = await supabase
-  .from("geofence_work_zones")
-  .select("id, lat, lng, radius_meters")
-  .eq("is_active", true);
-
-const { data: assignments } = await supabase
-  .from("canvasser_zone_assignments")
-  .select("zone_id")
-  .eq("canvasser_id", user.id);
-
-const myZoneIds = new Set(assignments?.map(a => a.zone_id) || []);
-
-// Filter: include zone if it has no assignments at all, or if user is assigned
-const { data: allAssignments } = await supabase
-  .from("canvasser_zone_assignments")
-  .select("zone_id");
-
-const zonesWithAssignments = new Set(allAssignments?.map(a => a.zone_id) || []);
-
-const applicableZones = zones.filter(z =>
-  !zonesWithAssignments.has(z.id) || myZoneIds.has(z.id)
-);
-```
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

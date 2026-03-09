@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2, Copy } from 'lucide-react';
+import { Loader2, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2, Copy, Users } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { format, subDays, addDays } from 'date-fns';
 import { updateCanvasserHours } from '@/lib/updateCanvasserHours';
@@ -65,6 +66,13 @@ export default function AdminTimeClock() {
   const [zoneLocation, setZoneLocation] = useState('');
   const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [zoneRadius, setZoneRadius] = useState('500');
+
+  // Zone assignment state
+  const [zoneAssignments, setZoneAssignments] = useState<{ zone_id: string; canvasser_id: string }[]>([]);
+  const [assignZoneModalOpen, setAssignZoneModalOpen] = useState(false);
+  const [assigningZone, setAssigningZone] = useState<any>(null);
+  const [assignedCanvasserIds, setAssignedCanvasserIds] = useState<Set<string>>(new Set());
+  const [savingAssignments, setSavingAssignments] = useState(false);
 
   const parseCoordinates = (text: string): { lat: number; lng: number } | null => {
     if (!text.trim()) return null;
@@ -151,10 +159,15 @@ export default function AdminTimeClock() {
     setWorkZones(data || []);
   }, []);
 
+  const fetchZoneAssignments = useCallback(async () => {
+    const { data } = await supabase.from('canvasser_zone_assignments').select('zone_id, canvasser_id');
+    setZoneAssignments((data as any[]) || []);
+  }, []);
+
   useEffect(() => {
-    const init = async () => { await fetchCanvassers(); await fetchShifts(); await fetchWorkZones(); setLoading(false); };
+    const init = async () => { await fetchCanvassers(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
     init();
-  }, [fetchCanvassers, fetchShifts, fetchWorkZones]);
+  }, [fetchCanvassers, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
 
   useEffect(() => { fetchShiftHistory(); }, [fetchShiftHistory]);
 
@@ -358,8 +371,48 @@ export default function AdminTimeClock() {
   const handleDeleteZone = async (zoneId: string) => {
     if (!confirm('Delete this work zone?')) return;
     await supabase.from('geofence_work_zones').delete().eq('id', zoneId);
-    fetchWorkZones();
+    fetchWorkZones(); fetchZoneAssignments();
     toast.success('Zone deleted');
+  };
+
+  const handleOpenAssignZone = (zone: any) => {
+    setAssigningZone(zone);
+    const currentIds = new Set(zoneAssignments.filter(a => a.zone_id === zone.id).map(a => a.canvasser_id));
+    setAssignedCanvasserIds(currentIds);
+    setAssignZoneModalOpen(true);
+  };
+
+  const handleToggleCanvasserAssignment = (canvasserId: string) => {
+    setAssignedCanvasserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(canvasserId)) next.delete(canvasserId);
+      else next.add(canvasserId);
+      return next;
+    });
+  };
+
+  const handleSaveAssignments = async () => {
+    if (!assigningZone) return;
+    setSavingAssignments(true);
+    try {
+      // Delete all existing assignments for this zone
+      await supabase.from('canvasser_zone_assignments').delete().eq('zone_id', assigningZone.id);
+      // Insert new assignments
+      if (assignedCanvasserIds.size > 0) {
+        const rows = Array.from(assignedCanvasserIds).map(cid => ({ zone_id: assigningZone.id, canvasser_id: cid }));
+        const { error } = await supabase.from('canvasser_zone_assignments').insert(rows as any);
+        if (error) throw error;
+      }
+      toast.success('Zone assignments updated');
+      setAssignZoneModalOpen(false);
+      fetchZoneAssignments();
+    } catch (err: any) { toast.error('Failed: ' + err.message); }
+    setSavingAssignments(false);
+  };
+
+  const getZoneAssignmentLabel = (zoneId: string) => {
+    const count = zoneAssignments.filter(a => a.zone_id === zoneId).length;
+    return count === 0 ? 'All canvassers' : `${count} assigned`;
   };
 
   const handleCopyCoords = async (lat: number, lng: number) => {
@@ -738,9 +791,11 @@ export default function AdminTimeClock() {
                       <div>
                         <p className="font-medium text-foreground">{zone.name}</p>
                         <p className="text-xs text-muted-foreground">{zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {zone.radius_meters}m radius</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{getZoneAssignmentLabel(zone.id)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleOpenAssignZone(zone)}><Users className="h-3.5 w-3.5 mr-1" />Assign</Button>
                       <a href={`https://maps.google.com/maps?q=${zone.lat},${zone.lng}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline"><MapPin className="h-4 w-4" /></a>
                       <Button size="sm" variant="ghost" onClick={() => handleDeleteZone(zone.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
@@ -838,6 +893,29 @@ export default function AdminTimeClock() {
             <Button variant="outline" onClick={() => setAddShiftModalOpen(false)}>Cancel</Button>
             <Button onClick={handleAddManualShift} disabled={savingShift || !shiftCanvasserId || !shiftClockIn || !shiftClockOut}>
               {savingShift ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Shift
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Zone Assignment Modal */}
+      <Dialog open={assignZoneModalOpen} onOpenChange={setAssignZoneModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Assign Canvassers — {assigningZone?.name}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Select canvassers who should be restricted to this zone. Leave all unchecked to apply this zone to everyone.</p>
+          <div className="max-h-64 overflow-y-auto space-y-2">
+            {canvassers.map(c => (
+              <label key={c.userId} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                <Checkbox checked={assignedCanvasserIds.has(c.userId)} onCheckedChange={() => handleToggleCanvasserAssignment(c.userId)} />
+                <span className="text-sm text-foreground">{c.name}</span>
+              </label>
+            ))}
+            {canvassers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No canvassers found.</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignZoneModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveAssignments} disabled={savingAssignments}>
+              {savingAssignments ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Save
             </Button>
           </DialogFooter>
         </DialogContent>
