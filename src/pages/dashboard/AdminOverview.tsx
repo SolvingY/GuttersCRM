@@ -616,61 +616,6 @@ export default function AdminOverview() {
 
             <CollectionsPipelineWidget isAdmin={true} />
 
-            {/* Contract Sources */}
-            <div className="border border-border rounded-xl bg-card p-4 shadow-sm">
-              <h3 className="font-heading text-sm uppercase mb-3 flex items-center gap-2"><GitCompare className="h-4 w-4" /> Contract Sources</h3>
-              {(() => {
-                const totalSelfGenContracts = aggregates.totalSelfGen;
-                const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
-                const totalInternetContracts = aggregates.totalInternetClosedDeals;
-                const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
-                const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
-                const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
-                const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
-                
-                return (
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Self-Generated</span>
-                        <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                        <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Canvass Contracts</span>
-                        <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                        <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Internet Contracts</span>
-                        <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                        <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
-                    </div>
-                    <div className="pt-2 border-t border-border">
-                      <div className="flex justify-between font-semibold text-foreground">
-                        <span>Total Contracts</span>
-                        <span>{totalContracts}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
             {/* Sales Rep Performance Table */}
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               {userDetails.length === 0 ? (
