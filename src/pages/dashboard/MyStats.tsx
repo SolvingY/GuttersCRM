@@ -289,30 +289,13 @@ export default function MyStats() {
           <CollectionsPipelineWidget isAdmin={false} />
 
           {/* 1. Contests */}
-          <Collapsible open={contestsOpen} onOpenChange={setContestsOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={contestsOpen} title="Contests" icon={Target} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <ActiveContestWidget />
-            </CollapsibleContent>
-          </Collapsible>
+          <AccordionButton id="contests" title="Contests" icon={Target} isOpen={openSection === "contests"} onToggle={toggleSection}>
+            <ActiveContestWidget />
+          </AccordionButton>
 
-          {/* 2. Key Metrics - 4 rows, 2 columns */}
-          <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={metricsOpen} title="Key Metrics" icon={Star} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* 2. Key Metrics */}
+          <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Row 1: Approved Revenue | Avg Job Size */}
                 <StatsCard
                   title="Approved Revenue"
