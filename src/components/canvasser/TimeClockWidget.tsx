@@ -324,8 +324,8 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           leads_set: ls || null,
           notes: notes || null,
           status: activeShift.status === "flagged" ? "flagged" : "completed",
-          clock_out_lat: loc?.lat ?? null,
-          clock_out_lng: loc?.lng ?? null,
+          clock_out_lat: (loc && !loc.errorMsg) ? loc.lat : null,
+          clock_out_lng: (loc && !loc.errorMsg) ? loc.lng : null,
         } as any)
         .eq("id", activeShift.id);
 
