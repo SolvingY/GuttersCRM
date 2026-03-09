@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { buildEstimatePDF, loadLogoBase64 } from "@/lib/generateEstimatePDF";
-import ngrLogo from "@/assets/ngr-logo-circle.jpg";
+import ngrLogo from "@/assets/ngr-logo.png";
 
 interface QuoteApprovalSectionProps {
   lead: any;

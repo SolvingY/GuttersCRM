@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Outlet } from "react-router-dom";
 import { CanvasserSidebar } from "@/components/canvasser/CanvasserSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import nextGenLogo from "@/assets/next-gen-logo.png";
+import nextGenLogo from "@/assets/ngr-logo.png";
 import { VictoryNotification } from "@/components/dashboard/VictoryNotification";
 import { CanvasserGoalModal } from "@/components/canvasser/CanvasserGoalModal";
 import { CanvasserWelcomeModal } from "@/components/canvasser/CanvasserWelcomeModal";

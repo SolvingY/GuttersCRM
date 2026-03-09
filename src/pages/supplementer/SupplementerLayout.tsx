@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Outlet } from "react-router-dom";
 import { SupplementerSidebar } from "@/components/supplementer/SupplementerSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import nextGenLogo from "@/assets/next-gen-logo.png";
+import nextGenLogo from "@/assets/ngr-logo.png";
 import { VictoryNotification } from "@/components/dashboard/VictoryNotification";
 import { useAuth } from "@/hooks/useAuth";
 

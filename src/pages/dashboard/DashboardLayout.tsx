@@ -9,7 +9,7 @@ import { GuidedTour } from '@/components/dashboard/GuidedTour';
 import { DNAAssessmentPromptModal } from '@/components/dashboard/DNAAssessmentPromptModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import nextGenLogo from '@/assets/next-gen-logo.png';
+import nextGenLogo from '@/assets/ngr-logo.png';
 
 export default function DashboardLayout() {
   const { user } = useAuth();

@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import logo from "@/assets/logo.jpg";
+import logo from "@/assets/ngr-logo.png";
 
 // Custom TikTok icon since Lucide doesn't have one
 const TikTokIcon = ({ className }: { className?: string }) => (

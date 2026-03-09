@@ -1,6 +1,6 @@
 import { Phone, Mail, MapPin, Instagram, Star, Linkedin, Facebook } from "lucide-react";
 import { Link } from "react-router-dom";
-import logo from "@/assets/logo.jpg";
+import logo from "@/assets/ngr-logo.png";
 
 const services = [
   { name: "Residential Roofing", href: "#services" },

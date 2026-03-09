@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Facebook, Instagram, ArrowLeft, Shield, MapPin, Building2, Target } from "lucide-react";
-import ngrLogo from "@/assets/next-gen-logo.png";
+import ngrLogo from "@/assets/ngr-logo.png";
 import teamRob from "@/assets/team-rob.png";
 import teamJonathan from "@/assets/team-jonathan.png";
 import teamKara from "@/assets/team-kara.png";

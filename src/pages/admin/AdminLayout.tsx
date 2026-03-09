@@ -47,7 +47,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { NewApplicantsModal } from '@/components/admin/NewApplicantsModal';
 import { getScoreColor } from '@/lib/dnaAssessment';
-import nextGenLogo from '@/assets/next-gen-logo.png';
+import nextGenLogo from '@/assets/ngr-logo.png';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem {
