@@ -924,15 +924,6 @@ export default function AdminOverview() {
           </div>
         </SectionCarousel.Item>
 
-        {/* Sales Leaderboard */}
-        <SectionCarousel.Item id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy}>
-          <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
-        </SectionCarousel.Item>
-
-        {/* Canvasser Leaderboard */}
-        <SectionCarousel.Item id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3}>
-          <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
-        </SectionCarousel.Item>
       </SectionCarousel>
 
       <UserStatsModal
