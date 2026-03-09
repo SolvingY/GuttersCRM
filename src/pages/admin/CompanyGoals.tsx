@@ -752,8 +752,7 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
       {/* Progress Cards - Row 2: Contract Progress Cards */}
       <Collapsible open={contractProgressOpen} onOpenChange={setContractProgressOpen}>
