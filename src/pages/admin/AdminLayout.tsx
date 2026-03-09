@@ -70,7 +70,6 @@ const adminNavGroups: NavGroup[] = [
     groupId: 'pipeline-revenue',
     items: [
       { icon: ClipboardList, label: 'Lead Management', path: '/admin/leads' },
-      { icon: FileText, label: 'Quote Requests', path: '/admin/leads?status=new' },
       { icon: TrendingUp, label: 'Lead Analytics', path: '/admin/leadflow' },
     ],
   },
@@ -94,7 +93,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { icon: Users, label: 'Contractor MGMT', path: '/admin/team' },
       { icon: Clock, label: 'TimeClock', path: '/admin/timeclock' },
-      { icon: Briefcase, label: 'HR / Onboarding', path: '/admin/applicants' },
+      { icon: Briefcase, label: 'Future Team Mates', path: '/admin/applicants' },
       { icon: UserPlus, label: 'Invite Users', path: '/admin/invites' },
       { icon: UserCog, label: 'User Roles', path: '/admin/users' },
       { icon: Calendar, label: 'Weekly Updates', path: '/admin/weekly' },
