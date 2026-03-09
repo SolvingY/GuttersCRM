@@ -110,12 +110,14 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
 
       // Build success message
       const roleNames: string[] = [];
-      if (isAdmin && !isSalesRep && !isCanvasser && !isSupplementer) {
+      if (isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction) {
         roleNames.push('Admin Only');
       } else {
         if (isAdmin) roleNames.push('Admin');
         if (isSalesRep) roleNames.push(`Sales Rep (${salesRank})`);
         if (isCanvasser) roleNames.push(`Canvasser (${canvasserRank})`);
+        if (isSupplementer) roleNames.push('Supplementer');
+        if (isProduction) roleNames.push('Production');
       }
 
       toast({
