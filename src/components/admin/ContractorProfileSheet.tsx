@@ -335,6 +335,22 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
       return data ?? [];
     },
   });
+
+  // Fetch login history
+  const { data: loginHistory = [] } = useQuery({
+    queryKey: ["login-history", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("login_history" as any) as any)
+        .select("id, logged_in_at, user_agent")
+        .eq("user_id", user!.id)
+        .order("logged_in_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   useEffect(() => {
     if (profileData) {
       setPersonalInfo(profileData as any);
