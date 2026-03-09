@@ -60,9 +60,12 @@ export default function ProductionDashboard() {
       .eq("log_date", today)
       .maybeSingle();
 
-    if (data && (data.summary_notes || data.builds_completed > 0)) {
+    if (data && (data.summary_notes || data.builds_completed > 0 || (Array.isArray(data.tasks_completed) && data.tasks_completed.length > 0))) {
       setBuildsToday(data.builds_completed?.toString() || "0");
       setSummaryNotes(data.summary_notes || "");
+      if (Array.isArray(data.tasks_completed)) {
+        setTasksCompleted(data.tasks_completed as { text: string }[]);
+      }
       setLogSubmitted(true);
     }
   };
