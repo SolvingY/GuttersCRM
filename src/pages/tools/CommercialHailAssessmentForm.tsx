@@ -233,13 +233,20 @@ export default function CommercialHailAssessmentForm() {
         interior_accessible: form.applicability["section-8"] ?? null,
         form_data: formData as any,
         photo_paths: allPhotoPaths as any,
-      });
+        homeowner_name: homeowner.name.trim() || null,
+        homeowner_phone: homeowner.phone.trim() || null,
+        homeowner_email: homeowner.email.trim() || null,
+        job_id: linkedJob?.id || null,
+        report_notes: form.meta.reportNotes.trim() || null,
+        report_finalized: false,
+        saved_at: new Date().toISOString(),
+      } as any);
 
       if (insertError) throw insertError;
 
       setSubmitted(true);
       setSubmittedResult(selectedOption?.value || null);
-      toast({ title: "Assessment submitted", description: "Commercial hail assessment saved successfully." });
+      toast({ title: "Checklist saved", description: "Your assessment has been saved. Send the report from Saved Checklists." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to submit assessment", variant: "destructive" });
     } finally {
