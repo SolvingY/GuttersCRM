@@ -354,49 +354,29 @@ export default function CanvasserStats() {
               icon={DollarSign}
               valueClassName="text-green-500"
             />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </AccordionButton>
 
-      {/* 3. Conversion Funnel */}
-      <Collapsible open={funnelOpen} onOpenChange={setFunnelOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={funnelOpen} title="Conversion Funnel" icon={GitCompare} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <CanvasserConversionFunnel 
-            data={{
-              doorsKnocked: metrics?.doors_knocked || 0,
-              conversationsHad: metrics?.conversations_had || 0,
-              leadsSet: metrics?.leads_set || 0,
-              leadsWithDamage: metrics?.leads_with_damage || 0,
-              leadsWithoutDamage: metrics?.leads_without_damage || 0,
-              leadsClosed: metrics?.leads_closed || 0,
-            }} 
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Conversion Funnel */}
+      <AccordionButton id="funnel" title="Conversion Funnel" icon={GitCompare} isOpen={openSection === "funnel"} onToggle={toggleSection}>
+        <CanvasserConversionFunnel 
+          data={{
+            doorsKnocked: metrics?.doors_knocked || 0,
+            conversationsHad: metrics?.conversations_had || 0,
+            leadsSet: metrics?.leads_set || 0,
+            leadsWithDamage: metrics?.leads_with_damage || 0,
+            leadsWithoutDamage: metrics?.leads_without_damage || 0,
+            leadsClosed: metrics?.leads_closed || 0,
+          }} 
+        />
+      </AccordionButton>
 
       {/* My Canvassed Leads */}
-      <Collapsible open={canvassedLeadsOpen} onOpenChange={setCanvassedLeadsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={canvassedLeadsOpen} title="My Canvassed Leads" icon={ClipboardList} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <Card>
-            <CardContent className="pt-4">
-              {canvassedLeads.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No canvassed leads yet</p>
-              ) : (
-                <div className="space-y-2">
+      <AccordionButton id="canvassed-leads" title="My Canvassed Leads" icon={ClipboardList} isOpen={openSection === "canvassed-leads"} onToggle={toggleSection}>
+        {canvassedLeads.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No canvassed leads yet</p>
+        ) : (
+          <div className="space-y-2">
                   {canvassedLeads.map((lead: any) => (
                     <div key={lead.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div className="space-y-1">
