@@ -419,39 +419,23 @@ export default function CanvasserStats() {
                       </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </AccordionButton>
       )}
 
       {/* 4. Fiscal Year Progress */}
-      <Collapsible open={fiscalOpen} onOpenChange={setFiscalOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={fiscalOpen} title="Fiscal Year Progress" icon={Calendar} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
-                  <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
-                </div>
-                <Progress value={fiscalYearProgress} className="h-2" />
-                <p className="text-xs text-muted-foreground text-center">
-                  {fiscalYearProgress.toFixed(1)}% of fiscal year complete
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+      <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggleSection}>
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+            <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+          </div>
+          <Progress value={fiscalYearProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center">
+            {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+          </p>
+        </div>
+      </AccordionButton>
 
       {/* 5. Goal Progress - All Three Goals */}
       {(yearlyGoal > 0 || (metrics?.leads_set_goal || 0) > 0 || (metrics?.income_goal || 0) > 0) && (
