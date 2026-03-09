@@ -759,14 +759,24 @@ export default function AdminTimeClock() {
           <DialogHeader><DialogTitle>Add Work Zone</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Zone Name</Label><Input value={zoneName} onChange={e => setZoneName(e.target.value)} placeholder="e.g. Office, Oak Park" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Latitude</Label><Input type="number" step="any" value={zoneLat} onChange={e => setZoneLat(e.target.value)} placeholder="35.4676" /></div>
-              <div className="space-y-2"><Label>Longitude</Label><Input type="number" step="any" value={zoneLng} onChange={e => setZoneLng(e.target.value)} placeholder="-97.5164" /></div>
+            <div className="space-y-2">
+              <Label>Google Maps Link or Coordinates</Label>
+              <Textarea value={zoneLocation} onChange={e => handleZoneLocationChange(e.target.value)} placeholder="Paste a Google Maps link, embed code, or coordinates (e.g. 35.4676, -97.5164)" rows={3} />
+              {zoneLocation && parsedCoords && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  Detected: {parsedCoords.lat.toFixed(6)}, {parsedCoords.lng.toFixed(6)}
+                  <a href={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}`} target="_blank" rel="noopener noreferrer" className="underline ml-1">View on Maps</a>
+                </p>
+              )}
+              {zoneLocation && !parsedCoords && (
+                <p className="text-xs text-destructive">Could not detect coordinates. Try a Google Maps link or raw lat, lng.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Radius (meters)</Label>
               <Input type="number" min="100" max="50000" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="500" />
-              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks. Tip: Use Google Maps to find coordinates.</p>
+              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks.</p>
             </div>
           </div>
           <DialogFooter>
