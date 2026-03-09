@@ -265,6 +265,21 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
                   </Label>
                 </div>
               </div>
+
+              {/* Production Role */}
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="production"
+                    checked={isProduction}
+                    onCheckedChange={(checked) => setIsProduction(checked === true)}
+                  />
+                  <Label htmlFor="production" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <HardHat className="h-4 w-4" />
+                    Production
+                  </Label>
+                </div>
+              </div>
             </div>
 
             {/* Hide from Leaderboard Toggle - only show for operational roles */}
