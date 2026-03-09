@@ -919,21 +919,6 @@ export default function AdminOverview() {
             />
           </div>
 
-          {/* Conversion Funnel */}
-          <AccordionButton id="conversion-funnel" title="Team Conversion Funnel (YTD)" icon={GitCompare} isOpen={openSection === "conversion-funnel"} onToggle={toggleSection}>
-            <CanvasserConversionFunnel
-                title="Team Conversion Funnel (YTD)"
-                data={{
-                  doorsKnocked: canvasserAggregates.totalDoorsKnocked,
-                  conversationsHad: canvasserAggregates.totalConversationsHad,
-                  leadsSet: canvasserAggregates.totalLeadsSet,
-                  leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-                  leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
-                  leadsClosed: canvasserAggregates.totalLeadsClosed,
-                }} 
-              />
-          </AccordionButton>
-
           {canvassersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -948,75 +933,91 @@ export default function AdminOverview() {
             </div>
           )}
 
-          <AccordionButton id="canvasser-perf" title="Canvasser Performance" icon={Users} isOpen={openSection === "canvasser-perf"} onToggle={toggleSection}>
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-            {canvasserDetails.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">No canvasser data available yet.</p>
+          <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+            <SectionCarousel.Item id="conversion-funnel" title="Conversion Funnel" icon={GitCompare}>
+              <CanvasserConversionFunnel
+                title="Team Conversion Funnel (YTD)"
+                data={{
+                  doorsKnocked: canvasserAggregates.totalDoorsKnocked,
+                  conversationsHad: canvasserAggregates.totalConversationsHad,
+                  leadsSet: canvasserAggregates.totalLeadsSet,
+                  leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+                  leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
+                  leadsClosed: canvasserAggregates.totalLeadsClosed,
+                }} 
+              />
+            </SectionCarousel.Item>
+
+            <SectionCarousel.Item id="canvasser-perf" title="Canvasser Performance" icon={Users}>
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+              {canvasserDetails.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-muted-foreground">No canvasser data available yet.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Income</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Revenue</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {canvasserDetails.map((canvasser) => {
+                        const attention = canvasserNeedsAttention(canvasser);
+                        return (
+                          <tr 
+                            key={canvasser.metricId}
+                            className={cn(
+                              "border-t border-border transition-colors",
+                              attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
+                            )}
+                          >
+                            <td className="py-3 px-4 text-foreground font-medium">
+                              <div className="flex items-center gap-2">
+                                {canvasser.name}
+                                {attention && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Attention
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.income)}</td>
+                            <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.revenue)}</td>
+                            <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
+                              {canvasser.conversionRate.toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Income</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Revenue</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {canvasserDetails.map((canvasser) => {
-                      const attention = canvasserNeedsAttention(canvasser);
-                      return (
-                        <tr 
-                          key={canvasser.metricId}
-                          className={cn(
-                            "border-t border-border transition-colors",
-                            attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
-                          )}
-                        >
-                          <td className="py-3 px-4 text-foreground font-medium">
-                            <div className="flex items-center gap-2">
-                              {canvasser.name}
-                              {attention && (
-                                <Badge variant="destructive" className="text-xs">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
-                                  Attention
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.income)}</td>
-                          <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.revenue)}</td>
-                          <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
-                            {canvasser.conversionRate.toFixed(1)}%
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            </div>
-          </AccordionButton>
+            </SectionCarousel.Item>
+          </SectionCarousel>
 
         </TabsContent>
       </Tabs>
