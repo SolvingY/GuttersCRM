@@ -763,11 +763,21 @@ export default function AdminTimeClock() {
               <Label>Google Maps Link or Coordinates</Label>
               <Textarea value={zoneLocation} onChange={e => handleZoneLocationChange(e.target.value)} placeholder="Paste a Google Maps link, embed code, or coordinates (e.g. 35.4676, -97.5164)" rows={3} />
               {zoneLocation && parsedCoords && (
-                <p className="text-xs text-green-600 flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  Detected: {parsedCoords.lat.toFixed(6)}, {parsedCoords.lng.toFixed(6)}
-                  <a href={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}`} target="_blank" rel="noopener noreferrer" className="underline ml-1">View on Maps</a>
-                </p>
+                <>
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Detected: {parsedCoords.lat.toFixed(6)}, {parsedCoords.lng.toFixed(6)}
+                    <a href={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}`} target="_blank" rel="noopener noreferrer" className="underline ml-1">View on Maps</a>
+                  </p>
+                  <div className="rounded-md overflow-hidden border border-border h-40 w-full">
+                    <iframe
+                      width="100%" height="100%" frameBorder="0" style={{border:0}}
+                      src={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}&z=15&output=embed`}
+                      allowFullScreen
+                      title="Map preview"
+                    />
+                  </div>
+                </>
               )}
               {zoneLocation && !parsedCoords && (
                 <p className="text-xs text-destructive">Could not detect coordinates. Try a Google Maps link or raw lat, lng.</p>
