@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer';
+type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer' | 'production';
 
 interface AuthState {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
-  activeView: 'sales' | 'canvasser' | 'supplementer';
+  activeView: 'sales' | 'canvasser' | 'supplementer' | 'production';
   onboardingComplete: boolean;
   hasPendingMandatoryActions: boolean;
   sessionLoading: boolean;
