@@ -642,7 +642,7 @@ export default function InviteUsers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="manualRoleType" className="text-sm">Account Type</Label>
-                    <Select value={manualRoleType} onValueChange={(val) => setManualRoleType(val as 'admin_only' | 'sales_rep' | 'canvasser' | 'supplementer' | 'super_admin')} disabled={isCreatingUser}>
+                    <Select value={manualRoleType} onValueChange={(val) => setManualRoleType(val as 'admin_only' | 'sales_rep' | 'canvasser' | 'supplementer' | 'production' | 'super_admin')} disabled={isCreatingUser}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select account type" />
                       </SelectTrigger>
@@ -651,6 +651,7 @@ export default function InviteUsers() {
                         <SelectItem value="sales_rep">Sales Rep</SelectItem>
                         <SelectItem value="canvasser">Canvasser</SelectItem>
                         <SelectItem value="supplementer">Supplementer</SelectItem>
+                        <SelectItem value="production">Production</SelectItem>
                         <SelectItem value="super_admin">Super Admin (All Roles)</SelectItem>
                       </SelectContent>
                     </Select>

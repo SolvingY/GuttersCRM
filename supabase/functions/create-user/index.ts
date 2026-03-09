@@ -26,6 +26,8 @@ function getRoleConfig(roleType: string | undefined, legacyRole?: string): RoleC
       return { roles: ['canvasser'], createSalesMetrics: false, createCanvasserMetrics: true, createSupplementerMetrics: false };
     case 'supplementer':
       return { roles: ['supplementer'], createSalesMetrics: false, createCanvasserMetrics: false, createSupplementerMetrics: true };
+    case 'production':
+      return { roles: ['production'], createSalesMetrics: false, createCanvasserMetrics: false, createSupplementerMetrics: false };
     case 'super_admin':
       return { roles: ['admin', 'user', 'canvasser'], createSalesMetrics: true, createCanvasserMetrics: true, createSupplementerMetrics: false };
     default:
