@@ -1,42 +1,44 @@
 
 
-# Add Edit Button to Shift History
+# Fix Weekly Updates: Autosave, Date Reload, Sizing, and StatsCard Text
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Problems Identified
+1. **No autosave** — if the user accidentally logs out, all entered data is lost (fields are only in local state)
+2. **No reload on date change** — scrolling back to a previous day doesn't load previously saved entries from `daily_user_metric_entries` / `daily_canvasser_metric_entries`
+3. **StatsCard text truncation** — titles like "Approved Revenue" and "Total Contracts" are cut off with ellipsis; dollar sign on "Approved Revenue" is partially hidden
+4. **Accordion sub-button sizing** — the AccordionButton sizes are fine but StatsCards in the grid need better text wrapping on mobile
 
 ## Changes
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### 1. `src/pages/admin/WeeklyUpdates.tsx` — Autosave + Load Previous Entries
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**Load saved entries when date changes:**
+- Add a `useEffect` on `selectedDate` that queries `daily_user_metric_entries` and `daily_canvasser_metric_entries` for the selected date
+- Pre-populate `weeklyEntries` and `canvasserEntries` with saved values so navigating back to a day shows what was already entered
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**Autosave on field blur or after short debounce:**
+- Add a `saveDraft` function that upserts to `daily_user_metric_entries` / `daily_canvasser_metric_entries` with the current field values (without compounding into YTD/weekly — that only happens on "Save All")
+- Use `onBlur` on each input to trigger a draft save for that user's row
+- This means if the user logs out mid-entry, the drafts are persisted and will reload when they come back
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+**Also store sales rep daily entries:**
+- The canvasser path already upserts to `daily_canvasser_metric_entries` on save. The sales rep path does NOT currently write to `daily_user_metric_entries`. Add the same upsert for sales reps on save.
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+### 2. `src/components/dashboard/StatsCard.tsx` — Fix Text Visibility
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+- Change `truncate` on the title to `break-words` or remove it, allowing text to wrap
+- Ensure the value text (especially currency with `$`) doesn't overflow by using `break-all` or reducing font size on small screens
+- Adjust the min-width and padding so the dollar sign is always visible
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+### 3. `src/pages/dashboard/AdminOverview.tsx` — StatsCard Grid Sizing
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+- The grid already uses `grid-cols-1 sm:grid-cols-2 lg:grid-cols-6` which is correct
+- Ensure the StatsCard titles are fully visible by removing `truncate` behavior
 
-## Summary
+## Technical Details
 
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+- `daily_user_metric_entries` has columns: `user_id`, `entry_date`, `approved_revenue_delta`, `collections_delta`, `leads_delta`, `closed_deals_delta`, `self_generated_deals_delta`, `canvass_leads_delta`, `canvass_deals_closed_delta`, `earnings_delta`, `entered_by`
+- `daily_canvasser_metric_entries` has columns: `user_id`, `entry_date`, `leads_set_delta`, `leads_closed_delta`, `leads_with_damage_delta`, `leads_without_damage_delta`, `conversations_had_delta`, `not_interested_delta`, `cancelled_leads_delta`, `hours_worked_delta`, `doors_knocked_delta`, `income_delta`, `entered_by`
+- Both tables have unique constraint on `(user_id, entry_date)` for upsert
+- The "Save All" flow should still compound into YTD/weekly as it does now, but should first check if there's already a saved entry for the date and subtract the old values before adding new ones (to prevent double-counting on re-save)
 
