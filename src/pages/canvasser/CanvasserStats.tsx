@@ -242,22 +242,11 @@ export default function CanvasserStats() {
       {/* Time Clock Widget — always visible */}
       <TimeClockWidget onShiftChange={fetchMetrics} />
 
-      {/* My Recent Shifts */}
-      <Collapsible open={shiftsOpen} onOpenChange={setShiftsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={shiftsOpen} title="My Recent Shifts" icon={Clock} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <Card>
-            <CardContent className="pt-4">
-              {shifts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
-              ) : (
-                <>
+      <AccordionButton id="shifts" title="My Recent Shifts" icon={Clock} isOpen={openSection === "shifts"} onToggle={toggleSection}>
+        {shifts.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
+        ) : (
+          <>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
