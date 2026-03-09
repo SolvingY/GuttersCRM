@@ -361,13 +361,18 @@ export default function SavedChecklists() {
                 {/* Checklist Responses (Production) */}
                 {detailItem.type === "production_checklist" && detailItem.fullData?.responses && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-foreground">Checklist Items</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {checklistTemplate?.title ? `${checklistTemplate.title} — Items` : "Checklist Items"}
+                    </h3>
                     <div className="space-y-1">
-                      {Object.entries(detailItem.fullData.responses as Record<string, boolean>).map(([key, checked]) => (
-                        <div key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className={checked ? "text-green-500" : "text-red-400"}>{checked ? "✓" : "✗"}</span> {key}
-                        </div>
-                      ))}
+                      {Object.entries(detailItem.fullData.responses as Record<string, boolean>).map(([key, checked]) => {
+                        const label = checklistTemplate?.items[key] || key;
+                        return (
+                          <div key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className={checked ? "text-green-500" : "text-red-400"}>{checked ? "✓" : "✗"}</span> {label}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
