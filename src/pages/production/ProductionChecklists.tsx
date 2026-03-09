@@ -255,6 +255,32 @@ export default function ProductionChecklists() {
                 </div>
               </div>
 
+              {/* Job Linking */}
+              <JobSearchInput
+                value={linkedJob}
+                onChange={(job) => {
+                  setLinkedJob(job);
+                  if (job) {
+                    setHomeowner({
+                      name: (job as any).homeownerName || homeowner.name,
+                      phone: (job as any).homeownerPhone || homeowner.phone,
+                      email: (job as any).homeownerEmail || homeowner.email,
+                    });
+                    if ((job as any).address && !jobAddress) {
+                      setJobAddress((job as any).address);
+                    }
+                  }
+                }}
+              />
+
+              {/* Homeowner Fields */}
+              <HomeownerFields
+                name={homeowner.name}
+                phone={homeowner.phone}
+                email={homeowner.email}
+                onChange={(field, value) => setHomeowner((h) => ({ ...h, [field]: value }))}
+              />
+
               <div className="space-y-3">
                 {activeChecklist.checklist_items.map((item) => (
                   <div key={item.id} className="flex items-start gap-3">
@@ -285,13 +311,22 @@ export default function ProductionChecklists() {
                   rows={2}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Report Notes</Label>
+                <Textarea
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="Final notes to include in the report…"
+                  rows={2}
+                />
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setActiveChecklist(null)}>Cancel</Button>
             <Button onClick={handleSubmitChecklist} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Submit Checklist
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> Save Checklist</>}
             </Button>
           </DialogFooter>
         </DialogContent>
