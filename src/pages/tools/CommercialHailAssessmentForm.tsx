@@ -341,6 +341,34 @@ export default function CommercialHailAssessmentForm() {
         </CardContent>
       </Card>
 
+      {/* Job Linking & Homeowner */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <JobSearchInput
+            value={linkedJob}
+            onChange={(job) => {
+              setLinkedJob(job);
+              if (job) {
+                setHomeowner({
+                  name: (job as any).homeownerName || homeowner.name,
+                  phone: (job as any).homeownerPhone || homeowner.phone,
+                  email: (job as any).homeownerEmail || homeowner.email,
+                });
+                if ((job as any).address && !form.meta.address) {
+                  setMeta("address", (job as any).address);
+                }
+              }
+            }}
+          />
+          <HomeownerFields
+            name={homeowner.name}
+            phone={homeowner.phone}
+            email={homeowner.email}
+            onChange={(field, value) => setHomeowner((h) => ({ ...h, [field]: value }))}
+          />
+        </CardContent>
+      </Card>
+
       {/* Sections */}
       {HAIL_ASSESSMENT_SECTIONS.map((section) => {
         if (section.type === "single-select") return <ResultSection key={section.id} section={section} form={form} setForm={setForm} handlePhotos={handlePhotos} removeResultPhoto={removeResultPhoto} setResultDocLink={setResultDocLink} setResultNote={setResultNote} fileInputRefs={fileInputRefs} />;
