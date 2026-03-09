@@ -371,8 +371,48 @@ export default function AdminTimeClock() {
   const handleDeleteZone = async (zoneId: string) => {
     if (!confirm('Delete this work zone?')) return;
     await supabase.from('geofence_work_zones').delete().eq('id', zoneId);
-    fetchWorkZones();
+    fetchWorkZones(); fetchZoneAssignments();
     toast.success('Zone deleted');
+  };
+
+  const handleOpenAssignZone = (zone: any) => {
+    setAssigningZone(zone);
+    const currentIds = new Set(zoneAssignments.filter(a => a.zone_id === zone.id).map(a => a.canvasser_id));
+    setAssignedCanvasserIds(currentIds);
+    setAssignZoneModalOpen(true);
+  };
+
+  const handleToggleCanvasserAssignment = (canvasserId: string) => {
+    setAssignedCanvasserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(canvasserId)) next.delete(canvasserId);
+      else next.add(canvasserId);
+      return next;
+    });
+  };
+
+  const handleSaveAssignments = async () => {
+    if (!assigningZone) return;
+    setSavingAssignments(true);
+    try {
+      // Delete all existing assignments for this zone
+      await supabase.from('canvasser_zone_assignments').delete().eq('zone_id', assigningZone.id);
+      // Insert new assignments
+      if (assignedCanvasserIds.size > 0) {
+        const rows = Array.from(assignedCanvasserIds).map(cid => ({ zone_id: assigningZone.id, canvasser_id: cid }));
+        const { error } = await supabase.from('canvasser_zone_assignments').insert(rows as any);
+        if (error) throw error;
+      }
+      toast.success('Zone assignments updated');
+      setAssignZoneModalOpen(false);
+      fetchZoneAssignments();
+    } catch (err: any) { toast.error('Failed: ' + err.message); }
+    setSavingAssignments(false);
+  };
+
+  const getZoneAssignmentLabel = (zoneId: string) => {
+    const count = zoneAssignments.filter(a => a.zone_id === zoneId).length;
+    return count === 0 ? 'All canvassers' : `${count} assigned`;
   };
 
   const handleCopyCoords = async (lat: number, lng: number) => {
