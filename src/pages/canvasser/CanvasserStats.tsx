@@ -437,18 +437,10 @@ export default function CanvasserStats() {
         </div>
       </AccordionButton>
 
-      {/* 5. Goal Progress - All Three Goals */}
+      {/* 5. Goal Progress */}
       {(yearlyGoal > 0 || (metrics?.leads_set_goal || 0) > 0 || (metrics?.income_goal || 0) > 0) && (
-        <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="py-4">
-                <CollapsibleHeader isOpen={goalOpen} title="Goal Progress" icon={Target} />
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <div className="space-y-4">
+        <AccordionButton id="goal" title="Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggleSection}>
+          <div className="space-y-4">
               {/* Contracts Goal */}
               {yearlyGoal > 0 && (
                 <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
