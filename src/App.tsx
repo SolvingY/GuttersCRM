@@ -91,6 +91,7 @@ const ProductionLayout = lazy(() => import("./pages/production/ProductionLayout"
 const ProductionDashboard = lazy(() => import("./pages/production/ProductionDashboard"));
 const ProductionLeaderboard = lazy(() => import("./pages/production/ProductionLeaderboard"));
 const ProductionToolsHub = lazy(() => import("./pages/production/ProductionToolsHub"));
+const CommercialHailAssessment = lazy(() => import("./pages/tools/CommercialHailAssessmentForm"));
 const ProductionChecklists = lazy(() => import("./pages/production/ProductionChecklists"));
 const ProductionPit = lazy(() => import("./pages/production/ProductionPit"));
 const ProductionPointsHistory = lazy(() => import("./pages/production/ProductionPointsHistory"));
