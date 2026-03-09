@@ -30,7 +30,7 @@ const ROLE_MAPPING: Record<string, string> = {
   "Insurance Specialist": "supplementer",
   "Admin": "admin_only",
   "Management": "super_admin",
-  "Production": "sales_rep",
+  "Production": "production",
   "Service": "sales_rep",
 };
 
