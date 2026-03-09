@@ -1189,6 +1189,64 @@ export type Database = {
           },
         ]
       }
+      lead_attributions: {
+        Row: {
+          canvasser_id: string
+          created_at: string
+          entered_by: string | null
+          entry_type: string
+          id: string
+          quantity: number
+          sales_rep_id: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          canvasser_id: string
+          created_at?: string
+          entered_by?: string | null
+          entry_type: string
+          id?: string
+          quantity?: number
+          sales_rep_id: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          canvasser_id?: string
+          created_at?: string
+          entered_by?: string | null
+          entry_type?: string
+          id?: string
+          quantity?: number
+          sales_rep_id?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_attributions_canvasser_id_fkey"
+            columns: ["canvasser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attributions_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attributions_sales_rep_id_fkey"
+            columns: ["sales_rep_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_files: {
         Row: {
           created_at: string
@@ -3092,6 +3150,36 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      canvasser_rep_close_rates: {
+        Row: {
+          canvasser_id: string | null
+          canvasser_name: string | null
+          close_rate_pct: number | null
+          leads_closed: number | null
+          leads_set: number | null
+          rep_canvass_contracts: number | null
+          rep_canvass_leads: number | null
+          rep_name: string | null
+          sales_rep_id: string | null
+          week_start: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_attributions_canvasser_id_fkey"
+            columns: ["canvasser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attributions_sales_rep_id_fkey"
+            columns: ["sales_rep_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_metrics_leaderboard: {
         Row: {
