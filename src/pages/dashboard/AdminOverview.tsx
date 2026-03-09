@@ -909,6 +909,10 @@ export default function AdminOverview() {
                   }} 
                 />
               </AccordionButton>
+
+              <AccordionButton id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3} isOpen={openSubSection === 'canvasser-leaderboard'} onToggle={toggleSubSection}>
+                <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
+              </AccordionButton>
             </div>
           </div>
         </SectionCarousel.Item>
