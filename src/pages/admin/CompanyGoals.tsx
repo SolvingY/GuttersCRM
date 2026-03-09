@@ -523,22 +523,13 @@ export default function CompanyGoals() {
         }}
       />
 
-      {/* Goal Setting Card */}
-      <Collapsible open={fiscalGoalsOpen} onOpenChange={setFiscalGoalsOpen}>
+      <AccordionButton id="fiscal-goals" title="Fiscal Year Goals" icon={Target} isOpen={openSection === "fiscal-goals"} onToggle={toggleSection}>
       <Card>
         <CardHeader>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
-            {fiscalGoalsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-accent" />
-              Fiscal Year Goals
-            </CardTitle>
-          </CollapsibleTrigger>
           <CardDescription>
             Dec 15, 2025 - Dec 15, 2026
           </CardDescription>
         </CardHeader>
-        <CollapsibleContent>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
