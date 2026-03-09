@@ -660,9 +660,8 @@ export default function CompanyGoals() {
             Save Goals
           </Button>
         </CardContent>
-        </CollapsibleContent>
       </Card>
-      </Collapsible>
+      </AccordionButton>
 
       {/* Progress Cards - Row 1: Revenue + Collections */}
       <Collapsible open={revenueProgressOpen} onOpenChange={setRevenueProgressOpen}>
