@@ -1,42 +1,26 @@
 
 
-# Add Edit Button to Shift History
+# Fix "View Report" Drawer for Saved Checklists
 
 ## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+The View drawer for production checklists shows almost nothing because:
+1. The `responses` field stores item **UUIDs** as keys (e.g., `{"abc-123": true}`), not human-readable labels
+2. The drawer renders these UUID keys directly, which either shows gibberish or nothing useful
 
-## Changes
+## Fix
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+**File:** `src/pages/tools/SavedChecklists.tsx`
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+When a production checklist detail item is opened, fetch the checklist template from `production_checklists` using the stored `checklistId` to get item labels. Then render the responses using the resolved labels instead of raw IDs.
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+Changes:
+1. Add a `useEffect` (or extend the existing photo-loading effect) that fires when `detailItem` is set and `type === "production_checklist"`. It fetches the checklist template from `production_checklists` where `id = detailItem.fullData.checklistId`, extracts `checklist_items`, and stores them in a local state (`checklistTemplate`).
+2. Update the production checklist rendering section (lines 338-349) to map item IDs to their labels from the fetched template, falling back to the raw ID if the template lookup fails.
+3. Also display the checklist title from the template.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+## Files Changed
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `src/pages/tools/SavedChecklists.tsx` | Fetch checklist template on detail open; resolve item IDs to labels in the drawer |
 
