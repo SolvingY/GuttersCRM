@@ -27,6 +27,8 @@ export default function ProductionDashboard() {
   const [loading, setLoading] = useState(true);
   const [buildsToday, setBuildsToday] = useState("");
   const [summaryNotes, setSummaryNotes] = useState("");
+  const [tasksCompleted, setTasksCompleted] = useState<{ text: string }[]>([]);
+  const [newTask, setNewTask] = useState("");
   const [submittingLog, setSubmittingLog] = useState(false);
   const [logSubmitted, setLogSubmitted] = useState(false);
 
