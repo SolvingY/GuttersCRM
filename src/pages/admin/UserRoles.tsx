@@ -42,7 +42,7 @@ interface UserWithRole {
   id: string;
   email: string | null;
   fullName: string | null;
-  roles: ('admin' | 'user' | 'canvasser' | 'supplementer')[];
+  roles: ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production')[];
   salesRank: string | null;
   canvasserRank: string | null;
   isArchived: boolean;
@@ -105,10 +105,10 @@ export default function UserRoles() {
       .from('canvasser_metrics')
       .select('user_id, canvasser_rank');
 
-    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser' | 'supplementer')[]>();
+    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production')[]>();
     for (const r of rolesData || []) {
       const existing = rolesMap.get(r.user_id) || [];
-      existing.push(r.role as 'admin' | 'user' | 'canvasser' | 'supplementer');
+      existing.push(r.role as 'admin' | 'user' | 'canvasser' | 'supplementer' | 'production');
       rolesMap.set(r.user_id, existing);
     }
 
@@ -245,6 +245,7 @@ export default function UserRoles() {
       {roles.includes('user') && <Badge variant="secondary">Sales Rep</Badge>}
       {roles.includes('canvasser') && <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>}
       {roles.includes('supplementer') && <Badge className="bg-accent text-accent-foreground">Supplementer</Badge>}
+      {roles.includes('production') && <Badge className="bg-amber-500 text-white">Production</Badge>}
     </div>
   );
 

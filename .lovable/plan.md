@@ -1,38 +1,42 @@
 
 
-# Plan: Add Production Role to All Role Selection UIs
+# Add Edit Button to Shift History
 
-Three files are missing the "Production" role option. The screenshot shows the Hire Applicant dialog lacking it, and the previous message identified the Edit User Role modal and User Roles page also need it.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. `src/components/admin/HireApplicantDialog.tsx`
-- Add `"Production": "production"` to the `ROLE_MAPPING` object (line ~35)
-- Add `<SelectItem value="production">Production</SelectItem>` to the Role select dropdown (after Supplementer, before Admin — line ~140)
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-### 2. `src/components/admin/EditUserRoleModal.tsx`
-- Add `isProduction` state initialized from `user.roles.includes('production')` in useEffect
-- Add `'production'` to the `UserWithRole.roles` type union
-- Add Production checkbox with `HardHat` icon in the operational roles section (after Supplementer)
-- Include `'production'` in the roles array on submit when checked
-- Update `isValid`, `isAdminOnly`, `isSuperAdmin` checks to include `!isProduction` / `isProduction`
-- Include production in `hiddenFromLeaderboard` visibility check
-- Add production to success message builder
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### 3. `src/pages/admin/UserRoles.tsx`
-- Add `'production'` to the `UserWithRole.roles` type union
-- Add amber badge in `getRoleBadges`: `<Badge className="bg-amber-500 text-white">Production</Badge>`
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### 4. `supabase/functions/admin-set-user-role/index.ts`
-- Add `'production'` to `validRoles` array
-- Update `isAdminOnly` to include `!hasProductionRole`
-- Add `hasProductionRole` flag
-- Add production metrics creation block (upsert `production_metrics` row when role assigned)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-| File | Change |
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
 |------|--------|
-| `HireApplicantDialog.tsx` | Add "Production" to role mapping + select dropdown |
-| `EditUserRoleModal.tsx` | Add production checkbox, state, validation |
-| `UserRoles.tsx` | Add production to type union + amber badge |
-| `admin-set-user-role/index.ts` | Add production to valid roles + auto-create metrics |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

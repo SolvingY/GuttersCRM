@@ -84,11 +84,11 @@ Deno.serve(async (req) => {
     }
 
     // Validate roles - now including 'admin' and 'supplementer' as valid
-    const validRoles = ['user', 'canvasser', 'admin', 'supplementer'];
+    const validRoles = ['user', 'canvasser', 'admin', 'supplementer', 'production'];
     for (const role of rolesToSet) {
       if (!validRoles.includes(role)) {
         return new Response(
-          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', or 'supplementer'` }),
+          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', 'supplementer', or 'production'` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -174,9 +174,10 @@ Deno.serve(async (req) => {
     const hasCanvasserRole = rolesToSet.includes('canvasser');
     const hasAdminRole = rolesToSet.includes('admin');
     const hasSupplementerRole = rolesToSet.includes('supplementer');
+    const hasProductionRole = rolesToSet.includes('production');
 
     // For admin-only users (admin but no operational roles), we don't create any metrics
-    if (isAdminOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole)) {
+    if (isAdminOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole)) {
       console.log("Admin-only user, skipping metrics creation");
       return new Response(
         JSON.stringify({ success: true, roles: rolesToSet, adminOnly: true }),
@@ -277,6 +278,31 @@ Deno.serve(async (req) => {
           console.error("Failed to create supplementer metrics:", insertError);
         } else {
           console.log("Created supplementer metrics for user:", targetUserId);
+        }
+      }
+    }
+
+    if (hasProductionRole) {
+      // Check if production metrics exist
+      const { data: existingProductionMetrics } = await supabaseAdmin
+        .from("production_metrics")
+        .select("id")
+        .eq("user_id", targetUserId)
+        .limit(1);
+
+      if (!existingProductionMetrics || existingProductionMetrics.length === 0) {
+        const { error: insertError } = await supabaseAdmin
+          .from("production_metrics")
+          .insert({
+            user_id: targetUserId,
+            display_name: displayName,
+            metric_date: new Date().toISOString().split("T")[0],
+          });
+
+        if (insertError) {
+          console.error("Failed to create production metrics:", insertError);
+        } else {
+          console.log("Created production metrics for user:", targetUserId);
         }
       }
     }
