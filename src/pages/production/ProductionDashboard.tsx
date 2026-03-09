@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Star, HardHat, AlertTriangle, ClipboardCheck, Percent, FileText } from "lucide-react";
+import { Loader2, Star, HardHat, AlertTriangle, ClipboardCheck, Percent, FileText, Plus, X } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ProductionTimeClockWidget } from "@/components/production/ProductionTimeClockWidget";
 import { toast } from "sonner";
