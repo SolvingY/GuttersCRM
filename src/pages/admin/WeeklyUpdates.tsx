@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -179,18 +179,141 @@ export default function WeeklyUpdates() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  // Load saved daily entries when date changes
+  useEffect(() => {
+    if (users.length === 0 && canvassers.length === 0) return;
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+    const loadSavedEntries = async () => {
+      // Load sales rep daily entries
+      if (users.length > 0) {
+        const { data: salesDaily } = await supabase
+          .from('daily_user_metric_entries')
+          .select('*')
+          .eq('entry_date', dateStr)
+          .in('user_id', users.map(u => u.user_id));
+
+        if (salesDaily && salesDaily.length > 0) {
+          const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
+          setWeeklyEntries(prev => prev.map(entry => {
+            const saved = dailyMap.get(entry.userId);
+            if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
+            return {
+              ...entry,
+              weeklyApprovedRevenue: saved.approved_revenue_delta ? String(saved.approved_revenue_delta) : '',
+              weeklyLeads: saved.leads_delta ? String(saved.leads_delta) : '',
+              weeklyClosedDeals: saved.closed_deals_delta ? String(saved.closed_deals_delta) : '',
+              weeklySelfGeneratedDeals: saved.self_generated_deals_delta ? String(saved.self_generated_deals_delta) : '',
+              weeklyCanvassLeads: saved.canvass_leads_delta ? String(saved.canvass_leads_delta) : '',
+              weeklyCanvassDealsClose: saved.canvass_deals_closed_delta ? String(saved.canvass_deals_closed_delta) : '',
+              weeklyCollections: saved.collections_delta ? String(saved.collections_delta) : '',
+              weeklyEarnings: saved.earnings_delta ? String(saved.earnings_delta) : '',
+            };
+          }));
+        } else {
+          setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
+        }
+      }
+
+      // Load canvasser daily entries
+      if (canvassers.length > 0) {
+        const { data: canvasserDaily } = await supabase
+          .from('daily_canvasser_metric_entries')
+          .select('*')
+          .eq('entry_date', dateStr)
+          .in('user_id', canvassers.map(c => c.user_id));
+
+        if (canvasserDaily && canvasserDaily.length > 0) {
+          const dailyMap = new Map(canvasserDaily.map(d => [d.user_id, d]));
+          setCanvasserEntries(prev => prev.map(entry => {
+            const saved = dailyMap.get(entry.userId);
+            if (!saved) return { ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' };
+            return {
+              ...entry,
+              weeklyLeadsSet: saved.leads_set_delta ? String(saved.leads_set_delta) : '',
+              weeklyLeadsClosed: saved.leads_closed_delta ? String(saved.leads_closed_delta) : '',
+              weeklyLeadsWithDamage: saved.leads_with_damage_delta ? String(saved.leads_with_damage_delta) : '',
+              weeklyLeadsWithoutDamage: saved.leads_without_damage_delta ? String(saved.leads_without_damage_delta) : '',
+              weeklyConversationsHad: saved.conversations_had_delta ? String(saved.conversations_had_delta) : '',
+              weeklyNotInterested: saved.not_interested_delta ? String(saved.not_interested_delta) : '',
+              weeklyCancelledLeads: saved.cancelled_leads_delta ? String(saved.cancelled_leads_delta) : '',
+              weeklyHoursWorked: saved.hours_worked_delta ? String(saved.hours_worked_delta) : '',
+              weeklyIncome: saved.income_delta ? String(saved.income_delta) : '',
+              weeklyDoorsKnocked: saved.doors_knocked_delta ? String(saved.doors_knocked_delta) : '',
+            };
+          }));
+        } else {
+          setCanvasserEntries(prev => prev.map(entry => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
+        }
+      }
+    };
+
+    loadSavedEntries();
+  }, [selectedDate, users.length, canvassers.length]);
+
+  // Autosave draft for a sales rep on blur
+  const saveSalesDraft = useCallback(async (entry: WeeklyEntry) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const { data: authUser } = await supabase.auth.getUser();
+    await supabase.from('daily_user_metric_entries').upsert({
+      user_id: entry.userId,
+      entry_date: dateStr,
+      approved_revenue_delta: parseFloat(entry.weeklyApprovedRevenue) || 0,
+      leads_delta: parseInt(entry.weeklyLeads) || 0,
+      closed_deals_delta: parseInt(entry.weeklyClosedDeals) || 0,
+      self_generated_deals_delta: parseInt(entry.weeklySelfGeneratedDeals) || 0,
+      canvass_leads_delta: parseInt(entry.weeklyCanvassLeads) || 0,
+      canvass_deals_closed_delta: parseInt(entry.weeklyCanvassDealsClose) || 0,
+      collections_delta: parseFloat(entry.weeklyCollections) || 0,
+      earnings_delta: parseFloat(entry.weeklyEarnings) || 0,
+      entered_by: authUser.user?.id,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,entry_date' });
+  }, [selectedDate]);
+
+  // Autosave draft for a canvasser on blur
+  const saveCanvasserDraft = useCallback(async (entry: CanvasserWeeklyEntry) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const { data: authUser } = await supabase.auth.getUser();
+    await supabase.from('daily_canvasser_metric_entries').upsert({
+      user_id: entry.userId,
+      entry_date: dateStr,
+      leads_set_delta: parseInt(entry.weeklyLeadsSet) || 0,
+      leads_closed_delta: parseInt(entry.weeklyLeadsClosed) || 0,
+      leads_with_damage_delta: parseInt(entry.weeklyLeadsWithDamage) || 0,
+      leads_without_damage_delta: parseInt(entry.weeklyLeadsWithoutDamage) || 0,
+      conversations_had_delta: parseInt(entry.weeklyConversationsHad) || 0,
+      not_interested_delta: parseInt(entry.weeklyNotInterested) || 0,
+      cancelled_leads_delta: parseInt(entry.weeklyCancelledLeads) || 0,
+      hours_worked_delta: parseFloat(entry.weeklyHoursWorked) || 0,
+      doors_knocked_delta: parseInt(entry.weeklyDoorsKnocked) || 0,
+      income_delta: parseFloat(entry.weeklyIncome) || 0,
+      entered_by: authUser.user?.id,
+      updated_at: new Date().toISOString(),
+    } as any, { onConflict: 'user_id,entry_date' });
+  }, [selectedDate]);
+
   const updateEntry = (userId: string, field: keyof WeeklyEntry, value: string) => {
     setWeeklyEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
+  };
+
+  const handleSalesBlur = (userId: string) => {
+    const entry = weeklyEntries.find(e => e.userId === userId);
+    if (entry) saveSalesDraft(entry);
   };
 
   const updateCanvasserEntry = (userId: string, field: keyof CanvasserWeeklyEntry, value: string) => {
     setCanvasserEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
   };
 
+  const handleCanvasserBlur = (userId: string) => {
+    const entry = canvasserEntries.find(e => e.userId === userId);
+    if (entry) saveCanvasserDraft(entry);
+  };
+
   const updateSupplementerEntry = (userId: string, field: keyof SupplementerWeeklyEntry, value: string) => {
     setSupplementerEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
   };
-
   const handleSaveAll = async () => {
     setSaving(true);
     const { weekStart, weekEnd } = getWeekRangeForDate(selectedDate);
@@ -200,6 +323,9 @@ export default function WeeklyUpdates() {
     try {
       let successCount = 0;
       let errorCount = 0;
+
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const { data: authUser } = await supabase.auth.getUser();
 
       for (const entry of weeklyEntries) {
         const weeklyLeads = parseInt(entry.weeklyLeads) || 0;
@@ -215,48 +341,72 @@ export default function WeeklyUpdates() {
             weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) continue;
 
+        // Fetch previous daily entry to compute true deltas (prevent double-counting on re-save)
+        const { data: prevDaily } = await supabase.from('daily_user_metric_entries')
+          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+
+        const deltaLeads = weeklyLeads - (Number(prevDaily?.leads_delta) || 0);
+        const deltaClosedDeals = weeklyClosedDeals - (Number(prevDaily?.closed_deals_delta) || 0);
+        const deltaEarnings = weeklyEarnings - (Number(prevDaily?.earnings_delta) || 0);
+        const deltaSelfGen = weeklySelfGeneratedDeals - (Number(prevDaily?.self_generated_deals_delta) || 0);
+        const deltaCanvassLeads = weeklyCanvassLeads - (Number(prevDaily?.canvass_leads_delta) || 0);
+        const deltaCanvassDeals = weeklyCanvassDealsClose - (Number(prevDaily?.canvass_deals_closed_delta) || 0);
+        const deltaCollections = weeklyCollections - (Number(prevDaily?.collections_delta) || 0);
+        const deltaApprovedRev = weeklyApprovedRevenue - (Number(prevDaily?.approved_revenue_delta) || 0);
+
         const weeklyPoints = calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections);
+        const oldPoints = calculatePoints(
+          Number(prevDaily?.approved_revenue_delta) || 0,
+          Number(prevDaily?.closed_deals_delta) || 0,
+          Number(prevDaily?.collections_delta) || 0
+        );
+        const deltaPoints = weeklyPoints - oldPoints;
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('user_metrics').select('*').eq('user_id', entry.userId).order('created_at', { ascending: false }).limit(1).single();
 
         if (fetchError) { errorCount++; continue; }
 
-        const newLeads = (Number(currentMetrics.leads) || 0) + weeklyLeads;
-        const newClosedDeals = (Number(currentMetrics.closed_deals) || 0) + weeklyClosedDeals;
-        const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
-        const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
-        const newSelfGeneratedDeals = (Number(currentMetrics.self_generated_deals) || 0) + weeklySelfGeneratedDeals;
-        const newCanvassLeads = (Number((currentMetrics as any).canvass_leads) || 0) + weeklyCanvassLeads;
-        const newCanvassDealsClose = (Number((currentMetrics as any).canvass_deals_closed) || 0) + weeklyCanvassDealsClose;
-        const newCollections = (Number((currentMetrics as any).collections) || 0) + weeklyCollections;
-        const newApprovedRevenue = (Number((currentMetrics as any).approved_revenue) || 0) + weeklyApprovedRevenue;
-
         const { error: updateError } = await supabase.from('user_metrics').update({
-          leads: newLeads, closed_deals: newClosedDeals, earnings_ytd: newEarnings,
-          points: newPoints, self_generated_deals: newSelfGeneratedDeals,
-          canvass_leads: newCanvassLeads, canvass_deals_closed: newCanvassDealsClose,
-          collections: newCollections, approved_revenue: newApprovedRevenue,
+          leads: (Number(currentMetrics.leads) || 0) + deltaLeads,
+          closed_deals: (Number(currentMetrics.closed_deals) || 0) + deltaClosedDeals,
+          earnings_ytd: (Number(currentMetrics.earnings_ytd) || 0) + deltaEarnings,
+          points: (Number(currentMetrics.points) || 0) + deltaPoints,
+          self_generated_deals: (Number(currentMetrics.self_generated_deals) || 0) + deltaSelfGen,
+          canvass_leads: (Number((currentMetrics as any).canvass_leads) || 0) + deltaCanvassLeads,
+          canvass_deals_closed: (Number((currentMetrics as any).canvass_deals_closed) || 0) + deltaCanvassDeals,
+          collections: (Number((currentMetrics as any).collections) || 0) + deltaCollections,
+          approved_revenue: (Number((currentMetrics as any).approved_revenue) || 0) + deltaApprovedRev,
           updated_at: new Date().toISOString(),
         }).eq('user_id', entry.userId);
 
         if (updateError) { errorCount++; continue; }
 
+        // Upsert daily entry for sales rep
+        await supabase.from('daily_user_metric_entries').upsert({
+          user_id: entry.userId, entry_date: dateStr,
+          approved_revenue_delta: weeklyApprovedRevenue, leads_delta: weeklyLeads,
+          closed_deals_delta: weeklyClosedDeals, self_generated_deals_delta: weeklySelfGeneratedDeals,
+          canvass_leads_delta: weeklyCanvassLeads, canvass_deals_closed_delta: weeklyCanvassDealsClose,
+          collections_delta: weeklyCollections, earnings_delta: weeklyEarnings,
+          entered_by: authUser.user?.id, updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,entry_date' });
+
         const { data: existingWeekly } = await supabase.from('weekly_user_metrics').select('*').eq('user_id', entry.userId).eq('week_start', weekStartStr).maybeSingle();
 
         const compoundedWeekly = {
           user_id: entry.userId, week_start: weekStartStr, week_end: weekEndStr,
-          leads: (Number(existingWeekly?.leads) || 0) + weeklyLeads,
-          closed_deals: (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
-          earnings: (Number(existingWeekly?.earnings) || 0) + weeklyEarnings,
-          canvass_leads: (Number(existingWeekly?.canvass_leads) || 0) + weeklyCanvassLeads,
-          canvass_deals_closed: (Number(existingWeekly?.canvass_deals_closed) || 0) + weeklyCanvassDealsClose,
-          collections: (Number(existingWeekly?.collections) || 0) + weeklyCollections,
-          approved_revenue: (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
+          leads: (Number(existingWeekly?.leads) || 0) + deltaLeads,
+          closed_deals: (Number(existingWeekly?.closed_deals) || 0) + deltaClosedDeals,
+          earnings: (Number(existingWeekly?.earnings) || 0) + deltaEarnings,
+          canvass_leads: (Number(existingWeekly?.canvass_leads) || 0) + deltaCanvassLeads,
+          canvass_deals_closed: (Number(existingWeekly?.canvass_deals_closed) || 0) + deltaCanvassDeals,
+          collections: (Number(existingWeekly?.collections) || 0) + deltaCollections,
+          approved_revenue: (Number(existingWeekly?.approved_revenue) || 0) + deltaApprovedRev,
           points_earned: calculatePoints(
-            (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
-            (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
-            (Number(existingWeekly?.collections) || 0) + weeklyCollections
+            (Number(existingWeekly?.approved_revenue) || 0) + deltaApprovedRev,
+            (Number(existingWeekly?.closed_deals) || 0) + deltaClosedDeals,
+            (Number(existingWeekly?.collections) || 0) + deltaCollections
           ),
           updated_at: new Date().toISOString(),
         };
@@ -281,48 +431,63 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
             weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) continue;
 
+        // Fetch previous daily entry to compute true deltas
+        const { data: prevCanvDaily } = await supabase.from('daily_canvasser_metric_entries')
+          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+
+        const dLeadsSet = weeklyLeadsSet - (Number(prevCanvDaily?.leads_set_delta) || 0);
+        const dLeadsClosed = weeklyLeadsClosed - (Number(prevCanvDaily?.leads_closed_delta) || 0);
+        const dLeadsWithDamage = weeklyLeadsWithDamage - (Number(prevCanvDaily?.leads_with_damage_delta) || 0);
+        const dLeadsWithoutDamage = weeklyLeadsWithoutDamage - (Number(prevCanvDaily?.leads_without_damage_delta) || 0);
+        const dConvos = weeklyConversationsHad - (Number(prevCanvDaily?.conversations_had_delta) || 0);
+        const dNotInterested = weeklyNotInterested - (Number(prevCanvDaily?.not_interested_delta) || 0);
+        const dCancelled = weeklyCancelledLeads - (Number(prevCanvDaily?.cancelled_leads_delta) || 0);
+        const dHours = weeklyHoursWorked - (Number(prevCanvDaily?.hours_worked_delta) || 0);
+        const dIncome = weeklyIncome - (Number(prevCanvDaily?.income_delta) || 0);
+        const dDoors = weeklyDoorsKnocked - (Number(prevCanvDaily?.doors_knocked_delta) || 0);
+
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('canvasser_metrics').select('*').eq('user_id', entry.userId).order('created_at', { ascending: false }).limit(1).single();
         if (fetchError) { errorCount++; continue; }
 
         const { error: updateError } = await supabase.from('canvasser_metrics').update({
-          leads_set: (Number(currentMetrics.leads_set) || 0) + weeklyLeadsSet,
-          leads_closed: (Number(currentMetrics.leads_closed) || 0) + weeklyLeadsClosed,
-          leads_with_damage: (Number(currentMetrics.leads_with_damage) || 0) + weeklyLeadsWithDamage,
-          leads_without_damage: (Number((currentMetrics as any).leads_without_damage) || 0) + weeklyLeadsWithoutDamage,
-          conversations_had: (Number((currentMetrics as any).conversations_had) || 0) + weeklyConversationsHad,
-          not_interested: (Number((currentMetrics as any).not_interested) || 0) + weeklyNotInterested,
-          cancelled_leads: (Number((currentMetrics as any).cancelled_leads) || 0) + weeklyCancelledLeads,
-          hours_worked: (Number((currentMetrics as any).hours_worked) || 0) + weeklyHoursWorked,
-          income: (Number(currentMetrics.income) || 0) + weeklyIncome,
-          doors_knocked: (Number((currentMetrics as any).doors_knocked) || 0) + weeklyDoorsKnocked,
+          leads_set: (Number(currentMetrics.leads_set) || 0) + dLeadsSet,
+          leads_closed: (Number(currentMetrics.leads_closed) || 0) + dLeadsClosed,
+          leads_with_damage: (Number(currentMetrics.leads_with_damage) || 0) + dLeadsWithDamage,
+          leads_without_damage: (Number((currentMetrics as any).leads_without_damage) || 0) + dLeadsWithoutDamage,
+          conversations_had: (Number((currentMetrics as any).conversations_had) || 0) + dConvos,
+          not_interested: (Number((currentMetrics as any).not_interested) || 0) + dNotInterested,
+          cancelled_leads: (Number((currentMetrics as any).cancelled_leads) || 0) + dCancelled,
+          hours_worked: (Number((currentMetrics as any).hours_worked) || 0) + dHours,
+          income: (Number(currentMetrics.income) || 0) + dIncome,
+          doors_knocked: (Number((currentMetrics as any).doors_knocked) || 0) + dDoors,
           updated_at: new Date().toISOString(),
         } as any).eq('user_id', entry.userId);
         if (updateError) { errorCount++; continue; }
 
         const { data: existingCanvasserWeekly } = await supabase.from('weekly_canvasser_metrics').select('*').eq('user_id', entry.userId).eq('week_start', weekStartStr).maybeSingle();
-        const compoundedLeadsClosed = (Number(existingCanvasserWeekly?.leads_closed) || 0) + weeklyLeadsClosed;
-        const compoundedLeadsWithDamage = (Number(existingCanvasserWeekly?.leads_with_damage) || 0) + weeklyLeadsWithDamage;
-        const compoundedLeadsSet = (Number(existingCanvasserWeekly?.leads_set) || 0) + weeklyLeadsSet;
+        const compoundedLeadsClosed = (Number(existingCanvasserWeekly?.leads_closed) || 0) + dLeadsClosed;
+        const compoundedLeadsWithDamage = (Number(existingCanvasserWeekly?.leads_with_damage) || 0) + dLeadsWithDamage;
+        const compoundedLeadsSet = (Number(existingCanvasserWeekly?.leads_set) || 0) + dLeadsSet;
         const canvasserPoints = (compoundedLeadsClosed * 10) + (compoundedLeadsWithDamage * 5) + compoundedLeadsSet;
 
         await supabase.from('weekly_canvasser_metrics').upsert({
           user_id: entry.userId, week_start: weekStartStr, week_end: weekEndStr,
           leads_set: compoundedLeadsSet, leads_closed: compoundedLeadsClosed,
           leads_with_damage: compoundedLeadsWithDamage,
-          leads_without_damage: (Number(existingCanvasserWeekly?.leads_without_damage) || 0) + weeklyLeadsWithoutDamage,
-          conversations_had: (Number(existingCanvasserWeekly?.conversations_had) || 0) + weeklyConversationsHad,
-          not_interested: (Number(existingCanvasserWeekly?.not_interested) || 0) + weeklyNotInterested,
-          cancelled_leads: (Number((existingCanvasserWeekly as any)?.cancelled_leads) || 0) + weeklyCancelledLeads,
-          hours_worked: (Number(existingCanvasserWeekly?.hours_worked) || 0) + weeklyHoursWorked,
-          income: (Number(existingCanvasserWeekly?.income) || 0) + weeklyIncome,
-          doors_knocked: (Number(existingCanvasserWeekly?.doors_knocked) || 0) + weeklyDoorsKnocked,
+          leads_without_damage: (Number(existingCanvasserWeekly?.leads_without_damage) || 0) + dLeadsWithoutDamage,
+          conversations_had: (Number(existingCanvasserWeekly?.conversations_had) || 0) + dConvos,
+          not_interested: (Number(existingCanvasserWeekly?.not_interested) || 0) + dNotInterested,
+          cancelled_leads: (Number((existingCanvasserWeekly as any)?.cancelled_leads) || 0) + dCancelled,
+          hours_worked: (Number(existingCanvasserWeekly?.hours_worked) || 0) + dHours,
+          income: (Number(existingCanvasserWeekly?.income) || 0) + dIncome,
+          doors_knocked: (Number(existingCanvasserWeekly?.doors_knocked) || 0) + dDoors,
           points_earned: canvasserPoints, updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id,week_start' });
 
-        const { data: authUser } = await supabase.auth.getUser();
+        // Upsert daily canvasser entry
         await supabase.from('daily_canvasser_metric_entries').upsert({
-          user_id: entry.userId, entry_date: format(selectedDate, 'yyyy-MM-dd'),
+          user_id: entry.userId, entry_date: dateStr,
           hours_worked_delta: weeklyHoursWorked, leads_set_delta: weeklyLeadsSet,
           leads_closed_delta: weeklyLeadsClosed, leads_with_damage_delta: weeklyLeadsWithDamage,
           leads_without_damage_delta: weeklyLeadsWithoutDamage, conversations_had_delta: weeklyConversationsHad,
@@ -459,14 +624,14 @@ export default function WeeklyUpdates() {
                     <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-9 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
                       <div className="font-medium text-foreground text-sm">{entry.displayName}</div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 lg:contents">
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyApprovedRevenue} onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyLeads', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Total Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyClosedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklySelfGeneratedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedDeals', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassLeads', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassDealsClose} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassDealsClose', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Collections</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyCollections} onChange={(e) => updateEntry(entry.userId, 'weeklyCollections', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Earnings ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyEarnings} onChange={(e) => updateEntry(entry.userId, 'weeklyEarnings', e.target.value)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyApprovedRevenue} onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyLeads', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Total Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyClosedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklySelfGeneratedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedDeals', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassLeads', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassDealsClose} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassDealsClose', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Collections</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyCollections} onChange={(e) => updateEntry(entry.userId, 'weeklyCollections', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Earnings ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyEarnings} onChange={(e) => updateEntry(entry.userId, 'weeklyEarnings', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
                       </div>
                     </div>
                   ))}
@@ -492,16 +657,16 @@ export default function WeeklyUpdates() {
                     <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
                       <div className="font-medium text-foreground text-sm">{entry.displayName}</div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 lg:contents">
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Set</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsSet} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsSet', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Closed</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsClosed} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsClosed', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/ Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithDamage', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/o Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithoutDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithoutDamage', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Convos Had</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyConversationsHad} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyConversationsHad', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Not Interested</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyNotInterested} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyNotInterested', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canceled</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCancelledLeads} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyCancelledLeads', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Hours Worked</Label><Input type="number" min="0" step="0.5" placeholder="0" value={entry.weeklyHoursWorked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyHoursWorked', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Doors Knocked</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyDoorsKnocked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyDoorsKnocked', e.target.value)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Income ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyIncome} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyIncome', e.target.value)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Set</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsSet} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsSet', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Closed</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsClosed} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsClosed', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/ Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithDamage', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/o Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithoutDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithoutDamage', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Convos Had</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyConversationsHad} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyConversationsHad', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Not Interested</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyNotInterested} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyNotInterested', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canceled</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCancelledLeads} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyCancelledLeads', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Hours Worked</Label><Input type="number" min="0" step="0.5" placeholder="0" value={entry.weeklyHoursWorked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyHoursWorked', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Doors Knocked</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyDoorsKnocked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyDoorsKnocked', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Income ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyIncome} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyIncome', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
                       </div>
                     </div>
                   ))}
