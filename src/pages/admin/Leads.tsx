@@ -56,6 +56,7 @@ const statusCarouselConfig: { id: string; label: string; icon: any }[] = [
   { id: "quoted", label: "Quoted", icon: DollarSign },
   { id: "scheduled", label: "Scheduled", icon: CalendarClock },
   { id: "won", label: "Won", icon: CheckCircle2 },
+  { id: "complete", label: "Complete", icon: CheckCircle2 },
   { id: "lost", label: "Lost", icon: XCircle },
   { id: "archived", label: "Archived", icon: Archive },
 ];
