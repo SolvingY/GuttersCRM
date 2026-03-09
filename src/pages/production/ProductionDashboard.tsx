@@ -83,6 +83,7 @@ export default function ProductionDashboard() {
           log_date: today,
           builds_completed: builds,
           summary_notes: summaryNotes || null,
+          tasks_completed: tasksCompleted,
         },
         { onConflict: "user_id,log_date" }
       );
