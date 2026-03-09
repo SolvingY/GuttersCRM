@@ -1,42 +1,21 @@
 
 
-# Add Edit Button to Shift History
+# Fix: Canvasser Count Includes Archived/Removed Users
 
 ## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Changes
+On the Admin Overview Canvassers tab, the "Total Canvassers" stat card (and all aggregate numbers) are computed from the **unfiltered** `canvassers` array (line 413-428), which includes archived users and users who no longer hold the canvasser role.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+The filtered list (`activeCanvassers`) is computed on line 433 and used for the detail table — but the aggregates are set on line 432 **before** filtering. So the table shows the correct people, but the stat cards count too many.
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+## Fix
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+In `src/pages/dashboard/AdminOverview.tsx`, move the aggregate calculation to run **after** the active filter, so it only counts non-archived users who currently hold the canvasser role.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+Specifically:
+1. Move line 433 (`activeCanvassers` filter) to before the `canvasserTotals` reduce
+2. Run the reduce over `activeCanvassers` instead of `canvassers`
+3. Also compute `totalIncome` from the filtered list
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+This is a ~5 line reorder — no new logic, no schema changes.
 
