@@ -191,7 +191,7 @@ export function useAuth() {
     return { error: null };
   };
 
-  const setActiveView = async (view: 'sales' | 'canvasser' | 'supplementer') => {
+  const setActiveView = async (view: 'sales' | 'canvasser' | 'supplementer' | 'production') => {
     setAuthState(prev => ({ ...prev, activeView: view }));
     
     // Save preference to database
