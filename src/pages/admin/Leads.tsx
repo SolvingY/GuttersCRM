@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus, ChevronDown, ChevronRight, Users, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AutoAssignmentSettings } from "@/components/admin/AutoAssignmentSettings";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
@@ -15,6 +15,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { OverdueFollowupsWidget } from "@/components/dashboard/OverdueFollowupsWidget";
+import { SectionCarousel } from "@/components/dashboard/SectionCarousel";
+import { RevenueAnalyticsWidget } from "@/components/dashboard/RevenueAnalyticsWidget";
 
 const serviceIcons: Record<string, any> = {
   commercial: Building2,
@@ -54,7 +56,8 @@ export default function Leads() {
   const [assignedFilter, setAssignedFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
-  const [canvasserQueueOpen, setCanvasserQueueOpen] = useState(true);
+  const [revenueSection, setRevenueSection] = useState<string | null>(null);
+  const toggleRevenueSection = (id: string) => setRevenueSection(prev => prev === id ? null : id);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["admin-leads", statusFilter, serviceFilter, priorityFilter, assignedFilter, sourceFilter],
@@ -110,6 +113,13 @@ export default function Leads() {
   return (
     <div className="space-y-6">
       <OverdueFollowupsWidget isAdmin={true} />
+
+      {/* Revenue from Leads Carousel */}
+      <SectionCarousel activeSection={revenueSection} onToggle={toggleRevenueSection}>
+        <SectionCarousel.Item id="revenue-leads" title="Revenue from Leads" icon={DollarSign}>
+          <RevenueAnalyticsWidget />
+        </SectionCarousel.Item>
+      </SectionCarousel>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

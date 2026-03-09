@@ -1,39 +1,42 @@
 
 
-# Combined Plan: Scoreboard Restructure, Revenue Move, Company Goals + Weekly Updates + TimeClock Carousel Conversion
+# Add Edit Button to Shift History
+
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. `src/pages/dashboard/AdminOverview.tsx` — Scoreboard Restructure
-- **Replace `<Tabs>`** (Sales Reps / Canvassers / Supplementers) with a `<SectionCarousel>` containing 5 items: "Sales Reps", "Canvassers", "Supplementers", "Sales Leaderboard", "Canvasser Leaderboard"
-- **Remove `RevenueAnalyticsWidget`** from the Sales tab content
-- **Remove the red "Canvassers Need Attention" alert** box
-- **Shorten** "Total Approved Revenue" stat card title to "Approved Revenue"
-- Leaderboard items will embed existing `LeaderboardTable` and `WeeklyCanvasserLeaderboardTable` components
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-### 2. `src/pages/admin/Leads.tsx` — Add Revenue Widget
-- Add a `SectionCarousel` at the top with a single "Revenue from Leads" item containing the `RevenueAnalyticsWidget`
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### 3. `src/pages/admin/CompanyGoals.tsx` — AccordionButtons → SectionCarousel
-- Replace the 5 `AccordionButton` sections (Fiscal Year Goals, Revenue & Collections, Contract Progress, Additional Metrics, Internet Metrics) with `SectionCarousel.Item` entries
-- Content inside each section stays identical
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### 4. `src/pages/admin/WeeklyUpdates.tsx` — Tabs → SectionCarousel
-- Replace the `<Tabs>` with Sales Reps / Canvassers tabs with a `SectionCarousel` containing two items: "Sales Reps" and "Canvassers"
-- Content inside each tab stays identical
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### 5. `src/pages/admin/AdminTimeClock.tsx` — Collapsibles → SectionCarousel
-- Replace the 5 `Collapsible` sections (Hours Tracker, Pay Period Daily Activity, Shift Management, Shift History, Geofence Work Zones) with `SectionCarousel.Item` entries
-- The filter/navigation controls within each section header will move inside the section content area (since the carousel trigger is just a pill button)
-- Content inside each section stays identical
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### Files Modified
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-| File | Change |
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
 |------|--------|
-| `AdminOverview.tsx` | Tabs→SectionCarousel with 5 items, remove revenue widget, remove canvasser alert, fix stat title |
-| `Leads.tsx` | Add SectionCarousel with Revenue from Leads |
-| `CompanyGoals.tsx` | AccordionButtons→SectionCarousel |
-| `WeeklyUpdates.tsx` | Tabs→SectionCarousel |
-| `AdminTimeClock.tsx` | Collapsibles→SectionCarousel |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

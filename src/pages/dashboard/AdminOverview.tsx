@@ -5,13 +5,12 @@ import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, ChevronDown, ChevronRight as ChevronRightIcon, Plus } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3 } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { addMonths, format } from 'date-fns';
 import { FISCAL_YEAR } from '@/lib/constants';
@@ -20,8 +19,9 @@ import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConve
 import { SectionCarousel } from '@/components/dashboard/SectionCarousel';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
-import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
 import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
+import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
+import { WeeklyCanvasserLeaderboardTable } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -89,7 +89,6 @@ interface CanvasserDetail {
   role: 'canvasser';
 }
 
-// Performance thresholds
 const THRESHOLDS = {
   leadToClosePercent: { green: 60, yellow: 30 },
   avgJobSize: { green: 25000, yellow: 20000 },
@@ -98,26 +97,13 @@ const THRESHOLDS = {
 
 export default function AdminOverview() {
   const [aggregates, setAggregates] = useState<AggregateMetrics>({
-    totalApprovedRevenue: 0,
-    totalPoints: 0,
-    totalLeads: 0,
-    totalClosedDeals: 0,
-    totalUsers: 0,
-    totalSelfGen: 0,
-    totalCanvassClosedDeals: 0,
-    totalInternetClosedDeals: 0,
-    totalClosedForLtC: 0,
+    totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0,
+    totalUsers: 0, totalSelfGen: 0, totalCanvassClosedDeals: 0, totalInternetClosedDeals: 0, totalClosedForLtC: 0,
   });
   const [canvasserAggregates, setCanvasserAggregates] = useState<CanvasserAggregates>({
-    totalCanvassers: 0,
-    totalLeadsSet: 0,
-    totalLeadsClosed: 0,
-    totalLeadsWithDamage: 0,
-    totalLeadsWithoutDamage: 0,
-    totalConversationsHad: 0,
-    totalNotInterested: 0,
-    totalDoorsKnocked: 0,
-    totalHoursWorked: 0,
+    totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0,
+    totalLeadsWithoutDamage: 0, totalConversationsHad: 0, totalNotInterested: 0,
+    totalDoorsKnocked: 0, totalHoursWorked: 0,
   });
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [canvasserDetails, setCanvasserDetails] = useState<CanvasserDetail[]>([]);
@@ -130,18 +116,13 @@ export default function AdminOverview() {
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [companyGoals, setCompanyGoals] = useState<{
-    salesRevenueGoal: number;
-    canvasserLeadsGoal: number;
-    targetLeadToCloseRatio: number;
-    targetCostPerLead: number;
-    fiscalYearStart: string;
-    fiscalYearEnd: string;
+    salesRevenueGoal: number; canvasserLeadsGoal: number;
+    targetLeadToCloseRatio: number; targetCostPerLead: number;
+    fiscalYearStart: string; fiscalYearEnd: string;
   } | null>(null);
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
-
-
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -171,7 +152,6 @@ export default function AdminOverview() {
   };
 
   const fetchAdminData = async () => {
-    // Fetch company goals
     const { data: goalsData } = await supabase
       .from('company_goals')
       .select('*')
@@ -190,7 +170,6 @@ export default function AdminOverview() {
       });
     }
 
-    // Fetch all sales rep metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: metrics, error: metricsError } = await supabase
       .from('user_metrics')
       .select('id, user_id, display_name, approved_revenue, collections, points, leads, closed_deals, yearly_goal, sales_rank, earnings_ytd, metric_date, updated_at, self_generated_leads, canvass_leads, self_generated_deals, canvass_deals_closed, internet_leads, internet_leads_closed')
@@ -201,7 +180,6 @@ export default function AdminOverview() {
       console.error('Error fetching admin metrics:', metricsError);
     }
 
-    // Fetch canvasser metrics - order by metric_date and updated_at for deterministic "latest" selection
     const { data: canvasserMetrics, error: canvasserError } = await supabase
       .from('canvasser_metrics')
       .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, doors_knocked, points, income, yearly_goal, metric_date, updated_at')
@@ -212,31 +190,20 @@ export default function AdminOverview() {
       console.error('Error fetching canvasser metrics:', canvasserError);
     }
 
-    // Process sales rep data
     if (metrics && metrics.length > 0) {
       const latestByUser = new Map<string, { 
-        metricId: string; 
-        realUserId: string | null;
-        approvedRevenue: number; 
-        collections: number;
-        points: number; 
-        yearlyGoal: number; 
-        salesRank: string; 
-        displayName: string | null; 
-        earningsYtd: number;
-        canvassLeads: number;
-        selfGeneratedDeals: number;
-        canvassDealsClose: number;
-        internetLeads: number;
-        internetLeadsClosed: number;
+        metricId: string; realUserId: string | null;
+        approvedRevenue: number; collections: number; points: number; yearlyGoal: number; 
+        salesRank: string; displayName: string | null; earningsYtd: number;
+        canvassLeads: number; selfGeneratedDeals: number; canvassDealsClose: number;
+        internetLeads: number; internetLeadsClosed: number;
       }>();
       
       for (const item of metrics) {
         const key = item.user_id || `metric_${item.id}`;
         if (!latestByUser.has(key)) {
           latestByUser.set(key, {
-            metricId: item.id,
-            realUserId: item.user_id,
+            metricId: item.id, realUserId: item.user_id,
             approvedRevenue: Number(item.approved_revenue) || 0,
             collections: Number(item.collections) || 0,
             points: Number(item.points) || 0,
@@ -269,27 +236,21 @@ export default function AdminOverview() {
         profilesData?.map((p) => [p.id, p.full_name] as [string, string | null]) || []
       );
 
-      // Build an "active" set: only profiles that exist AND are not archived
       const activeIds = new Set<string>(
         profilesData?.filter(p => !p.is_archived).map(p => p.id) || []
       );
 
-      // Use role priority: admin > user > canvasser
-      // This ensures multi-role users (like Adam with admin+user+canvasser) appear correctly
       const rolesMap = new Map<string, 'admin' | 'user' | 'canvasser'>();
       const rolePriority: Record<string, number> = { admin: 3, user: 2, canvasser: 1 };
       
       rolesData?.forEach((r) => {
         const currentRole = rolesMap.get(r.user_id);
         const newRole = r.role as 'admin' | 'user' | 'canvasser';
-        
-        // Only update if no role exists OR new role has higher priority
         if (!currentRole || rolePriority[newRole] > rolePriority[currentRole]) {
           rolesMap.set(r.user_id, newRole);
         }
       });
 
-      // Fetch live lead data from quote_requests for accurate Close %
       const { data: liveLeads } = await supabase
         .from('quote_requests')
         .select('assigned_to, status')
@@ -297,7 +258,6 @@ export default function AdminOverview() {
         .is('archived_at', null)
         .is('cancelled_at', null);
 
-      // Group live leads by assigned_to
       const liveLeadsByRep = new Map<string, { total: number; closed: number }>();
       if (liveLeads) {
         for (const lead of liveLeads) {
@@ -312,31 +272,21 @@ export default function AdminOverview() {
       }
 
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
-        // Calculate Total Contracts = Self-Gen Deals + Canvass Deals + Internet Deals Closed
         const calculatedClosedDeals = data.selfGeneratedDeals + data.canvassDealsClose + data.internetLeadsClosed;
-        
         const avgJobSize = calculatedClosedDeals > 0 ? data.approvedRevenue / calculatedClosedDeals : 0;
-
-        // Use LIVE data from quote_requests for Close %
         const liveCounts = data.realUserId ? liveLeadsByRep.get(data.realUserId) : null;
         const realLeads = liveCounts?.total || 0;
         const realClosed = liveCounts?.closed || 0;
         const leadToClosePercent = realLeads > 0 ? (realClosed / realLeads) * 100 : 0;
         
         return {
-          metricId: data.metricId,
-          realUserId: data.realUserId,
-          approvedRevenue: data.approvedRevenue,
-          collections: data.collections,
-          points: data.points,
-          leads: realLeads,
-          closedDeals: calculatedClosedDeals,
-          yearlyGoal: data.yearlyGoal,
-          salesRank: data.salesRank,
+          metricId: data.metricId, realUserId: data.realUserId,
+          approvedRevenue: data.approvedRevenue, collections: data.collections,
+          points: data.points, leads: realLeads, closedDeals: calculatedClosedDeals,
+          yearlyGoal: data.yearlyGoal, salesRank: data.salesRank,
           earningsYtd: data.earningsYtd,
           name: data.displayName || (data.realUserId ? profilesMap.get(data.realUserId) : null) || 'Unknown User',
-          avgJobSize,
-          leadToClosePercent,
+          avgJobSize, leadToClosePercent,
           role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
           selfGeneratedDeals: data.selfGeneratedDeals,
           canvassLeads: data.canvassLeads,
@@ -346,10 +296,8 @@ export default function AdminOverview() {
         };
       });
       
-      // Filter out canvassers from sales rep list
       const salesReps = users.filter(user => user.role !== 'canvasser');
 
-      // Aggregates — use live lead data for Close % totals
       const totals = salesReps.reduce(
         (acc, user) => ({
           totalApprovedRevenue: acc.totalApprovedRevenue + user.approvedRevenue,
@@ -366,39 +314,24 @@ export default function AdminOverview() {
       );
 
       setAggregates(totals);
-      // Only show non-archived users in the table
       const activeSalesReps = salesReps.filter(user => user.realUserId && activeIds.has(user.realUserId));
       setUserDetails(activeSalesReps.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
-    // Process canvasser data
     if (canvasserMetrics && canvasserMetrics.length > 0) {
       const latestByCanvasser = new Map<string, {
-        metricId: string;
-        realUserId: string | null;
-        displayName: string | null;
-        leadsSet: number;
-        leadsClosed: number;
-        leadsWithDamage: number;
-        leadsWithoutDamage: number;
-        conversationsHad: number;
-        notInterested: number;
-        hoursWorked: number;
-        doorsKnocked: number;
-        points: number;
-        income: number;
-        yearlyGoal: number;
+        metricId: string; realUserId: string | null; displayName: string | null;
+        leadsSet: number; leadsClosed: number; leadsWithDamage: number;
+        leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
+        hoursWorked: number; doorsKnocked: number; points: number; income: number; yearlyGoal: number;
       }>();
 
       for (const item of canvasserMetrics) {
         const key = item.user_id || `metric_${item.id}`;
         if (!latestByCanvasser.has(key)) {
           latestByCanvasser.set(key, {
-            metricId: item.id,
-            realUserId: item.user_id,
-            displayName: item.display_name,
-            leadsSet: item.leads_set || 0,
-            leadsClosed: item.leads_closed || 0,
+            metricId: item.id, realUserId: item.user_id, displayName: item.display_name,
+            leadsSet: item.leads_set || 0, leadsClosed: item.leads_closed || 0,
             leadsWithDamage: item.leads_with_damage || 0,
             leadsWithoutDamage: Number(item.leads_without_damage) || 0,
             conversationsHad: Number(item.conversations_had) || 0,
@@ -412,7 +345,6 @@ export default function AdminOverview() {
         }
       }
 
-      // Fetch canvasser profiles to check archived status
       const canvasserUserIds = Array.from(latestByCanvasser.values())
         .map(v => v.realUserId)
         .filter((id): id is string => id !== null);
@@ -421,51 +353,36 @@ export default function AdminOverview() {
         ? await supabase.from('profiles').select('id, is_archived, full_name').in('id', canvasserUserIds)
         : { data: [] };
 
-      // Fetch current canvasser roles to filter out users who no longer have the canvasser role
       const { data: canvasserRolesData } = canvasserUserIds.length > 0
         ? await supabase.from('user_roles').select('user_id, role').in('user_id', canvasserUserIds).eq('role', 'canvasser')
         : { data: [] };
 
-      // Build an "active" set: only profiles that exist AND are not archived
       const activeCanvasserIds = new Set<string>(
         canvasserProfilesData?.filter(p => !p.is_archived).map(p => p.id) || []
       );
 
-      // Build a name map from canvasser profiles for fallback
       const canvasserProfilesMap = new Map<string, string>(
         canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
       );
 
-      // Build a set of users who currently hold the canvasser role
       const currentCanvasserRoleIds = new Set<string>(
         canvasserRolesData?.map(r => r.user_id) || []
       );
 
       const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
         const conversionRate = data.leadsSet > 0 ? (data.leadsClosed / data.leadsSet) * 100 : 0;
-        
         return {
-          metricId: data.metricId,
-          realUserId: data.realUserId,
+          metricId: data.metricId, realUserId: data.realUserId,
           name: data.displayName || (data.realUserId ? canvasserProfilesMap.get(data.realUserId) : null) || 'Unknown Canvasser',
-          leadsSet: data.leadsSet,
-          leadsClosed: data.leadsClosed,
-          leadsWithDamage: data.leadsWithDamage,
-          leadsWithoutDamage: data.leadsWithoutDamage,
-          conversationsHad: data.conversationsHad,
-          notInterested: data.notInterested,
-          hoursWorked: data.hoursWorked,
-          doorsKnocked: data.doorsKnocked,
-          points: data.points,
-          income: data.income,
-          yearlyGoal: data.yearlyGoal,
-          conversionRate,
-          revenue: 0,
-          role: 'canvasser' as const,
+          leadsSet: data.leadsSet, leadsClosed: data.leadsClosed,
+          leadsWithDamage: data.leadsWithDamage, leadsWithoutDamage: data.leadsWithoutDamage,
+          conversationsHad: data.conversationsHad, notInterested: data.notInterested,
+          hoursWorked: data.hoursWorked, doorsKnocked: data.doorsKnocked,
+          points: data.points, income: data.income, yearlyGoal: data.yearlyGoal,
+          conversionRate, revenue: 0, role: 'canvasser' as const,
         };
       });
 
-      // Batch query for canvasser revenue attribution — scoped to fiscal year
       const { data: revenueData } = await supabase
         .from("quote_requests")
         .select("canvasser_id, quote_amount")
@@ -479,7 +396,6 @@ export default function AdminOverview() {
         revenueByCanvasser.set(lead.canvasser_id, current + (Number(lead.quote_amount) || 0));
       });
 
-      // Apply revenue to each canvasser
       canvassers.forEach(c => {
         if (c.realUserId) {
           c.revenue = revenueByCanvasser.get(c.realUserId) || 0;
@@ -498,18 +414,14 @@ export default function AdminOverview() {
           totalDoorsKnocked: acc.totalDoorsKnocked + c.doorsKnocked,
           totalHoursWorked: acc.totalHoursWorked + c.hoursWorked,
         }),
-        { 
-          totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, 
+        { totalCanvassers: 0, totalLeadsSet: 0, totalLeadsClosed: 0, totalLeadsWithDamage: 0, 
           totalLeadsWithoutDamage: 0, totalConversationsHad: 0, totalNotInterested: 0, 
-          totalDoorsKnocked: 0, totalHoursWorked: 0 
-        }
+          totalDoorsKnocked: 0, totalHoursWorked: 0 }
       );
 
       const totalIncome = canvassers.reduce((sum, c) => sum + c.income, 0);
       setTotalCanvasserIncome(totalIncome);
-      // Aggregates include all canvassers (including archived) for accurate totals
       setCanvasserAggregates(canvasserTotals);
-      // Only show non-archived canvassers in the table
       const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId));
       setCanvasserDetails(activeCanvassers.sort((a, b) => a.name.localeCompare(b.name)));
     }
@@ -517,28 +429,21 @@ export default function AdminOverview() {
     setLoading(false);
   };
 
-  // Generate monthly progress data for the graph
   const generateMonthlyProgress = (): MonthlyProgress[] => {
     const fiscalStart = companyGoals?.fiscalYearStart 
       ? new Date(companyGoals.fiscalYearStart) 
       : new Date(2025, 11, 15);
-    
     const monthlyGoalRevenue = (companyGoals?.salesRevenueGoal || 0) / 12;
     const monthlyGoalLeads = (companyGoals?.canvasserLeadsGoal || 0) / 12;
-    
     const now = new Date();
     const months: MonthlyProgress[] = [];
-    
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(fiscalStart, i);
       const monthName = format(monthDate, 'MMM yyyy');
       const isPast = monthDate <= now;
-      
-      // Distribute current totals proportionally for past months
       const monthsElapsed = Math.max(1, Math.floor((now.getTime() - fiscalStart.getTime()) / (30 * 24 * 60 * 60 * 1000)));
       const monthlyRevenue = isPast ? aggregates.totalApprovedRevenue / Math.min(monthsElapsed, i + 1) : 0;
       const monthlyLeads = isPast ? Math.floor(canvasserAggregates.totalLeadsClosed / Math.min(monthsElapsed, i + 1)) : 0;
-      
       months.push({
         month: monthName,
         revenue: isPast ? monthlyRevenue : 0,
@@ -582,9 +487,7 @@ export default function AdminOverview() {
         .from('user_roles')
         .update({ role: newRole })
         .eq('user_id', userId);
-
       if (error) throw error;
-
       toast.success(`Role updated to ${newRole}`);
       setUserDetails(prev => 
         prev.map(u => u.realUserId === userId ? { ...u, role: newRole } : u)
@@ -599,10 +502,8 @@ export default function AdminOverview() {
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      style: 'currency', currency: 'USD',
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
     }).format(value);
   };
 
@@ -613,9 +514,6 @@ export default function AdminOverview() {
       </div>
     );
   }
-
-  const usersNeedingAttention = userDetails.filter(needsAttention);
-  const canvassersNeedingAttention = canvasserDetails.filter(canvasserNeedsAttention);
 
   return (
     <div className="space-y-6">
@@ -637,38 +535,23 @@ export default function AdminOverview() {
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         onExport={(startDate, endDate, exportFormat, reportType) => {
-        const salesRepsData: SalesRepData[] = reportType === 'canvassers' ? [] : userDetails.map(u => ({
-            name: u.name,
-            salesRank: u.salesRank,
-            approvedRevenue: u.approvedRevenue,
-            collections: u.collections,
-            earningsYtd: u.earningsYtd,
-            points: u.points,
-            leads: u.leads,
-            closedDeals: u.closedDeals,
-            yearlyGoal: u.yearlyGoal,
-            avgJobSize: u.avgJobSize,
-            leadToClosePercent: u.leadToClosePercent,
+          const salesRepsData: SalesRepData[] = reportType === 'canvassers' ? [] : userDetails.map(u => ({
+            name: u.name, salesRank: u.salesRank, approvedRevenue: u.approvedRevenue,
+            collections: u.collections, earningsYtd: u.earningsYtd, points: u.points,
+            leads: u.leads, closedDeals: u.closedDeals, yearlyGoal: u.yearlyGoal,
+            avgJobSize: u.avgJobSize, leadToClosePercent: u.leadToClosePercent,
           }));
           const canvassersData: CanvasserData[] = reportType === 'sales' ? [] : canvasserDetails.map(c => ({
-            name: c.name,
-            leadsSet: c.leadsSet,
-            leadsClosed: c.leadsClosed,
-            leadsWithDamage: c.leadsWithDamage,
-            hoursWorked: c.hoursWorked,
-            doorsKnocked: c.doorsKnocked,
-            conversationsHad: c.conversationsHad,
-            notInterested: c.notInterested,
-            points: c.points,
-            income: c.income,
-            conversionRate: c.conversionRate,
-            yearlyGoal: c.yearlyGoal,
+            name: c.name, leadsSet: c.leadsSet, leadsClosed: c.leadsClosed,
+            leadsWithDamage: c.leadsWithDamage, hoursWorked: c.hoursWorked,
+            doorsKnocked: c.doorsKnocked, conversationsHad: c.conversationsHad,
+            notInterested: c.notInterested, points: c.points, income: c.income,
+            conversionRate: c.conversionRate, yearlyGoal: c.yearlyGoal,
           }));
           
           const monthlyProgress = generateMonthlyProgress();
           const actualCostPerLead = canvasserAggregates.totalLeadsClosed > 0 
-            ? totalCanvasserIncome / canvasserAggregates.totalLeadsClosed 
-            : 0;
+            ? totalCanvasserIncome / canvasserAggregates.totalLeadsClosed : 0;
           
           const summary: CompanySummary = {
             totalApprovedRevenue: aggregates.totalApprovedRevenue,
@@ -684,20 +567,17 @@ export default function AdminOverview() {
             totalLeadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
             totalHoursWorked: canvasserAggregates.totalHoursWorked,
             totalCanvasserIncome: totalCanvasserIncome,
-            // Company Goals
             salesRevenueGoal: companyGoals?.salesRevenueGoal,
             canvasserLeadsGoal: companyGoals?.canvasserLeadsGoal,
             targetLeadToCloseRatio: companyGoals?.targetLeadToCloseRatio,
             targetCostPerLead: companyGoals?.targetCostPerLead,
             fiscalYearStart: companyGoals?.fiscalYearStart,
             fiscalYearEnd: companyGoals?.fiscalYearEnd,
-            // Progress calculations
             salesProgressPercent: companyGoals?.salesRevenueGoal 
               ? (aggregates.totalApprovedRevenue / companyGoals.salesRevenueGoal) * 100 : 0,
             leadsProgressPercent: companyGoals?.canvasserLeadsGoal 
               ? (canvasserAggregates.totalLeadsClosed / companyGoals.canvasserLeadsGoal) * 100 : 0,
             actualCostPerLead: actualCostPerLead,
-            // Monthly Progress for Graph
             monthlyProgress: monthlyProgress,
           };
           
@@ -711,267 +591,242 @@ export default function AdminOverview() {
         }}
       />
 
-      {/* Stale Contracts Alert - shown above tabs for all admin */}
+      {/* Stale Contracts Alert */}
       <StaleContractsWidget isAdmin={true} />
 
-      <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
-          <TabsTrigger value="sales">Sales Reps ({aggregates.totalUsers})</TabsTrigger>
-          <TabsTrigger value="canvassers">Canvassers ({canvasserAggregates.totalCanvassers})</TabsTrigger>
-          <TabsTrigger value="supplementers">Supplementers</TabsTrigger>
-        </TabsList>
+      {/* Main SectionCarousel replacing Tabs */}
+      <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+        {/* Sales Reps */}
+        <SectionCarousel.Item id="sales" title={`Sales Reps (${aggregates.totalUsers})`} icon={UserCheck}>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <StatsCard title="Total Sales Reps" value={aggregates.totalUsers} icon={UserCheck} />
+              <StatsCard title="Approved Revenue" value={formatCurrency(aggregates.totalApprovedRevenue)} icon={DollarSign} />
+              <StatsCard title="Total Points" value={aggregates.totalPoints.toLocaleString()} icon={Star} />
+              <StatsCard title="Total Leads (Close %)" value={aggregates.totalLeads} icon={Users} />
+              <StatsCard title="Total Contracts" value={aggregates.totalClosedDeals} icon={Briefcase} />
+              <StatsCard 
+                title="Lead Close %" 
+                value={`${aggregates.totalLeads > 0 ? ((aggregates.totalClosedForLtC / aggregates.totalLeads) * 100).toFixed(1) : '0.0'}%`} 
+                icon={Percent} 
+              />
+            </div>
 
-        {/* Sales Reps Tab */}
-        <TabsContent value="sales" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            <StatsCard title="Total Sales Reps" value={aggregates.totalUsers} icon={UserCheck} />
-            <StatsCard title="Total Approved Revenue" value={formatCurrency(aggregates.totalApprovedRevenue)} icon={DollarSign} />
-            <StatsCard title="Total Points" value={aggregates.totalPoints.toLocaleString()} icon={Star} />
-            <StatsCard title="Total Leads (Close %)" value={aggregates.totalLeads} icon={Users} />
-            <StatsCard title="Total Contracts" value={aggregates.totalClosedDeals} icon={Briefcase} />
-            <StatsCard 
-              title="Lead Close %" 
-              value={`${aggregates.totalLeads > 0 ? ((aggregates.totalClosedForLtC / aggregates.totalLeads) * 100).toFixed(1) : '0.0'}%`} 
-              icon={Percent} 
-            />
-          </div>
+            <CollectionsPipelineWidget isAdmin={true} />
 
-          {/* Outstanding Collections */}
-          <CollectionsPipelineWidget isAdmin={true} />
-
-          {/* Revenue Analytics */}
-          <RevenueAnalyticsWidget />
-
-          <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
-            <SectionCarousel.Item id="contract-sources" title="Contract Sources" icon={GitCompare}>
-              <div>
-                {(() => {
-                  const totalSelfGenContracts = aggregates.totalSelfGen;
-                  const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
-                  const totalInternetContracts = aggregates.totalInternetClosedDeals;
-                  const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
-                  const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
-                  const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
-                  const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
-                  
-                  return (
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Self-Generated</span>
-                          <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                          <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
+            {/* Contract Sources */}
+            <div className="border border-border rounded-xl bg-card p-4 shadow-sm">
+              <h3 className="font-heading text-sm uppercase mb-3 flex items-center gap-2"><GitCompare className="h-4 w-4" /> Contract Sources</h3>
+              {(() => {
+                const totalSelfGenContracts = aggregates.totalSelfGen;
+                const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
+                const totalInternetContracts = aggregates.totalInternetClosedDeals;
+                const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
+                const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
+                const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
+                const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
+                
+                return (
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Self-Generated</span>
+                        <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
                       </div>
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Canvass Contracts</span>
-                          <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                      <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                        <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
                       </div>
-                      <div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Internet Contracts</span>
-                          <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                          <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                      <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Canvass Contracts</span>
+                        <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
                       </div>
-                      <div className="pt-2 border-t border-border">
-                        <div className="flex justify-between font-semibold text-foreground">
-                          <span>Total Contracts</span>
-                          <span>{totalContracts}</span>
-                        </div>
+                      <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                        <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Internet Contracts</span>
+                        <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                        <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                    </div>
+                    <div className="pt-2 border-t border-border">
+                      <div className="flex justify-between font-semibold text-foreground">
+                        <span>Total Contracts</span>
+                        <span>{totalContracts}</span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
-            </SectionCarousel.Item>
+                  </div>
+                );
+              })()}
+            </div>
 
-            <SectionCarousel.Item id="sales-perf" title="Sales Rep Performance" icon={TrendingUp}>
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
+            {/* Sales Rep Performance Table */}
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
               {userDetails.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-muted-foreground">No sales rep data available yet.</p>
                 </div>
               ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Role</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Approved Revenue</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Collections</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Earnings</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Avg Job</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger className="flex items-center gap-1 justify-end cursor-help">
-                              Close %
-                              <HelpCircle className="h-3 w-3" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {userDetails.map((user) => {
-                      const attention = needsAttention(user);
-                      return (
-                        <tr 
-                          key={user.metricId}
-                          className={cn(
-                            "border-t border-border transition-colors",
-                            attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
-                          )}
-                        >
-                          <td className="py-3 px-4 text-foreground font-medium">
-                            <div className="flex items-center gap-2">
-                              {user.name}
-                              {attention && (
-                                <Badge variant="destructive" className="text-xs">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
-                                  Attention
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {user.realUserId ? (
-                              <Select
-                                value={user.role}
-                                onValueChange={(value: 'admin' | 'user' | 'canvasser') => handleRoleChange(user.realUserId!, value)}
-                                disabled={updatingRole === user.realUserId}
-                              >
-                                <SelectTrigger className={cn(
-                                  "w-28 h-8",
-                                  user.role === 'admin' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted"
-                                )}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover border border-border z-50">
-                                  <SelectItem value="user">User</SelectItem>
-                                  <SelectItem value="canvasser">Canvasser</SelectItem>
-                                  <SelectItem value="admin">
-                                    <div className="flex items-center gap-1">
-                                      <Shield className="h-3 w-3" />
-                                      Admin
-                                    </div>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">N/A</span>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Role</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Approved Revenue</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Collections</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Earnings</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Avg Job</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger className="flex items-center gap-1 justify-end cursor-help">
+                                Close %
+                                <HelpCircle className="h-3 w-3" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userDetails.map((user) => {
+                        const attention = needsAttention(user);
+                        return (
+                          <tr 
+                            key={user.metricId}
+                            className={cn(
+                              "border-t border-border transition-colors",
+                              attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
                             )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {user.salesRank}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.approvedRevenue)}</td>
-                          <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(user.collections)}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.earningsYtd)}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
-                          <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
-                          <td className={cn("py-3 px-4 text-right font-medium", getAvgJobSizeColor(user.avgJobSize))}>
-                            {formatCurrency(user.avgJobSize)}
-                          </td>
-                          <td className={cn("py-3 px-4 text-right font-medium", getLeadToCloseColor(user.leadToClosePercent))}>
-                            {user.leadToClosePercent.toFixed(1)}%
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => handleViewUser(user)} title="View stats">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)} title="Edit metrics">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                          >
+                            <td className="py-3 px-4 text-foreground font-medium">
+                              <div className="flex items-center gap-2">
+                                {user.name}
+                                {attention && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Attention
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              {user.realUserId ? (
+                                <Select
+                                  value={user.role}
+                                  onValueChange={(value: 'admin' | 'user' | 'canvasser') => handleRoleChange(user.realUserId!, value)}
+                                  disabled={updatingRole === user.realUserId}
+                                >
+                                  <SelectTrigger className={cn(
+                                    "w-28 h-8",
+                                    user.role === 'admin' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted"
+                                  )}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-popover border border-border z-50">
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="canvasser">Canvasser</SelectItem>
+                                    <SelectItem value="admin">
+                                      <div className="flex items-center gap-1">
+                                        <Shield className="h-3 w-3" />
+                                        Admin
+                                      </div>
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">N/A</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                {user.salesRank}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.approvedRevenue)}</td>
+                            <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(user.collections)}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.earningsYtd)}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
+                            <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
+                            <td className={cn("py-3 px-4 text-right font-medium", getAvgJobSizeColor(user.avgJobSize))}>
+                              {formatCurrency(user.avgJobSize)}
+                            </td>
+                            <td className={cn("py-3 px-4 text-right font-medium", getLeadToCloseColor(user.leadToClosePercent))}>
+                              {user.leadToClosePercent.toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button variant="ghost" size="icon" onClick={() => handleViewUser(user)} title="View stats">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)} title="Edit metrics">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            </SectionCarousel.Item>
-          </SectionCarousel>
-        </TabsContent>
-
-        {/* Canvassers Tab */}
-        <TabsContent value="canvassers" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            <StatsCard title="Total Canvassers" value={canvasserAggregates.totalCanvassers} icon={UserCheck} />
-            <StatsCard title="Leads Set" value={canvasserAggregates.totalLeadsSet} icon={Target} />
-            <StatsCard title="Leads Closed" value={canvasserAggregates.totalLeadsClosed} icon={CheckCircle} />
-            <StatsCard title="With Damage" value={canvasserAggregates.totalLeadsWithDamage} icon={AlertTriangle} />
-            <StatsCard title="Hours Worked" value={canvasserAggregates.totalHoursWorked} icon={Clock} />
-            <StatsCard 
-              title="Lead Close %" 
-              value={`${canvasserAggregates.totalLeadsSet > 0 ? ((canvasserAggregates.totalLeadsClosed / canvasserAggregates.totalLeadsSet) * 100).toFixed(1) : '0.0'}%`} 
-              icon={Percent} 
-            />
           </div>
+        </SectionCarousel.Item>
 
-          {canvassersNeedingAttention.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-                <h3 className="font-semibold text-red-600 dark:text-red-400">
-                  {canvassersNeedingAttention.length} Canvasser{canvassersNeedingAttention.length > 1 ? 's' : ''} Need{canvassersNeedingAttention.length === 1 ? 's' : ''} Attention
-                </h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Canvassers with conversion rate below 25% are highlighted below.
-              </p>
-            </div>
-          )}
-
-          <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
-            <SectionCarousel.Item id="conversion-funnel" title="Conversion Funnel" icon={GitCompare}>
-              <CanvasserConversionFunnel
-                title="Team Conversion Funnel (YTD)"
-                data={{
-                  doorsKnocked: canvasserAggregates.totalDoorsKnocked,
-                  conversationsHad: canvasserAggregates.totalConversationsHad,
-                  leadsSet: canvasserAggregates.totalLeadsSet,
-                  leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-                  leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
-                  leadsClosed: canvasserAggregates.totalLeadsClosed,
-                }} 
+        {/* Canvassers */}
+        <SectionCarousel.Item id="canvassers" title={`Canvassers (${canvasserAggregates.totalCanvassers})`} icon={Users}>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <StatsCard title="Total Canvassers" value={canvasserAggregates.totalCanvassers} icon={UserCheck} />
+              <StatsCard title="Leads Set" value={canvasserAggregates.totalLeadsSet} icon={Target} />
+              <StatsCard title="Leads Closed" value={canvasserAggregates.totalLeadsClosed} icon={CheckCircle} />
+              <StatsCard title="With Damage" value={canvasserAggregates.totalLeadsWithDamage} icon={AlertTriangle} />
+              <StatsCard title="Hours Worked" value={canvasserAggregates.totalHoursWorked} icon={Clock} />
+              <StatsCard 
+                title="Lead Close %" 
+                value={`${canvasserAggregates.totalLeadsSet > 0 ? ((canvasserAggregates.totalLeadsClosed / canvasserAggregates.totalLeadsSet) * 100).toFixed(1) : '0.0'}%`} 
+                icon={Percent} 
               />
-            </SectionCarousel.Item>
+            </div>
 
-            <SectionCarousel.Item id="canvasser-perf" title="Canvasser Performance" icon={Users}>
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
+            {/* Conversion Funnel */}
+            <CanvasserConversionFunnel
+              title="Team Conversion Funnel (YTD)"
+              data={{
+                doorsKnocked: canvasserAggregates.totalDoorsKnocked,
+                conversationsHad: canvasserAggregates.totalConversationsHad,
+                leadsSet: canvasserAggregates.totalLeadsSet,
+                leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+                leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
+                leadsClosed: canvasserAggregates.totalLeadsClosed,
+              }} 
+            />
+
+            {/* Canvasser Performance Table */}
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
               {canvasserDetails.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-muted-foreground">No canvasser data available yet.</p>
@@ -1037,12 +892,27 @@ export default function AdminOverview() {
                   </table>
                 </div>
               )}
-              </div>
-            </SectionCarousel.Item>
-          </SectionCarousel>
+            </div>
+          </div>
+        </SectionCarousel.Item>
 
-        </TabsContent>
-      </Tabs>
+        {/* Supplementers */}
+        <SectionCarousel.Item id="supplementers" title="Supplementers" icon={Briefcase}>
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">Supplementer data is managed on the Supplementer dashboard.</p>
+          </div>
+        </SectionCarousel.Item>
+
+        {/* Sales Leaderboard */}
+        <SectionCarousel.Item id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy}>
+          <LeaderboardTable />
+        </SectionCarousel.Item>
+
+        {/* Canvasser Leaderboard */}
+        <SectionCarousel.Item id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3}>
+          <WeeklyCanvasserLeaderboardTable />
+        </SectionCarousel.Item>
+      </SectionCarousel>
 
       <UserStatsModal
         open={viewModalOpen}
