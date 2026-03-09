@@ -26,7 +26,7 @@ import { RANK_OPTIONS, CANVASSER_RANK_OPTIONS } from '@/lib/constants';
 interface UserWithRole {
   id: string;
   fullName: string | null;
-  roles: ('admin' | 'user' | 'canvasser' | 'supplementer')[];
+  roles: ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production')[];
   salesRank: string | null;
   canvasserRank: string | null;
   isArchived: boolean;
