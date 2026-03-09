@@ -1,42 +1,54 @@
 
 
-# Add Edit Button to Shift History
+# Enhanced Checklist Report Emails + Admin Report Library
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## What's Changing
 
-## Changes
+Three things:
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+1. **Rich email content** — The report email will include ALL checklist details inline (every checked/unchecked item with labels, notes, result, photos as signed-URL thumbnails, doc links) plus a "View in Dashboard" button linking to the CRM and a "Download PDF" option.
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+2. **Admin Report Library** — A new `/admin/sent-reports` page that queries `report_email_log` joined with submission data and profiles. Reports are grouped by date, showing who submitted each one, the type, property, and result. Clicking a report opens the full detail drawer (reusing the `SavedChecklists` detail view pattern).
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+3. **Email "View Report" link** — The email includes a link to the admin report library page filtered to that specific report, so recipients can click through to the CRM.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+---
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+## 1. Enhance Email Content — `send-checklist-report/index.ts`
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+Currently the email shows minimal info (property name, homeowner, inspector, dates, item count summary). Changes:
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+- **Hail Assessments**: Fetch section labels from `HAIL_ASSESSMENT_SECTIONS` data (hardcode the section/item mapping in the edge function since it can't import client code). Render each checked item grouped by section with ✓/✗ marks.
+- **Production Checklists**: Fetch the checklist template from `production_checklists` table to resolve item IDs → labels. Render each item with ✓/✗.
+- **Photos**: Generate 1-hour signed URLs for up to 10 photos and embed as thumbnail images in the email.
+- **Doc links**: Already rendered — keep as-is.
+- **Notes**: Already rendered — keep as-is.
+- **"View in Dashboard" button**: Link to `https://nextgenroofing.lovable.app/admin/sent-reports?id={report_email_log_id}` so admins can click through. The edge function will return the log ID after insert so it can be included in the email.
+- **"Download Report" link**: Since PDF generation is complex in an edge function, we'll link to the dashboard view where they can already see the full report. The button text will say "View Full Report in Dashboard".
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+## 2. New Admin Page — `src/pages/admin/SentReports.tsx`
 
-## Summary
+A new page at `/admin/sent-reports` that:
 
-| Area | Change |
+- Queries `report_email_log` joined with `profiles` (for sender name) and the submission tables for property/result data
+- Groups reports by date (Today, Yesterday, This Week, This Month, Older)
+- Each row shows: date/time, sender name, checklist type badge, property name, result badge, recipients
+- Clicking a row opens a detail drawer showing the full report (reusing the pattern from `SavedChecklists` — fetch full submission data, resolve labels, show photos)
+- Supports `?id=` query param to auto-open a specific report from email links
+
+## 3. Wire Up Route + Nav
+
+- **`App.tsx`**: Add `<Route path="sent-reports" element={<SentReports />} />` under admin routes
+- **`AdminLayout.tsx`**: Add "Sent Reports" nav item under "System Settings" group with `FileText` icon, path `/admin/sent-reports`
+
+---
+
+## Files Changed
+
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `supabase/functions/send-checklist-report/index.ts` | Add full checklist items, photo thumbnails, "View in Dashboard" button to email HTML; resolve production checklist labels from DB |
+| `src/pages/admin/SentReports.tsx` | **New** — Admin report library grouped by date with detail drawer |
+| `src/App.tsx` | Add `/admin/sent-reports` route |
+| `src/pages/admin/AdminLayout.tsx` | Add "Sent Reports" nav item |
 
