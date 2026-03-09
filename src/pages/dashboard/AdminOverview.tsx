@@ -289,17 +289,39 @@ export default function AdminOverview() {
         }
       });
 
+      // Fetch live lead data from quote_requests for accurate Close %
+      const { data: liveLeads } = await supabase
+        .from('quote_requests')
+        .select('assigned_to, status')
+        .not('assigned_to', 'is', null)
+        .is('archived_at', null)
+        .is('cancelled_at', null);
+
+      // Group live leads by assigned_to
+      const liveLeadsByRep = new Map<string, { total: number; closed: number }>();
+      if (liveLeads) {
+        for (const lead of liveLeads) {
+          const rid = lead.assigned_to!;
+          if (!liveLeadsByRep.has(rid)) liveLeadsByRep.set(rid, { total: 0, closed: 0 });
+          const entry = liveLeadsByRep.get(rid)!;
+          entry.total++;
+          if (['won', 'scheduled', 'completed'].includes(lead.status)) {
+            entry.closed++;
+          }
+        }
+      }
+
       const users: UserDetail[] = Array.from(latestByUser.entries()).map(([key, data]) => {
-        // Total Leads = Canvass Leads + Internet Leads
-        const calculatedLeads = data.canvassLeads + data.internetLeads;
         // Calculate Total Contracts = Self-Gen Deals + Canvass Deals + Internet Deals Closed
         const calculatedClosedDeals = data.selfGeneratedDeals + data.canvassDealsClose + data.internetLeadsClosed;
         
         const avgJobSize = calculatedClosedDeals > 0 ? data.approvedRevenue / calculatedClosedDeals : 0;
-        // Lead-to-Close = (Canvass Deals Closed + Internet Leads Closed) / (Canvass Leads + Internet Leads)
-        const totalLeadsForLtC = data.canvassLeads + data.internetLeads;
-        const totalClosedForLtC = data.canvassDealsClose + data.internetLeadsClosed;
-        const leadToClosePercent = totalLeadsForLtC > 0 ? (totalClosedForLtC / totalLeadsForLtC) * 100 : 0;
+
+        // Use LIVE data from quote_requests for Close %
+        const liveCounts = data.realUserId ? liveLeadsByRep.get(data.realUserId) : null;
+        const realLeads = liveCounts?.total || 0;
+        const realClosed = liveCounts?.closed || 0;
+        const leadToClosePercent = realLeads > 0 ? (realClosed / realLeads) * 100 : 0;
         
         return {
           metricId: data.metricId,
@@ -307,7 +329,7 @@ export default function AdminOverview() {
           approvedRevenue: data.approvedRevenue,
           collections: data.collections,
           points: data.points,
-          leads: calculatedLeads,
+          leads: realLeads,
           closedDeals: calculatedClosedDeals,
           yearlyGoal: data.yearlyGoal,
           salesRank: data.salesRank,
@@ -327,7 +349,7 @@ export default function AdminOverview() {
       // Filter out canvassers from sales rep list
       const salesReps = users.filter(user => user.role !== 'canvasser');
 
-      // Aggregates include ALL sales reps (including archived) for accurate totals
+      // Aggregates — use live lead data for Close % totals
       const totals = salesReps.reduce(
         (acc, user) => ({
           totalApprovedRevenue: acc.totalApprovedRevenue + user.approvedRevenue,
@@ -338,7 +360,7 @@ export default function AdminOverview() {
           totalSelfGen: acc.totalSelfGen + user.selfGeneratedDeals,
           totalCanvassClosedDeals: acc.totalCanvassClosedDeals + user.canvassDealsClose,
           totalInternetClosedDeals: acc.totalInternetClosedDeals + user.internetLeadsClosed,
-          totalClosedForLtC: acc.totalClosedForLtC + user.canvassDealsClose + user.internetLeadsClosed,
+          totalClosedForLtC: acc.totalClosedForLtC + (liveLeadsByRep.get(user.realUserId || '')?.closed || 0),
         }),
         { totalApprovedRevenue: 0, totalPoints: 0, totalLeads: 0, totalClosedDeals: 0, totalUsers: 0, totalSelfGen: 0, totalCanvassClosedDeals: 0, totalInternetClosedDeals: 0, totalClosedForLtC: 0 }
       );

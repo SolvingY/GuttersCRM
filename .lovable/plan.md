@@ -1,52 +1,42 @@
 
 
-# Fix Close % Logic on Admin Overview
+# Add Edit Button to Shift History
 
 ## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-The Close % on the Admin Overview page is calculated from **manually entered metrics** in the `user_metrics` table (`internet_leads`, `internet_leads_closed`, `canvass_leads`, `canvass_deals_closed`). These values only update when an admin enters daily deltas — they do not reflect the actual state of leads in the system. So when Drew loses an internet lead or Dustin has an open one, the Close % doesn't change because those events live in `quote_requests`, not in the manually entered metrics.
+## Changes
 
-## Solution
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-Replace the Close % calculation with a **live query against `quote_requests`** for each sales rep. This ensures the number reflects reality:
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-- **Leads** = count of `quote_requests` assigned to the rep (excluding archived/cancelled)
-- **Closed** = count of those where `status` is `won`, `scheduled`, or `completed`
-- **Close %** = Closed / Leads × 100
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-This applies to:
-1. **Per-rep Close %** in the Sales Rep Performance table
-2. **Company-wide Lead Close %** stat card at the top
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## Implementation
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### File: `src/pages/dashboard/AdminOverview.tsx`
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-In `fetchAdminData()`, after fetching `user_metrics` and building the user details list, add a query to `quote_requests` to get real lead counts per rep:
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-```sql
--- For each assigned_to, count total leads and won/scheduled/completed leads
-SELECT assigned_to, status FROM quote_requests
-WHERE assigned_to IS NOT NULL
-  AND archived_at IS NULL
-  AND cancelled_at IS NULL
-```
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-Then group by `assigned_to` in JS to compute:
-- `realLeads` = total assigned (non-archived, non-cancelled)
-- `realClosed` = those with status in (`won`, `scheduled`, `completed`)
-- `realClosePercent` = realClosed / realLeads × 100
+## Summary
 
-Update each `UserDetail` entry's `leadToClosePercent`, `leads` (for Close % display), and the aggregate `totalClosedForLtC` / `totalLeads` to use these real numbers instead of manually entered ones.
-
-The existing manually entered `canvass_leads`, `internet_leads`, etc. fields remain for other reporting purposes — only the Close % display switches to live data.
-
-### Scope of Change
-
-| Item | Change |
+| Area | Change |
 |------|--------|
-| `AdminOverview.tsx` `fetchAdminData()` | Add `quote_requests` query, compute per-rep close % from real data |
-| Close % column in table | No change needed (already reads `leadToClosePercent`) |
-| Company Close % stat card | Update to use real totals |
-| Other pages | No changes — they have their own calculation logic |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
