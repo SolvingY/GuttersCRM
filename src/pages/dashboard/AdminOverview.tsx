@@ -721,15 +721,8 @@ export default function AdminOverview() {
           <RevenueAnalyticsWidget />
 
           {/* Contract Source Comparison Card */}
-          <Collapsible open={contractSourcesOpen} onOpenChange={setContractSourcesOpen}>
-            <div className="bg-card border border-border rounded-lg p-4">
-              <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
-                {contractSourcesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                <GitCompare className="h-5 w-5 text-accent" />
-                <h3 className="font-heading font-semibold text-foreground">Contract Sources</h3>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-3">
+          <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSection === "contract-sources"} onToggle={toggleSection}>
+            <div>
                 {(() => {
                   const totalSelfGenContracts = aggregates.totalSelfGen;
                   const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
