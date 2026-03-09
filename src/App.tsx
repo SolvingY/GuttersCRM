@@ -269,6 +269,7 @@ const App = () => (
               <Route path="timeclock" element={<AdminTimeClock />} />
               <Route path="notifications" element={<NotificationRouting />} />
               <Route path="presets" element={<AdminPresets />} />
+              <Route path="sent-reports" element={<SentReports />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
