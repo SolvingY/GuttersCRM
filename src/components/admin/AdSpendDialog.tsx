@@ -53,7 +53,7 @@ export function AdSpendDialog({ open, onOpenChange, initialMonth }: AdSpendDialo
 
   // Pre-fill amount when month selection changes
   useEffect(() => {
-    const existing = history.find(h => h.month === selectedMonth);
+    const existing = history.find(h => (h.month || '').substring(0, 10) === selectedMonth);
     setAmount(existing ? String(existing.ad_spend) : "");
   }, [selectedMonth, history]);
 
@@ -118,7 +118,7 @@ export function AdSpendDialog({ open, onOpenChange, initialMonth }: AdSpendDialo
               <div className="space-y-2">
                 {history.map(h => (
                   <div key={h.id} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{format(new Date(h.month), "MMMM yyyy")}</span>
+                    <span className="text-muted-foreground">{format(new Date(h.month + 'T00:00:00'), "MMMM yyyy")}</span>
                     <span className="font-medium">{formatCurrency(Number(h.ad_spend))}</span>
                   </div>
                 ))}

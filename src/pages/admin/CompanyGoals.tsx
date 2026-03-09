@@ -96,13 +96,13 @@ export default function CompanyGoals() {
     (now.getFullYear() - fiscalStart.getFullYear()) * 12 + now.getMonth() - fiscalStart.getMonth() + 1
   );
   const monthlyBreakdown = Array.from({ length: monthsElapsedSinceFiscalStart }, (_, i) => {
-    const monthDate = addMonths(fiscalStart, i);
+    const monthDate = startOfMonth(addMonths(fiscalStart, i));
     const monthKey = format(monthDate, 'yyyy-MM-dd');
     const entry = adSpendYTD.find(e => (e.month || '').substring(0, 10) === monthKey);
     return {
       month: monthKey,
-      label: format(monthDate, 'MMMM yyyy'),
-      shortLabel: format(monthDate, 'MMM'),
+      label: format(new Date(monthKey + 'T00:00:00'), 'MMMM yyyy'),
+      shortLabel: format(new Date(monthKey + 'T00:00:00'), 'MMM'),
       amount: Number(entry?.ad_spend) || 0,
     };
   });
