@@ -65,7 +65,7 @@ export default function AdminTimeClock() {
   const [zoneName, setZoneName] = useState('');
   const [zoneLocation, setZoneLocation] = useState('');
   const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [zoneRadius, setZoneRadius] = useState('500');
+  const [zoneRadius, setZoneRadius] = useState('1');
 
   // Zone assignment state
   const [zoneAssignments, setZoneAssignments] = useState<{ zone_id: string; canvasser_id: string }[]>([]);
@@ -353,10 +353,11 @@ export default function AdminTimeClock() {
     if (!zoneName || !parsedCoords) return;
     setSavingZone(true);
     try {
-      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parsedCoords.lat, lng: parsedCoords.lng, radius_meters: parseInt(zoneRadius) || 500 } as any);
+      const radiusMeters = Math.round((parseFloat(zoneRadius) || 1) * 1609.34);
+      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parsedCoords.lat, lng: parsedCoords.lng, radius_meters: radiusMeters } as any);
       if (error) throw error;
       toast.success('Work zone added');
-      setAddZoneModalOpen(false); setZoneName(''); setZoneLocation(''); setParsedCoords(null); setZoneRadius('500');
+      setAddZoneModalOpen(false); setZoneName(''); setZoneLocation(''); setParsedCoords(null); setZoneRadius('1');
       fetchWorkZones();
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingZone(false);
@@ -790,7 +791,7 @@ export default function AdminTimeClock() {
                       <Switch checked={zone.is_active} onCheckedChange={(checked) => handleToggleZone(zone.id, checked)} />
                       <div>
                         <p className="font-medium text-foreground">{zone.name}</p>
-                        <p className="text-xs text-muted-foreground">{zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {zone.radius_meters}m radius</p>
+                        <p className="text-xs text-muted-foreground">{zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {(zone.radius_meters / 1609.34).toFixed(1)} mi radius</p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{getZoneAssignmentLabel(zone.id)}</p>
                       </div>
                     </div>
@@ -824,13 +825,26 @@ export default function AdminTimeClock() {
                     Detected: {parsedCoords.lat.toFixed(6)}, {parsedCoords.lng.toFixed(6)}
                     <a href={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}`} target="_blank" rel="noopener noreferrer" className="underline ml-1">View on Maps</a>
                   </p>
-                  <div className="rounded-md overflow-hidden border border-border h-40 w-full">
+                  <div className="rounded-md overflow-hidden border border-border h-40 w-full relative">
                     <iframe
                       width="100%" height="100%" frameBorder="0" style={{border:0}}
-                      src={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}&z=15&output=embed`}
+                      src={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}&z=${(() => { const r = (parseFloat(zoneRadius) || 1) * 1609.34; if (r <= 500) return 15; if (r <= 1000) return 14; if (r <= 2000) return 13; if (r <= 5000) return 12; return 11; })()}&output=embed`}
                       allowFullScreen
                       title="Map preview"
                     />
+                    {/* Red radius circle overlay */}
+                    {(() => {
+                      const radiusM = (parseFloat(zoneRadius) || 1) * 1609.34;
+                      const zoom = radiusM <= 500 ? 15 : radiusM <= 1000 ? 14 : radiusM <= 2000 ? 13 : radiusM <= 5000 ? 12 : 11;
+                      const metersPerPixel = 156543.03392 / Math.pow(2, zoom);
+                      const size = Math.min((radiusM * 2) / metersPerPixel, 200);
+                      return (
+                        <div
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-red-500 bg-red-500/15 pointer-events-none"
+                          style={{ width: `${Math.max(size, 30)}px`, height: `${Math.max(size, 30)}px` }}
+                        />
+                      );
+                    })()}
                   </div>
                 </>
               )}
@@ -839,9 +853,9 @@ export default function AdminTimeClock() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>Radius (meters)</Label>
-              <Input type="number" min="100" max="50000" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="500" />
-              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks.</p>
+              <Label>Radius (miles)</Label>
+              <Input type="number" min="0.1" max="30" step="0.1" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="1" />
+              <p className="text-xs text-muted-foreground">1 mile ≈ 20 city blocks.</p>
             </div>
           </div>
           <DialogFooter>

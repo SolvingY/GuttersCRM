@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertTriangle,
   CheckCircle,
@@ -166,6 +167,7 @@ export default function OnboardingManagement() {
         <TabsList>
           <TabsTrigger value="progress">Team Progress</TabsTrigger>
           <TabsTrigger value="offer-letters">Offer Letters</TabsTrigger>
+          <TabsTrigger value="report-settings">Report Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="progress" className="space-y-6 mt-4">
@@ -322,6 +324,10 @@ export default function OnboardingManagement() {
 
         <TabsContent value="offer-letters" className="space-y-6 mt-4">
           <OfferLettersTab members={members} currentUserId={user?.id || ""} />
+        </TabsContent>
+
+        <TabsContent value="report-settings" className="space-y-6 mt-4">
+          <ReportEmailSettingsTab />
         </TabsContent>
       </Tabs>
 
@@ -913,5 +919,116 @@ function CreateMandatoryActionDialog({ isOpen, onClose, targetUserId, members, c
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ============================================================
+// Report Email Settings Tab
+// ============================================================
+function ReportEmailSettingsTab() {
+  const { toast } = useToast();
+  const [emails, setEmails] = useState<string[]>([]);
+  const [isActive, setIsActive] = useState(true);
+  const [newEmail, setNewEmail] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settingsId, setSettingsId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await (supabase.from("report_email_settings" as any) as any)
+        .select("*")
+        .eq("report_type", "onboarding_reminder")
+        .maybeSingle();
+      if (data) {
+        setEmails(data.recipient_emails || []);
+        setIsActive(data.is_active);
+        setSettingsId(data.id);
+      }
+      setLoading(false);
+    };
+    fetchSettings();
+  }, []);
+
+  const handleAddEmail = () => {
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes("@")) return;
+    if (emails.includes(trimmed)) { setNewEmail(""); return; }
+    setEmails([...emails, trimmed]);
+    setNewEmail("");
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setEmails(emails.filter((e) => e !== email));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (settingsId) {
+        await (supabase.from("report_email_settings" as any) as any)
+          .update({ recipient_emails: emails, is_active: isActive, updated_at: new Date().toISOString() })
+          .eq("id", settingsId);
+      } else {
+        const { data } = await (supabase.from("report_email_settings" as any) as any)
+          .insert({ report_type: "onboarding_reminder", recipient_emails: emails, is_active: isActive })
+          .select()
+          .single();
+        if (data) setSettingsId(data.id);
+      }
+      toast({ title: "Report settings saved" });
+    } catch (err: any) {
+      toast({ title: "Error saving settings", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="w-4 h-4" /> Daily Onboarding Reminder Email
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          A daily email is sent at 8:00 AM CT listing all team members with incomplete onboarding and their pending steps.
+        </p>
+
+        <div className="flex items-center gap-3">
+          <Label>Enabled</Label>
+          <Switch checked={isActive} onCheckedChange={setIsActive} />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Recipients</Label>
+          <div className="flex flex-wrap gap-2">
+            {emails.map((email) => (
+              <Badge key={email} variant="secondary" className="gap-1 pr-1">
+                {email}
+                <button onClick={() => handleRemoveEmail(email)} className="ml-1 hover:text-destructive text-xs font-bold">×</button>
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="email@oknextgen.com"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddEmail(); } }}
+              className="max-w-xs"
+            />
+            <Button size="sm" variant="outline" onClick={handleAddEmail}>Add</Button>
+          </div>
+        </div>
+
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          Save Settings
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

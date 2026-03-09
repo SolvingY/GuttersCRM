@@ -2075,6 +2075,33 @@ export type Database = {
         }
         Relationships: []
       }
+      report_email_settings: {
+        Row: {
+          id: string
+          is_active: boolean
+          recipient_emails: string[]
+          report_type: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          recipient_emails?: string[]
+          report_type: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          recipient_emails?: string[]
+          report_type?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       report_settings: {
         Row: {
           id: string

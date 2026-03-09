@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.notify-deal-lost]
 verify_jwt = false
+
+[functions.send-onboarding-reminder]
+verify_jwt = false

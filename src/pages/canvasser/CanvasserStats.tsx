@@ -18,6 +18,7 @@ import { CanvasserYTDRankingWidget } from "@/components/canvasser/CanvasserYTDRa
 import { TimeClockWidget } from "@/components/canvasser/TimeClockWidget";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GoogleCalendarWidget } from "@/components/dashboard/GoogleCalendarWidget";
+import { AssignedZonesWidget } from "@/components/canvasser/AssignedZonesWidget";
 
 interface CanvasserMetrics {
   display_name: string | null;
@@ -226,6 +227,8 @@ export default function CanvasserStats() {
           Welcome back{metrics?.display_name ? `, ${metrics.display_name}` : ""}! Track your canvassing performance
         </p>
       </div>
+
+      <AssignedZonesWidget />
 
       <TimeClockWidget onShiftChange={fetchMetrics} />
 
