@@ -104,6 +104,9 @@ export default function ProductionChecklists() {
     setCheckedItems(new Set());
     setJobAddress("");
     setChecklistNotes("");
+    setLinkedJob(null);
+    setHomeowner({ name: "", phone: "", email: "" });
+    setReportNotes("");
   };
 
   const handleSubmitChecklist = async () => {
