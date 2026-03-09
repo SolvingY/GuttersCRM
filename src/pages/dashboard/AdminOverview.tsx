@@ -17,7 +17,7 @@ import { addMonths, format } from 'date-fns';
 import { FISCAL_YEAR } from '@/lib/constants';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
-import { AccordionButton } from '@/components/dashboard/AccordionButton';
+import { SectionCarousel } from '@/components/dashboard/SectionCarousel';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
