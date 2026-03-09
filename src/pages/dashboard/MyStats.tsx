@@ -408,112 +408,68 @@ export default function MyStats() {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+              </div>
+            </AccordionButton>
           )}
 
           {/* 4. Fiscal Year Progress */}
-          <Collapsible open={fiscalOpen} onOpenChange={setFiscalOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={fiscalOpen} title="Fiscal Year Progress" icon={Calendar} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Dec 15, 2025 - Dec 15, 2026
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {daysRemaining} days remaining
-                      </span>
-                    </div>
-                    <Progress value={fiscalYearProgress} className="h-2" />
-                    <p className="text-xs text-muted-foreground text-center">
-                      {fiscalYearProgress.toFixed(1)}% of fiscal year complete
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
+          <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggleSection}>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+                <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+              </div>
+              <Progress value={fiscalYearProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground text-center">
+                {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+              </p>
+            </div>
+          </AccordionButton>
 
           {/* 5. Goal Progress */}
           {yearlyGoal > 0 && (
-            <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
-              <CollapsibleTrigger asChild>
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardHeader className="py-4">
-                    <CollapsibleHeader isOpen={goalOpen} title="Goal Progress" icon={Target} />
-                  </CardHeader>
-                </Card>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Yearly Goal</p>
-                          <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Approved Revenue</p>
-                          <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Progress</span>
-                          <span className={`font-semibold ${getGoalColor()}`}>
-                            {goalPercentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
-                      </div>
+            <AccordionButton id="goal" title="Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggleSection}>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Yearly Goal</p>
+                    <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Approved Revenue</p>
+                    <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className={`font-semibold ${getGoalColor()}`}>
+                      {goalPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
+                </div>
 
-                      <div className="grid grid-cols-2 gap-4 pt-2">
-                        <div className="bg-muted/50 rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground">Amount Remaining</p>
-                          <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
-                        </div>
-                        <div className="bg-muted/50 rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground">Rank</p>
-                          <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Amount Remaining</p>
+                    <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Rank</p>
+                    <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
+                  </div>
+                </div>
+              </div>
+            </AccordionButton>
           )}
 
           {/* 7. 52-Week Progress */}
           {yearlyGoal > 0 && (
-            <Collapsible open={progressOpen} onOpenChange={setProgressOpen}>
-              <CollapsibleTrigger asChild>
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardHeader className="py-4">
-                    <CollapsibleHeader isOpen={progressOpen} title="52-Week Progress" icon={TrendingUp} />
-                  </CardHeader>
-                </Card>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">52-Week Progress (Fiscal Year Dec 15 - Dec 15)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+            <AccordionButton id="progress" title="52-Week Progress" icon={TrendingUp} isOpen={openSection === "progress"} onToggle={toggleSection}>
+              <div>
+                <p className="text-lg font-semibold mb-4">52-Week Progress (Fiscal Year Dec 15 - Dec 15)</p>
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={weeklyChartData}>
