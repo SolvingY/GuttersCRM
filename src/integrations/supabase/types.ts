@@ -753,6 +753,57 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_production_metric_entries: {
+        Row: {
+          build_issues_delta: number
+          builds_completed_delta: number
+          checklists_completed_delta: number
+          created_at: string
+          entered_by: string | null
+          entry_date: string
+          id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          build_issues_delta?: number
+          builds_completed_delta?: number
+          checklists_completed_delta?: number
+          created_at?: string
+          entered_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          build_issues_delta?: number
+          builds_completed_delta?: number
+          checklists_completed_delta?: number
+          created_at?: string
+          entered_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_production_metric_entries_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_production_metric_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_user_metric_entries: {
         Row: {
           approved_revenue_delta: number | null
@@ -1800,6 +1851,272 @@ export type Database = {
           },
         ]
       }
+      production_checklist_submissions: {
+        Row: {
+          checklist_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          job_address: string | null
+          notes: string | null
+          responses: Json
+          user_id: string
+        }
+        Insert: {
+          checklist_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          job_address?: string | null
+          notes?: string | null
+          responses?: Json
+          user_id: string
+        }
+        Update: {
+          checklist_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          job_address?: string | null
+          notes?: string | null
+          responses?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_checklist_submissions_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "production_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_checklist_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_checklists: {
+        Row: {
+          checklist_items: Json
+          checklist_type: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          checklist_items?: Json
+          checklist_type: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          checklist_items?: Json
+          checklist_type?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_checklists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_daily_logs: {
+        Row: {
+          builds_completed: number
+          checklists_submitted: number
+          created_at: string
+          email_sent: boolean
+          email_sent_at: string | null
+          hours_worked: number | null
+          id: string
+          log_date: string
+          summary_notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          builds_completed?: number
+          checklists_submitted?: number
+          created_at?: string
+          email_sent?: boolean
+          email_sent_at?: string | null
+          hours_worked?: number | null
+          id?: string
+          log_date?: string
+          summary_notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          builds_completed?: number
+          checklists_submitted?: number
+          created_at?: string
+          email_sent?: boolean
+          email_sent_at?: string | null
+          hours_worked?: number | null
+          id?: string
+          log_date?: string
+          summary_notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_daily_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_metrics: {
+        Row: {
+          build_efficiency: number
+          build_issues: number
+          builds_completed: number
+          checklists_completed: number
+          contest_points: number | null
+          created_at: string
+          display_name: string | null
+          id: string
+          metric_date: string
+          points: number
+          updated_at: string
+          user_id: string
+          wager_points: number | null
+          yearly_goal: number
+        }
+        Insert: {
+          build_efficiency?: number
+          build_issues?: number
+          builds_completed?: number
+          checklists_completed?: number
+          contest_points?: number | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metric_date?: string
+          points?: number
+          updated_at?: string
+          user_id: string
+          wager_points?: number | null
+          yearly_goal?: number
+        }
+        Update: {
+          build_efficiency?: number
+          build_issues?: number
+          builds_completed?: number
+          checklists_completed?: number
+          contest_points?: number | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metric_date?: string
+          points?: number
+          updated_at?: string
+          user_id?: string
+          wager_points?: number | null
+          yearly_goal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_shifts: {
+        Row: {
+          clock_in_at: string
+          clock_in_lat: number | null
+          clock_in_lng: number | null
+          clock_out_at: string | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
+          created_at: string
+          edited_at: string | null
+          edited_by: string | null
+          flagged_reason: string | null
+          hours_worked: number | null
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clock_in_at?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
+          created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
+          flagged_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clock_in_at?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
+          created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
+          flagged_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_shifts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           admin_preset_id: string | null
@@ -2570,6 +2887,53 @@ export type Database = {
           week_start?: string
         }
         Relationships: []
+      }
+      weekly_production_metrics: {
+        Row: {
+          build_efficiency: number
+          build_issues: number
+          builds_completed: number
+          checklists_completed: number
+          created_at: string
+          id: string
+          points_earned: number
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          build_efficiency?: number
+          build_issues?: number
+          builds_completed?: number
+          checklists_completed?: number
+          created_at?: string
+          id?: string
+          points_earned?: number
+          user_id: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          build_efficiency?: number
+          build_issues?: number
+          builds_completed?: number
+          checklists_completed?: number
+          created_at?: string
+          id?: string
+          points_earned?: number
+          user_id?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_production_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_supplementer_metrics: {
         Row: {
