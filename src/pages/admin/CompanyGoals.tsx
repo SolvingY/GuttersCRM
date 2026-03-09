@@ -816,17 +816,18 @@ export default function CompanyGoals() {
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-lg"><Calculator className="h-5 w-5 text-primary" />Internet Cost Per Contract</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {(() => {
-                    const currentCost = internetData.internetContractsWon > 0 ? internetData.adSpend / internetData.internetContractsWon : 0;
+                    const contracts = internetData.internetClosedCount;
+                    const currentCost = contracts > 0 ? internetData.adSpend / contracts : 0;
                     const targetCost = parseFloat(targetCostPerLead) || 0;
                     const variance = targetCost - currentCost;
                     const isOnTarget = targetCost === 0 || currentCost <= targetCost;
                     return (
                       <>
                         <div className="flex items-end justify-between">
-                          <div><p className="text-3xl font-bold text-foreground">{internetData.internetContractsWon > 0 ? formatCurrency(currentCost) : 'N/A'}</p><p className="text-sm text-muted-foreground mt-1">{formatCurrency(internetData.adSpend)} YTD spent / {internetData.internetContractsWon} contracts</p></div>
+                          <div><p className="text-3xl font-bold text-foreground">{contracts > 0 ? formatCurrency(currentCost) : 'N/A'}</p><p className="text-sm text-muted-foreground mt-1">{formatCurrency(internetData.adSpend)} YTD spent / {contracts} contracts</p></div>
                           {targetCost > 0 && (<div className="text-right"><p className="text-sm text-muted-foreground">Goal</p><p className="text-xl font-semibold text-foreground">{formatCurrency(targetCost)}</p></div>)}
                         </div>
-                        {targetCost > 0 && internetData.internetContractsWon > 0 && (
+                        {targetCost > 0 && contracts > 0 && (
                           <div className={`rounded-lg p-3 ${isOnTarget ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
                             <div className="flex items-center justify-between">
                               <span className={`text-sm font-medium ${isOnTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{isOnTarget ? '✓ Under target' : '⚠ Over target'}</span>
