@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AccordionButton } from '@/components/dashboard/AccordionButton';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 import { format, subWeeks } from 'date-fns';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
