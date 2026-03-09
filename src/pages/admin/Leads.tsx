@@ -300,13 +300,14 @@ export default function Leads() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading leads...</div>
       ) : (
-        <SectionCarousel activeSection={statusSection} onToggle={(id) => setStatusSection(id)}>
+        <SectionCarousel activeSection={statusSection} onToggle={(id) => setStatusSection(prev => prev === id ? null : id)}>
           {statusCarouselConfig.map(({ id, label, icon }) => (
             <SectionCarousel.Item
               key={id}
               id={id}
               title={`${label} (${statusCounts[id] ?? 0})`}
               icon={icon}
+              indicator={id === "new" && (statusCounts["new"] ?? 0) > 0 ? "pulse" : undefined}
             >
               {renderLeadCards(getLeadsForStatus(id))}
             </SectionCarousel.Item>
