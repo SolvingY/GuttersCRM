@@ -1,42 +1,42 @@
 
 
-# Add Edit Button to Shift History
+# Paste Google Maps Link for Geofence Setup
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+Replace the separate Latitude/Longitude inputs in the "Add Work Zone" modal with a single textarea that accepts Google Maps links, embed URLs, or raw coordinates.
+
+## How It Works
+
+The user can paste any of these formats:
+- Google Maps share link: `https://www.google.com/maps/place/.../@35.4676,-97.5164,...`
+- Google Maps embed iframe: `<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3249.129...`
+- Short link: `https://maps.app.goo.gl/...` (raw coords fallback)
+- Raw coordinates: `35.4676, -97.5164`
+
+The screenshot shows the user copying an embed iframe from Google Maps — the parser will handle that format too.
 
 ## Changes
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### `src/pages/admin/AdminTimeClock.tsx`
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**1. Replace `zoneLat`/`zoneLng` state with a single `zoneLocation` string + parsed state**
+- Remove `zoneLat` and `zoneLng` state variables
+- Add `zoneLocation` (raw paste input) and `parsedCoords` (`{lat, lng} | null`) state
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**2. Add a `parseCoordinates` function**
+Extracts lat/lng from pasted text using these strategies in order:
+- Google Maps `@lat,lng` pattern: `/@(-?\d+\.\d+),(-?\d+\.\d+)/`
+- Google Maps `?q=lat,lng` pattern
+- Google Maps embed `!2d` (lng) and `!3d` (lat) markers: `!3d(-?\d+\.\d+).*!2d(-?\d+\.\d+)` or `!2d(-?\d+\.\d+).*!3d(-?\d+\.\d+)`
+- Raw coordinate pair: `(-?\d+\.\d+),\s*(-?\d+\.\d+)`
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+**3. Update the Add Zone modal UI**
+- Replace the lat/lng grid with a single `<Textarea>` labeled "Google Maps Link or Coordinates"
+- Placeholder: `Paste a Google Maps link, embed code, or coordinates (e.g. 35.4676, -97.5164)`
+- On change, run `parseCoordinates` and show a green confirmation line: "Detected: 35.4676, -97.5164" with a small "View on Maps" link, or a red warning if parsing fails
+- Keep Zone Name and Radius inputs as-is
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+**4. Update `handleAddZone` validation and insert**
+- Use `parsedCoords.lat` and `parsedCoords.lng` instead of `parseFloat(zoneLat/zoneLng)`
+- Disable the Add button when `!parsedCoords` instead of `!zoneLat || !zoneLng`
+- Reset `zoneLocation` and `parsedCoords` on close
 
