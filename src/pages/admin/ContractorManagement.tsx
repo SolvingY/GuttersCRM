@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
 import { useAuth } from "@/hooks/useAuth";
+import HailAssessmentsTab from "@/components/admin/HailAssessmentsTab";
 
 type TabValue = "active" | "onboarding" | "archived" | "hail-assessments";
 
