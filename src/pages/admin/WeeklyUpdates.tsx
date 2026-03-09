@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2, Save, Calendar as CalendarIcon, TrendingUp, Users } from 'lucide-react';
+import { Loader2, Save, Calendar as CalendarIcon, TrendingUp, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { SectionCarousel } from '@/components/dashboard/SectionCarousel';
+import { AttributionModal, AttributionItem, AttributionRow } from '@/components/admin/AttributionModal';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface UserMetric {
   user_id: string;
@@ -77,6 +79,24 @@ interface SupplementerWeeklyEntry {
   weeklyMoneyCollected: string;
 }
 
+interface PersonOption {
+  id: string;
+  full_name: string;
+}
+
+interface AttributionData {
+  canvasser_id?: string;
+  canvasser_name?: string;
+  sales_rep_id?: string;
+  rep_name?: string;
+  week_start?: string;
+  leads_set?: number;
+  leads_closed?: number;
+  rep_canvass_leads?: number;
+  rep_canvass_contracts?: number;
+  close_rate_pct?: number;
+}
+
 const calculatePoints = (revenue: number, closedDeals: number, collections: number): number => {
   const revenuePoints = Math.floor(revenue / 10000) * 10;
   const closedDealPoints = closedDeals * 10;
@@ -102,10 +122,102 @@ export default function WeeklyUpdates() {
   const [activeSection, setActiveSection] = useState<string | null>('sales-reps');
   const toggleSection = (id: string) => setActiveSection(prev => prev === id ? null : id);
 
+  // Attribution state
+  const [attributionModalOpen, setAttributionModalOpen] = useState(false);
+  const [attributionItems, setAttributionItems] = useState<AttributionItem[]>([]);
+  const [salesRepOptions, setSalesRepOptions] = useState<PersonOption[]>([]);
+  const [canvasserOptions, setCanvasserOptions] = useState<PersonOption[]>([]);
+  const [attributionData, setAttributionData] = useState<AttributionData[]>([]);
+  const [openCloseRates, setOpenCloseRates] = useState<Record<string, boolean>>({});
+
   const getWeekRangeForDate = (date: Date) => {
     const weekStart = startOfWeek(date, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
     return { weekStart, weekEnd };
+  };
+
+  // Fetch role-filtered dropdown options
+  const fetchDropdownOptions = async () => {
+    const { data: profilesData } = await supabase.from('profiles').select('id, full_name, is_archived');
+    const activeProfiles = new Map((profilesData || []).filter(p => !p.is_archived).map(p => [p.id, p.full_name || 'Unknown']));
+
+    const { data: rolesData } = await supabase.from('user_roles').select('user_id, role');
+    
+    const salesReps: PersonOption[] = [];
+    const canvassersList: PersonOption[] = [];
+    
+    (rolesData || []).forEach(r => {
+      const name = activeProfiles.get(r.user_id);
+      if (!name) return;
+      if (r.role === 'user' || r.role === 'admin') {
+        if (!salesReps.find(s => s.id === r.user_id)) {
+          salesReps.push({ id: r.user_id, full_name: name });
+        }
+      }
+      if (r.role === 'canvasser') {
+        if (!canvassersList.find(c => c.id === r.user_id)) {
+          canvassersList.push({ id: r.user_id, full_name: name });
+        }
+      }
+    });
+
+    setSalesRepOptions(salesReps.sort((a, b) => a.full_name.localeCompare(b.full_name)));
+    setCanvasserOptions(canvassersList.sort((a, b) => a.full_name.localeCompare(b.full_name)));
+  };
+
+  // Fetch attribution data for current week
+  const fetchAttributionData = async () => {
+    const { weekStart } = getWeekRangeForDate(selectedDate);
+    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+    
+    const { data } = await supabase
+      .from('lead_attributions')
+      .select('entry_type, canvasser_id, sales_rep_id, quantity, week_start')
+      .eq('week_start', weekStartStr);
+
+    if (!data || data.length === 0) {
+      setAttributionData([]);
+      return;
+    }
+
+    // Build aggregated view manually since we can't query the view directly via typed client
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name');
+    const profileMap = new Map((profiles || []).map(p => [p.id, p.full_name || 'Unknown']));
+
+    const pairKey = (cid: string, rid: string) => `${cid}|${rid}`;
+    const agg = new Map<string, AttributionData>();
+
+    for (const row of data) {
+      const key = pairKey(row.canvasser_id, row.sales_rep_id);
+      if (!agg.has(key)) {
+        agg.set(key, {
+          canvasser_id: row.canvasser_id,
+          canvasser_name: profileMap.get(row.canvasser_id),
+          sales_rep_id: row.sales_rep_id,
+          rep_name: profileMap.get(row.sales_rep_id),
+          week_start: row.week_start,
+          leads_set: 0,
+          leads_closed: 0,
+          rep_canvass_leads: 0,
+          rep_canvass_contracts: 0,
+          close_rate_pct: 0,
+        });
+      }
+      const entry = agg.get(key)!;
+      if (row.entry_type === 'canvasser_lead_set') entry.leads_set = (entry.leads_set || 0) + row.quantity;
+      if (row.entry_type === 'canvasser_lead_closed') entry.leads_closed = (entry.leads_closed || 0) + row.quantity;
+      if (row.entry_type === 'rep_canvass_lead') entry.rep_canvass_leads = (entry.rep_canvass_leads || 0) + row.quantity;
+      if (row.entry_type === 'rep_canvass_contract') entry.rep_canvass_contracts = (entry.rep_canvass_contracts || 0) + row.quantity;
+    }
+
+    // Calculate close rates
+    for (const entry of agg.values()) {
+      if ((entry.leads_set || 0) > 0) {
+        entry.close_rate_pct = Math.round(((entry.leads_closed || 0) / (entry.leads_set || 1)) * 1000) / 10;
+      }
+    }
+
+    setAttributionData(Array.from(agg.values()));
   };
 
   const fetchUsers = async () => {
@@ -177,7 +289,8 @@ export default function WeeklyUpdates() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); fetchDropdownOptions(); }, []);
+  useEffect(() => { fetchAttributionData(); }, [selectedDate]);
 
   // Load saved daily entries when date changes
   useEffect(() => {
@@ -185,7 +298,6 @@ export default function WeeklyUpdates() {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
     const loadSavedEntries = async () => {
-      // Load sales rep daily entries
       if (users.length > 0) {
         const { data: salesDaily } = await supabase
           .from('daily_user_metric_entries')
@@ -215,7 +327,6 @@ export default function WeeklyUpdates() {
         }
       }
 
-      // Load canvasser daily entries
       if (canvassers.length > 0) {
         const { data: canvasserDaily } = await supabase
           .from('daily_canvasser_metric_entries')
@@ -251,7 +362,6 @@ export default function WeeklyUpdates() {
     loadSavedEntries();
   }, [selectedDate, users.length, canvassers.length]);
 
-  // Autosave draft for a sales rep on blur
   const saveSalesDraft = useCallback(async (entry: WeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const { data: authUser } = await supabase.auth.getUser();
@@ -271,7 +381,6 @@ export default function WeeklyUpdates() {
     }, { onConflict: 'user_id,entry_date' });
   }, [selectedDate]);
 
-  // Autosave draft for a canvasser on blur
   const saveCanvasserDraft = useCallback(async (entry: CanvasserWeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const { data: authUser } = await supabase.auth.getUser();
@@ -314,7 +423,9 @@ export default function WeeklyUpdates() {
   const updateSupplementerEntry = (userId: string, field: keyof SupplementerWeeklyEntry, value: string) => {
     setSupplementerEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
   };
-  const handleSaveAll = async () => {
+
+  // Core save logic extracted so it can be called from both paths
+  const executeSave = async (attributions?: AttributionRow[]) => {
     setSaving(true);
     const { weekStart, weekEnd } = getWeekRangeForDate(selectedDate);
     const weekStartStr = format(weekStart, 'yyyy-MM-dd');
@@ -341,7 +452,6 @@ export default function WeeklyUpdates() {
             weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) continue;
 
-        // Fetch previous daily entry to compute true deltas (prevent double-counting on re-save)
         const { data: prevDaily } = await supabase.from('daily_user_metric_entries')
           .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
 
@@ -382,7 +492,6 @@ export default function WeeklyUpdates() {
 
         if (updateError) { errorCount++; continue; }
 
-        // Upsert daily entry for sales rep
         await supabase.from('daily_user_metric_entries').upsert({
           user_id: entry.userId, entry_date: dateStr,
           approved_revenue_delta: weeklyApprovedRevenue, leads_delta: weeklyLeads,
@@ -431,7 +540,6 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
             weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) continue;
 
-        // Fetch previous daily entry to compute true deltas
         const { data: prevCanvDaily } = await supabase.from('daily_canvasser_metric_entries')
           .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
 
@@ -485,7 +593,6 @@ export default function WeeklyUpdates() {
           points_earned: canvasserPoints, updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id,week_start' });
 
-        // Upsert daily canvasser entry
         await supabase.from('daily_canvasser_metric_entries').upsert({
           user_id: entry.userId, entry_date: dateStr,
           hours_worked_delta: weeklyHoursWorked, leads_set_delta: weeklyLeadsSet,
@@ -539,10 +646,29 @@ export default function WeeklyUpdates() {
         successCount++;
       }
 
+      // Insert attribution rows if provided
+      if (attributions && attributions.length > 0) {
+        const attrRows = attributions.map(a => ({
+          entry_type: a.entry_type,
+          canvasser_id: a.canvasser_id,
+          sales_rep_id: a.sales_rep_id,
+          quantity: a.quantity,
+          week_start: weekStartStr,
+          week_end: weekEndStr,
+          entered_by: authUser.user?.id,
+        }));
+        const { error: attrError } = await supabase.from('lead_attributions').insert(attrRows as any);
+        if (attrError) {
+          console.error('Attribution insert error:', attrError);
+          toast({ title: 'Warning', description: 'Metrics saved but attribution failed to save', variant: 'destructive' });
+        }
+      }
+
       if (successCount > 0) {
         toast({ title: 'Weekly Updates Saved', description: `Successfully updated ${successCount} user(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}. Points auto-calculated.` });
         setWeeklyEntries((prev) => prev.map((entry) => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
         setCanvasserEntries((prev) => prev.map((entry) => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
+        fetchAttributionData(); // Refresh close rate data
       } else if (errorCount > 0) {
         toast({ title: 'Error', description: `Failed to update ${errorCount} user(s)`, variant: 'destructive' });
       } else {
@@ -556,7 +682,66 @@ export default function WeeklyUpdates() {
     }
   };
 
+  const handleSaveAll = async () => {
+    // Build attribution items from entries with non-zero attribution-required values
+    const items: AttributionItem[] = [];
+
+    for (const entry of canvasserEntries) {
+      const leadsSet = parseInt(entry.weeklyLeadsSet) || 0;
+      const leadsClosed = parseInt(entry.weeklyLeadsClosed) || 0;
+      if (leadsSet > 0 || leadsClosed > 0) {
+        items.push({
+          userId: entry.userId,
+          displayName: entry.displayName,
+          tab: 'canvasser',
+          weeklyLeadsSet: leadsSet,
+          weeklyLeadsClosed: leadsClosed,
+        });
+      }
+    }
+
+    for (const entry of weeklyEntries) {
+      const canvassLeads = parseInt(entry.weeklyCanvassLeads) || 0;
+      const canvassDeals = parseInt(entry.weeklyCanvassDealsClose) || 0;
+      if (canvassLeads > 0 || canvassDeals > 0) {
+        items.push({
+          userId: entry.userId,
+          displayName: entry.displayName,
+          tab: 'sales',
+          weeklyCanvassLeads: canvassLeads,
+          weeklyCanvassDealsClose: canvassDeals,
+        });
+      }
+    }
+
+    if (items.length > 0) {
+      setAttributionItems(items);
+      setAttributionModalOpen(true);
+    } else {
+      await executeSave();
+    }
+  };
+
+  const handleAttributionConfirm = async (rows: AttributionRow[]) => {
+    setAttributionModalOpen(false);
+    await executeSave(rows);
+  };
+
+  const handleAttributionSkipAll = async () => {
+    setAttributionModalOpen(false);
+    await executeSave();
+  };
+
   const { weekStart, weekEnd } = getWeekRangeForDate(selectedDate);
+  const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+
+  // Get attribution data for a specific canvasser
+  const getCanvasserAttributions = (canvasserId: string) => 
+    attributionData.filter(a => a.canvasser_id === canvasserId && ((a.leads_set || 0) > 0 || (a.leads_closed || 0) > 0));
+
+  // Get attribution data for a specific sales rep
+  const getRepAttributions = (repId: string) => 
+    attributionData.filter(a => a.sales_rep_id === repId && ((a.rep_canvass_leads || 0) > 0 || (a.rep_canvass_contracts || 0) > 0));
 
   if (loading) {
     return (
@@ -620,21 +805,48 @@ export default function WeeklyUpdates() {
                     <div>Total Contracts</div><div>Self-Gen Contracts</div><div>Canvass Leads</div>
                     <div>Canvass Contracts</div><div>Collections</div><div>Earnings ($)</div>
                   </div>
-                  {weeklyEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-9 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
-                      <div className="font-medium text-foreground text-sm">{entry.displayName}</div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 lg:contents">
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyApprovedRevenue} onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyLeads', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Total Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyClosedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklySelfGeneratedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedDeals', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassLeads', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassDealsClose} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassDealsClose', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Collections</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyCollections} onChange={(e) => updateEntry(entry.userId, 'weeklyCollections', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Earnings ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyEarnings} onChange={(e) => updateEntry(entry.userId, 'weeklyEarnings', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                  {weeklyEntries.map((entry) => {
+                    const repAttrs = getRepAttributions(entry.userId);
+                    return (
+                      <div key={entry.userId}>
+                        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-9 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
+                          <div className="font-medium text-foreground text-sm">{entry.displayName}</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 lg:contents">
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Approved Rev</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyApprovedRevenue} onChange={(e) => updateEntry(entry.userId, 'weeklyApprovedRevenue', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyLeads', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Total Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyClosedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklyClosedDeals', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Self-Gen Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklySelfGeneratedDeals} onChange={(e) => updateEntry(entry.userId, 'weeklySelfGeneratedDeals', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Leads</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassLeads} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassLeads', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canvass Contracts</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCanvassDealsClose} onChange={(e) => updateEntry(entry.userId, 'weeklyCanvassDealsClose', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Collections</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyCollections} onChange={(e) => updateEntry(entry.userId, 'weeklyCollections', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Earnings ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyEarnings} onChange={(e) => updateEntry(entry.userId, 'weeklyEarnings', e.target.value)} onBlur={() => handleSalesBlur(entry.userId)} className="h-8 text-sm" /></div>
+                          </div>
+                        </div>
+                        {repAttrs.length > 0 && (
+                          <Collapsible open={openCloseRates[`rep-${entry.userId}`]} onOpenChange={(o) => setOpenCloseRates(prev => ({ ...prev, [`rep-${entry.userId}`]: o }))}>
+                            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-2 mt-1 mb-1">
+                              {openCloseRates[`rep-${entry.userId}`] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              Lead Sources ({repAttrs.length})
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="ml-4 mb-2 border-l-2 border-accent/20 pl-3">
+                                <div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground mb-1">
+                                  <div>Canvasser</div><div>Leads</div><div>Contracts</div>
+                                </div>
+                                {repAttrs.map((a, i) => (
+                                  <div key={i} className="grid grid-cols-3 gap-2 text-xs text-foreground">
+                                    <div>{a.canvasser_name}</div>
+                                    <div>{a.rep_canvass_leads}</div>
+                                    <div>{a.rep_canvass_contracts}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </SectionCarousel.Item>
@@ -653,23 +865,51 @@ export default function WeeklyUpdates() {
                     <div>Not Int.</div><div>Canceled</div><div>Hours</div>
                     <div>Doors</div><div>Income ($)</div>
                   </div>
-                  {canvasserEntries.map((entry) => (
-                    <div key={entry.userId} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
-                      <div className="font-medium text-foreground text-sm">{entry.displayName}</div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 lg:contents">
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Set</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsSet} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsSet', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Closed</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsClosed} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsClosed', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/ Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithDamage', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/o Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithoutDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithoutDamage', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Convos Had</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyConversationsHad} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyConversationsHad', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Not Interested</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyNotInterested} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyNotInterested', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canceled</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCancelledLeads} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyCancelledLeads', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Hours Worked</Label><Input type="number" min="0" step="0.5" placeholder="0" value={entry.weeklyHoursWorked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyHoursWorked', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Doors Knocked</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyDoorsKnocked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyDoorsKnocked', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
-                        <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Income ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyIncome} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyIncome', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                  {canvasserEntries.map((entry) => {
+                    const canvAttrs = getCanvasserAttributions(entry.userId);
+                    return (
+                      <div key={entry.userId}>
+                        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-2 lg:items-center p-4 lg:p-0 bg-muted/30 lg:bg-transparent rounded-lg lg:rounded-none">
+                          <div className="font-medium text-foreground text-sm">{entry.displayName}</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 lg:contents">
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Set</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsSet} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsSet', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Leads Closed</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsClosed} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsClosed', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/ Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithDamage', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">w/o Damage</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyLeadsWithoutDamage} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyLeadsWithoutDamage', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Convos Had</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyConversationsHad} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyConversationsHad', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Not Interested</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyNotInterested} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyNotInterested', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Canceled</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyCancelledLeads} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyCancelledLeads', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Hours Worked</Label><Input type="number" min="0" step="0.5" placeholder="0" value={entry.weeklyHoursWorked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyHoursWorked', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Doors Knocked</Label><Input type="number" min="0" placeholder="0" value={entry.weeklyDoorsKnocked} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyDoorsKnocked', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                            <div className="space-y-1"><Label className="text-xs text-muted-foreground lg:hidden">Income ($)</Label><Input type="number" min="0" step="0.01" placeholder="0.00" value={entry.weeklyIncome} onChange={(e) => updateCanvasserEntry(entry.userId, 'weeklyIncome', e.target.value)} onBlur={() => handleCanvasserBlur(entry.userId)} className="h-8 text-sm" /></div>
+                          </div>
+                        </div>
+                        {canvAttrs.length > 0 && (
+                          <Collapsible open={openCloseRates[`canv-${entry.userId}`]} onOpenChange={(o) => setOpenCloseRates(prev => ({ ...prev, [`canv-${entry.userId}`]: o }))}>
+                            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-2 mt-1 mb-1">
+                              {openCloseRates[`canv-${entry.userId}`] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                              Close Rate ({canvAttrs.length})
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="ml-4 mb-2 border-l-2 border-accent/20 pl-3">
+                                <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground mb-1">
+                                  <div>Sales Rep</div><div>Leads Set</div><div>Closed</div><div>Close %</div>
+                                </div>
+                                {canvAttrs.map((a, i) => (
+                                  <div key={i} className="grid grid-cols-4 gap-2 text-xs text-foreground">
+                                    <div>{a.rep_name}</div>
+                                    <div>{a.leads_set}</div>
+                                    <div>{a.leads_closed}</div>
+                                    <div>{a.close_rate_pct}%</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </SectionCarousel.Item>
@@ -700,6 +940,18 @@ export default function WeeklyUpdates() {
           </div>
         </CardContent>
       </Card>
+
+      <AttributionModal
+        open={attributionModalOpen}
+        onClose={() => { setAttributionModalOpen(false); }}
+        onConfirm={handleAttributionConfirm}
+        onSkipAll={handleAttributionSkipAll}
+        items={attributionItems}
+        salesRepOptions={salesRepOptions}
+        canvasserOptions={canvasserOptions}
+        weekStart={format(weekStart, 'MMM d')}
+        weekEnd={format(weekEnd, 'MMM d')}
+      />
     </div>
   );
 }
