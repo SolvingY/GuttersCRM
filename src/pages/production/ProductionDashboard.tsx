@@ -182,6 +182,56 @@ export default function ProductionDashboard() {
               placeholder="0"
             />
           </div>
+
+          {/* Tasks Accomplished */}
+          <div className="space-y-2">
+            <Label>Tasks Accomplished</Label>
+            <div className="flex gap-2">
+              <Input
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                placeholder="e.g. Installed shingles at 123 Main St"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTask.trim()) {
+                    e.preventDefault();
+                    setTasksCompleted((prev) => [...prev, { text: newTask.trim() }]);
+                    setNewTask("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                disabled={!newTask.trim()}
+                onClick={() => {
+                  if (newTask.trim()) {
+                    setTasksCompleted((prev) => [...prev, { text: newTask.trim() }]);
+                    setNewTask("");
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {tasksCompleted.length > 0 && (
+              <ul className="space-y-1">
+                {tasksCompleted.map((task, i) => (
+                  <li key={i} className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                    <span className="flex-1">{task.text}</span>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      onClick={() => setTasksCompleted((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="summaryNotes">Summary / Notes</Label>
             <Textarea

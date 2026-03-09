@@ -97,13 +97,16 @@ Deno.serve(async (req) => {
     const tableRows = logs
       .map((log: any) => {
         const name = nameMap.get(log.user_id) || "Unknown";
+        const tasks = Array.isArray(log.tasks_completed) && log.tasks_completed.length > 0
+          ? `<ul style="margin: 4px 0 0; padding-left: 18px; font-size: 13px;">${log.tasks_completed.map((t: any) => `<li>${t.text || ""}</li>`).join("")}</ul>`
+          : "";
         return `
           <tr>
             <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb;">${name}</td>
             <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; text-align: center;">${log.builds_completed}</td>
             <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; text-align: center;">${log.checklists_submitted}</td>
             <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb; text-align: center;">${log.hours_worked ? Number(log.hours_worked).toFixed(1) : "—"}</td>
-            <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb;">${log.summary_notes || "—"}</td>
+            <td style="padding: 10px 15px; border-bottom: 1px solid #e5e7eb;">${log.summary_notes || "—"}${tasks}</td>
           </tr>
         `;
       })
