@@ -65,7 +65,7 @@ export default function AdminTimeClock() {
   const [zoneName, setZoneName] = useState('');
   const [zoneLocation, setZoneLocation] = useState('');
   const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [zoneRadius, setZoneRadius] = useState('500');
+  const [zoneRadius, setZoneRadius] = useState('1');
 
   // Zone assignment state
   const [zoneAssignments, setZoneAssignments] = useState<{ zone_id: string; canvasser_id: string }[]>([]);
