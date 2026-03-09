@@ -133,6 +133,13 @@ export default function ProductionChecklists() {
           responses,
           job_address: jobAddress || null,
           notes: checklistNotes || null,
+          homeowner_name: homeowner.name.trim() || null,
+          homeowner_phone: homeowner.phone.trim() || null,
+          homeowner_email: homeowner.email.trim() || null,
+          job_id: linkedJob?.id || null,
+          report_notes: reportNotes.trim() || null,
+          report_finalized: false,
+          saved_at: new Date().toISOString(),
         });
 
       if (subError) throw subError;
