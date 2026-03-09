@@ -311,6 +311,9 @@ export default function WeeklyUpdates() {
     if (entry) saveCanvasserDraft(entry);
   };
 
+  const updateSupplementerEntry = (userId: string, field: keyof SupplementerWeeklyEntry, value: string) => {
+    setSupplementerEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
+  };
   const handleSaveAll = async () => {
     setSaving(true);
     const { weekStart, weekEnd } = getWeekRangeForDate(selectedDate);
