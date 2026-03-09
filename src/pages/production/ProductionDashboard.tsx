@@ -55,7 +55,7 @@ export default function ProductionDashboard() {
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
     const { data } = await (supabase.from("production_daily_logs") as any)
-      .select("builds_completed, summary_notes")
+      .select("builds_completed, summary_notes, tasks_completed")
       .eq("user_id", user.id)
       .eq("log_date", today)
       .maybeSingle();
