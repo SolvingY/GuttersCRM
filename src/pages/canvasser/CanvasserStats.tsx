@@ -512,29 +512,14 @@ export default function CanvasserStats() {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </AccordionButton>
       )}
 
       {/* 6. 52-Week Progress */}
       {yearlyGoal > 0 && (
-        <Collapsible open={progressOpen} onOpenChange={setProgressOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="py-4">
-                <CollapsibleHeader isOpen={progressOpen} title="52-Week Progress" icon={TrendingUp} />
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">52-Week Progress (Fiscal Year Dec 15 - Dec 15)</CardTitle>
-                <CardDescription>Track your leads closed progress week by week</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
+        <AccordionButton id="progress" title="52-Week Progress" icon={TrendingUp} isOpen={openSection === "progress"} onToggle={toggleSection}>
+          <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={get52WeekData()}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
