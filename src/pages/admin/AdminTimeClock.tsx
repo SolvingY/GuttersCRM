@@ -159,10 +159,15 @@ export default function AdminTimeClock() {
     setWorkZones(data || []);
   }, []);
 
+  const fetchZoneAssignments = useCallback(async () => {
+    const { data } = await supabase.from('canvasser_zone_assignments').select('zone_id, canvasser_id');
+    setZoneAssignments((data as any[]) || []);
+  }, []);
+
   useEffect(() => {
-    const init = async () => { await fetchCanvassers(); await fetchShifts(); await fetchWorkZones(); setLoading(false); };
+    const init = async () => { await fetchCanvassers(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
     init();
-  }, [fetchCanvassers, fetchShifts, fetchWorkZones]);
+  }, [fetchCanvassers, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
 
   useEffect(() => { fetchShiftHistory(); }, [fetchShiftHistory]);
 
