@@ -168,6 +168,7 @@ const App = () => (
               <Route path="tools/estimator" element={<GutterEstimator />} />
               <Route path="tools/my-estimates" element={<MyEstimates />} />
               <Route path="tools/hail-assessment" element={<CommercialHailAssessment />} />
+              <Route path="tools/saved-checklists" element={<SavedChecklists />} />
               <Route path="leads/:id" element={<LeadDetailView />} />
               <Route path="leads/:id/contract" element={<GutterContract />} />
               <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
