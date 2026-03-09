@@ -1,42 +1,71 @@
 
 
-# Add Edit Button to Shift History
+# Plan: Daily Login History Table + Fix Location Capture
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Two Issues
 
-## Changes
+### Issue 1: No Daily Login History
+Currently the system only tracks `last_login_at` and `login_count` on the profiles table — no individual log entries. You can't see a day-by-day breakdown of when someone logged in.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### Issue 2: "Location not captured" on Clock-In
+The `getLocation()` function silently swallows geolocation errors (resolves `null` without logging the reason). The most likely cause: the browser denied the permission or the iframe context blocked it. The error callback doesn't log anything, making debugging impossible. We need to:
+- Log the actual geolocation error reason to console
+- Show a more descriptive toast (e.g. "Permission denied" vs "Timed out" vs "Position unavailable")
+- Request permission explicitly before giving up
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+---
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+## Database Change
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+Create a `login_history` table:
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+```sql
+CREATE TABLE public.login_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  logged_in_at timestamptz NOT NULL DEFAULT now(),
+  ip_address text,
+  user_agent text
+);
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+ALTER TABLE public.login_history ENABLE ROW LEVEL SECURITY;
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+CREATE POLICY "Users can view own login history"
+  ON public.login_history FOR SELECT
+  USING (user_id = auth.uid());
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+CREATE POLICY "Admins can view all login history"
+  ON public.login_history FOR ALL
+  USING (has_role(auth.uid(), 'admin'::app_role));
 
-## Summary
+CREATE POLICY "Authenticated users can insert own login"
+  ON public.login_history FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+```
 
-| Area | Change |
+## Code Changes
+
+### 1. Record Login Events
+In all four layout files (`DashboardLayout.tsx`, `CanvasserLayout.tsx`, `SupplementerLayout.tsx`, `AdminLayout.tsx`), alongside the existing `increment_login_count` RPC call, also insert a row into `login_history` with the user ID and timestamp. Use the same session key guard so it only fires once per day.
+
+### 2. Admin View of Login History
+Add a way for admins to see login history — either in the Contractor Management profile sheet or a dedicated section. Show a table of recent logins (date, time) for any user.
+
+### 3. Fix Location Capture (`TimeClockWidget.tsx`)
+Update `getLocation()` to:
+- Log the actual `GeolocationPositionError` code and message to console
+- Show a more specific toast: "Location permission denied — please allow location access in your browser settings" vs "Location timed out — trying again" vs generic fallback
+- Increase timeout from 10s to 15s
+- Add a retry on timeout (one retry attempt)
+
+### Files Modified
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| Migration SQL | Create `login_history` table |
+| `src/pages/dashboard/DashboardLayout.tsx` | Insert into `login_history` on login |
+| `src/pages/canvasser/CanvasserLayout.tsx` | Same |
+| `src/pages/supplementer/SupplementerLayout.tsx` | Same |
+| `src/pages/admin/AdminLayout.tsx` | Same |
+| `src/pages/admin/ContractorManagement.tsx` or profile sheet | Display login history for admin review |
+| `src/components/canvasser/TimeClockWidget.tsx` | Fix `getLocation()` error handling, add retry, descriptive toasts |
 
