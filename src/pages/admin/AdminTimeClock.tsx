@@ -62,9 +62,36 @@ export default function AdminTimeClock() {
   const [workZones, setWorkZones] = useState<any[]>([]);
   const [addZoneModalOpen, setAddZoneModalOpen] = useState(false);
   const [zoneName, setZoneName] = useState('');
-  const [zoneLat, setZoneLat] = useState('');
-  const [zoneLng, setZoneLng] = useState('');
+  const [zoneLocation, setZoneLocation] = useState('');
+  const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [zoneRadius, setZoneRadius] = useState('500');
+
+  const parseCoordinates = (text: string): { lat: number; lng: number } | null => {
+    if (!text.trim()) return null;
+    // Google Maps @lat,lng pattern
+    const atMatch = text.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+    // Google Maps ?q=lat,lng pattern
+    const qMatch = text.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+    // Google Maps embed !3d (lat) and !2d (lng)
+    const lat3d = text.match(/!3d(-?\d+\.?\d*)/);
+    const lng2d = text.match(/!2d(-?\d+\.?\d*)/);
+    if (lat3d && lng2d) return { lat: parseFloat(lat3d[1]), lng: parseFloat(lng2d[1]) };
+    // Raw coordinate pair
+    const rawMatch = text.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+    if (rawMatch) {
+      const a = parseFloat(rawMatch[1]), b = parseFloat(rawMatch[2]);
+      if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return { lat: a, lng: b };
+      if (Math.abs(b) <= 90 && Math.abs(a) <= 180) return { lat: b, lng: a };
+    }
+    return null;
+  };
+
+  const handleZoneLocationChange = (text: string) => {
+    setZoneLocation(text);
+    setParsedCoords(parseCoordinates(text));
+  };
   const [savingZone, setSavingZone] = useState(false);
 
   const [openSection, setOpenSection] = useState<string | null>('hours');
@@ -310,13 +337,13 @@ export default function AdminTimeClock() {
   const getCanvasserName = (id: string) => canvassers.find(c => c.userId === id)?.name || 'Unknown';
 
   const handleAddZone = async () => {
-    if (!zoneName || !zoneLat || !zoneLng) return;
+    if (!zoneName || !parsedCoords) return;
     setSavingZone(true);
     try {
-      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parseFloat(zoneLat), lng: parseFloat(zoneLng), radius_meters: parseInt(zoneRadius) || 500 } as any);
+      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parsedCoords.lat, lng: parsedCoords.lng, radius_meters: parseInt(zoneRadius) || 500 } as any);
       if (error) throw error;
       toast.success('Work zone added');
-      setAddZoneModalOpen(false); setZoneName(''); setZoneLat(''); setZoneLng(''); setZoneRadius('500');
+      setAddZoneModalOpen(false); setZoneName(''); setZoneLocation(''); setParsedCoords(null); setZoneRadius('500');
       fetchWorkZones();
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingZone(false);
@@ -732,19 +759,29 @@ export default function AdminTimeClock() {
           <DialogHeader><DialogTitle>Add Work Zone</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Zone Name</Label><Input value={zoneName} onChange={e => setZoneName(e.target.value)} placeholder="e.g. Office, Oak Park" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Latitude</Label><Input type="number" step="any" value={zoneLat} onChange={e => setZoneLat(e.target.value)} placeholder="35.4676" /></div>
-              <div className="space-y-2"><Label>Longitude</Label><Input type="number" step="any" value={zoneLng} onChange={e => setZoneLng(e.target.value)} placeholder="-97.5164" /></div>
+            <div className="space-y-2">
+              <Label>Google Maps Link or Coordinates</Label>
+              <Textarea value={zoneLocation} onChange={e => handleZoneLocationChange(e.target.value)} placeholder="Paste a Google Maps link, embed code, or coordinates (e.g. 35.4676, -97.5164)" rows={3} />
+              {zoneLocation && parsedCoords && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  Detected: {parsedCoords.lat.toFixed(6)}, {parsedCoords.lng.toFixed(6)}
+                  <a href={`https://maps.google.com/maps?q=${parsedCoords.lat},${parsedCoords.lng}`} target="_blank" rel="noopener noreferrer" className="underline ml-1">View on Maps</a>
+                </p>
+              )}
+              {zoneLocation && !parsedCoords && (
+                <p className="text-xs text-destructive">Could not detect coordinates. Try a Google Maps link or raw lat, lng.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Radius (meters)</Label>
               <Input type="number" min="100" max="50000" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="500" />
-              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks. Tip: Use Google Maps to find coordinates.</p>
+              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks.</p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddZoneModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddZone} disabled={savingZone || !zoneName || !zoneLat || !zoneLng}>{savingZone ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Zone</Button>
+            <Button onClick={handleAddZone} disabled={savingZone || !zoneName || !parsedCoords}>{savingZone ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Zone</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
