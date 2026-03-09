@@ -22,6 +22,8 @@ import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPip
 import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
 import { WeeklyCanvasserLeaderboardTable } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
+import { ScoreboardSalesLeaderboard } from '@/components/dashboard/ScoreboardSalesLeaderboard';
+import { ScoreboardCanvasserLeaderboard } from '@/components/dashboard/ScoreboardCanvasserLeaderboard';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -905,45 +907,12 @@ export default function AdminOverview() {
 
         {/* Sales Leaderboard */}
         <SectionCarousel.Item id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy}>
-          <LeaderboardTable
-            entries={userDetails
-              .sort((a, b) => b.points - a.points)
-              .map((u, i) => ({
-                rank: i + 1,
-                name: u.name,
-                userId: u.realUserId || u.metricId,
-                points: u.points,
-                approvedRevenue: u.approvedRevenue,
-                closedDeals: u.closedDeals,
-                yearlyGoal: u.yearlyGoal,
-                salesRank: u.salesRank,
-                contestsWon: 0,
-                collections: u.collections,
-                leads: u.leads,
-              }))}
-          />
+          <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
         </SectionCarousel.Item>
 
         {/* Canvasser Leaderboard */}
         <SectionCarousel.Item id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3}>
-          <WeeklyCanvasserLeaderboardTable
-            entries={canvasserDetails
-              .sort((a, b) => b.points - a.points)
-              .map((c, i) => ({
-                rank: i + 1,
-                name: c.name,
-                userId: c.realUserId || c.metricId,
-                leadsSet: c.leadsSet,
-                leadsWithDamage: c.leadsWithDamage,
-                leadsWithoutDamage: c.leadsWithoutDamage,
-                leadsClosed: c.leadsClosed,
-                conversationsHad: c.conversationsHad,
-                notInterested: c.notInterested,
-                hoursWorked: c.hoursWorked,
-                doorsKnocked: c.doorsKnocked,
-                pointsEarned: c.points,
-              }))}
-          />
+          <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
         </SectionCarousel.Item>
       </SectionCarousel>
 

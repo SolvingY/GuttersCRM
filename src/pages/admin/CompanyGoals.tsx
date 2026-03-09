@@ -98,7 +98,7 @@ export default function CompanyGoals() {
   const monthlyBreakdown = Array.from({ length: monthsElapsedSinceFiscalStart }, (_, i) => {
     const monthDate = addMonths(fiscalStart, i);
     const monthKey = format(monthDate, 'yyyy-MM-dd');
-    const entry = adSpendYTD.find(e => e.month === monthKey);
+    const entry = adSpendYTD.find(e => (e.month || '').substring(0, 10) === monthKey);
     return {
       month: monthKey,
       label: format(monthDate, 'MMMM yyyy'),
@@ -788,14 +788,14 @@ export default function CompanyGoals() {
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-lg"><Percent className="h-5 w-5 text-primary" />Internet Lead-to-Close Rate</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {(() => {
-                    const currentRate = internetData.internetLeadCount > 0 ? (internetData.internetClosedCount / internetData.internetLeadCount) * 100 : 0;
+                    const currentRate = internetData.internetTotalLeads > 0 ? (internetData.internetClosedCount / internetData.internetTotalLeads) * 100 : 0;
                     const targetRate = parseFloat(targetLeadToCloseRatio) || 0;
                     const variance = currentRate - targetRate;
                     const isOnTarget = targetRate === 0 || currentRate >= targetRate;
                     return (
                       <>
                         <div className="flex items-end justify-between">
-                          <div><p className="text-3xl font-bold text-foreground">{currentRate.toFixed(1)}%</p><p className="text-sm text-muted-foreground mt-1">{internetData.internetClosedCount} closed / {internetData.internetLeadCount} leads</p></div>
+                          <div><p className="text-3xl font-bold text-foreground">{currentRate.toFixed(1)}%</p><p className="text-sm text-muted-foreground mt-1">{internetData.internetClosedCount} closed / {internetData.internetTotalLeads} leads (YTD)</p></div>
                           {targetRate > 0 && (<div className="text-right"><p className="text-sm text-muted-foreground">Goal</p><p className="text-xl font-semibold text-foreground">{targetRate.toFixed(1)}%</p></div>)}
                         </div>
                         {targetRate > 0 && (
