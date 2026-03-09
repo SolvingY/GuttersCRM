@@ -884,6 +884,21 @@ export default function AdminOverview() {
           </div>
         </SectionCarousel.Item>
 
+        {/* Team Conversion Funnel */}
+        <SectionCarousel.Item id="conversion-funnel" title="Team Conversion Funnel" icon={TrendingUp}>
+          <CanvasserConversionFunnel
+            title="Team Conversion Funnel (YTD)"
+            data={{
+              doorsKnocked: canvasserAggregates.totalDoorsKnocked,
+              conversationsHad: canvasserAggregates.totalConversationsHad,
+              leadsSet: canvasserAggregates.totalLeadsSet,
+              leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+              leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
+              leadsClosed: canvasserAggregates.totalLeadsClosed,
+            }} 
+          />
+        </SectionCarousel.Item>
+
         {/* Supplementers */}
         <SectionCarousel.Item id="supplementers" title="Supplementers" icon={Briefcase}>
           <div className="p-8 text-center">
