@@ -161,7 +161,7 @@ export default function ProductionChecklists() {
           .insert({ user_id: user.id, log_date: today, checklists_submitted: 1 });
       }
 
-      toast.success("Checklist submitted!");
+      toast.success("Checklist saved! Send the report from Saved Checklists.");
       setActiveChecklist(null);
       fetchData();
     } catch (err: any) {
