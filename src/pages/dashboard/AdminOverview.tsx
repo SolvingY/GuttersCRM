@@ -790,13 +790,8 @@ export default function AdminOverview() {
             </div>
           )}
 
-          <Collapsible open={salesPerfOpen} onOpenChange={setSalesPerfOpen}>
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <CollapsibleTrigger className="p-4 border-b border-border w-full cursor-pointer flex items-center gap-2">
-              {salesPerfOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-              <h3 className="text-lg font-heading text-foreground">Sales Rep Performance</h3>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
+          <AccordionButton id="sales-perf" title="Sales Rep Performance" icon={TrendingUp} isOpen={openSection === "sales-perf"} onToggle={toggleSection}>
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
             {userDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No sales rep data available yet.</p>
