@@ -944,10 +944,7 @@ export default function AdminOverview() {
                   leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
                   leadsClosed: canvasserAggregates.totalLeadsClosed,
                 }} 
-              />
-            </CollapsibleContent>
-          </Collapsible>
-
+          </AccordionButton>
 
           {canvassersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
