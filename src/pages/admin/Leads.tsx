@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus, ChevronDown, ChevronRight, Users, DollarSign } from "lucide-react";
+import { Building2, Home, Droplets, Wrench, MapPin, Phone, Mail, AlertTriangle, Flame, Clock, CalendarClock, Plus, ChevronDown, ChevronRight, Users, DollarSign, List, CheckCircle2, XCircle, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AutoAssignmentSettings } from "@/components/admin/AutoAssignmentSettings";
 import { LeadExportButton } from "@/components/admin/LeadExportButton";
@@ -49,8 +49,18 @@ const priorityConfig: Record<string, { label: string; className: string; icon: a
   low: { label: "Low", className: "bg-muted text-muted-foreground border-border", icon: null },
 };
 
+const statusCarouselConfig: { id: string; label: string; icon: any }[] = [
+  { id: "all", label: "All", icon: List },
+  { id: "new", label: "New", icon: AlertTriangle },
+  { id: "contacted", label: "Contacted", icon: Phone },
+  { id: "quoted", label: "Quoted", icon: DollarSign },
+  { id: "scheduled", label: "Scheduled", icon: CalendarClock },
+  { id: "won", label: "Won", icon: CheckCircle2 },
+  { id: "lost", label: "Lost", icon: XCircle },
+  { id: "archived", label: "Archived", icon: Archive },
+];
+
 export default function Leads() {
-  const [statusFilter, setStatusFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assignedFilter, setAssignedFilter] = useState("all");
@@ -58,9 +68,10 @@ export default function Leads() {
   const [createOpen, setCreateOpen] = useState(false);
   const [revenueSection, setRevenueSection] = useState<string | null>(null);
   const toggleRevenueSection = (id: string) => setRevenueSection(prev => prev === id ? null : id);
+  const [statusSection, setStatusSection] = useState<string>("all");
 
-  const { data: leads = [], isLoading } = useQuery({
-    queryKey: ["admin-leads", statusFilter, serviceFilter, priorityFilter, assignedFilter, sourceFilter],
+  const { data: allLeads = [], isLoading } = useQuery({
+    queryKey: ["admin-leads", serviceFilter, priorityFilter, assignedFilter, sourceFilter],
     queryFn: async () => {
       let query = supabase
         .from("quote_requests")
@@ -68,12 +79,6 @@ export default function Leads() {
         .order("priority", { ascending: true })
         .order("created_at", { ascending: false });
 
-      // Hide archived by default unless explicitly filtered
-      if (statusFilter !== "archived") {
-        query = query.neq("status", "archived");
-      }
-
-      if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (serviceFilter !== "all") query = query.eq("service_type", serviceFilter);
       if (priorityFilter !== "all") query = query.eq("priority", priorityFilter);
       if (sourceFilter !== "all") query = query.eq("lead_source", sourceFilter);
@@ -95,20 +100,121 @@ export default function Leads() {
     },
   });
 
-  const statusCounts = {
-    new: leads.filter((l) => l.status === "new").length,
-    contacted: leads.filter((l) => l.status === "contacted").length,
-    quoted: leads.filter((l) => l.status === "quoted").length,
-    scheduled: leads.filter((l) => l.status === "scheduled").length,
-    won: leads.filter((l) => l.status === "won").length,
+  const getLeadsForStatus = (status: string) => {
+    if (status === "all") return allLeads.filter((l) => l.status !== "archived");
+    return allLeads.filter((l) => l.status === status);
   };
 
-  const sortedLeads = [...leads].sort((a, b) => {
-    const order: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-    return (order[a.priority] ?? 2) - (order[b.priority] ?? 2);
+  const statusCounts: Record<string, number> = {};
+  statusCarouselConfig.forEach(({ id }) => {
+    statusCounts[id] = getLeadsForStatus(id).length;
   });
 
   const now = new Date();
+
+  const renderLeadCards = (leads: any[]) => {
+    const sorted = [...leads].sort((a, b) => {
+      const order: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+      return (order[a.priority] ?? 2) - (order[b.priority] ?? 2);
+    });
+
+    if (sorted.length === 0) {
+      return <div className="text-center py-8 text-muted-foreground">No leads found</div>;
+    }
+
+    return (
+      <div className="space-y-3">
+        {sorted.map((lead) => {
+          const ServiceIcon = serviceIcons[lead.service_type] || Building2;
+          const priority = priorityConfig[lead.priority] || priorityConfig.normal;
+          const PriorityIcon = priority.icon;
+          const followupDue = lead.next_followup_due ? new Date(lead.next_followup_due) : null;
+          const isOverdue = followupDue && followupDue < now;
+          const isDueToday = followupDue && !isOverdue && followupDue.toDateString() === now.toDateString();
+          const LeadSourceIcon = getLeadSourceIcon((lead as any).lead_source || "internet");
+          const leadType = (lead as any).lead_type || "internet";
+          const manuallyCreated = (lead as any).manually_created;
+
+          return (
+            <Link
+              key={lead.id}
+              to={`/admin/leads/${lead.id}`}
+              className="block border border-border rounded-lg p-4 hover:border-accent/50 transition-colors bg-card"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="p-2 bg-secondary rounded-lg shrink-0">
+                    <ServiceIcon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="font-heading text-sm uppercase">
+                        {serviceLabels[lead.service_type]}
+                      </span>
+                      <Badge className={cn("text-[10px]", statusColors[lead.status])}>
+                        {lead.status}
+                      </Badge>
+                      <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : leadType === "self_gen" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
+                        <LeadSourceIcon className="w-3 h-3" />
+                        {leadType === "canvasser" ? "Canvasser" : leadType === "self_gen" ? "Self-Gen" : "Internet"}
+                      </Badge>
+                      {manuallyCreated && (
+                        <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
+                          Manual
+                        </Badge>
+                      )}
+                      {lead.priority !== "normal" && (
+                        <Badge variant="outline" className={cn("text-[10px] gap-1", priority.className)}>
+                          {PriorityIcon && <PriorityIcon className="w-3 h-3" />}
+                          {priority.label}
+                        </Badge>
+                      )}
+                      {lead.quote_status === "pending_approval" && (
+                        <Badge variant="outline" className="text-[10px] bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                          Quote Pending
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="font-medium">{lead.full_name}</p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {lead.city}, {lead.state}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {lead.phone}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Mail className="w-3 h-3" />
+                        {lead.email}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-muted-foreground shrink-0 space-y-1">
+                  <p className="font-heading text-accent">{lead.reference_number}</p>
+                  <p className="flex items-center gap-1 justify-end">
+                    <Clock className="w-3 h-3" />
+                    {new Date(lead.created_at).toLocaleDateString()}
+                  </p>
+                  {followupDue && (
+                    <p className={cn(
+                      "flex items-center gap-1 justify-end",
+                      isOverdue ? "text-destructive" : isDueToday ? "text-yellow-600" : ""
+                    )}>
+                      <CalendarClock className="w-3 h-3" />
+                      {isOverdue ? "Overdue" : isDueToday ? "Due today" : followupDue.toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -130,7 +236,7 @@ export default function Leads() {
           <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
             <Plus className="w-4 h-4" /> Create Lead
           </Button>
-          <LeadExportButton leads={leads} salesReps={salesReps} />
+          <LeadExportButton leads={allLeads} salesReps={salesReps} />
         </div>
       </div>
 
@@ -140,38 +246,8 @@ export default function Leads() {
 
       <UnassignedCanvasserQueue salesReps={salesReps} />
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-5 gap-2 sm:gap-3">
-        {Object.entries(statusCounts).map(([status, count]) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
-            className={cn(
-              "p-2 sm:p-3 rounded-lg border text-center transition-colors",
-              statusFilter === status ? "border-accent bg-accent/5" : "border-border hover:border-accent/50"
-            )}
-          >
-            <div className="font-heading text-xl sm:text-2xl">{count}</div>
-            <div className="text-xs text-muted-foreground capitalize">{status}</div>
-          </button>
-        ))}
-      </div>
-
       {/* Filters */}
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="new">New</SelectItem>
-            <SelectItem value="contacted">Contacted</SelectItem>
-            <SelectItem value="quoted">Quoted</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="won">Won</SelectItem>
-            <SelectItem value="lost">Lost</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={serviceFilter} onValueChange={setServiceFilter}>
           <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Service" /></SelectTrigger>
           <SelectContent>
@@ -218,102 +294,22 @@ export default function Leads() {
         </Select>
       </div>
 
-      {/* Lead Cards */}
+      {/* Status Carousel */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading leads...</div>
-      ) : sortedLeads.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">No leads found</div>
       ) : (
-        <div className="space-y-3">
-          {sortedLeads.map((lead) => {
-            const ServiceIcon = serviceIcons[lead.service_type] || Building2;
-            const priority = priorityConfig[lead.priority] || priorityConfig.normal;
-            const PriorityIcon = priority.icon;
-            const followupDue = lead.next_followup_due ? new Date(lead.next_followup_due) : null;
-            const isOverdue = followupDue && followupDue < now;
-            const isDueToday = followupDue && !isOverdue && followupDue.toDateString() === now.toDateString();
-            const LeadSourceIcon = getLeadSourceIcon((lead as any).lead_source || "internet");
-            const leadType = (lead as any).lead_type || "internet";
-            const manuallyCreated = (lead as any).manually_created;
-
-            return (
-              <Link
-                key={lead.id}
-                to={`/admin/leads/${lead.id}`}
-                className="block border border-border rounded-lg p-4 hover:border-accent/50 transition-colors bg-card"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="p-2 bg-secondary rounded-lg shrink-0">
-                      <ServiceIcon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-heading text-sm uppercase">
-                          {serviceLabels[lead.service_type]}
-                        </span>
-                        <Badge className={cn("text-[10px]", statusColors[lead.status])}>
-                          {lead.status}
-                        </Badge>
-                        <Badge variant="outline" className={cn("text-[10px] gap-1", leadType === "canvasser" ? "bg-purple-500/10 text-purple-600 border-purple-500/30" : leadType === "self_gen" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30")}>
-                          <LeadSourceIcon className="w-3 h-3" />
-                          {leadType === "canvasser" ? "Canvasser" : leadType === "self_gen" ? "Self-Gen" : "Internet"}
-                        </Badge>
-                        {manuallyCreated && (
-                          <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
-                            Manual
-                          </Badge>
-                        )}
-                        {lead.priority !== "normal" && (
-                          <Badge variant="outline" className={cn("text-[10px] gap-1", priority.className)}>
-                            {PriorityIcon && <PriorityIcon className="w-3 h-3" />}
-                            {priority.label}
-                          </Badge>
-                        )}
-                        {lead.quote_status === "pending_approval" && (
-                          <Badge variant="outline" className="text-[10px] bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
-                            Quote Pending
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="font-medium">{lead.full_name}</p>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {lead.city}, {lead.state}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {lead.phone}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3 h-3" />
-                          {lead.email}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-muted-foreground shrink-0 space-y-1">
-                    <p className="font-heading text-accent">{lead.reference_number}</p>
-                    <p className="flex items-center gap-1 justify-end">
-                      <Clock className="w-3 h-3" />
-                      {new Date(lead.created_at).toLocaleDateString()}
-                    </p>
-                    {followupDue && (
-                      <p className={cn(
-                        "flex items-center gap-1 justify-end",
-                        isOverdue ? "text-destructive" : isDueToday ? "text-yellow-600" : ""
-                      )}>
-                        <CalendarClock className="w-3 h-3" />
-                        {isOverdue ? "Overdue" : isDueToday ? "Due today" : followupDue.toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <SectionCarousel activeSection={statusSection} onToggle={(id) => setStatusSection(id)}>
+          {statusCarouselConfig.map(({ id, label, icon }) => (
+            <SectionCarousel.Item
+              key={id}
+              id={id}
+              title={`${label} (${statusCounts[id] ?? 0})`}
+              icon={icon}
+            >
+              {renderLeadCards(getLeadsForStatus(id))}
+            </SectionCarousel.Item>
+          ))}
+        </SectionCarousel>
       )}
     </div>
   );
