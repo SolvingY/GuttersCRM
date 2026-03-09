@@ -245,6 +245,7 @@ export default function UserRoles() {
       {roles.includes('user') && <Badge variant="secondary">Sales Rep</Badge>}
       {roles.includes('canvasser') && <Badge className="bg-primary text-primary-foreground">Canvasser</Badge>}
       {roles.includes('supplementer') && <Badge className="bg-accent text-accent-foreground">Supplementer</Badge>}
+      {roles.includes('production') && <Badge className="bg-amber-500 text-white">Production</Badge>}
     </div>
   );
 

@@ -282,6 +282,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (hasProductionRole) {
+      // Check if production metrics exist
+      const { data: existingProductionMetrics } = await supabaseAdmin
+        .from("production_metrics")
+        .select("id")
+        .eq("user_id", targetUserId)
+        .limit(1);
+
+      if (!existingProductionMetrics || existingProductionMetrics.length === 0) {
+        const { error: insertError } = await supabaseAdmin
+          .from("production_metrics")
+          .insert({
+            user_id: targetUserId,
+            display_name: displayName,
+            metric_date: new Date().toISOString().split("T")[0],
+          });
+
+        if (insertError) {
+          console.error("Failed to create production metrics:", insertError);
+        } else {
+          console.log("Created production metrics for user:", targetUserId);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, roles: rolesToSet }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
