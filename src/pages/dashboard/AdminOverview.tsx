@@ -801,6 +801,10 @@ export default function AdminOverview() {
                   );
                 })()}
               </AccordionButton>
+
+              <AccordionButton id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy} isOpen={openSubSection === 'sales-leaderboard'} onToggle={toggleSubSection}>
+                <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
+              </AccordionButton>
             </div>
           </div>
         </SectionCarousel.Item>
