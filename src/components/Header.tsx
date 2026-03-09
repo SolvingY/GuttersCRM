@@ -114,7 +114,7 @@ export function Header() {
               onClick={(e) => scrollToSection(e, "#home")}
               className="flex items-center gap-3"
             >
-              <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full" />
+              <img src={logo} alt="Next Generation Roofing" className="h-12 w-12 md:h-14 md:w-14 rounded-full [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
             </a>
           </div>
 

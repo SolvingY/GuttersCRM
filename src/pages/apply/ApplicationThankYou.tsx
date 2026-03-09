@@ -45,7 +45,7 @@ export default function ApplicationThankYou() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-accent text-accent-foreground py-8 px-4 text-center">
-        <img src={ngrLogo} alt="NGR" className="h-16 mx-auto mb-4" />
+        <img src={ngrLogo} alt="NGR" className="h-16 mx-auto mb-4 [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
         <h1 className="font-heading text-3xl md:text-4xl uppercase">Welcome to the Next Generation</h1>
         <p className="text-sm opacity-80 mt-2 max-w-lg mx-auto">
           Thank you for your interest. At NGR, we don't just "hire"—we build high-performance teams that protect Oklahoma homes.
