@@ -56,13 +56,8 @@ export default function MyStats() {
   const [displayName, setDisplayName] = useState('');
   const [quote] = useState(getRandomQuote());
   
-  // Collapsible states
-  const [contestsOpen, setContestsOpen] = useState(false);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  const [weeklyOpen, setWeeklyOpen] = useState(false);
-  const [fiscalOpen, setFiscalOpen] = useState(false);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [progressOpen, setProgressOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
   const [collectionsThisMonth, setCollectionsThisMonth] = useState(0);
 
   useEffect(() => {
