@@ -67,6 +67,13 @@ export default function AdminTimeClock() {
   const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [zoneRadius, setZoneRadius] = useState('500');
 
+  // Zone assignment state
+  const [zoneAssignments, setZoneAssignments] = useState<{ zone_id: string; canvasser_id: string }[]>([]);
+  const [assignZoneModalOpen, setAssignZoneModalOpen] = useState(false);
+  const [assigningZone, setAssigningZone] = useState<any>(null);
+  const [assignedCanvasserIds, setAssignedCanvasserIds] = useState<Set<string>>(new Set());
+  const [savingAssignments, setSavingAssignments] = useState(false);
+
   const parseCoordinates = (text: string): { lat: number; lng: number } | null => {
     if (!text.trim()) return null;
     // Google Maps @lat,lng pattern
