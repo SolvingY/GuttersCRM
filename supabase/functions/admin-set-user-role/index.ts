@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     // Validate roles - now including 'admin' and 'supplementer' as valid
-    const validRoles = ['user', 'canvasser', 'admin', 'supplementer'];
+    const validRoles = ['user', 'canvasser', 'admin', 'supplementer', 'production'];
     for (const role of rolesToSet) {
       if (!validRoles.includes(role)) {
         return new Response(
