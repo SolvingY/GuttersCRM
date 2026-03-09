@@ -933,13 +933,8 @@ export default function AdminOverview() {
           </div>
 
           {/* Conversion Funnel */}
-          <Collapsible open={conversionFunnelOpen} onOpenChange={setConversionFunnelOpen}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-              {conversionFunnelOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-              <h3 className="font-heading font-semibold text-foreground">Team Conversion Funnel (YTD)</h3>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CanvasserConversionFunnel 
+          <AccordionButton id="conversion-funnel" title="Team Conversion Funnel (YTD)" icon={GitCompare} isOpen={openSection === "conversion-funnel"} onToggle={toggleSection}>
+            <CanvasserConversionFunnel
                 title="Team Conversion Funnel (YTD)"
                 data={{
                   doorsKnocked: canvasserAggregates.totalDoorsKnocked,
