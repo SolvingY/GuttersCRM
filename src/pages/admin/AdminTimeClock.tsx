@@ -840,9 +840,9 @@ export default function AdminTimeClock() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>Radius (meters)</Label>
-              <Input type="number" min="100" max="50000" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="500" />
-              <p className="text-xs text-muted-foreground">500m ≈ 5 city blocks.</p>
+              <Label>Radius (miles)</Label>
+              <Input type="number" min="0.1" max="30" step="0.1" value={zoneRadius} onChange={e => setZoneRadius(e.target.value)} placeholder="1" />
+              <p className="text-xs text-muted-foreground">1 mile ≈ 20 city blocks.</p>
             </div>
           </div>
           <DialogFooter>
