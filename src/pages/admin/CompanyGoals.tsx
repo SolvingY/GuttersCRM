@@ -663,13 +663,7 @@ export default function CompanyGoals() {
       </Card>
       </AccordionButton>
 
-      {/* Progress Cards - Row 1: Revenue + Collections */}
-      <Collapsible open={revenueProgressOpen} onOpenChange={setRevenueProgressOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {revenueProgressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Revenue & Collections</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="revenue" title="Revenue & Collections" icon={DollarSign} isOpen={openSection === "revenue"} onToggle={toggleSection}>
 
       {/* Progress Cards - Row 1: Revenue + Collections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
