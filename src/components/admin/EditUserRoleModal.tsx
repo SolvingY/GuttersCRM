@@ -59,6 +59,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       setIsSalesRep(user.roles.includes('user'));
       setIsCanvasser(user.roles.includes('canvasser'));
       setIsSupplementer(user.roles.includes('supplementer'));
+      setIsProduction(user.roles.includes('production'));
       setSalesRank(user.salesRank || 'SR1');
       setCanvasserRank(user.canvasserRank || 'C1');
       setHiddenFromLeaderboard(user.hiddenFromLeaderboard || false);
