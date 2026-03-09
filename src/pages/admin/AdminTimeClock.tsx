@@ -791,9 +791,11 @@ export default function AdminTimeClock() {
                       <div>
                         <p className="font-medium text-foreground">{zone.name}</p>
                         <p className="text-xs text-muted-foreground">{zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {zone.radius_meters}m radius</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{getZoneAssignmentLabel(zone.id)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleOpenAssignZone(zone)}><Users className="h-3.5 w-3.5 mr-1" />Assign</Button>
                       <a href={`https://maps.google.com/maps?q=${zone.lat},${zone.lng}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline"><MapPin className="h-4 w-4" /></a>
                       <Button size="sm" variant="ghost" onClick={() => handleDeleteZone(zone.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
