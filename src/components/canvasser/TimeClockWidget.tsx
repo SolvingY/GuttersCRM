@@ -12,16 +12,37 @@ import { toast } from "sonner";
 import { Clock, AlertTriangle, Loader2, MapPin, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 
-function getLocation(): Promise<{ lat: number; lng: number } | null> {
+function getLocation(retry = true): Promise<{ lat: number; lng: number; errorMsg?: string } | null> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
+      console.warn('[Geolocation] API not available');
       resolve(null);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      (pos) => {
+        console.log('[Geolocation] Success:', pos.coords.latitude, pos.coords.longitude);
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        console.error('[Geolocation] Error code:', err.code, 'message:', err.message);
+        if (err.code === 3 && retry) {
+          // Timeout — retry once
+          console.log('[Geolocation] Retrying after timeout...');
+          getLocation(false).then(resolve);
+          return;
+        }
+        const errorMsg =
+          err.code === 1
+            ? 'Location permission denied — please allow location access in your browser settings'
+            : err.code === 2
+            ? 'Location unavailable — GPS or network error'
+            : err.code === 3
+            ? 'Location request timed out — please try again'
+            : 'Could not determine location';
+        resolve({ lat: 0, lng: 0, errorMsg });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
 }
