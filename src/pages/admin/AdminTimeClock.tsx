@@ -353,10 +353,11 @@ export default function AdminTimeClock() {
     if (!zoneName || !parsedCoords) return;
     setSavingZone(true);
     try {
-      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parsedCoords.lat, lng: parsedCoords.lng, radius_meters: parseInt(zoneRadius) || 500 } as any);
+      const radiusMeters = Math.round((parseFloat(zoneRadius) || 1) * 1609.34);
+      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parsedCoords.lat, lng: parsedCoords.lng, radius_meters: radiusMeters } as any);
       if (error) throw error;
       toast.success('Work zone added');
-      setAddZoneModalOpen(false); setZoneName(''); setZoneLocation(''); setParsedCoords(null); setZoneRadius('500');
+      setAddZoneModalOpen(false); setZoneName(''); setZoneLocation(''); setParsedCoords(null); setZoneRadius('1');
       fetchWorkZones();
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingZone(false);
