@@ -53,7 +53,7 @@ export function AdSpendDialog({ open, onOpenChange, initialMonth }: AdSpendDialo
 
   // Pre-fill amount when month selection changes
   useEffect(() => {
-    const existing = history.find(h => h.month === selectedMonth);
+    const existing = history.find(h => (h.month || '').substring(0, 10) === selectedMonth);
     setAmount(existing ? String(existing.ad_spend) : "");
   }, [selectedMonth, history]);
 
