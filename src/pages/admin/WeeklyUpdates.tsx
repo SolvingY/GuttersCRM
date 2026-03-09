@@ -431,48 +431,63 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
             weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) continue;
 
+        // Fetch previous daily entry to compute true deltas
+        const { data: prevCanvDaily } = await supabase.from('daily_canvasser_metric_entries')
+          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+
+        const dLeadsSet = weeklyLeadsSet - (Number(prevCanvDaily?.leads_set_delta) || 0);
+        const dLeadsClosed = weeklyLeadsClosed - (Number(prevCanvDaily?.leads_closed_delta) || 0);
+        const dLeadsWithDamage = weeklyLeadsWithDamage - (Number(prevCanvDaily?.leads_with_damage_delta) || 0);
+        const dLeadsWithoutDamage = weeklyLeadsWithoutDamage - (Number(prevCanvDaily?.leads_without_damage_delta) || 0);
+        const dConvos = weeklyConversationsHad - (Number(prevCanvDaily?.conversations_had_delta) || 0);
+        const dNotInterested = weeklyNotInterested - (Number(prevCanvDaily?.not_interested_delta) || 0);
+        const dCancelled = weeklyCancelledLeads - (Number(prevCanvDaily?.cancelled_leads_delta) || 0);
+        const dHours = weeklyHoursWorked - (Number(prevCanvDaily?.hours_worked_delta) || 0);
+        const dIncome = weeklyIncome - (Number(prevCanvDaily?.income_delta) || 0);
+        const dDoors = weeklyDoorsKnocked - (Number(prevCanvDaily?.doors_knocked_delta) || 0);
+
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('canvasser_metrics').select('*').eq('user_id', entry.userId).order('created_at', { ascending: false }).limit(1).single();
         if (fetchError) { errorCount++; continue; }
 
         const { error: updateError } = await supabase.from('canvasser_metrics').update({
-          leads_set: (Number(currentMetrics.leads_set) || 0) + weeklyLeadsSet,
-          leads_closed: (Number(currentMetrics.leads_closed) || 0) + weeklyLeadsClosed,
-          leads_with_damage: (Number(currentMetrics.leads_with_damage) || 0) + weeklyLeadsWithDamage,
-          leads_without_damage: (Number((currentMetrics as any).leads_without_damage) || 0) + weeklyLeadsWithoutDamage,
-          conversations_had: (Number((currentMetrics as any).conversations_had) || 0) + weeklyConversationsHad,
-          not_interested: (Number((currentMetrics as any).not_interested) || 0) + weeklyNotInterested,
-          cancelled_leads: (Number((currentMetrics as any).cancelled_leads) || 0) + weeklyCancelledLeads,
-          hours_worked: (Number((currentMetrics as any).hours_worked) || 0) + weeklyHoursWorked,
-          income: (Number(currentMetrics.income) || 0) + weeklyIncome,
-          doors_knocked: (Number((currentMetrics as any).doors_knocked) || 0) + weeklyDoorsKnocked,
+          leads_set: (Number(currentMetrics.leads_set) || 0) + dLeadsSet,
+          leads_closed: (Number(currentMetrics.leads_closed) || 0) + dLeadsClosed,
+          leads_with_damage: (Number(currentMetrics.leads_with_damage) || 0) + dLeadsWithDamage,
+          leads_without_damage: (Number((currentMetrics as any).leads_without_damage) || 0) + dLeadsWithoutDamage,
+          conversations_had: (Number((currentMetrics as any).conversations_had) || 0) + dConvos,
+          not_interested: (Number((currentMetrics as any).not_interested) || 0) + dNotInterested,
+          cancelled_leads: (Number((currentMetrics as any).cancelled_leads) || 0) + dCancelled,
+          hours_worked: (Number((currentMetrics as any).hours_worked) || 0) + dHours,
+          income: (Number(currentMetrics.income) || 0) + dIncome,
+          doors_knocked: (Number((currentMetrics as any).doors_knocked) || 0) + dDoors,
           updated_at: new Date().toISOString(),
         } as any).eq('user_id', entry.userId);
         if (updateError) { errorCount++; continue; }
 
         const { data: existingCanvasserWeekly } = await supabase.from('weekly_canvasser_metrics').select('*').eq('user_id', entry.userId).eq('week_start', weekStartStr).maybeSingle();
-        const compoundedLeadsClosed = (Number(existingCanvasserWeekly?.leads_closed) || 0) + weeklyLeadsClosed;
-        const compoundedLeadsWithDamage = (Number(existingCanvasserWeekly?.leads_with_damage) || 0) + weeklyLeadsWithDamage;
-        const compoundedLeadsSet = (Number(existingCanvasserWeekly?.leads_set) || 0) + weeklyLeadsSet;
+        const compoundedLeadsClosed = (Number(existingCanvasserWeekly?.leads_closed) || 0) + dLeadsClosed;
+        const compoundedLeadsWithDamage = (Number(existingCanvasserWeekly?.leads_with_damage) || 0) + dLeadsWithDamage;
+        const compoundedLeadsSet = (Number(existingCanvasserWeekly?.leads_set) || 0) + dLeadsSet;
         const canvasserPoints = (compoundedLeadsClosed * 10) + (compoundedLeadsWithDamage * 5) + compoundedLeadsSet;
 
         await supabase.from('weekly_canvasser_metrics').upsert({
           user_id: entry.userId, week_start: weekStartStr, week_end: weekEndStr,
           leads_set: compoundedLeadsSet, leads_closed: compoundedLeadsClosed,
           leads_with_damage: compoundedLeadsWithDamage,
-          leads_without_damage: (Number(existingCanvasserWeekly?.leads_without_damage) || 0) + weeklyLeadsWithoutDamage,
-          conversations_had: (Number(existingCanvasserWeekly?.conversations_had) || 0) + weeklyConversationsHad,
-          not_interested: (Number(existingCanvasserWeekly?.not_interested) || 0) + weeklyNotInterested,
-          cancelled_leads: (Number((existingCanvasserWeekly as any)?.cancelled_leads) || 0) + weeklyCancelledLeads,
-          hours_worked: (Number(existingCanvasserWeekly?.hours_worked) || 0) + weeklyHoursWorked,
-          income: (Number(existingCanvasserWeekly?.income) || 0) + weeklyIncome,
-          doors_knocked: (Number(existingCanvasserWeekly?.doors_knocked) || 0) + weeklyDoorsKnocked,
+          leads_without_damage: (Number(existingCanvasserWeekly?.leads_without_damage) || 0) + dLeadsWithoutDamage,
+          conversations_had: (Number(existingCanvasserWeekly?.conversations_had) || 0) + dConvos,
+          not_interested: (Number(existingCanvasserWeekly?.not_interested) || 0) + dNotInterested,
+          cancelled_leads: (Number((existingCanvasserWeekly as any)?.cancelled_leads) || 0) + dCancelled,
+          hours_worked: (Number(existingCanvasserWeekly?.hours_worked) || 0) + dHours,
+          income: (Number(existingCanvasserWeekly?.income) || 0) + dIncome,
+          doors_knocked: (Number(existingCanvasserWeekly?.doors_knocked) || 0) + dDoors,
           points_earned: canvasserPoints, updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id,week_start' });
 
-        const { data: authUser } = await supabase.auth.getUser();
+        // Upsert daily canvasser entry
         await supabase.from('daily_canvasser_metric_entries').upsert({
-          user_id: entry.userId, entry_date: format(selectedDate, 'yyyy-MM-dd'),
+          user_id: entry.userId, entry_date: dateStr,
           hours_worked_delta: weeklyHoursWorked, leads_set_delta: weeklyLeadsSet,
           leads_closed_delta: weeklyLeadsClosed, leads_with_damage_delta: weeklyLeadsWithDamage,
           leads_without_damage_delta: weeklyLeadsWithoutDamage, conversations_had_delta: weeklyConversationsHad,
