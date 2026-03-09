@@ -228,6 +228,8 @@ export default function CanvasserStats() {
         </p>
       </div>
 
+      <AssignedZonesWidget />
+
       <TimeClockWidget onShiftChange={fetchMetrics} />
 
       <SectionCarousel activeSection={openSection} onToggle={toggleSection}>

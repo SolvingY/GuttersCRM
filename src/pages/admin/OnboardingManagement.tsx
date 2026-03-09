@@ -324,6 +324,10 @@ export default function OnboardingManagement() {
         <TabsContent value="offer-letters" className="space-y-6 mt-4">
           <OfferLettersTab members={members} currentUserId={user?.id || ""} />
         </TabsContent>
+
+        <TabsContent value="report-settings" className="space-y-6 mt-4">
+          <ReportEmailSettingsTab />
+        </TabsContent>
       </Tabs>
 
       <CreateMandatoryActionDialog
