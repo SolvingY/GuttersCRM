@@ -59,7 +59,7 @@ export default function InviteUsers() {
   const [manualSalesRank, setManualSalesRank] = useState('SR1');
   const [manualCanvasserRank, setManualCanvasserRank] = useState('C1');
   const [manualYearlyGoal, setManualYearlyGoal] = useState('');
-  const [manualRoleType, setManualRoleType] = useState<'admin_only' | 'sales_rep' | 'canvasser' | 'supplementer' | 'super_admin'>('sales_rep');
+  const [manualRoleType, setManualRoleType] = useState<'admin_only' | 'sales_rep' | 'canvasser' | 'supplementer' | 'production' | 'super_admin'>('sales_rep');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
