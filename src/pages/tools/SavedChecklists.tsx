@@ -33,7 +33,7 @@ const resultLabels: Record<string, { label: string; className: string }> = {
 };
 
 export default function SavedChecklists() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [detailItem, setDetailItem] = useState<SavedItem | null>(null);
   const [sendItem, setSendItem] = useState<SavedItem | null>(null);
