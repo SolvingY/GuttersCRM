@@ -96,6 +96,7 @@ const ProductionChecklists = lazy(() => import("./pages/production/ProductionChe
 const ProductionPit = lazy(() => import("./pages/production/ProductionPit"));
 const ProductionPointsHistory = lazy(() => import("./pages/production/ProductionPointsHistory"));
 const ProductionSettings = lazy(() => import("./pages/production/ProductionSettings"));
+const SavedChecklists = lazy(() => import("./pages/tools/SavedChecklists"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
