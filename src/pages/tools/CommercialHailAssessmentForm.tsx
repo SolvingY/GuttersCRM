@@ -426,11 +426,19 @@ export default function CommercialHailAssessmentForm() {
         );
       })}
 
+      {/* Report Notes */}
+      <Card>
+        <CardContent className="p-4 space-y-1.5">
+          <Label>Report Notes</Label>
+          <Textarea value={form.meta.reportNotes} onChange={(e) => setMeta("reportNotes", e.target.value)} rows={3} placeholder="Add any final notes to include in the report…" />
+        </CardContent>
+      </Card>
+
       {/* Submit */}
       <div className="flex justify-end gap-3 pt-4">
         <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
         <Button onClick={handleSubmit} disabled={submitting} className="min-w-[160px]">
-          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading photos…</> : "Submit Assessment"}
+          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading photos…</> : <><Save className="h-4 w-4 mr-2" /> Save Checklist</>}
         </Button>
       </div>
     </div>
