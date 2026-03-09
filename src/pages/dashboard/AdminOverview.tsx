@@ -125,7 +125,12 @@ export default function AdminOverview() {
   } | null>(null);
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
-  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
+  const [openSubSection, setOpenSubSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => {
+    setOpenSection(prev => prev === id ? null : id);
+    setOpenSubSection(null);
+  };
+  const toggleSubSection = (id: string) => setOpenSubSection(prev => prev === id ? null : id);
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
