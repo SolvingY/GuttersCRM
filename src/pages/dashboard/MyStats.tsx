@@ -468,66 +468,64 @@ export default function MyStats() {
           {/* 7. 52-Week Progress */}
           {yearlyGoal > 0 && (
             <AccordionButton id="progress" title="52-Week Progress" icon={TrendingUp} isOpen={openSection === "progress"} onToggle={toggleSection}>
-              <div>
-                <p className="text-lg font-semibold mb-4">52-Week Progress (Fiscal Year Dec 15 - Dec 15)</p>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={weeklyChartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis 
-                            dataKey="week" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={10}
-                            interval={3}
-                          />
-                          <YAxis 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={12}
-                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                          />
-                          <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number, name: string) => [
-                              formatCurrency(value),
-                              name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
-                            ]}
-                            labelFormatter={(label, payload) => {
-                              if (payload && payload[0]) {
-                                return `Week of ${payload[0].payload.weekLabel}`;
-                              }
-                              return label;
-                            }}
-                          />
-                          <Legend />
-                          <Bar
-                            dataKey="approvedRevenue"
-                            fill="hsl(var(--accent))"
-                            name="Weekly Revenue"
-                            radius={[2, 2, 0, 0]}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulativeRevenue"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={false}
-                            name="Cumulative Revenue"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulativeGoal"
-                            stroke="hsl(var(--muted-foreground))"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                            name="Goal Pace"
-                          />
-                        </ComposedChart>
-                      </ResponsiveContainer>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={weeklyChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="week" 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={10}
+                      interval={3}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={12}
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => [
+                        formatCurrency(value),
+                        name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
+                      ]}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return `Week of ${payload[0].payload.weekLabel}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="approvedRevenue"
+                      fill="hsl(var(--accent))"
+                      name="Weekly Revenue"
+                      radius={[2, 2, 0, 0]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="cumulativeRevenue"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Cumulative Revenue"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="cumulativeGoal"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={false}
+                      name="Goal Pace"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </AccordionButton>
           )}
