@@ -801,6 +801,10 @@ export default function AdminOverview() {
                   );
                 })()}
               </AccordionButton>
+
+              <AccordionButton id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy} isOpen={openSubSection === 'sales-leaderboard'} onToggle={toggleSubSection}>
+                <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
+              </AccordionButton>
             </div>
           </div>
         </SectionCarousel.Item>
@@ -905,6 +909,10 @@ export default function AdminOverview() {
                   }} 
                 />
               </AccordionButton>
+
+              <AccordionButton id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3} isOpen={openSubSection === 'canvasser-leaderboard'} onToggle={toggleSubSection}>
+                <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
+              </AccordionButton>
             </div>
           </div>
         </SectionCarousel.Item>
@@ -916,15 +924,6 @@ export default function AdminOverview() {
           </div>
         </SectionCarousel.Item>
 
-        {/* Sales Leaderboard */}
-        <SectionCarousel.Item id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy}>
-          <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
-        </SectionCarousel.Item>
-
-        {/* Canvasser Leaderboard */}
-        <SectionCarousel.Item id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3}>
-          <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
-        </SectionCarousel.Item>
       </SectionCarousel>
 
       <UserStatsModal

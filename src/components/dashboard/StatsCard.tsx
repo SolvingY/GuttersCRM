@@ -19,7 +19,7 @@ export function StatsCard({ title, value, icon: Icon, trend, className, valueCla
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] sm:text-sm text-muted-foreground leading-tight break-words">{title}</p>
-          <p className={cn('text-lg sm:text-3xl font-heading mt-1 break-words', valueClassName || 'text-foreground')}>{value}</p>
+          <p className={cn('text-base sm:text-3xl font-heading mt-1 whitespace-nowrap', valueClassName || 'text-foreground')}>{value}</p>
           {trend && (
             <p
               className={cn(
