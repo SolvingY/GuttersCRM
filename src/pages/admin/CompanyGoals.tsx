@@ -98,7 +98,7 @@ export default function CompanyGoals() {
   const monthlyBreakdown = Array.from({ length: monthsElapsedSinceFiscalStart }, (_, i) => {
     const monthDate = addMonths(fiscalStart, i);
     const monthKey = format(monthDate, 'yyyy-MM-dd');
-    const entry = adSpendYTD.find(e => e.month === monthKey);
+    const entry = adSpendYTD.find(e => (e.month || '').substring(0, 10) === monthKey);
     return {
       month: monthKey,
       label: format(monthDate, 'MMMM yyyy'),
