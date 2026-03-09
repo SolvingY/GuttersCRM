@@ -673,6 +673,39 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Login History Section */}
+          {loginHistory.length > 0 && (
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 w-full text-left text-sm font-heading uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
+                  <Clock className="w-4 h-4" />
+                  Login History ({loginHistory.length})
+                  <ChevronDown className="w-3.5 h-3.5 ml-auto" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 max-h-48 overflow-y-auto border rounded-md">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Date</th>
+                        <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loginHistory.map((entry: any) => (
+                        <tr key={entry.id} className="border-b last:border-0">
+                          <td className="px-3 py-1.5">{format(new Date(entry.logged_in_at), "MMM d, yyyy")}</td>
+                          <td className="px-3 py-1.5">{format(new Date(entry.logged_in_at), "h:mm a")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {/* Onboarding Status Section */}
           {allOnboardingSteps.length > 0 && (() => {
             const total = allOnboardingSteps.length;
