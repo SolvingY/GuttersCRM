@@ -864,11 +864,13 @@ export default function CompanyGoals() {
 
       <AdSpendDialog
         open={adSpendDialogOpen}
-        onOpenChange={setAdSpendDialogOpen}
-        month={adSpendEditMonth || ''}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['ad-spend-ytd'] });
+        onOpenChange={(open) => {
+          setAdSpendDialogOpen(open);
+          if (!open) {
+            queryClient.invalidateQueries({ queryKey: ['ad-spend-ytd'] });
+          }
         }}
+        initialMonth={adSpendEditMonth || undefined}
       />
     </div>
   );
