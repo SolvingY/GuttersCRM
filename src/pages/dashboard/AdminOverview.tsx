@@ -960,15 +960,8 @@ export default function AdminOverview() {
             </div>
           )}
 
-          <Collapsible open={canvasserPerfOpen} onOpenChange={setCanvasserPerfOpen}>
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="p-4 border-b border-border">
-              <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
-                {canvasserPerfOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                <h3 className="text-lg font-heading text-foreground">Canvasser Performance</h3>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
+          <AccordionButton id="canvasser-perf" title="Canvasser Performance" icon={Users} isOpen={openSection === "canvasser-perf"} onToggle={toggleSection}>
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
             {canvasserDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No canvasser data available yet.</p>
