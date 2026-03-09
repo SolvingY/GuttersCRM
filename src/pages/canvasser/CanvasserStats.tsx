@@ -572,8 +572,8 @@ export default function CanvasserStats() {
           )}
         </SectionCarousel.Item>
       </SectionCarousel>
-          <>
-                  <div className="overflow-x-auto">
+
+
                     <Table>
                       <TableHeader>
                         <TableRow>
