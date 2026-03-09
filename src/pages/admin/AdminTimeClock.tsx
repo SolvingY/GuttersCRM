@@ -781,7 +781,7 @@ export default function AdminTimeClock() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddZoneModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddZone} disabled={savingZone || !zoneName || !zoneLat || !zoneLng}>{savingZone ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Zone</Button>
+            <Button onClick={handleAddZone} disabled={savingZone || !zoneName || !parsedCoords}>{savingZone ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Zone</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
