@@ -110,55 +110,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
       setActiveShift(active as Shift);
       setElapsed(Date.now() - new Date(active.clock_in_at).getTime());
       
-      const hoursOpen = (Date.now() - new Date(active.clock_in_at).getTime()) / 3600000;
-      
-      if (hoursOpen > 4 && active.status === "active") {
-        // Auto clock-out: cap at 4 hours, close the shift
-        const cappedHours = 4;
-        const clockOutTime = new Date(new Date(active.clock_in_at).getTime() + 4 * 3600000).toISOString();
-
-        await supabase
-          .from("canvasser_shifts")
-          .update({
-            clock_out_at: clockOutTime,
-            hours_worked: cappedHours,
-            status: "auto_closed",
-            flagged_reason: "Auto clock-out — shift exceeded 4 hours without manual close",
-          })
-          .eq("id", active.id);
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        // Record hours for the canvasser (no doors/convos since they didn't submit)
-        await updateCanvasserHours(
-          user.id,
-          new Date(active.clock_in_at),
-          cappedHours,
-          0, 0, 0, 0
-        );
-
-        // Notify supervisors
-        await supabase.functions.invoke("notify-auto-clockout", {
-          body: {
-            canvasserId: user.id,
-            canvasserName: profile?.full_name || "Unknown",
-            clockInAt: active.clock_in_at,
-            hoursWorked: cappedHours,
-          },
-        });
-
-        toast.warning("Your shift was auto-closed after 4 hours. Please clock in again if needed.");
-        setActiveShift(null);
-        setIsFlagged(false);
-        fetchShifts();
-        onShiftChange?.();
-        setLoading(false);
-        return;
-      } else if (active.status === "flagged") {
+      if (active.status === "flagged") {
         setIsFlagged(true);
       }
     } else {

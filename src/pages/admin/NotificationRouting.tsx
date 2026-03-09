@@ -16,7 +16,6 @@ const NOTIFICATION_TYPES: { key: string; label: string; description: string }[] 
   { key: 'new_lead', label: 'New Internet Leads', description: 'When a new quote request is submitted' },
   { key: 'lead_assigned', label: 'Lead Assignments', description: 'When a lead is assigned to a rep' },
   { key: 'flagged_shift', label: 'Flagged Shifts', description: 'When a canvasser shift is flagged' },
-  { key: 'auto_clockout', label: 'Auto Clock-Out', description: 'When a shift is auto-closed after 4 hours' },
 ];
 
 interface RoutingEntry {

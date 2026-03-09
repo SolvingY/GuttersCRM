@@ -88,36 +88,7 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
       setActiveShift(active as Shift);
       setElapsed(Date.now() - new Date(active.clock_in_at).getTime());
 
-      const hoursOpen = (Date.now() - new Date(active.clock_in_at).getTime()) / 3600000;
-      if (hoursOpen > 4 && active.status === "active") {
-        const cappedHours = 4;
-        const clockOutTime = new Date(new Date(active.clock_in_at).getTime() + 4 * 3600000).toISOString();
-
-        await (supabase.from("production_shifts") as any)
-          .update({
-            clock_out_at: clockOutTime,
-            hours_worked: cappedHours,
-            status: "auto_closed",
-            flagged_reason: "Auto clock-out — shift exceeded 4 hours",
-          })
-          .eq("id", active.id);
-
-        // Upsert hours to daily log
-        const today = new Date().toISOString().split("T")[0];
-        await (supabase.from("production_daily_logs") as any)
-          .upsert(
-            { user_id: user.id, log_date: today, hours_worked: cappedHours },
-            { onConflict: "user_id,log_date" }
-          );
-
-        toast.warning("Your shift was auto-closed after 4 hours.");
-        setActiveShift(null);
-        setIsFlagged(false);
-        fetchShifts();
-        onShiftChange?.();
-        setLoading(false);
-        return;
-      } else if (active.status === "flagged") {
+      if (active.status === "flagged") {
         setIsFlagged(true);
       }
     } else {
