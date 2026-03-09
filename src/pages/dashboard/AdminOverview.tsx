@@ -720,9 +720,9 @@ export default function AdminOverview() {
           {/* Revenue Analytics */}
           <RevenueAnalyticsWidget />
 
-          {/* Contract Source Comparison Card */}
-          <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSection === "contract-sources"} onToggle={toggleSection}>
-            <div>
+          <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+            <SectionCarousel.Item id="contract-sources" title="Contract Sources" icon={GitCompare}>
+              <div>
                 {(() => {
                   const totalSelfGenContracts = aggregates.totalSelfGen;
                   const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
@@ -773,30 +773,16 @@ export default function AdminOverview() {
                     </div>
                   );
                 })()}
-            </div>
-          </AccordionButton>
-
-          {usersNeedingAttention.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-                <h3 className="font-semibold text-red-600 dark:text-red-400">
-                  {usersNeedingAttention.length} User{usersNeedingAttention.length > 1 ? 's' : ''} Need{usersNeedingAttention.length === 1 ? 's' : ''} Attention
-                </h3>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Users with Lead-to-Close % below 30% or Avg Job Size below $20k are highlighted below.
-              </p>
-            </div>
-          )}
+            </SectionCarousel.Item>
 
-          <AccordionButton id="sales-perf" title="Sales Rep Performance" icon={TrendingUp} isOpen={openSection === "sales-perf"} onToggle={toggleSection}>
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-            {userDetails.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">No sales rep data available yet.</p>
-              </div>
-            ) : (
+            <SectionCarousel.Item id="sales-perf" title="Sales Rep Performance" icon={TrendingUp}>
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+              {userDetails.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-muted-foreground">No sales rep data available yet.</p>
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50">
