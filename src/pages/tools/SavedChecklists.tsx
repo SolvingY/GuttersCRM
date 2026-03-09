@@ -50,6 +50,7 @@ export default function SavedChecklists() {
   const [assigningJobId, setAssigningJobId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("Team Member");
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [checklistTemplate, setChecklistTemplate] = useState<{ title: string; items: Record<string, string> } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -140,6 +141,29 @@ export default function SavedChecklists() {
       setPhotoUrls(urls);
     };
     loadPhotos();
+  }, [detailItem]);
+
+  // Load checklist template for production checklists
+  useEffect(() => {
+    if (!detailItem || detailItem.type !== "production_checklist") { setChecklistTemplate(null); return; }
+    const checklistId = detailItem.fullData?.checklistId;
+    if (!checklistId) { setChecklistTemplate(null); return; }
+
+    const loadTemplate = async () => {
+      const { data } = await (supabase.from("production_checklists") as any)
+        .select("title, checklist_items")
+        .eq("id", checklistId)
+        .single();
+      if (data) {
+        const itemMap: Record<string, string> = {};
+        const items = Array.isArray(data.checklist_items) ? data.checklist_items : [];
+        items.forEach((item: any) => {
+          if (item.id && item.label) itemMap[item.id] = item.label;
+        });
+        setChecklistTemplate({ title: data.title, items: itemMap });
+      }
+    };
+    loadTemplate();
   }, [detailItem]);
 
   const handleAssignJob = async (item: SavedItem, job: { id: string; label: string } | null) => {
@@ -337,13 +361,18 @@ export default function SavedChecklists() {
                 {/* Checklist Responses (Production) */}
                 {detailItem.type === "production_checklist" && detailItem.fullData?.responses && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-foreground">Checklist Items</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {checklistTemplate?.title ? `${checklistTemplate.title} — Items` : "Checklist Items"}
+                    </h3>
                     <div className="space-y-1">
-                      {Object.entries(detailItem.fullData.responses as Record<string, boolean>).map(([key, checked]) => (
-                        <div key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className={checked ? "text-green-500" : "text-red-400"}>{checked ? "✓" : "✗"}</span> {key}
-                        </div>
-                      ))}
+                      {Object.entries(detailItem.fullData.responses as Record<string, boolean>).map(([key, checked]) => {
+                        const label = checklistTemplate?.items[key] || key;
+                        return (
+                          <div key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className={checked ? "text-green-500" : "text-red-400"}>{checked ? "✓" : "✗"}</span> {label}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
