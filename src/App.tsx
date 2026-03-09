@@ -230,6 +230,7 @@ const App = () => (
               <Route path="leaderboard" element={<ProductionLeaderboard />} />
               <Route path="tools" element={<ProductionToolsHub />} />
               <Route path="tools/checklists" element={<ProductionChecklists />} />
+              <Route path="tools/hail-assessment" element={<CommercialHailAssessment />} />
               <Route path="pit" element={<ProductionPit />} />
               <Route path="points-history" element={<ProductionPointsHistory />} />
               <Route path="settings" element={<ProductionSettings />} />
