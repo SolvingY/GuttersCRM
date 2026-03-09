@@ -520,8 +520,6 @@ export default function MyStats() {
             </SectionCarousel.Item>
           </SectionCarousel>
 
-          {/* 2. Key Metrics */}
-          <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Row 1: Approved Revenue | Avg Job Size */}
                 <StatsCard
