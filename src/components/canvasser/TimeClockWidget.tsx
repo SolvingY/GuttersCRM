@@ -263,12 +263,14 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     try {
       const loc = await getLocation();
       if (!loc) {
-        toast.warning("Location not captured — enable location for tracking");
+        toast.warning("Location not available — geolocation API not supported");
+        await performClockIn(null);
+      } else if (loc.errorMsg) {
+        toast.warning(loc.errorMsg);
         await performClockIn(null);
       } else {
         const inZone = await checkGeofence(loc.lat, loc.lng);
         if (!inZone) {
-          // Show geofence warning — let user confirm or cancel
           setPendingClockIn(loc);
           setGeofenceWarning(true);
         } else {
