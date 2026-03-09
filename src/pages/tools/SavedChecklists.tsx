@@ -207,9 +207,9 @@ export default function SavedChecklists() {
           checklistType={sendItem.type}
           submissionId={sendItem.id}
           propertyName={sendItem.propertyName}
-          inspectorName={sendItem.inspectorName || profile?.full_name || "Inspector"}
+          inspectorName={sendItem.inspectorName || displayName}
           result={sendItem.result}
-          senderName={profile?.full_name || "Team Member"}
+          senderName={displayName}
           onSent={() => queryClient.invalidateQueries({ queryKey: ["saved-checklists"] })}
         />
       )}
