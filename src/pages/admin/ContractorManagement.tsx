@@ -34,7 +34,7 @@ import {
 import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
 import { useAuth } from "@/hooks/useAuth";
 
-type TabValue = "active" | "onboarding" | "archived";
+type TabValue = "active" | "onboarding" | "archived" | "hail-assessments";
 
 const roleColors: Record<string, string> = {
   admin: "bg-accent text-accent-foreground",
