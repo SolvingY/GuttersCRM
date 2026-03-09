@@ -100,7 +100,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
           salesRank: isSalesRep ? salesRank : undefined,
           canvasserRank: isCanvasser ? canvasserRank : undefined,
           isAdminOnly,
-          hiddenFromLeaderboard: (isSalesRep || isCanvasser || isSupplementer) ? hiddenFromLeaderboard : false,
+          hiddenFromLeaderboard: (isSalesRep || isCanvasser || isSupplementer || isProduction) ? hiddenFromLeaderboard : false,
         },
       });
 
