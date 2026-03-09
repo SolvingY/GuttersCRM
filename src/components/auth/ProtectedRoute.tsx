@@ -7,11 +7,12 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
   requireCanvasser?: boolean;
   requireSupplementer?: boolean;
+  requireProduction?: boolean;
   skipOnboardingCheck?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false, requireSupplementer = false, skipOnboardingCheck = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, hasSupplementerRole, isSupplementerOnly, activeView, onboardingComplete, hasPendingMandatoryActions } = useAuth();
+export function ProtectedRoute({ children, requireAdmin = false, requireCanvasser = false, requireSupplementer = false, requireProduction = false, skipOnboardingCheck = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin, isCanvasser, isDualRole, hasSalesRole, hasCanvasserRole, hasSupplementerRole, hasProductionRole, isSupplementerOnly, isProductionOnly, activeView, onboardingComplete, hasPendingMandatoryActions } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -38,8 +39,11 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Onboarding gate: non-admin users with incomplete onboarding get redirected
-  // Skip this check for the /onboarding route itself and for admins
+  if (requireProduction && !hasProductionRole && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Onboarding gate
   if (!skipOnboardingCheck && !isAdmin && !onboardingComplete) {
     const isOnboardingRoute = location.pathname.startsWith('/onboarding');
     if (!isOnboardingRoute) {
@@ -47,8 +51,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     }
   }
 
-  // Mandatory actions gate: non-admin users with blocking mandatory actions
-  // get redirected to the mandatory actions page
+  // Mandatory actions gate
   if (!skipOnboardingCheck && !isAdmin && hasPendingMandatoryActions) {
     const isMandatoryRoute = location.pathname.startsWith('/mandatory-actions');
     const isOnboardingRoute = location.pathname.startsWith('/onboarding');
@@ -57,7 +60,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     }
   }
 
-  // Handle multi-role users - they can access portals they have roles for
+  // Handle multi-role users
   if (isDualRole) {
     return <>{children}</>;
   }
@@ -65,7 +68,18 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
   // Allow all roles to access /dashboard/tools
   const isToolsRoute = location.pathname.startsWith('/dashboard/tools');
 
-  // Redirect supplementer-only users away from sales/canvasser dashboards (except tools)
+  // Redirect production-only users
+  if (isProductionOnly && location.pathname.startsWith('/dashboard') && !isToolsRoute) {
+    return <Navigate to="/production" replace />;
+  }
+  if (isProductionOnly && location.pathname.startsWith('/canvasser')) {
+    return <Navigate to="/production" replace />;
+  }
+  if (isProductionOnly && location.pathname.startsWith('/supplementer')) {
+    return <Navigate to="/production" replace />;
+  }
+
+  // Redirect supplementer-only users
   if (isSupplementerOnly && location.pathname.startsWith('/dashboard') && !isToolsRoute) {
     return <Navigate to="/supplementer" replace />;
   }
@@ -73,18 +87,19 @@ export function ProtectedRoute({ children, requireAdmin = false, requireCanvasse
     return <Navigate to="/supplementer" replace />;
   }
 
-  // Redirect canvasser-only users away from sales dashboard to canvasser dashboard (except tools)
+  // Redirect canvasser-only users
   if (isCanvasser && location.pathname.startsWith('/dashboard') && !isToolsRoute) {
     return <Navigate to="/canvasser" replace />;
   }
 
-  // Redirect sales-only users away from canvasser portal
+  // Redirect sales-only users away from other portals
   if (!hasCanvasserRole && location.pathname.startsWith('/canvasser')) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  // Redirect non-supplementer users away from supplementer portal
   if (!hasSupplementerRole && location.pathname.startsWith('/supplementer')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  if (!hasProductionRole && location.pathname.startsWith('/production')) {
     return <Navigate to="/dashboard" replace />;
   }
 

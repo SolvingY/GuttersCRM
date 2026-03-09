@@ -214,7 +214,25 @@ const App = () => (
               <Route path="settings" element={<SupplementerSettings />} />
             </Route>
 
-            {/* Admin Portal Routes */}
+            {/* Production Portal Routes */}
+            <Route
+              path="/production"
+              element={
+                <ProtectedRoute requireProduction>
+                  <ProductionLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/production/stats" replace />} />
+              <Route path="stats" element={<ProductionDashboard />} />
+              <Route path="leaderboard" element={<ProductionLeaderboard />} />
+              <Route path="tools" element={<ProductionToolsHub />} />
+              <Route path="tools/checklists" element={<ProductionChecklists />} />
+              <Route path="pit" element={<ProductionPit />} />
+              <Route path="points-history" element={<ProductionPointsHistory />} />
+              <Route path="settings" element={<ProductionSettings />} />
+            </Route>
+
             <Route
               path="/admin"
               element={
