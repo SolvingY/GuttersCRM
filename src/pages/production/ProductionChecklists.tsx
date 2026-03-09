@@ -61,6 +61,11 @@ export default function ProductionChecklists() {
   const [checklistNotes, setChecklistNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Job linking & homeowner
+  const [linkedJob, setLinkedJob] = useState<{ id: string; label: string } | null>(null);
+  const [homeowner, setHomeowner] = useState({ name: "", phone: "", email: "" });
+  const [reportNotes, setReportNotes] = useState("");
+
   useEffect(() => {
     if (user) fetchData();
   }, [user]);
