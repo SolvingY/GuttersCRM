@@ -1030,8 +1030,7 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
       {/* Internet / Call-In Lead Metrics */}
       <Collapsible open={internetMetricsOpen} onOpenChange={setInternetMetricsOpen}>
