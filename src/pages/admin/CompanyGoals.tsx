@@ -879,8 +879,7 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
       {/* Additional Metrics Cards with Goal Tracking */}
       <Collapsible open={additionalMetricsOpen} onOpenChange={setAdditionalMetricsOpen}>
