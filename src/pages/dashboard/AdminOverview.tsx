@@ -900,7 +900,8 @@ export default function AdminOverview() {
               </div>
             )}
             </div>
-          </AccordionButton>
+            </SectionCarousel.Item>
+          </SectionCarousel>
         </TabsContent>
 
         {/* Canvassers Tab */}
