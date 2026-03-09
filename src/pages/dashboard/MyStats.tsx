@@ -245,23 +245,6 @@ export default function MyStats() {
     return 'text-red-600';
   };
 
-  const CollapsibleHeader = ({ 
-    isOpen, 
-    title, 
-    icon: Icon 
-  }: { 
-    isOpen: boolean; 
-    title: string; 
-    icon: React.ElementType;
-  }) => (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-accent" />
-        <span className="text-lg font-semibold">{title}</span>
-      </div>
-      {isOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-    </div>
-  );
 
   return (
     <div className="space-y-4">
