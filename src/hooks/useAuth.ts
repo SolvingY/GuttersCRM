@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer';
+type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer' | 'production';
 
 interface AuthState {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
-  activeView: 'sales' | 'canvasser' | 'supplementer';
+  activeView: 'sales' | 'canvasser' | 'supplementer' | 'production';
   onboardingComplete: boolean;
   hasPendingMandatoryActions: boolean;
   sessionLoading: boolean;
@@ -191,7 +191,7 @@ export function useAuth() {
     return { error: null };
   };
 
-  const setActiveView = async (view: 'sales' | 'canvasser' | 'supplementer') => {
+  const setActiveView = async (view: 'sales' | 'canvasser' | 'supplementer' | 'production') => {
     setAuthState(prev => ({ ...prev, activeView: view }));
     
     // Save preference to database
@@ -208,11 +208,14 @@ export function useAuth() {
   const hasSalesRole = authState.roles.includes('user') || authState.roles.includes('admin');
   const hasCanvasserRole = authState.roles.includes('canvasser');
   const hasSupplementerRole = authState.roles.includes('supplementer');
-  const isDualRole = (hasSalesRole && hasCanvasserRole) || (hasSalesRole && hasSupplementerRole) || (hasCanvasserRole && hasSupplementerRole);
-  const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !isAdmin;
+  const hasProductionRole = authState.roles.includes('production');
+  const roleCount = [hasSalesRole, hasCanvasserRole, hasSupplementerRole, hasProductionRole].filter(Boolean).length;
+  const isDualRole = roleCount >= 2;
+  const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !hasProductionRole && !isAdmin;
+  const isProductionOnly = hasProductionRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !isAdmin;
   
   // Legacy compatibility - primary role for routing decisions
-  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : 'user';
+  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : hasProductionRole && !hasSalesRole ? 'production' : 'user';
   const isCanvasser = hasCanvasserRole && !hasSalesRole && !isAdmin;
 
   const refreshOnboardingStatus = useCallback(async () => {
@@ -239,7 +242,9 @@ export function useAuth() {
     hasSalesRole,
     hasCanvasserRole,
     hasSupplementerRole,
+    hasProductionRole,
     isSupplementerOnly,
+    isProductionOnly,
     isDualRole,
     activeView: authState.activeView,
     onboardingComplete: authState.onboardingComplete,

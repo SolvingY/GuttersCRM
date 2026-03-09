@@ -2,20 +2,21 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Briefcase, Users, FileText } from 'lucide-react';
+import { Briefcase, Users, FileText, HardHat } from 'lucide-react';
 
 export function RoleViewToggle() {
-  const { isDualRole, activeView, setActiveView, hasSalesRole, hasCanvasserRole, hasSupplementerRole } = useAuth();
+  const { isDualRole, activeView, setActiveView, hasSalesRole, hasCanvasserRole, hasSupplementerRole, hasProductionRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Sync activeView with current URL to prevent dead-click on already-selected toggle
   useEffect(() => {
     const path = location.pathname;
     if (path.startsWith('/supplementer') && activeView !== 'supplementer') {
       setActiveView('supplementer');
     } else if (path.startsWith('/canvasser') && activeView !== 'canvasser') {
       setActiveView('canvasser');
+    } else if (path.startsWith('/production') && activeView !== 'production') {
+      setActiveView('production');
     } else if (path.startsWith('/dashboard') && activeView !== 'sales') {
       setActiveView('sales');
     }
@@ -26,21 +27,17 @@ export function RoleViewToggle() {
   const handleViewChange = (value: string) => {
     if (!value) return;
     
-    const newView = value as 'sales' | 'canvasser' | 'supplementer';
+    const newView = value as 'sales' | 'canvasser' | 'supplementer' | 'production';
     setActiveView(newView);
     
     if (newView === 'canvasser') {
-      if (!location.pathname.startsWith('/canvasser')) {
-        navigate('/canvasser');
-      }
+      if (!location.pathname.startsWith('/canvasser')) navigate('/canvasser');
     } else if (newView === 'supplementer') {
-      if (!location.pathname.startsWith('/supplementer')) {
-        navigate('/supplementer');
-      }
+      if (!location.pathname.startsWith('/supplementer')) navigate('/supplementer');
+    } else if (newView === 'production') {
+      if (!location.pathname.startsWith('/production')) navigate('/production');
     } else if (newView === 'sales') {
-      if (!location.pathname.startsWith('/dashboard')) {
-        navigate('/dashboard');
-      }
+      if (!location.pathname.startsWith('/dashboard')) navigate('/dashboard');
     }
   };
 
@@ -64,6 +61,12 @@ export function RoleViewToggle() {
           <ToggleGroupItem value="supplementer" aria-label="Supplementer View" className="text-xs gap-1.5 px-2">
             <FileText className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Supplementer</span>
+          </ToggleGroupItem>
+        )}
+        {hasProductionRole && (
+          <ToggleGroupItem value="production" aria-label="Production View" className="text-xs gap-1.5 px-2">
+            <HardHat className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Production</span>
           </ToggleGroupItem>
         )}
       </ToggleGroup>
