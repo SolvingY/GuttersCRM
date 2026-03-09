@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Loader2, ClipboardCheck, CheckCircle, MapPin } from "lucide-react";
+import { Loader2, ClipboardCheck, CheckCircle, MapPin, Save } from "lucide-react";
 import { format } from "date-fns";
+import JobSearchInput from "@/components/shared/JobSearchInput";
+import HomeownerFields from "@/components/shared/HomeownerFields";
 
 interface ChecklistItem {
   id: string;
