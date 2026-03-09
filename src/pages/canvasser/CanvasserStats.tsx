@@ -315,52 +315,23 @@ export default function CanvasserStats() {
                         .toFixed(1)} hrs
                     </span>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+          </>
+        )}
+      </AccordionButton>
 
       {/* 1. Contests */}
-      <Collapsible open={contestsOpen} onOpenChange={setContestsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={contestsOpen} title="Contests" icon={Target} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <CanvasserActiveContestWidget />
-        </CollapsibleContent>
-      </Collapsible>
+      <AccordionButton id="contests" title="Contests" icon={Target} isOpen={openSection === "contests"} onToggle={toggleSection}>
+        <CanvasserActiveContestWidget />
+      </AccordionButton>
 
       {/* 2. YTD Point Rankings */}
-      <Collapsible open={rankingOpen} onOpenChange={setRankingOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={rankingOpen} title="YTD Point Rankings" icon={TrendingUp} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <CanvasserYTDRankingWidget />
-        </CollapsibleContent>
-      </Collapsible>
+      <AccordionButton id="ranking" title="YTD Point Rankings" icon={TrendingUp} isOpen={openSection === "ranking"} onToggle={toggleSection}>
+        <CanvasserYTDRankingWidget />
+      </AccordionButton>
 
-      {/* 3. Key Metrics (Using StatsCard for consistency) */}
-      <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={metricsOpen} title="Key Metrics" icon={Star} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 3. Key Metrics */}
+      <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard title="Leads Set" value={metrics?.leads_set ?? 0} icon={Target} />
             <StatsCard title="Leads Closed" value={metrics?.leads_closed ?? 0} icon={CheckCircle} />
             <StatsCard title="Leads with Damage" value={metrics?.leads_with_damage ?? 0} icon={AlertTriangle} />
