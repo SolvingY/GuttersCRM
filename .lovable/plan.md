@@ -1,59 +1,42 @@
 
 
-# Fix: Canvasser Hours Not Recording + Backfill
+# Add Edit Button to Shift History
 
-## Root Cause
-RLS policies on `daily_canvasser_metric_entries` and `weekly_canvasser_metrics` only grant write access to admins. The `canvasser_metrics` table has a narrow update policy limited to `display_name`. When canvassers clock out, `updateCanvasserHours()` runs in their browser session and silently fails on all three tables.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Affected Shifts Today (2026-03-09)
-- **Sean Arvelo** — completed shift: 1.38h (clock-out at 18:58), currently clocked in again
-- **Devanae** — completed shift: 0.02h (clock-out at 17:36), currently clocked in again
-- Neither has any `daily_canvasser_metric_entries` or `weekly_canvasser_metrics` rows for today
+## Changes
 
-## Fix 1 — Database Migration (RLS Policies)
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-Add INSERT + UPDATE policies so canvassers can write their own rows:
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-```sql
--- daily_canvasser_metric_entries
-CREATE POLICY "Canvassers insert own daily entries"
-  ON daily_canvasser_metric_entries FOR INSERT
-  TO authenticated WITH CHECK (auth.uid() = user_id);
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-CREATE POLICY "Canvassers update own daily entries"
-  ON daily_canvasser_metric_entries FOR UPDATE
-  TO authenticated USING (auth.uid() = user_id);
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
--- weekly_canvasser_metrics
-CREATE POLICY "Canvassers insert own weekly metrics"
-  ON weekly_canvasser_metrics FOR INSERT
-  TO authenticated WITH CHECK (auth.uid() = user_id);
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-CREATE POLICY "Canvassers update own weekly metrics"
-  ON weekly_canvasser_metrics FOR UPDATE
-  TO authenticated USING (auth.uid() = user_id);
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
--- canvasser_metrics: drop narrow policy, add full update
-DROP POLICY "Canvassers can update their own display_name" ON canvasser_metrics;
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-CREATE POLICY "Canvassers update own metrics"
-  ON canvasser_metrics FOR UPDATE
-  TO authenticated USING (auth.uid() = user_id);
-```
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-## Fix 2 — Backfill Sean & Devanae's Completed Shifts
+## Summary
 
-Use the data insert tool to write the missing metric entries for their completed shifts today. This covers all three tiers (daily, weekly, YTD) so their tracker shows the correct hours immediately — they won't need to re-clock.
-
-- **Sean**: +1.38h to daily (2026-03-09), weekly (current week), and YTD
-- **Devanae**: +0.02h (round up to 0.25h per the quarter-hour logic in the code) to all three tiers
-
-## No Code Changes Needed
-The `updateCanvasserHours` utility and `TimeClockWidget` are correct — they just need the database to stop blocking writes.
-
-## Files Changed
-| Target | Change |
-|--------|--------|
-| Migration SQL | 5 new RLS policies + drop 1 old narrow policy |
-| Data insert | Backfill 3-tier metrics for Sean and Devanae |
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
