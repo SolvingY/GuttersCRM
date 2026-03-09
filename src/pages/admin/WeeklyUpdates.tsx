@@ -179,16 +179,136 @@ export default function WeeklyUpdates() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  // Load saved daily entries when date changes
+  useEffect(() => {
+    if (users.length === 0 && canvassers.length === 0) return;
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+    const loadSavedEntries = async () => {
+      // Load sales rep daily entries
+      if (users.length > 0) {
+        const { data: salesDaily } = await supabase
+          .from('daily_user_metric_entries')
+          .select('*')
+          .eq('entry_date', dateStr)
+          .in('user_id', users.map(u => u.user_id));
+
+        if (salesDaily && salesDaily.length > 0) {
+          const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
+          setWeeklyEntries(prev => prev.map(entry => {
+            const saved = dailyMap.get(entry.userId);
+            if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
+            return {
+              ...entry,
+              weeklyApprovedRevenue: saved.approved_revenue_delta ? String(saved.approved_revenue_delta) : '',
+              weeklyLeads: saved.leads_delta ? String(saved.leads_delta) : '',
+              weeklyClosedDeals: saved.closed_deals_delta ? String(saved.closed_deals_delta) : '',
+              weeklySelfGeneratedDeals: saved.self_generated_deals_delta ? String(saved.self_generated_deals_delta) : '',
+              weeklyCanvassLeads: saved.canvass_leads_delta ? String(saved.canvass_leads_delta) : '',
+              weeklyCanvassDealsClose: saved.canvass_deals_closed_delta ? String(saved.canvass_deals_closed_delta) : '',
+              weeklyCollections: saved.collections_delta ? String(saved.collections_delta) : '',
+              weeklyEarnings: saved.earnings_delta ? String(saved.earnings_delta) : '',
+            };
+          }));
+        } else {
+          setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
+        }
+      }
+
+      // Load canvasser daily entries
+      if (canvassers.length > 0) {
+        const { data: canvasserDaily } = await supabase
+          .from('daily_canvasser_metric_entries')
+          .select('*')
+          .eq('entry_date', dateStr)
+          .in('user_id', canvassers.map(c => c.user_id));
+
+        if (canvasserDaily && canvasserDaily.length > 0) {
+          const dailyMap = new Map(canvasserDaily.map(d => [d.user_id, d]));
+          setCanvasserEntries(prev => prev.map(entry => {
+            const saved = dailyMap.get(entry.userId);
+            if (!saved) return { ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' };
+            return {
+              ...entry,
+              weeklyLeadsSet: saved.leads_set_delta ? String(saved.leads_set_delta) : '',
+              weeklyLeadsClosed: saved.leads_closed_delta ? String(saved.leads_closed_delta) : '',
+              weeklyLeadsWithDamage: saved.leads_with_damage_delta ? String(saved.leads_with_damage_delta) : '',
+              weeklyLeadsWithoutDamage: saved.leads_without_damage_delta ? String(saved.leads_without_damage_delta) : '',
+              weeklyConversationsHad: saved.conversations_had_delta ? String(saved.conversations_had_delta) : '',
+              weeklyNotInterested: saved.not_interested_delta ? String(saved.not_interested_delta) : '',
+              weeklyCancelledLeads: saved.cancelled_leads_delta ? String(saved.cancelled_leads_delta) : '',
+              weeklyHoursWorked: saved.hours_worked_delta ? String(saved.hours_worked_delta) : '',
+              weeklyIncome: saved.income_delta ? String(saved.income_delta) : '',
+              weeklyDoorsKnocked: saved.doors_knocked_delta ? String(saved.doors_knocked_delta) : '',
+            };
+          }));
+        } else {
+          setCanvasserEntries(prev => prev.map(entry => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
+        }
+      }
+    };
+
+    loadSavedEntries();
+  }, [selectedDate, users.length, canvassers.length]);
+
+  // Autosave draft for a sales rep on blur
+  const saveSalesDraft = useCallback(async (entry: WeeklyEntry) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const { data: authUser } = await supabase.auth.getUser();
+    await supabase.from('daily_user_metric_entries').upsert({
+      user_id: entry.userId,
+      entry_date: dateStr,
+      approved_revenue_delta: parseFloat(entry.weeklyApprovedRevenue) || 0,
+      leads_delta: parseInt(entry.weeklyLeads) || 0,
+      closed_deals_delta: parseInt(entry.weeklyClosedDeals) || 0,
+      self_generated_deals_delta: parseInt(entry.weeklySelfGeneratedDeals) || 0,
+      canvass_leads_delta: parseInt(entry.weeklyCanvassLeads) || 0,
+      canvass_deals_closed_delta: parseInt(entry.weeklyCanvassDealsClose) || 0,
+      collections_delta: parseFloat(entry.weeklyCollections) || 0,
+      earnings_delta: parseFloat(entry.weeklyEarnings) || 0,
+      entered_by: authUser.user?.id,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,entry_date' });
+  }, [selectedDate]);
+
+  // Autosave draft for a canvasser on blur
+  const saveCanvasserDraft = useCallback(async (entry: CanvasserWeeklyEntry) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const { data: authUser } = await supabase.auth.getUser();
+    await supabase.from('daily_canvasser_metric_entries').upsert({
+      user_id: entry.userId,
+      entry_date: dateStr,
+      leads_set_delta: parseInt(entry.weeklyLeadsSet) || 0,
+      leads_closed_delta: parseInt(entry.weeklyLeadsClosed) || 0,
+      leads_with_damage_delta: parseInt(entry.weeklyLeadsWithDamage) || 0,
+      leads_without_damage_delta: parseInt(entry.weeklyLeadsWithoutDamage) || 0,
+      conversations_had_delta: parseInt(entry.weeklyConversationsHad) || 0,
+      not_interested_delta: parseInt(entry.weeklyNotInterested) || 0,
+      cancelled_leads_delta: parseInt(entry.weeklyCancelledLeads) || 0,
+      hours_worked_delta: parseFloat(entry.weeklyHoursWorked) || 0,
+      doors_knocked_delta: parseInt(entry.weeklyDoorsKnocked) || 0,
+      income_delta: parseFloat(entry.weeklyIncome) || 0,
+      entered_by: authUser.user?.id,
+      updated_at: new Date().toISOString(),
+    } as any, { onConflict: 'user_id,entry_date' });
+  }, [selectedDate]);
+
   const updateEntry = (userId: string, field: keyof WeeklyEntry, value: string) => {
     setWeeklyEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
+  };
+
+  const handleSalesBlur = (userId: string) => {
+    const entry = weeklyEntries.find(e => e.userId === userId);
+    if (entry) saveSalesDraft(entry);
   };
 
   const updateCanvasserEntry = (userId: string, field: keyof CanvasserWeeklyEntry, value: string) => {
     setCanvasserEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
   };
 
-  const updateSupplementerEntry = (userId: string, field: keyof SupplementerWeeklyEntry, value: string) => {
-    setSupplementerEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
+  const handleCanvasserBlur = (userId: string) => {
+    const entry = canvasserEntries.find(e => e.userId === userId);
+    if (entry) saveCanvasserDraft(entry);
   };
 
   const handleSaveAll = async () => {
