@@ -138,23 +138,29 @@ export default function CompanyGoals() {
   });
 
   const { data: internetClosedFromMetrics } = useQuery({
-    queryKey: ['internet-ltc-totals'],
+    queryKey: ['internet-ltc-totals', fyYearStart, fyYearEnd],
     queryFn: async () => {
-      const { data: metrics, error } = await supabase
-        .from('user_metrics')
-        .select('user_id, internet_leads, internet_leads_closed')
-        .order('metric_date', { ascending: false });
-      if (error) throw error;
-      const seen = new Set<string>();
-      let totalLeads = 0;
-      let totalClosed = 0;
-      for (const m of metrics || []) {
-        if (seen.has(m.user_id)) continue;
-        seen.add(m.user_id);
-        totalLeads += Number(m.internet_leads) || 0;
-        totalClosed += Number(m.internet_leads_closed) || 0;
-      }
-      return { totalLeads, totalClosed };
+      // Count all internet leads assigned within the fiscal year
+      const { count: totalLeads, error: leadsErr } = await supabase
+        .from('quote_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('lead_type', 'internet')
+        .not('assigned_to', 'is', null)
+        .gte('assigned_at', fyYearStart + 'T00:00:00')
+        .lte('assigned_at', fyYearEnd + 'T23:59:59');
+      if (leadsErr) throw leadsErr;
+
+      // Count internet contracts (won/scheduled/completed) within the fiscal year
+      const { count: totalClosed, error: closedErr } = await supabase
+        .from('quote_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('lead_type', 'internet')
+        .in('status', ['won', 'scheduled', 'completed'])
+        .gte('won_at', fyYearStart + 'T00:00:00')
+        .lte('won_at', fyYearEnd + 'T23:59:59');
+      if (closedErr) throw closedErr;
+
+      return { totalLeads: totalLeads || 0, totalClosed: totalClosed || 0 };
     },
   });
 
