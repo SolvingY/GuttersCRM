@@ -391,33 +391,14 @@ export default function CanvasserStats() {
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+          </div>
+        )}
+      </AccordionButton>
 
       {/* 4. Recent Weekly Updates */}
       {weeklyMetrics.length > 0 && (
-        <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="py-4">
-                <CollapsibleHeader isOpen={weeklyOpen} title="Recent Weekly Updates" icon={TrendingUp} />
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5" />
-                  <span>Points: 10 per lead closed, 5 per lead with damage, 1 per lead set</span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+        <AccordionButton id="weekly" title="Recent Weekly Updates" icon={TrendingUp} isOpen={openSection === "weekly"} onToggle={toggleSection}>
+          <div className="space-y-3">
                   {weeklyMetrics.slice(0, 4).map((week) => (
                     <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div className="space-y-1">
