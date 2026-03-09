@@ -86,6 +86,16 @@ const SupplementerSettings = lazy(() => import("./pages/supplementer/Supplemente
 const SupplementerPit = lazy(() => import("./pages/supplementer/SupplementerPit"));
 const SupplementerPointsHistory = lazy(() => import("./pages/supplementer/SupplementerPointsHistory"));
 
+// Production routes
+const ProductionLayout = lazy(() => import("./pages/production/ProductionLayout"));
+const ProductionDashboard = lazy(() => import("./pages/production/ProductionDashboard"));
+const ProductionLeaderboard = lazy(() => import("./pages/production/ProductionLeaderboard"));
+const ProductionToolsHub = lazy(() => import("./pages/production/ProductionToolsHub"));
+const ProductionChecklists = lazy(() => import("./pages/production/ProductionChecklists"));
+const ProductionPit = lazy(() => import("./pages/production/ProductionPit"));
+const ProductionPointsHistory = lazy(() => import("./pages/production/ProductionPointsHistory"));
+const ProductionSettings = lazy(() => import("./pages/production/ProductionSettings"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
