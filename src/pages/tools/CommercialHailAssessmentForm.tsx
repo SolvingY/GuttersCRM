@@ -60,6 +60,10 @@ export default function CommercialHailAssessmentForm() {
   const [submittedResult, setSubmittedResult] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  // Job linking & homeowner
+  const [linkedJob, setLinkedJob] = useState<{ id: string; label: string } | null>(null);
+  const [homeowner, setHomeowner] = useState({ name: "", phone: "", email: "" });
+
   const setMeta = (key: keyof FormState["meta"], value: string) =>
     setForm((f) => ({ ...f, meta: { ...f.meta, [key]: value } }));
 
