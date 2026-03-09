@@ -105,10 +105,10 @@ export default function UserRoles() {
       .from('canvasser_metrics')
       .select('user_id, canvasser_rank');
 
-    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser' | 'supplementer')[]>();
+    const rolesMap = new Map<string, ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production')[]>();
     for (const r of rolesData || []) {
       const existing = rolesMap.get(r.user_id) || [];
-      existing.push(r.role as 'admin' | 'user' | 'canvasser' | 'supplementer');
+      existing.push(r.role as 'admin' | 'user' | 'canvasser' | 'supplementer' | 'production');
       rolesMap.set(r.user_id, existing);
     }
 
