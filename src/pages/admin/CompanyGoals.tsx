@@ -754,13 +754,7 @@ export default function CompanyGoals() {
       </div>
       </AccordionButton>
 
-      {/* Progress Cards - Row 2: Contract Progress Cards */}
-      <Collapsible open={contractProgressOpen} onOpenChange={setContractProgressOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {contractProgressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Contract Progress</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="contracts" title="Contract Progress" icon={Target} isOpen={openSection === "contracts"} onToggle={toggleSection}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Canvasser Contracts Progress */}
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
