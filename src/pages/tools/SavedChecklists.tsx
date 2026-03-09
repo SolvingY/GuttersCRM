@@ -143,6 +143,29 @@ export default function SavedChecklists() {
     loadPhotos();
   }, [detailItem]);
 
+  // Load checklist template for production checklists
+  useEffect(() => {
+    if (!detailItem || detailItem.type !== "production_checklist") { setChecklistTemplate(null); return; }
+    const checklistId = detailItem.fullData?.checklistId;
+    if (!checklistId) { setChecklistTemplate(null); return; }
+
+    const loadTemplate = async () => {
+      const { data } = await (supabase.from("production_checklists") as any)
+        .select("title, checklist_items")
+        .eq("id", checklistId)
+        .single();
+      if (data) {
+        const itemMap: Record<string, string> = {};
+        const items = Array.isArray(data.checklist_items) ? data.checklist_items : [];
+        items.forEach((item: any) => {
+          if (item.id && item.label) itemMap[item.id] = item.label;
+        });
+        setChecklistTemplate({ title: data.title, items: itemMap });
+      }
+    };
+    loadTemplate();
+  }, [detailItem]);
+
   const handleAssignJob = async (item: SavedItem, job: { id: string; label: string } | null) => {
     if (!job || !user) return;
     const table = item.type === "hail_assessment" ? "commercial_hail_assessments" : "production_checklist_submissions";
