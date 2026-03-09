@@ -182,15 +182,32 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
   const checkGeofence = async (lat: number, lng: number): Promise<boolean> => {
     const { data: zones } = await supabase
       .from("geofence_work_zones")
-      .select("lat, lng, radius_meters")
+      .select("id, lat, lng, radius_meters")
       .eq("is_active", true);
 
-    if (!zones || zones.length === 0) {
-      // No zones configured — allow clock-in anywhere
-      return true;
-    }
+    if (!zones || zones.length === 0) return true;
 
-    return zones.some((zone: any) =>
+    // Fetch assignments to determine which zones apply to this user
+    const { data: myAssignments } = await supabase
+      .from("canvasser_zone_assignments")
+      .select("zone_id")
+      .eq("canvasser_id", user!.id);
+
+    const { data: allAssignments } = await supabase
+      .from("canvasser_zone_assignments")
+      .select("zone_id");
+
+    const myZoneIds = new Set((myAssignments as any[])?.map((a: any) => a.zone_id) || []);
+    const zonesWithAssignments = new Set((allAssignments as any[])?.map((a: any) => a.zone_id) || []);
+
+    // A zone applies if it has no assignments (global) or user is assigned to it
+    const applicableZones = zones.filter((z: any) =>
+      !zonesWithAssignments.has(z.id) || myZoneIds.has(z.id)
+    );
+
+    if (applicableZones.length === 0) return true;
+
+    return applicableZones.some((zone: any) =>
       distanceMeters(lat, lng, zone.lat, zone.lng) <= zone.radius_meters
     );
   };

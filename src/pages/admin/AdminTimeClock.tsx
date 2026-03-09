@@ -897,6 +897,29 @@ export default function AdminTimeClock() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Zone Assignment Modal */}
+      <Dialog open={assignZoneModalOpen} onOpenChange={setAssignZoneModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Assign Canvassers — {assigningZone?.name}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Select canvassers who should be restricted to this zone. Leave all unchecked to apply this zone to everyone.</p>
+          <div className="max-h-64 overflow-y-auto space-y-2">
+            {canvassers.map(c => (
+              <label key={c.userId} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                <Checkbox checked={assignedCanvasserIds.has(c.userId)} onCheckedChange={() => handleToggleCanvasserAssignment(c.userId)} />
+                <span className="text-sm text-foreground">{c.name}</span>
+              </label>
+            ))}
+            {canvassers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No canvassers found.</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignZoneModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveAssignments} disabled={savingAssignments}>
+              {savingAssignments ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
