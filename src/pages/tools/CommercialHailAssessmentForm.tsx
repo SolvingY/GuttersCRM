@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { HAIL_ASSESSMENT_SECTIONS, type ChecklistSection, type ChecklistItem, type ChecklistResultOption } from "@/data/hailAssessmentChecklist";
 import { compressImage, type CompressedImage } from "@/utils/imageCompression";
+import JobSearchInput from "@/components/shared/JobSearchInput";
+import HomeownerFields from "@/components/shared/HomeownerFields";
 
 type PhotoEntry = { id: string; previewUrl: string; sizeMB: string; name: string; file: Blob };
 
