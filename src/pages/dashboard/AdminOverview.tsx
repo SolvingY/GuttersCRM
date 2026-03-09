@@ -138,10 +138,8 @@ export default function AdminOverview() {
     fiscalYearEnd: string;
   } | null>(null);
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
-  const [contractSourcesOpen, setContractSourcesOpen] = useState(false);
-  const [salesPerfOpen, setSalesPerfOpen] = useState(false);
-  const [conversionFunnelOpen, setConversionFunnelOpen] = useState(false);
-  const [canvasserPerfOpen, setCanvasserPerfOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
 
 
 
