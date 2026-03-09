@@ -12,16 +12,37 @@ import { toast } from "sonner";
 import { Clock, AlertTriangle, Loader2, MapPin, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 
-function getLocation(): Promise<{ lat: number; lng: number } | null> {
+function getLocation(retry = true): Promise<{ lat: number; lng: number; errorMsg?: string } | null> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
+      console.warn('[Geolocation] API not available');
       resolve(null);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      (pos) => {
+        console.log('[Geolocation] Success:', pos.coords.latitude, pos.coords.longitude);
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        console.error('[Geolocation] Error code:', err.code, 'message:', err.message);
+        if (err.code === 3 && retry) {
+          // Timeout — retry once
+          console.log('[Geolocation] Retrying after timeout...');
+          getLocation(false).then(resolve);
+          return;
+        }
+        const errorMsg =
+          err.code === 1
+            ? 'Location permission denied — please allow location access in your browser settings'
+            : err.code === 2
+            ? 'Location unavailable — GPS or network error'
+            : err.code === 3
+            ? 'Location request timed out — please try again'
+            : 'Could not determine location';
+        resolve({ lat: 0, lng: 0, errorMsg });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
 }
@@ -242,12 +263,14 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     try {
       const loc = await getLocation();
       if (!loc) {
-        toast.warning("Location not captured — enable location for tracking");
+        toast.warning("Location not available — geolocation API not supported");
+        await performClockIn(null);
+      } else if (loc.errorMsg) {
+        toast.warning(loc.errorMsg);
         await performClockIn(null);
       } else {
         const inZone = await checkGeofence(loc.lat, loc.lng);
         if (!inZone) {
-          // Show geofence warning — let user confirm or cancel
           setPendingClockIn(loc);
           setGeofenceWarning(true);
         } else {
@@ -278,8 +301,8 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     setClockingOut(true);
     try {
       const loc = await getLocation();
-      if (!loc) {
-        toast.warning("Location not captured — enable location for tracking");
+      if (!loc || loc.errorMsg) {
+        toast.warning(loc?.errorMsg || "Location not available — geolocation API not supported");
       }
 
       const clockOutTime = new Date();
@@ -301,8 +324,8 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           leads_set: ls || null,
           notes: notes || null,
           status: activeShift.status === "flagged" ? "flagged" : "completed",
-          clock_out_lat: loc?.lat ?? null,
-          clock_out_lng: loc?.lng ?? null,
+          clock_out_lat: (loc && !loc.errorMsg) ? loc.lat : null,
+          clock_out_lng: (loc && !loc.errorMsg) ? loc.lng : null,
         } as any)
         .eq("id", activeShift.id);
 

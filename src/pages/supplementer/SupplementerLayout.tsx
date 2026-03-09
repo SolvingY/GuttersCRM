@@ -22,6 +22,12 @@ export default function SupplementerLayout() {
       if (error) console.error('[LoginTrack] RPC error:', error);
       else console.log('[LoginTrack] Login count incremented for', user.id);
     });
+    supabase.from('login_history').insert({
+      user_id: user.id,
+      user_agent: navigator.userAgent,
+    } as any).then(({ error }) => {
+      if (error) console.error('[LoginHistory] Insert error:', error);
+    });
   }, [user?.id]);
 
   return (
