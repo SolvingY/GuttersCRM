@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { ClipboardCheck, Calculator } from "lucide-react";
+import { ClipboardCheck, Calculator, Building2 } from "lucide-react";
 
 const tools = [
   {
@@ -14,6 +14,12 @@ const tools = [
     description: "Calculate gutter measurements and pricing",
     icon: Calculator,
     path: "/dashboard/tools/estimator",
+  },
+  {
+    title: "Commercial Hail Assessment",
+    description: "Structured inspection checklist with photo documentation",
+    icon: Building2,
+    path: "/production/tools/hail-assessment",
   },
 ];
 
