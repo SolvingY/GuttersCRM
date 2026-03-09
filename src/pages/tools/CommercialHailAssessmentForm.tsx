@@ -244,6 +244,17 @@ export default function CommercialHailAssessmentForm() {
 
       if (insertError) throw insertError;
 
+      // Auto-link to job files if a job is linked
+      if (linkedJob) {
+        await (supabase.from("lead_files") as any).insert({
+          lead_id: linkedJob.id,
+          uploaded_by: user!.id,
+          file_name: `Hail Assessment — ${form.meta.propertyName.trim() || linkedJob.label}`,
+          file_url: `checklist://hail_assessment/${assessmentId}`,
+          file_type: "checklist",
+        });
+      }
+
       setSubmitted(true);
       setSubmittedResult(selectedOption?.value || null);
       toast({ title: "Checklist saved", description: "Your assessment has been saved. Send the report from Saved Checklists." });
