@@ -73,11 +73,8 @@ export default function CompanyGoals() {
   const [targetAdSpendBudget, setTargetAdSpendBudget] = useState('');
   const [adSpendDialogOpen, setAdSpendDialogOpen] = useState(false);
   const [adSpendEditMonth, setAdSpendEditMonth] = useState<string | null>(null);
-  const [fiscalGoalsOpen, setFiscalGoalsOpen] = useState(false);
-  const [revenueProgressOpen, setRevenueProgressOpen] = useState(true);
-  const [contractProgressOpen, setContractProgressOpen] = useState(true);
-  const [additionalMetricsOpen, setAdditionalMetricsOpen] = useState(false);
-  const [internetMetricsOpen, setInternetMetricsOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>('revenue');
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
