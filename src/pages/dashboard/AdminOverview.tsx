@@ -22,6 +22,8 @@ import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPip
 import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
 import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
 import { WeeklyCanvasserLeaderboardTable } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
+import { ScoreboardSalesLeaderboard } from '@/components/dashboard/ScoreboardSalesLeaderboard';
+import { ScoreboardCanvasserLeaderboard } from '@/components/dashboard/ScoreboardCanvasserLeaderboard';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
