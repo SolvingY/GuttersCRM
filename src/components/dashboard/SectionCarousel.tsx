@@ -6,6 +6,7 @@ interface SectionItemProps {
   id: string;
   title: string;
   icon: React.ElementType;
+  indicator?: "pulse";
   children: React.ReactNode;
 }
 
