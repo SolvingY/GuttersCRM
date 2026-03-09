@@ -17,6 +17,7 @@ import { FISCAL_YEAR } from '@/lib/constants';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
 import { SectionCarousel } from '@/components/dashboard/SectionCarousel';
+import { AccordionButton } from '@/components/dashboard/AccordionButton';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
@@ -124,7 +125,12 @@ export default function AdminOverview() {
   } | null>(null);
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
-  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
+  const [openSubSection, setOpenSubSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => {
+    setOpenSection(prev => prev === id ? null : id);
+    setOpenSubSection(null);
+  };
+  const toggleSubSection = (id: string) => setOpenSubSection(prev => prev === id ? null : id);
 
   const getLeadToCloseColor = (rate: number) => {
     if (rate >= THRESHOLDS.leadToClosePercent.green) return 'text-green-600 dark:text-green-400';
@@ -616,185 +622,187 @@ export default function AdminOverview() {
 
             <CollectionsPipelineWidget isAdmin={true} />
 
-            {/* Sales Rep Performance Table */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              {userDetails.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-muted-foreground">No sales rep data available yet.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Role</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Approved Revenue</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Collections</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Earnings</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Avg Job</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger className="flex items-center gap-1 justify-end cursor-help">
-                                Close %
-                                <HelpCircle className="h-3 w-3" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {userDetails.map((user) => {
-                        const attention = needsAttention(user);
-                        return (
-                          <tr 
-                            key={user.metricId}
-                            className={cn(
-                              "border-t border-border transition-colors",
-                              attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
-                            )}
-                          >
-                            <td className="py-3 px-4 text-foreground font-medium">
-                              <div className="flex items-center gap-2">
-                                {user.name}
-                                {attention && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                    Attention
-                                  </Badge>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              {user.realUserId ? (
-                                <Select
-                                  value={user.role}
-                                  onValueChange={(value: 'admin' | 'user' | 'canvasser') => handleRoleChange(user.realUserId!, value)}
-                                  disabled={updatingRole === user.realUserId}
-                                >
-                                  <SelectTrigger className={cn(
-                                    "w-28 h-8",
-                                    user.role === 'admin' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted"
-                                  )}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-popover border border-border z-50">
-                                    <SelectItem value="user">User</SelectItem>
-                                    <SelectItem value="canvasser">Canvasser</SelectItem>
-                                    <SelectItem value="admin">
-                                      <div className="flex items-center gap-1">
-                                        <Shield className="h-3 w-3" />
-                                        Admin
-                                      </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">N/A</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                {user.salesRank}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.approvedRevenue)}</td>
-                            <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(user.collections)}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.earningsYtd)}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
-                            <td className={cn("py-3 px-4 text-right font-medium", getAvgJobSizeColor(user.avgJobSize))}>
-                              {formatCurrency(user.avgJobSize)}
-                            </td>
-                            <td className={cn("py-3 px-4 text-right font-medium", getLeadToCloseColor(user.leadToClosePercent))}>
-                              {user.leadToClosePercent.toFixed(1)}%
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button variant="ghost" size="icon" onClick={() => handleViewUser(user)} title="View stats">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)} title="Edit metrics">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
+            <div className="space-y-3">
+              <AccordionButton id="sales-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'sales-details'} onToggle={toggleSubSection}>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  {userDetails.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">No sales rep data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Role</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Rank</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Approved Revenue</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Collections</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Earnings</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Goal</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Closed</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Avg Job</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger className="flex items-center gap-1 justify-end cursor-help">
+                                    Close %
+                                    <HelpCircle className="h-3 w-3" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </th>
+                            <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {userDetails.map((user) => {
+                            const attention = needsAttention(user);
+                            return (
+                              <tr 
+                                key={user.metricId}
+                                className={cn(
+                                  "border-t border-border transition-colors",
+                                  attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
+                                )}
+                              >
+                                <td className="py-3 px-4 text-foreground font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {user.name}
+                                    {attention && (
+                                      <Badge variant="destructive" className="text-xs">
+                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                        Attention
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  {user.realUserId ? (
+                                    <Select
+                                      value={user.role}
+                                      onValueChange={(value: 'admin' | 'user' | 'canvasser') => handleRoleChange(user.realUserId!, value)}
+                                      disabled={updatingRole === user.realUserId}
+                                    >
+                                      <SelectTrigger className={cn(
+                                        "w-28 h-8",
+                                        user.role === 'admin' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted"
+                                      )}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-popover border border-border z-50">
+                                        <SelectItem value="user">User</SelectItem>
+                                        <SelectItem value="canvasser">Canvasser</SelectItem>
+                                        <SelectItem value="admin">
+                                          <div className="flex items-center gap-1">
+                                            <Shield className="h-3 w-3" />
+                                            Admin
+                                          </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs">N/A</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                    {user.salesRank}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.approvedRevenue)}</td>
+                                <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(user.collections)}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.earningsYtd)}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{formatCurrency(user.yearlyGoal)}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{user.points.toLocaleString()}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{user.leads}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{user.closedDeals}</td>
+                                <td className={cn("py-3 px-4 text-right font-medium", getAvgJobSizeColor(user.avgJobSize))}>
+                                  {formatCurrency(user.avgJobSize)}
+                                </td>
+                                <td className={cn("py-3 px-4 text-right font-medium", getLeadToCloseColor(user.leadToClosePercent))}>
+                                  {user.leadToClosePercent.toFixed(1)}%
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => handleViewUser(user)} title="View stats">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)} title="Edit metrics">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              )}
+              </AccordionButton>
+
+              <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSubSection === 'contract-sources'} onToggle={toggleSubSection}>
+                {(() => {
+                  const totalSelfGenContracts = aggregates.totalSelfGen;
+                  const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
+                  const totalInternetContracts = aggregates.totalInternetClosedDeals;
+                  const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
+                  const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
+                  const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
+                  const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
+                  
+                  return (
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Self-Generated</span>
+                          <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                          <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Canvass Contracts</span>
+                          <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Internet Contracts</span>
+                          <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2.5 mt-1">
+                          <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
+                      </div>
+                      <div className="pt-2 border-t border-border">
+                        <div className="flex justify-between font-semibold text-foreground">
+                          <span>Total Contracts</span>
+                          <span>{totalContracts}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </AccordionButton>
             </div>
           </div>
-        </SectionCarousel.Item>
-
-        {/* Contract Sources */}
-        <SectionCarousel.Item id="contract-sources" title="Contract Sources" icon={GitCompare}>
-          {(() => {
-            const totalSelfGenContracts = aggregates.totalSelfGen;
-            const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
-            const totalInternetContracts = aggregates.totalInternetClosedDeals;
-            const totalContracts = totalSelfGenContracts + totalCanvassContracts + totalInternetContracts;
-            const selfGenPct = totalContracts > 0 ? (totalSelfGenContracts / totalContracts) * 100 : 0;
-            const canvassPct = totalContracts > 0 ? (totalCanvassContracts / totalContracts) * 100 : 0;
-            const internetPct = totalContracts > 0 ? (totalInternetContracts / totalContracts) * 100 : 0;
-            
-            return (
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Self-Generated</span>
-                    <span className="font-semibold text-foreground">{totalSelfGenContracts} ({selfGenPct.toFixed(1)}%)</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                    <div className="bg-accent h-2.5 rounded-full" style={{ width: `${selfGenPct}%` }} />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Does not count toward Close %</p>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Canvass Contracts</span>
-                    <span className="font-semibold text-foreground">{totalCanvassContracts} ({canvassPct.toFixed(1)}%)</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                    <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${canvassPct}%` }} />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Internet Contracts</span>
-                    <span className="font-semibold text-foreground">{totalInternetContracts} ({internetPct.toFixed(1)}%)</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2.5 mt-1">
-                    <div className="h-2.5 rounded-full bg-blue-500" style={{ width: `${internetPct}%` }} />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Counts toward Close %</p>
-                </div>
-                <div className="pt-2 border-t border-border">
-                  <div className="flex justify-between font-semibold text-foreground">
-                    <span>Total Contracts</span>
-                    <span>{totalContracts}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </SectionCarousel.Item>
 
         {/* Canvassers */}
@@ -813,90 +821,92 @@ export default function AdminOverview() {
               />
             </div>
 
-            {/* Canvasser Performance Table */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              {canvasserDetails.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-muted-foreground">No canvasser data available yet.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Income</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Revenue</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {canvasserDetails.map((canvasser) => {
-                        const attention = canvasserNeedsAttention(canvasser);
-                        return (
-                          <tr 
-                            key={canvasser.metricId}
-                            className={cn(
-                              "border-t border-border transition-colors",
-                              attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
-                            )}
-                          >
-                            <td className="py-3 px-4 text-foreground font-medium">
-                              <div className="flex items-center gap-2">
-                                {canvasser.name}
-                                {attention && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                    Attention
-                                  </Badge>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
-                            <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
-                            <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.income)}</td>
-                            <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.revenue)}</td>
-                            <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
-                              {canvasser.conversionRate.toFixed(1)}%
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </td>
+            <div className="space-y-3">
+              <AccordionButton id="canvasser-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'canvasser-details'} onToggle={toggleSubSection}>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  {canvasserDetails.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">No canvasser data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Set</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Leads Closed</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">With Damage</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">YTD Income</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Revenue</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Conversion %</th>
+                            <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Actions</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {canvasserDetails.map((canvasser) => {
+                            const attention = canvasserNeedsAttention(canvasser);
+                            return (
+                              <tr 
+                                key={canvasser.metricId}
+                                className={cn(
+                                  "border-t border-border transition-colors",
+                                  attention ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"
+                                )}
+                              >
+                                <td className="py-3 px-4 text-foreground font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {canvasser.name}
+                                    {attention && (
+                                      <Badge variant="destructive" className="text-xs">
+                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                        Attention
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsSet}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsClosed}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{canvasser.leadsWithDamage}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{canvasser.hoursWorked}</td>
+                                <td className="py-3 px-4 text-right text-foreground">{canvasser.points.toLocaleString()}</td>
+                                <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.income)}</td>
+                                <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-medium">{formatCurrency(canvasser.revenue)}</td>
+                                <td className={cn("py-3 px-4 text-right font-medium", getCanvasserConversionColor(canvasser.conversionRate))}>
+                                  {canvasser.conversionRate.toFixed(1)}%
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditCanvasser(canvasser)} title="Edit metrics">
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              )}
+              </AccordionButton>
+
+              <AccordionButton id="conversion-funnel" title="Team Conversion Funnel" icon={TrendingUp} isOpen={openSubSection === 'conversion-funnel'} onToggle={toggleSubSection}>
+                <CanvasserConversionFunnel
+                  title="Team Conversion Funnel (YTD)"
+                  data={{
+                    doorsKnocked: canvasserAggregates.totalDoorsKnocked,
+                    conversationsHad: canvasserAggregates.totalConversationsHad,
+                    leadsSet: canvasserAggregates.totalLeadsSet,
+                    leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
+                    leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
+                    leadsClosed: canvasserAggregates.totalLeadsClosed,
+                  }} 
+                />
+              </AccordionButton>
             </div>
           </div>
-        </SectionCarousel.Item>
-
-        {/* Team Conversion Funnel */}
-        <SectionCarousel.Item id="conversion-funnel" title="Team Conversion Funnel" icon={TrendingUp}>
-          <CanvasserConversionFunnel
-            title="Team Conversion Funnel (YTD)"
-            data={{
-              doorsKnocked: canvasserAggregates.totalDoorsKnocked,
-              conversationsHad: canvasserAggregates.totalConversationsHad,
-              leadsSet: canvasserAggregates.totalLeadsSet,
-              leadsWithDamage: canvasserAggregates.totalLeadsWithDamage,
-              leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
-              leadsClosed: canvasserAggregates.totalLeadsClosed,
-            }} 
-          />
         </SectionCarousel.Item>
 
         {/* Supplementers */}

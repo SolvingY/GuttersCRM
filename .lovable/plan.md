@@ -1,29 +1,42 @@
 
 
-# Restructure Sales & Canvasser Sections with Sub-Buttons
+# Add Edit Button to Shift History
 
 ## Problem
-Contract Sources and Team Conversion Funnel were made into top-level SectionCarousel buttons, but they should be **nested inside** the Sales Reps and Canvassers sections respectively. Additionally, the detailed stats tables should also be togglable sub-buttons within each section.
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Approach
-Use the existing `AccordionButton` component inside each `SectionCarousel.Item` to create collapsible sub-sections. Each parent section keeps its summary stats cards at the top, then has accordion buttons for the detail views.
+## Changes
 
-## Changes to `src/pages/dashboard/AdminOverview.tsx`
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-1. **Remove** the standalone `<SectionCarousel.Item id="contract-sources">` and `<SectionCarousel.Item id="conversion-funnel">` items.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-2. **Inside `<SectionCarousel.Item id="sales">`** — after the stats cards grid and CollectionsPipelineWidget, add two `AccordionButton` sub-sections:
-   - **"Detailed Stats"** — wraps the existing sales rep performance table
-   - **"Contract Sources"** — wraps the contract sources breakdown (moved back in)
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-3. **Inside `<SectionCarousel.Item id="canvassers">`** — after the stats cards grid, add two `AccordionButton` sub-sections:
-   - **"Detailed Stats"** — wraps the existing canvasser performance table
-   - **"Team Conversion Funnel"** — wraps the CanvasserConversionFunnel component (moved back in)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-4. Add local state for sub-section toggles (e.g. `openSubSection` with a simple string state, or reuse individual booleans).
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### Result
-- Top-level buttons: Sales Reps, Canvassers, Supplementers, Sales Leaderboard, Canvasser Leaderboard
-- Inside Sales Reps: summary cards → sub-buttons for "Detailed Stats" and "Contract Sources"
-- Inside Canvassers: summary cards → sub-buttons for "Detailed Stats" and "Team Conversion Funnel"
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
