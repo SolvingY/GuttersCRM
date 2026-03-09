@@ -70,7 +70,7 @@ export default function Leads() {
   const [createOpen, setCreateOpen] = useState(false);
   const [revenueSection, setRevenueSection] = useState<string | null>(null);
   const toggleRevenueSection = (id: string) => setRevenueSection(prev => prev === id ? null : id);
-  const [statusSection, setStatusSection] = useState<string>("all");
+  const [statusSection, setStatusSection] = useState<string | null>(null);
 
   const { data: allLeads = [], isLoading } = useQuery({
     queryKey: ["admin-leads", serviceFilter, priorityFilter, assignedFilter, sourceFilter],
