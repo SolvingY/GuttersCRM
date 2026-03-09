@@ -27,7 +27,7 @@ const LANDING_PAGE_OPTIONS = [
   { value: '/admin/leads', label: 'Lead Management' },
   { value: '/admin/leaderboards', label: 'Leaderboards' },
   { value: '/admin/timeclock', label: 'TimeClock' },
-  { value: '/admin/applicants', label: 'HR / Onboarding' },
+  { value: '/admin/applicants', label: 'Future Team Mates' },
   { value: '/admin/sales-performance', label: 'Sales Performance' },
   { value: '/admin/goals', label: 'Company Goals' },
 ];
