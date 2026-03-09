@@ -50,6 +50,7 @@ export default function SavedChecklists() {
   const [assigningJobId, setAssigningJobId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("Team Member");
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [checklistTemplate, setChecklistTemplate] = useState<{ title: string; items: Record<string, string> } | null>(null);
 
   useEffect(() => {
     if (!user) return;
