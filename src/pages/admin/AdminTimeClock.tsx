@@ -62,9 +62,36 @@ export default function AdminTimeClock() {
   const [workZones, setWorkZones] = useState<any[]>([]);
   const [addZoneModalOpen, setAddZoneModalOpen] = useState(false);
   const [zoneName, setZoneName] = useState('');
-  const [zoneLat, setZoneLat] = useState('');
-  const [zoneLng, setZoneLng] = useState('');
+  const [zoneLocation, setZoneLocation] = useState('');
+  const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [zoneRadius, setZoneRadius] = useState('500');
+
+  const parseCoordinates = (text: string): { lat: number; lng: number } | null => {
+    if (!text.trim()) return null;
+    // Google Maps @lat,lng pattern
+    const atMatch = text.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+    // Google Maps ?q=lat,lng pattern
+    const qMatch = text.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+    // Google Maps embed !3d (lat) and !2d (lng)
+    const lat3d = text.match(/!3d(-?\d+\.?\d*)/);
+    const lng2d = text.match(/!2d(-?\d+\.?\d*)/);
+    if (lat3d && lng2d) return { lat: parseFloat(lat3d[1]), lng: parseFloat(lng2d[1]) };
+    // Raw coordinate pair
+    const rawMatch = text.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+    if (rawMatch) {
+      const a = parseFloat(rawMatch[1]), b = parseFloat(rawMatch[2]);
+      if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return { lat: a, lng: b };
+      if (Math.abs(b) <= 90 && Math.abs(a) <= 180) return { lat: b, lng: a };
+    }
+    return null;
+  };
+
+  const handleZoneLocationChange = (text: string) => {
+    setZoneLocation(text);
+    setParsedCoords(parseCoordinates(text));
+  };
   const [savingZone, setSavingZone] = useState(false);
 
   const [openSection, setOpenSection] = useState<string | null>('hours');
