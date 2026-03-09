@@ -242,10 +242,336 @@ export default function CanvasserStats() {
       {/* Time Clock Widget — always visible */}
       <TimeClockWidget onShiftChange={fetchMetrics} />
 
-      <AccordionButton id="shifts" title="My Recent Shifts" icon={Clock} isOpen={openSection === "shifts"} onToggle={toggleSection}>
-        {shifts.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
-        ) : (
+      <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+        <SectionCarousel.Item id="shifts" title="My Recent Shifts" icon={Clock}>
+          {shifts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>In</TableHead>
+                      <TableHead>Out</TableHead>
+                      <TableHead>Hours</TableHead>
+                      <TableHead>Doors</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {shifts.map((shift: any) => (
+                      <TableRow
+                        key={shift.id}
+                        className={shift.status === 'flagged' ? 'bg-yellow-500/10' : ''}
+                      >
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {format(new Date(shift.clock_in_at), "MMM d")}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {format(new Date(shift.clock_in_at), "h:mm a")}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {shift.clock_out_at
+                            ? format(new Date(shift.clock_out_at), "h:mm a")
+                            : shift.status === 'flagged'
+                              ? <span className="text-yellow-600">⚠️ Flagged</span>
+                              : <span className="text-green-600">In Progress</span>
+                          }
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {shift.hours_worked != null ? `${shift.hours_worked}h` : '—'}
+                        </TableCell>
+                        <TableCell className="text-sm">{shift.doors_knocked || '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                          {shift.notes || '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex gap-4 mt-3 text-xs text-muted-foreground border-t pt-3">
+                <span>
+                  This Week: {shifts
+                    .filter((s: any) => {
+                      const d = new Date(s.clock_in_at);
+                      const now2 = new Date();
+                      const weekAgo = new Date(now2);
+                      weekAgo.setDate(weekAgo.getDate() - 7);
+                      return d >= weekAgo && s.hours_worked != null;
+                    })
+                    .reduce((sum: number, s: any) => sum + Number(s.hours_worked || 0), 0)
+                    .toFixed(1)} hrs
+                </span>
+                <span>
+                  This Month: {shifts
+                    .filter((s: any) => {
+                      const d = new Date(s.clock_in_at);
+                      const now2 = new Date();
+                      return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear() && s.hours_worked != null;
+                    })
+                    .reduce((sum: number, s: any) => sum + Number(s.hours_worked || 0), 0)
+                    .toFixed(1)} hrs
+                </span>
+              </div>
+            </>
+          )}
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="contests" title="Contests" icon={Target}>
+          <CanvasserActiveContestWidget />
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="ranking" title="YTD Rankings" icon={TrendingUp}>
+          <CanvasserYTDRankingWidget />
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="metrics" title="Key Metrics" icon={Star}>
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <StatsCard title="Leads Set" value={metrics?.leads_set ?? 0} icon={Target} />
+              <StatsCard title="Leads Closed" value={metrics?.leads_closed ?? 0} icon={CheckCircle} />
+              <StatsCard title="Leads with Damage" value={metrics?.leads_with_damage ?? 0} icon={AlertTriangle} />
+              <StatsCard title="Leads w/o Damage" value={metrics?.leads_without_damage ?? 0} icon={Target} />
+              <StatsCard title="Conversations Had" value={metrics?.conversations_had ?? 0} icon={Users} />
+              <StatsCard title="Canceled Lead" value={metrics?.not_interested ?? 0} icon={AlertTriangle} />
+              <StatsCard title="Hours Worked" value={metrics?.hours_worked ?? 0} icon={Clock} />
+              <StatsCard title="Points" value={metrics?.points?.toLocaleString() ?? 0} icon={Star} />
+              <StatsCard 
+                title="YTD Income" 
+                value={formatCurrency(metrics?.income ?? 0)} 
+                icon={DollarSign}
+                valueClassName="text-green-500"
+              />
+              <StatsCard title="Conversion Rate" value={`${conversionRate}%`} icon={Percent} />
+              <StatsCard title="Damage Rate" value={`${damageRate}%`} icon={AlertTriangle} />
+              <StatsCard 
+                title="💰 Revenue Generated" 
+                value={formatCurrency(totalRevenue)} 
+                icon={DollarSign}
+                valueClassName="text-green-500"
+              />
+          </div>
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="funnel" title="Conversion Funnel" icon={GitCompare}>
+          <CanvasserConversionFunnel 
+            data={{
+              doorsKnocked: metrics?.doors_knocked || 0,
+              conversationsHad: metrics?.conversations_had || 0,
+              leadsSet: metrics?.leads_set || 0,
+              leadsWithDamage: metrics?.leads_with_damage || 0,
+              leadsWithoutDamage: metrics?.leads_without_damage || 0,
+              leadsClosed: metrics?.leads_closed || 0,
+            }} 
+          />
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="canvassed-leads" title="My Canvassed Leads" icon={ClipboardList}>
+          {canvassedLeads.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No canvassed leads yet</p>
+          ) : (
+            <div className="space-y-2">
+              {canvassedLeads.map((lead: any) => (
+                <div key={lead.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{lead.full_name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{lead.service_type?.replace("_", " ")}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {lead.quote_amount && (
+                      <span className="text-sm font-medium">${Number(lead.quote_amount).toLocaleString()}</span>
+                    )}
+                    <Badge variant="outline" className="capitalize text-[10px]">{lead.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="weekly" title="Weekly Updates" icon={TrendingUp}>
+          {weeklyMetrics.length > 0 ? (
+            <div className="space-y-3">
+              {weeklyMetrics.slice(0, 4).map((week) => (
+                <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      Week of {format(new Date(week.week_start), 'MMM d')} - {format(new Date(week.week_end), 'MMM d')}
+                    </p>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>{week.leads_set} leads set</span>
+                      <span>{week.leads_closed} closed</span>
+                      <span>{week.hours_worked || 0} hours</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.income))}</p>
+                    {week.points_earned > 0 && (
+                      <p className="text-xs text-primary">+{Number(week.points_earned)} pts</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">No weekly data yet</p>
+          )}
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="fiscal" title="Fiscal Year" icon={Calendar}>
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+              <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+            </div>
+            <Progress value={fiscalYearProgress} className="h-2" />
+            <p className="text-xs text-muted-foreground text-center">
+              {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+            </p>
+          </div>
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="goal" title="Goal Progress" icon={Target}>
+          <div className="space-y-4">
+            {yearlyGoal > 0 && (
+              <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Contracts Signed From Leads</span>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-3xl font-bold text-primary">{leadsClosed}</span>
+                      <span className="text-xl text-muted-foreground"> / {yearlyGoal}</span>
+                    </div>
+                    <span className="text-xl font-semibold text-foreground">
+                      {goalPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={Math.min(goalPercentage, 100)} className="h-2" />
+                </CardContent>
+              </Card>
+            )}
+            {(metrics?.leads_set_goal || 0) > 0 && (
+              <Card className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border-blue-500/20">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-500" />
+                    <span className="font-semibold">Leads Set Goal</span>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-3xl font-bold text-blue-500">{metrics?.leads_set || 0}</span>
+                      <span className="text-xl text-muted-foreground"> / {metrics?.leads_set_goal || 0}</span>
+                    </div>
+                    <span className="text-xl font-semibold text-foreground">
+                      {((metrics?.leads_set || 0) / (metrics?.leads_set_goal || 1) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={Math.min(((metrics?.leads_set || 0) / (metrics?.leads_set_goal || 1) * 100), 100)} 
+                    className="h-2" 
+                  />
+                </CardContent>
+              </Card>
+            )}
+            {(metrics?.income_goal || 0) > 0 && (
+              <Card className="bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent border-green-500/20">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-green-500" />
+                    <span className="font-semibold">Income Goal</span>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-3xl font-bold text-green-500">{formatCurrency(metrics?.income || 0)}</span>
+                      <span className="text-xl text-muted-foreground"> / {formatCurrency(metrics?.income_goal || 0)}</span>
+                    </div>
+                    <span className="text-xl font-semibold text-foreground">
+                      {((metrics?.income || 0) / (metrics?.income_goal || 1) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={Math.min(((metrics?.income || 0) / (metrics?.income_goal || 1) * 100), 100)} 
+                    className="h-2" 
+                  />
+                </CardContent>
+              </Card>
+            )}
+            {yearlyGoal === 0 && (metrics?.leads_set_goal || 0) === 0 && (metrics?.income_goal || 0) === 0 && (
+              <p className="text-center text-muted-foreground py-4">No goals set yet</p>
+            )}
+          </div>
+        </SectionCarousel.Item>
+
+        <SectionCarousel.Item id="progress" title="52-Week Progress" icon={TrendingUp}>
+          {yearlyGoal > 0 ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={get52WeekData()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="week" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={10}
+                    interval={3}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: number, name: string) => [
+                      value.toLocaleString(),
+                      name === 'leadsClosed' ? 'Weekly Leads Closed' : name === 'cumulativeLeadsClosed' ? 'Cumulative' : 'Goal Pace'
+                    ]}
+                    labelFormatter={(label, payload) => {
+                      if (payload && payload[0]) {
+                        return `Week of ${payload[0].payload.weekLabel}`;
+                      }
+                      return label;
+                    }}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="leadsClosed"
+                    fill="hsl(var(--primary))"
+                    name="Weekly Leads Closed"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cumulativeLeadsClosed"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Cumulative"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cumulativeGoal"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    name="Goal Pace"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">Set a yearly goal to see progress</p>
+          )}
+        </SectionCarousel.Item>
+      </SectionCarousel>
           <>
                   <div className="overflow-x-auto">
                     <Table>

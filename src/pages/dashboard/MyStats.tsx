@@ -288,10 +288,237 @@ export default function MyStats() {
           {/* Collections Due */}
           <CollectionsPipelineWidget isAdmin={false} />
 
-          {/* 1. Contests */}
-          <AccordionButton id="contests" title="Contests" icon={Target} isOpen={openSection === "contests"} onToggle={toggleSection}>
-            <ActiveContestWidget />
-          </AccordionButton>
+          <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+            <SectionCarousel.Item id="contests" title="Contests" icon={Target}>
+              <ActiveContestWidget />
+            </SectionCarousel.Item>
+
+            <SectionCarousel.Item id="metrics" title="Key Metrics" icon={Star}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <StatsCard
+                    title="Approved Revenue"
+                    value={formatCurrency(approvedRevenue)}
+                    icon={DollarSign}
+                    trend={previousMetric ? calculateTrend(Number(latestMetric?.approved_revenue), Number(previousMetric?.approved_revenue)) : undefined}
+                  />
+                  <StatsCard
+                    title="Avg Job Size"
+                    value={formatCurrency(averageJobSize)}
+                    icon={Calculator}
+                    valueClassName={getAvgJobSizeColor(averageJobSize)}
+                  />
+                  <StatsCard
+                    title="Points"
+                    value={Number(latestMetric?.points || 0).toLocaleString()}
+                    icon={Star}
+                    trend={previousMetric ? calculateTrend(Number(latestMetric?.points), Number(previousMetric?.points)) : undefined}
+                  />
+                  <StatsCard
+                    title="Collections YTD"
+                    value={formatCurrency(collectionsYtd)}
+                    icon={Wallet}
+                    valueClassName="text-green-500"
+                  />
+                  <StatsCard
+                    title="YTD Earnings"
+                    value={formatCurrency(earningsYtd)}
+                    icon={DollarSign}
+                    valueClassName="text-accent"
+                  />
+                  <StatsCard
+                    title="Self Generated"
+                    value={selfGeneratedDeals.toLocaleString()}
+                    icon={UserPlus}
+                  />
+                  <StatsCard
+                    title="Closed Deals"
+                    value={latestMetric?.closed_deals || 0}
+                    icon={Briefcase}
+                    trend={previousMetric ? calculateTrend(latestMetric?.closed_deals || 0, previousMetric?.closed_deals || 0) : undefined}
+                  />
+                  <StatsCard
+                    title="Leads"
+                    value={leads.toLocaleString()}
+                    icon={Users}
+                    trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
+                  />
+                  <StatsCard
+                    title="Collections This Month"
+                    value={formatCurrency(collectionsThisMonth)}
+                    icon={Wallet}
+                    valueClassName="text-green-500"
+                  />
+                  <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-muted">
+                          <Percent className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Lead to Close %</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger className="cursor-help">
+                                <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>Lead-to-Close = (Canvass Closed + Internet Closed) / (Canvass Leads + Internet Leads)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                      <span className={cn("text-xl font-bold", getLeadToCloseColor(leadToCloseRate))}>
+                        {leadToCloseRate.toFixed(1)}%
+                      </span>
+                    </div>
+                  </Card>
+              </div>
+            </SectionCarousel.Item>
+
+            <SectionCarousel.Item id="weekly" title="Recent Weekly Updates" icon={TrendingUp}>
+              {weeklyMetrics.length > 0 ? (
+                <div className="space-y-3">
+                  {weeklyMetrics.slice(0, 4).map((week) => (
+                    <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          Week of {format(new Date(week.week_start), 'MMM d')} - {format(new Date(week.week_end), 'MMM d')}
+                        </p>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>{week.leads} leads</span>
+                          <span>{week.closed_deals} closed</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.approved_revenue) || Number(week.sales))}</p>
+                        <p className="text-xs text-accent">+{Number(week.points_earned)} pts</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">No weekly data yet</p>
+              )}
+            </SectionCarousel.Item>
+
+            <SectionCarousel.Item id="fiscal" title="Fiscal Year Progress" icon={Calendar}>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+                  <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+                </div>
+                <Progress value={fiscalYearProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground text-center">
+                  {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+                </p>
+              </div>
+            </SectionCarousel.Item>
+
+            <SectionCarousel.Item id="goal" title="Goal Progress" icon={Target}>
+              {yearlyGoal > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Yearly Goal</p>
+                      <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Approved Revenue</p>
+                      <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className={`font-semibold ${getGoalColor()}`}>
+                        {goalPercentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Amount Remaining</p>
+                      <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Rank</p>
+                      <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">No goal set yet</p>
+              )}
+            </SectionCarousel.Item>
+
+            <SectionCarousel.Item id="progress" title="52-Week Progress" icon={TrendingUp}>
+              {yearlyGoal > 0 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={weeklyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="week" 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={10}
+                        interval={3}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={12}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number, name: string) => [
+                          formatCurrency(value),
+                          name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
+                        ]}
+                        labelFormatter={(label, payload) => {
+                          if (payload && payload[0]) {
+                            return `Week of ${payload[0].payload.weekLabel}`;
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="approvedRevenue"
+                        fill="hsl(var(--accent))"
+                        name="Weekly Revenue"
+                        radius={[2, 2, 0, 0]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="cumulativeRevenue"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Cumulative Revenue"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="cumulativeGoal"
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        name="Goal Pace"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">Set a yearly goal to see progress</p>
+              )}
+            </SectionCarousel.Item>
+          </SectionCarousel>
 
           {/* 2. Key Metrics */}
           <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
