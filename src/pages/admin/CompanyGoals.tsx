@@ -1277,8 +1277,7 @@ export default function CompanyGoals() {
           </Card>
         </div>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
       <AdSpendDialog
         open={adSpendDialogOpen}
