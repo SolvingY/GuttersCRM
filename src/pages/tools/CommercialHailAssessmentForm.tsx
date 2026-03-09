@@ -34,7 +34,7 @@ interface FormState {
   resultNotes: Record<string, string>;
 }
 
-const initialMeta = { propertyName: "", address: "", inspectorName: "", inspectionDate: "", stormDate: "" };
+const initialMeta = { propertyName: "", address: "", inspectorName: "", inspectionDate: "", stormDate: "", reportNotes: "" };
 
 export default function CommercialHailAssessmentForm() {
   const navigate = useNavigate();
