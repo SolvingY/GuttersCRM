@@ -33,8 +33,9 @@ import {
 } from "lucide-react";
 import { ContractorProfileSheet } from "@/components/admin/ContractorProfileSheet";
 import { useAuth } from "@/hooks/useAuth";
+import HailAssessmentsTab from "@/components/admin/HailAssessmentsTab";
 
-type TabValue = "active" | "onboarding" | "archived";
+type TabValue = "active" | "onboarding" | "archived" | "hail-assessments";
 
 const roleColors: Record<string, string> = {
   admin: "bg-accent text-accent-foreground",
@@ -382,6 +383,10 @@ export default function ContractorManagement() {
             <Users className="w-3.5 h-3.5 mr-1.5" />
             Archived ({stats.archived})
           </TabsTrigger>
+          <TabsTrigger value="hail-assessments">
+            <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
+            Hail Assessments
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -390,7 +395,11 @@ export default function ContractorManagement() {
         {tab === "active" && "Team members who have completed onboarding."}
         {tab === "onboarding" && "Team members currently working through their onboarding checklist."}
         {tab === "archived" && "Former team members no longer active."}
+        {tab === "hail-assessments" && "Submitted commercial hail assessment reports."}
       </p>
+
+      {/* Hail Assessments Tab */}
+      {tab === "hail-assessments" && <HailAssessmentsTab />}
 
       {/* Onboarding Overview — Onboarding tab only */}
       {tab === "onboarding" && filteredUsers.length > 0 && (

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Calculator, FileText } from "lucide-react";
+import { Calculator, FileText, Building2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 const tools = [
@@ -14,6 +14,12 @@ const tools = [
     description: "View and edit your previously saved standalone estimates",
     icon: FileText,
     path: "/dashboard/tools/my-estimates",
+  },
+  {
+    title: "Commercial Hail Assessment",
+    description: "Structured inspection checklist with photo documentation",
+    icon: Building2,
+    path: "/dashboard/tools/hail-assessment",
   },
 ];
 

@@ -331,6 +331,80 @@ export type Database = {
           },
         ]
       }
+      commercial_hail_assessments: {
+        Row: {
+          address: string | null
+          created_at: string
+          form_data: Json
+          has_membrane_roof: boolean | null
+          has_metal_roof: boolean | null
+          has_mod_bitumen: boolean | null
+          id: string
+          inspection_date: string
+          inspector_name: string
+          interior_accessible: boolean | null
+          photo_paths: Json
+          property_name: string
+          result: string | null
+          result_doc_link: string | null
+          result_notes: string | null
+          status: string
+          storm_date: string | null
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          form_data?: Json
+          has_membrane_roof?: boolean | null
+          has_metal_roof?: boolean | null
+          has_mod_bitumen?: boolean | null
+          id?: string
+          inspection_date: string
+          inspector_name: string
+          interior_accessible?: boolean | null
+          photo_paths?: Json
+          property_name: string
+          result?: string | null
+          result_doc_link?: string | null
+          result_notes?: string | null
+          status?: string
+          storm_date?: string | null
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          form_data?: Json
+          has_membrane_roof?: boolean | null
+          has_metal_roof?: boolean | null
+          has_mod_bitumen?: boolean | null
+          id?: string
+          inspection_date?: string
+          inspector_name?: string
+          interior_accessible?: boolean | null
+          photo_paths?: Json
+          property_name?: string
+          result?: string | null
+          result_doc_link?: string | null
+          result_notes?: string | null
+          status?: string
+          storm_date?: string | null
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_submitted_by"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_goals: {
         Row: {
           canvasser_leads_goal: number | null

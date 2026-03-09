@@ -91,6 +91,7 @@ const ProductionLayout = lazy(() => import("./pages/production/ProductionLayout"
 const ProductionDashboard = lazy(() => import("./pages/production/ProductionDashboard"));
 const ProductionLeaderboard = lazy(() => import("./pages/production/ProductionLeaderboard"));
 const ProductionToolsHub = lazy(() => import("./pages/production/ProductionToolsHub"));
+const CommercialHailAssessment = lazy(() => import("./pages/tools/CommercialHailAssessmentForm"));
 const ProductionChecklists = lazy(() => import("./pages/production/ProductionChecklists"));
 const ProductionPit = lazy(() => import("./pages/production/ProductionPit"));
 const ProductionPointsHistory = lazy(() => import("./pages/production/ProductionPointsHistory"));
@@ -165,6 +166,7 @@ const App = () => (
               <Route path="tools" element={<ToolsHub />} />
               <Route path="tools/estimator" element={<GutterEstimator />} />
               <Route path="tools/my-estimates" element={<MyEstimates />} />
+              <Route path="tools/hail-assessment" element={<CommercialHailAssessment />} />
               <Route path="leads/:id" element={<LeadDetailView />} />
               <Route path="leads/:id/contract" element={<GutterContract />} />
               <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
@@ -228,6 +230,7 @@ const App = () => (
               <Route path="leaderboard" element={<ProductionLeaderboard />} />
               <Route path="tools" element={<ProductionToolsHub />} />
               <Route path="tools/checklists" element={<ProductionChecklists />} />
+              <Route path="tools/hail-assessment" element={<CommercialHailAssessment />} />
               <Route path="pit" element={<ProductionPit />} />
               <Route path="points-history" element={<ProductionPointsHistory />} />
               <Route path="settings" element={<ProductionSettings />} />
