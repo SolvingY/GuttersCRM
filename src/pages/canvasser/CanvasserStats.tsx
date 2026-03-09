@@ -576,11 +576,8 @@ export default function CanvasserStats() {
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </AccordionButton>
       )}
 
       <GoogleCalendarWidget />
