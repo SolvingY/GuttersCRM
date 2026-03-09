@@ -166,6 +166,7 @@ export default function OnboardingManagement() {
         <TabsList>
           <TabsTrigger value="progress">Team Progress</TabsTrigger>
           <TabsTrigger value="offer-letters">Offer Letters</TabsTrigger>
+          <TabsTrigger value="report-settings">Report Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="progress" className="space-y-6 mt-4">
