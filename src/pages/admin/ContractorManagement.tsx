@@ -395,7 +395,11 @@ export default function ContractorManagement() {
         {tab === "active" && "Team members who have completed onboarding."}
         {tab === "onboarding" && "Team members currently working through their onboarding checklist."}
         {tab === "archived" && "Former team members no longer active."}
+        {tab === "hail-assessments" && "Submitted commercial hail assessment reports."}
       </p>
+
+      {/* Hail Assessments Tab */}
+      {tab === "hail-assessments" && <HailAssessmentsTab />}
 
       {/* Onboarding Overview — Onboarding tab only */}
       {tab === "onboarding" && filteredUsers.length > 0 && (
