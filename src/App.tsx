@@ -65,6 +65,7 @@ const AdminTimeClock = lazy(() => import("./pages/admin/AdminTimeClock"));
 const SalesPerformance = lazy(() => import("./pages/admin/SalesPerformance"));
 const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting"));
 const AdminPresets = lazy(() => import("./pages/admin/AdminPresets"));
+const SentReports = lazy(() => import("./pages/admin/SentReports"));
 
 // Canvasser routes
 const CanvasserLayout = lazy(() => import("./pages/canvasser/CanvasserLayout"));
