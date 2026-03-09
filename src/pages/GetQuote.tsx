@@ -123,7 +123,7 @@ export default function GetQuote() {
       <div className="bg-primary text-primary-foreground py-4 px-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <img src={logo} alt="NGR" className="h-10 w-10 rounded-full" />
+            <img src={logo} alt="NGR" className="h-10 w-10 rounded-full [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
             <span className="font-heading text-lg uppercase hidden sm:block">Next Generation Roofing</span>
           </Link>
           <Link to="/" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors">

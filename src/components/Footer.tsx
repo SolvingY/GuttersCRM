@@ -39,7 +39,7 @@ export function Footer() {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <img src={logo} alt="Next Generation Roofing" className="h-14 w-14 rounded-full" />
+              <img src={logo} alt="Next Generation Roofing" className="h-14 w-14 rounded-full [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
               <div>
                 <h3 className="font-heading text-xl uppercase">Next Generation</h3>
                 <p className="text-sm text-primary-foreground/70">Roofing</p>

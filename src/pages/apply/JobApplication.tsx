@@ -168,7 +168,7 @@ export default function JobApplication() {
       {/* Header */}
       <div className="bg-accent text-accent-foreground py-4 px-4">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <img src={ngrLogo} alt="NGR" className="h-10 w-auto" />
+          <img src={ngrLogo} alt="NGR" className="h-10 w-auto [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
           <div>
             <h1 className="font-heading text-xl uppercase">Join Next Generation Roofing</h1>
             <p className="text-xs opacity-80">Start Your Application</p>
