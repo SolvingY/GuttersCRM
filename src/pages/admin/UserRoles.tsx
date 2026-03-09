@@ -42,7 +42,7 @@ interface UserWithRole {
   id: string;
   email: string | null;
   fullName: string | null;
-  roles: ('admin' | 'user' | 'canvasser' | 'supplementer')[];
+  roles: ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production')[];
   salesRank: string | null;
   canvasserRank: string | null;
   isArchived: boolean;
