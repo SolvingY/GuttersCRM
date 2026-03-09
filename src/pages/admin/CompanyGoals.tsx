@@ -845,12 +845,14 @@ export default function CompanyGoals() {
                 <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-lg"><Calculator className="h-5 w-5 text-accent" />Internet Cost Per Lead</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {(() => {
-                    const costPerLead = internetData.internetLeadCount > 0 ? internetData.adSpend / internetData.internetLeadCount : 0;
-                    const costPerContract = internetData.internetContractsWon > 0 ? internetData.adSpend / internetData.internetContractsWon : 0;
+                    const leads = internetData.internetTotalLeads;
+                    const contracts = internetData.internetClosedCount;
+                    const costPerLead = leads > 0 ? internetData.adSpend / leads : 0;
+                    const costPerContract = contracts > 0 ? internetData.adSpend / contracts : 0;
                     return (
                       <>
-                        <div><p className="text-3xl font-bold text-foreground">{internetData.internetLeadCount > 0 ? formatCurrency(costPerLead) : 'N/A'}</p><p className="text-sm text-muted-foreground mt-1">{formatCurrency(internetData.adSpend)} YTD / {internetData.internetLeadCount} leads</p></div>
-                        {internetData.internetContractsWon > 0 && internetData.internetLeadCount > 0 && (
+                        <div><p className="text-3xl font-bold text-foreground">{leads > 0 ? formatCurrency(costPerLead) : 'N/A'}</p><p className="text-sm text-muted-foreground mt-1">{formatCurrency(internetData.adSpend)} YTD / {leads} leads</p></div>
+                        {contracts > 0 && leads > 0 && (
                           <div className="bg-muted/50 rounded-lg p-3"><p className="text-xs text-muted-foreground">vs Cost Per Contract</p><p className="text-lg font-semibold text-foreground">{formatCurrency(costPerContract)}</p></div>
                         )}
                       </>
