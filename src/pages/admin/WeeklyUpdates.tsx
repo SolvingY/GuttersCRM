@@ -324,6 +324,9 @@ export default function WeeklyUpdates() {
       let successCount = 0;
       let errorCount = 0;
 
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const { data: authUser } = await supabase.auth.getUser();
+
       for (const entry of weeklyEntries) {
         const weeklyLeads = parseInt(entry.weeklyLeads) || 0;
         const weeklyClosedDeals = parseInt(entry.weeklyClosedDeals) || 0;
@@ -338,48 +341,72 @@ export default function WeeklyUpdates() {
             weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) continue;
 
+        // Fetch previous daily entry to compute true deltas (prevent double-counting on re-save)
+        const { data: prevDaily } = await supabase.from('daily_user_metric_entries')
+          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+
+        const deltaLeads = weeklyLeads - (Number(prevDaily?.leads_delta) || 0);
+        const deltaClosedDeals = weeklyClosedDeals - (Number(prevDaily?.closed_deals_delta) || 0);
+        const deltaEarnings = weeklyEarnings - (Number(prevDaily?.earnings_delta) || 0);
+        const deltaSelfGen = weeklySelfGeneratedDeals - (Number(prevDaily?.self_generated_deals_delta) || 0);
+        const deltaCanvassLeads = weeklyCanvassLeads - (Number(prevDaily?.canvass_leads_delta) || 0);
+        const deltaCanvassDeals = weeklyCanvassDealsClose - (Number(prevDaily?.canvass_deals_closed_delta) || 0);
+        const deltaCollections = weeklyCollections - (Number(prevDaily?.collections_delta) || 0);
+        const deltaApprovedRev = weeklyApprovedRevenue - (Number(prevDaily?.approved_revenue_delta) || 0);
+
         const weeklyPoints = calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections);
+        const oldPoints = calculatePoints(
+          Number(prevDaily?.approved_revenue_delta) || 0,
+          Number(prevDaily?.closed_deals_delta) || 0,
+          Number(prevDaily?.collections_delta) || 0
+        );
+        const deltaPoints = weeklyPoints - oldPoints;
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('user_metrics').select('*').eq('user_id', entry.userId).order('created_at', { ascending: false }).limit(1).single();
 
         if (fetchError) { errorCount++; continue; }
 
-        const newLeads = (Number(currentMetrics.leads) || 0) + weeklyLeads;
-        const newClosedDeals = (Number(currentMetrics.closed_deals) || 0) + weeklyClosedDeals;
-        const newEarnings = (Number(currentMetrics.earnings_ytd) || 0) + weeklyEarnings;
-        const newPoints = (Number(currentMetrics.points) || 0) + weeklyPoints;
-        const newSelfGeneratedDeals = (Number(currentMetrics.self_generated_deals) || 0) + weeklySelfGeneratedDeals;
-        const newCanvassLeads = (Number((currentMetrics as any).canvass_leads) || 0) + weeklyCanvassLeads;
-        const newCanvassDealsClose = (Number((currentMetrics as any).canvass_deals_closed) || 0) + weeklyCanvassDealsClose;
-        const newCollections = (Number((currentMetrics as any).collections) || 0) + weeklyCollections;
-        const newApprovedRevenue = (Number((currentMetrics as any).approved_revenue) || 0) + weeklyApprovedRevenue;
-
         const { error: updateError } = await supabase.from('user_metrics').update({
-          leads: newLeads, closed_deals: newClosedDeals, earnings_ytd: newEarnings,
-          points: newPoints, self_generated_deals: newSelfGeneratedDeals,
-          canvass_leads: newCanvassLeads, canvass_deals_closed: newCanvassDealsClose,
-          collections: newCollections, approved_revenue: newApprovedRevenue,
+          leads: (Number(currentMetrics.leads) || 0) + deltaLeads,
+          closed_deals: (Number(currentMetrics.closed_deals) || 0) + deltaClosedDeals,
+          earnings_ytd: (Number(currentMetrics.earnings_ytd) || 0) + deltaEarnings,
+          points: (Number(currentMetrics.points) || 0) + deltaPoints,
+          self_generated_deals: (Number(currentMetrics.self_generated_deals) || 0) + deltaSelfGen,
+          canvass_leads: (Number((currentMetrics as any).canvass_leads) || 0) + deltaCanvassLeads,
+          canvass_deals_closed: (Number((currentMetrics as any).canvass_deals_closed) || 0) + deltaCanvassDeals,
+          collections: (Number((currentMetrics as any).collections) || 0) + deltaCollections,
+          approved_revenue: (Number((currentMetrics as any).approved_revenue) || 0) + deltaApprovedRev,
           updated_at: new Date().toISOString(),
         }).eq('user_id', entry.userId);
 
         if (updateError) { errorCount++; continue; }
 
+        // Upsert daily entry for sales rep
+        await supabase.from('daily_user_metric_entries').upsert({
+          user_id: entry.userId, entry_date: dateStr,
+          approved_revenue_delta: weeklyApprovedRevenue, leads_delta: weeklyLeads,
+          closed_deals_delta: weeklyClosedDeals, self_generated_deals_delta: weeklySelfGeneratedDeals,
+          canvass_leads_delta: weeklyCanvassLeads, canvass_deals_closed_delta: weeklyCanvassDealsClose,
+          collections_delta: weeklyCollections, earnings_delta: weeklyEarnings,
+          entered_by: authUser.user?.id, updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,entry_date' });
+
         const { data: existingWeekly } = await supabase.from('weekly_user_metrics').select('*').eq('user_id', entry.userId).eq('week_start', weekStartStr).maybeSingle();
 
         const compoundedWeekly = {
           user_id: entry.userId, week_start: weekStartStr, week_end: weekEndStr,
-          leads: (Number(existingWeekly?.leads) || 0) + weeklyLeads,
-          closed_deals: (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
-          earnings: (Number(existingWeekly?.earnings) || 0) + weeklyEarnings,
-          canvass_leads: (Number(existingWeekly?.canvass_leads) || 0) + weeklyCanvassLeads,
-          canvass_deals_closed: (Number(existingWeekly?.canvass_deals_closed) || 0) + weeklyCanvassDealsClose,
-          collections: (Number(existingWeekly?.collections) || 0) + weeklyCollections,
-          approved_revenue: (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
+          leads: (Number(existingWeekly?.leads) || 0) + deltaLeads,
+          closed_deals: (Number(existingWeekly?.closed_deals) || 0) + deltaClosedDeals,
+          earnings: (Number(existingWeekly?.earnings) || 0) + deltaEarnings,
+          canvass_leads: (Number(existingWeekly?.canvass_leads) || 0) + deltaCanvassLeads,
+          canvass_deals_closed: (Number(existingWeekly?.canvass_deals_closed) || 0) + deltaCanvassDeals,
+          collections: (Number(existingWeekly?.collections) || 0) + deltaCollections,
+          approved_revenue: (Number(existingWeekly?.approved_revenue) || 0) + deltaApprovedRev,
           points_earned: calculatePoints(
-            (Number(existingWeekly?.approved_revenue) || 0) + weeklyApprovedRevenue,
-            (Number(existingWeekly?.closed_deals) || 0) + weeklyClosedDeals,
-            (Number(existingWeekly?.collections) || 0) + weeklyCollections
+            (Number(existingWeekly?.approved_revenue) || 0) + deltaApprovedRev,
+            (Number(existingWeekly?.closed_deals) || 0) + deltaClosedDeals,
+            (Number(existingWeekly?.collections) || 0) + deltaCollections
           ),
           updated_at: new Date().toISOString(),
         };
