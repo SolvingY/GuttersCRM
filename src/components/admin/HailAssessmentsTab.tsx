@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, ExternalLink, Image as ImageIcon } from "lucide-react";
+import { Loader2, ExternalLink, Image as ImageIcon, CheckCircle, Clock } from "lucide-react";
 import { HAIL_ASSESSMENT_SECTIONS } from "@/data/hailAssessmentChecklist";
 
 const resultBadge: Record<string, { label: string; className: string }> = {
@@ -26,6 +26,21 @@ export default function HailAssessmentsTab() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const { data: emailCounts = {} } = useQuery({
+    queryKey: ["admin-hail-email-counts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("report_email_log") as any)
+        .select("submission_id")
+        .eq("checklist_type", "hail_assessment");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((r: any) => {
+        counts[r.submission_id] = (counts[r.submission_id] || 0) + 1;
+      });
+      return counts;
     },
   });
 
@@ -52,6 +67,8 @@ export default function HailAssessmentsTab() {
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Property</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Address</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Result</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Finalized</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Emails</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Photos</th>
                 </tr>
               </thead>
@@ -59,6 +76,8 @@ export default function HailAssessmentsTab() {
                 {assessments.map((a) => {
                   const photoCount = Array.isArray(a.photo_paths) ? (a.photo_paths as string[]).length : 0;
                   const badge = a.result ? resultBadge[a.result] : null;
+                  const finalized = (a as any).report_finalized;
+                  const emailCount = emailCounts[a.id] || 0;
                   return (
                     <tr
                       key={a.id}
@@ -72,6 +91,12 @@ export default function HailAssessmentsTab() {
                       <td className="px-4 py-2">
                         {badge ? <Badge className={badge.className}>{badge.label}</Badge> : <span className="text-muted-foreground">—</span>}
                       </td>
+                      <td className="px-4 py-2">
+                        {finalized
+                          ? <CheckCircle className="h-4 w-4 text-green-500" />
+                          : <Clock className="h-4 w-4 text-muted-foreground" />}
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">{emailCount || "—"}</td>
                       <td className="px-4 py-2">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <ImageIcon className="h-3.5 w-3.5" /> {photoCount}
@@ -104,6 +129,19 @@ function AssessmentDetail({ assessment }: { assessment: any }) {
   const badge = assessment.result ? resultBadge[assessment.result] : null;
   const formData = (assessment.form_data || {}) as any;
   const photoPaths = (assessment.photo_paths || []) as string[];
+
+  const { data: emailLogs = [] } = useQuery({
+    queryKey: ["assessment-email-logs", assessment.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("report_email_log") as any)
+        .select("*")
+        .eq("checklist_type", "hail_assessment")
+        .eq("submission_id", assessment.id)
+        .order("sent_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const loadPhotos = async () => {
     if (photosLoaded || photoPaths.length === 0) return;
@@ -139,6 +177,9 @@ function AssessmentDetail({ assessment }: { assessment: any }) {
           <div><span className="text-muted-foreground">Date:</span> {format(new Date(assessment.inspection_date), "MMM d, yyyy")}</div>
           {assessment.address && <div><span className="text-muted-foreground">Address:</span> {assessment.address}</div>}
           {assessment.storm_date && <div><span className="text-muted-foreground">Storm Date:</span> {format(new Date(assessment.storm_date), "MMM d, yyyy")}</div>}
+          {assessment.homeowner_name && <div><span className="text-muted-foreground">Homeowner:</span> {assessment.homeowner_name}</div>}
+          {assessment.homeowner_phone && <div><span className="text-muted-foreground">Phone:</span> {assessment.homeowner_phone}</div>}
+          {assessment.homeowner_email && <div><span className="text-muted-foreground">Email:</span> {assessment.homeowner_email}</div>}
         </div>
 
         {/* Result */}
@@ -150,6 +191,9 @@ function AssessmentDetail({ assessment }: { assessment: any }) {
         )}
         {assessment.result_notes && (
           <div className="text-sm"><span className="text-muted-foreground">Result Notes:</span> {assessment.result_notes}</div>
+        )}
+        {assessment.report_notes && (
+          <div className="text-sm"><span className="text-muted-foreground">Report Notes:</span> {assessment.report_notes}</div>
         )}
         {assessment.result_doc_link && (
           <a href={assessment.result_doc_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -227,6 +271,22 @@ function AssessmentDetail({ assessment }: { assessment: any }) {
         {loadingPhotos && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading photos…
+          </div>
+        )}
+
+        {/* Email History */}
+        {emailLogs.length > 0 && (
+          <div className="space-y-2 border-t border-border pt-4">
+            <h3 className="text-sm font-medium text-foreground">Email History</h3>
+            {emailLogs.map((log: any) => {
+              const recipients = Array.isArray(log.recipients) ? log.recipients : [];
+              return (
+                <div key={log.id} className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
+                  <p className="font-medium text-foreground">{format(new Date(log.sent_at), "MMM d, yyyy h:mm a")}</p>
+                  <p>To: {recipients.map((r: any) => r.name || r.email).join(", ")}</p>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

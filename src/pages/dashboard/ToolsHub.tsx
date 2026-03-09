@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Calculator, FileText, Building2 } from "lucide-react";
+import { Calculator, FileText, Building2, ClipboardList } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 const tools = [
@@ -20,6 +20,12 @@ const tools = [
     description: "Structured inspection checklist with photo documentation",
     icon: Building2,
     path: "/dashboard/tools/hail-assessment",
+  },
+  {
+    title: "Saved Checklists",
+    description: "View, send, and manage saved inspection reports",
+    icon: ClipboardList,
+    path: "/dashboard/tools/saved-checklists",
   },
 ];
 

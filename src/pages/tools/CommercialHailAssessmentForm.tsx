@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, X, ExternalLink, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Camera, X, ExternalLink, Loader2, CheckCircle2, AlertTriangle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +16,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { HAIL_ASSESSMENT_SECTIONS, type ChecklistSection, type ChecklistItem, type ChecklistResultOption } from "@/data/hailAssessmentChecklist";
 import { compressImage, type CompressedImage } from "@/utils/imageCompression";
+import JobSearchInput from "@/components/shared/JobSearchInput";
+import HomeownerFields from "@/components/shared/HomeownerFields";
 
 type PhotoEntry = { id: string; previewUrl: string; sizeMB: string; name: string; file: Blob };
 
 interface FormState {
-  meta: { propertyName: string; address: string; inspectorName: string; inspectionDate: string; stormDate: string };
+  meta: { propertyName: string; address: string; inspectorName: string; inspectionDate: string; stormDate: string; reportNotes: string };
   applicability: Record<string, boolean>;
   checked: Record<string, boolean>;
   photos: Record<string, PhotoEntry[]>;
@@ -32,7 +34,7 @@ interface FormState {
   resultNotes: Record<string, string>;
 }
 
-const initialMeta = { propertyName: "", address: "", inspectorName: "", inspectionDate: "", stormDate: "" };
+const initialMeta = { propertyName: "", address: "", inspectorName: "", inspectionDate: "", stormDate: "", reportNotes: "" };
 
 export default function CommercialHailAssessmentForm() {
   const navigate = useNavigate();
@@ -57,6 +59,10 @@ export default function CommercialHailAssessmentForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submittedResult, setSubmittedResult] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Job linking & homeowner
+  const [linkedJob, setLinkedJob] = useState<{ id: string; label: string } | null>(null);
+  const [homeowner, setHomeowner] = useState({ name: "", phone: "", email: "" });
 
   const setMeta = (key: keyof FormState["meta"], value: string) =>
     setForm((f) => ({ ...f, meta: { ...f.meta, [key]: value } }));
@@ -227,13 +233,20 @@ export default function CommercialHailAssessmentForm() {
         interior_accessible: form.applicability["section-8"] ?? null,
         form_data: formData as any,
         photo_paths: allPhotoPaths as any,
-      });
+        homeowner_name: homeowner.name.trim() || null,
+        homeowner_phone: homeowner.phone.trim() || null,
+        homeowner_email: homeowner.email.trim() || null,
+        job_id: linkedJob?.id || null,
+        report_notes: form.meta.reportNotes.trim() || null,
+        report_finalized: false,
+        saved_at: new Date().toISOString(),
+      } as any);
 
       if (insertError) throw insertError;
 
       setSubmitted(true);
       setSubmittedResult(selectedOption?.value || null);
-      toast({ title: "Assessment submitted", description: "Commercial hail assessment saved successfully." });
+      toast({ title: "Checklist saved", description: "Your assessment has been saved. Send the report from Saved Checklists." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to submit assessment", variant: "destructive" });
     } finally {
@@ -242,24 +255,28 @@ export default function CommercialHailAssessmentForm() {
   };
 
   if (submitted) {
-    const badgeColor = submittedResult === "no_damage" ? "bg-green-600" : submittedResult === "possible_damage" ? "bg-amber-500" : "bg-red-600";
+    const badgeColor = submittedResult === "no_damage" ? "bg-green-600 text-white" : submittedResult === "possible_damage" ? "bg-amber-500 text-white" : "bg-red-600 text-white";
     const badgeLabel = submittedResult === "no_damage" ? "No Damage" : submittedResult === "possible_damage" ? "Possible Damage" : "Confirmed Damage";
     const totalPhotos = Object.values(form.photos).reduce((s, a) => s + a.length, 0) + Object.values(form.resultPhotos).reduce((s, a) => s + a.length, 0);
 
     return (
       <div className="p-6 max-w-3xl mx-auto text-center space-y-6">
         <CheckCircle2 className="h-16 w-16 mx-auto text-green-600" />
-        <h1 className="text-2xl font-bold text-foreground">Assessment Submitted</h1>
+        <h1 className="text-2xl font-bold text-foreground">Checklist Saved</h1>
+        <p className="text-muted-foreground">Your assessment has been saved. Send the report from Saved Checklists.</p>
         <div className="space-y-2">
           <p className="text-muted-foreground">{form.meta.propertyName}</p>
-          <Badge className={`${badgeColor} text-white`}>{badgeLabel}</Badge>
+          <Badge className={badgeColor}>{badgeLabel}</Badge>
         </div>
         <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto text-sm">
           <div><p className="font-bold text-foreground">{totalChecked}</p><p className="text-muted-foreground">Items Checked</p></div>
           <div><p className="font-bold text-foreground">{totalPhotos}</p><p className="text-muted-foreground">Photos</p></div>
           <div><p className="font-bold text-foreground">{visibleSections.length}</p><p className="text-muted-foreground">Sections</p></div>
         </div>
-        <Button onClick={() => navigate(-1)} variant="outline">← Back to Tools</Button>
+        <div className="flex justify-center gap-3">
+          <Button onClick={() => navigate(-1)} variant="outline">← Back to Tools</Button>
+          <Button onClick={() => navigate("/dashboard/tools/saved-checklists")}>View Saved Checklists</Button>
+        </div>
       </div>
     );
   }
@@ -324,6 +341,34 @@ export default function CommercialHailAssessmentForm() {
         </CardContent>
       </Card>
 
+      {/* Job Linking & Homeowner */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <JobSearchInput
+            value={linkedJob}
+            onChange={(job) => {
+              setLinkedJob(job);
+              if (job) {
+                setHomeowner({
+                  name: (job as any).homeownerName || homeowner.name,
+                  phone: (job as any).homeownerPhone || homeowner.phone,
+                  email: (job as any).homeownerEmail || homeowner.email,
+                });
+                if ((job as any).address && !form.meta.address) {
+                  setMeta("address", (job as any).address);
+                }
+              }
+            }}
+          />
+          <HomeownerFields
+            name={homeowner.name}
+            phone={homeowner.phone}
+            email={homeowner.email}
+            onChange={(field, value) => setHomeowner((h) => ({ ...h, [field]: value }))}
+          />
+        </CardContent>
+      </Card>
+
       {/* Sections */}
       {HAIL_ASSESSMENT_SECTIONS.map((section) => {
         if (section.type === "single-select") return <ResultSection key={section.id} section={section} form={form} setForm={setForm} handlePhotos={handlePhotos} removeResultPhoto={removeResultPhoto} setResultDocLink={setResultDocLink} setResultNote={setResultNote} fileInputRefs={fileInputRefs} />;
@@ -381,11 +426,19 @@ export default function CommercialHailAssessmentForm() {
         );
       })}
 
+      {/* Report Notes */}
+      <Card>
+        <CardContent className="p-4 space-y-1.5">
+          <Label>Report Notes</Label>
+          <Textarea value={form.meta.reportNotes} onChange={(e) => setMeta("reportNotes", e.target.value)} rows={3} placeholder="Add any final notes to include in the report…" />
+        </CardContent>
+      </Card>
+
       {/* Submit */}
       <div className="flex justify-end gap-3 pt-4">
         <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
         <Button onClick={handleSubmit} disabled={submitting} className="min-w-[160px]">
-          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading photos…</> : "Submit Assessment"}
+          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading photos…</> : <><Save className="h-4 w-4 mr-2" /> Save Checklist</>}
         </Button>
       </div>
     </div>

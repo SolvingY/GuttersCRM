@@ -96,6 +96,7 @@ const ProductionChecklists = lazy(() => import("./pages/production/ProductionChe
 const ProductionPit = lazy(() => import("./pages/production/ProductionPit"));
 const ProductionPointsHistory = lazy(() => import("./pages/production/ProductionPointsHistory"));
 const ProductionSettings = lazy(() => import("./pages/production/ProductionSettings"));
+const SavedChecklists = lazy(() => import("./pages/tools/SavedChecklists"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -167,6 +168,7 @@ const App = () => (
               <Route path="tools/estimator" element={<GutterEstimator />} />
               <Route path="tools/my-estimates" element={<MyEstimates />} />
               <Route path="tools/hail-assessment" element={<CommercialHailAssessment />} />
+              <Route path="tools/saved-checklists" element={<SavedChecklists />} />
               <Route path="leads/:id" element={<LeadDetailView />} />
               <Route path="leads/:id/contract" element={<GutterContract />} />
               <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
@@ -231,6 +233,7 @@ const App = () => (
               <Route path="tools" element={<ProductionToolsHub />} />
               <Route path="tools/checklists" element={<ProductionChecklists />} />
               <Route path="tools/hail-assessment" element={<CommercialHailAssessment />} />
+              <Route path="tools/saved-checklists" element={<SavedChecklists />} />
               <Route path="pit" element={<ProductionPit />} />
               <Route path="points-history" element={<ProductionPointsHistory />} />
               <Route path="settings" element={<ProductionSettings />} />

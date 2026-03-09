@@ -339,15 +339,23 @@ export type Database = {
           has_membrane_roof: boolean | null
           has_metal_roof: boolean | null
           has_mod_bitumen: boolean | null
+          homeowner_email: string | null
+          homeowner_name: string | null
+          homeowner_phone: string | null
           id: string
           inspection_date: string
           inspector_name: string
           interior_accessible: boolean | null
+          job_id: string | null
           photo_paths: Json
           property_name: string
+          report_finalized: boolean
+          report_finalized_at: string | null
+          report_notes: string | null
           result: string | null
           result_doc_link: string | null
           result_notes: string | null
+          saved_at: string | null
           status: string
           storm_date: string | null
           submitted_by: string
@@ -360,15 +368,23 @@ export type Database = {
           has_membrane_roof?: boolean | null
           has_metal_roof?: boolean | null
           has_mod_bitumen?: boolean | null
+          homeowner_email?: string | null
+          homeowner_name?: string | null
+          homeowner_phone?: string | null
           id?: string
           inspection_date: string
           inspector_name: string
           interior_accessible?: boolean | null
+          job_id?: string | null
           photo_paths?: Json
           property_name: string
+          report_finalized?: boolean
+          report_finalized_at?: string | null
+          report_notes?: string | null
           result?: string | null
           result_doc_link?: string | null
           result_notes?: string | null
+          saved_at?: string | null
           status?: string
           storm_date?: string | null
           submitted_by: string
@@ -381,21 +397,36 @@ export type Database = {
           has_membrane_roof?: boolean | null
           has_metal_roof?: boolean | null
           has_mod_bitumen?: boolean | null
+          homeowner_email?: string | null
+          homeowner_name?: string | null
+          homeowner_phone?: string | null
           id?: string
           inspection_date?: string
           inspector_name?: string
           interior_accessible?: boolean | null
+          job_id?: string | null
           photo_paths?: Json
           property_name?: string
+          report_finalized?: boolean
+          report_finalized_at?: string | null
+          report_notes?: string | null
           result?: string | null
           result_doc_link?: string | null
           result_notes?: string | null
+          saved_at?: string | null
           status?: string
           storm_date?: string | null
           submitted_by?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "commercial_hail_assessments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_submitted_by"
             columns: ["submitted_by"]
@@ -1988,30 +2019,54 @@ export type Database = {
           checklist_id: string
           completed_at: string
           created_at: string
+          homeowner_email: string | null
+          homeowner_name: string | null
+          homeowner_phone: string | null
           id: string
           job_address: string | null
+          job_id: string | null
           notes: string | null
+          report_finalized: boolean
+          report_finalized_at: string | null
+          report_notes: string | null
           responses: Json
+          saved_at: string | null
           user_id: string
         }
         Insert: {
           checklist_id: string
           completed_at?: string
           created_at?: string
+          homeowner_email?: string | null
+          homeowner_name?: string | null
+          homeowner_phone?: string | null
           id?: string
           job_address?: string | null
+          job_id?: string | null
           notes?: string | null
+          report_finalized?: boolean
+          report_finalized_at?: string | null
+          report_notes?: string | null
           responses?: Json
+          saved_at?: string | null
           user_id: string
         }
         Update: {
           checklist_id?: string
           completed_at?: string
           created_at?: string
+          homeowner_email?: string | null
+          homeowner_name?: string | null
+          homeowner_phone?: string | null
           id?: string
           job_address?: string | null
+          job_id?: string | null
           notes?: string | null
+          report_finalized?: boolean
+          report_finalized_at?: string | null
+          report_notes?: string | null
           responses?: Json
+          saved_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -2020,6 +2075,13 @@ export type Database = {
             columns: ["checklist_id"]
             isOneToOne: false
             referencedRelation: "production_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_checklist_submissions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
             referencedColumns: ["id"]
           },
           {
@@ -2548,6 +2610,44 @@ export type Database = {
         }
         Relationships: []
       }
+      report_email_log: {
+        Row: {
+          checklist_type: string
+          id: string
+          recipients: Json
+          resend_message_id: string | null
+          sent_at: string
+          sent_by: string
+          submission_id: string
+        }
+        Insert: {
+          checklist_type: string
+          id?: string
+          recipients?: Json
+          resend_message_id?: string | null
+          sent_at?: string
+          sent_by: string
+          submission_id: string
+        }
+        Update: {
+          checklist_type?: string
+          id?: string
+          recipients?: Json
+          resend_message_id?: string | null
+          sent_at?: string
+          sent_by?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_email_log_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_email_settings: {
         Row: {
           id: string
@@ -2572,6 +2672,33 @@ export type Database = {
           report_type?: string
           updated_at?: string | null
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      report_recipients: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
         }
         Relationships: []
       }

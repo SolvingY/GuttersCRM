@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Loader2, ClipboardCheck, CheckCircle, MapPin } from "lucide-react";
+import { Loader2, ClipboardCheck, CheckCircle, MapPin, Save } from "lucide-react";
 import { format } from "date-fns";
+import JobSearchInput from "@/components/shared/JobSearchInput";
+import HomeownerFields from "@/components/shared/HomeownerFields";
 
 interface ChecklistItem {
   id: string;
@@ -59,6 +61,11 @@ export default function ProductionChecklists() {
   const [checklistNotes, setChecklistNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Job linking & homeowner
+  const [linkedJob, setLinkedJob] = useState<{ id: string; label: string } | null>(null);
+  const [homeowner, setHomeowner] = useState({ name: "", phone: "", email: "" });
+  const [reportNotes, setReportNotes] = useState("");
+
   useEffect(() => {
     if (user) fetchData();
   }, [user]);
@@ -97,6 +104,9 @@ export default function ProductionChecklists() {
     setCheckedItems(new Set());
     setJobAddress("");
     setChecklistNotes("");
+    setLinkedJob(null);
+    setHomeowner({ name: "", phone: "", email: "" });
+    setReportNotes("");
   };
 
   const handleSubmitChecklist = async () => {
@@ -123,6 +133,13 @@ export default function ProductionChecklists() {
           responses,
           job_address: jobAddress || null,
           notes: checklistNotes || null,
+          homeowner_name: homeowner.name.trim() || null,
+          homeowner_phone: homeowner.phone.trim() || null,
+          homeowner_email: homeowner.email.trim() || null,
+          job_id: linkedJob?.id || null,
+          report_notes: reportNotes.trim() || null,
+          report_finalized: false,
+          saved_at: new Date().toISOString(),
         });
 
       if (subError) throw subError;
@@ -144,7 +161,7 @@ export default function ProductionChecklists() {
           .insert({ user_id: user.id, log_date: today, checklists_submitted: 1 });
       }
 
-      toast.success("Checklist submitted!");
+      toast.success("Checklist saved! Send the report from Saved Checklists.");
       setActiveChecklist(null);
       fetchData();
     } catch (err: any) {
@@ -238,6 +255,32 @@ export default function ProductionChecklists() {
                 </div>
               </div>
 
+              {/* Job Linking */}
+              <JobSearchInput
+                value={linkedJob}
+                onChange={(job) => {
+                  setLinkedJob(job);
+                  if (job) {
+                    setHomeowner({
+                      name: (job as any).homeownerName || homeowner.name,
+                      phone: (job as any).homeownerPhone || homeowner.phone,
+                      email: (job as any).homeownerEmail || homeowner.email,
+                    });
+                    if ((job as any).address && !jobAddress) {
+                      setJobAddress((job as any).address);
+                    }
+                  }
+                }}
+              />
+
+              {/* Homeowner Fields */}
+              <HomeownerFields
+                name={homeowner.name}
+                phone={homeowner.phone}
+                email={homeowner.email}
+                onChange={(field, value) => setHomeowner((h) => ({ ...h, [field]: value }))}
+              />
+
               <div className="space-y-3">
                 {activeChecklist.checklist_items.map((item) => (
                   <div key={item.id} className="flex items-start gap-3">
@@ -268,13 +311,22 @@ export default function ProductionChecklists() {
                   rows={2}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Report Notes</Label>
+                <Textarea
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="Final notes to include in the report…"
+                  rows={2}
+                />
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setActiveChecklist(null)}>Cancel</Button>
             <Button onClick={handleSubmitChecklist} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Submit Checklist
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> Save Checklist</>}
             </Button>
           </DialogFooter>
         </DialogContent>
