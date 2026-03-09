@@ -383,6 +383,10 @@ export default function ContractorManagement() {
             <Users className="w-3.5 h-3.5 mr-1.5" />
             Archived ({stats.archived})
           </TabsTrigger>
+          <TabsTrigger value="hail-assessments">
+            <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
+            Hail Assessments
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
