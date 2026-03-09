@@ -337,13 +337,13 @@ export default function AdminTimeClock() {
   const getCanvasserName = (id: string) => canvassers.find(c => c.userId === id)?.name || 'Unknown';
 
   const handleAddZone = async () => {
-    if (!zoneName || !zoneLat || !zoneLng) return;
+    if (!zoneName || !parsedCoords) return;
     setSavingZone(true);
     try {
-      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parseFloat(zoneLat), lng: parseFloat(zoneLng), radius_meters: parseInt(zoneRadius) || 500 } as any);
+      const { error } = await supabase.from('geofence_work_zones').insert({ name: zoneName, lat: parsedCoords.lat, lng: parsedCoords.lng, radius_meters: parseInt(zoneRadius) || 500 } as any);
       if (error) throw error;
       toast.success('Work zone added');
-      setAddZoneModalOpen(false); setZoneName(''); setZoneLat(''); setZoneLng(''); setZoneRadius('500');
+      setAddZoneModalOpen(false); setZoneName(''); setZoneLocation(''); setParsedCoords(null); setZoneRadius('500');
       fetchWorkZones();
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingZone(false);
