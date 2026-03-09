@@ -208,11 +208,14 @@ export function useAuth() {
   const hasSalesRole = authState.roles.includes('user') || authState.roles.includes('admin');
   const hasCanvasserRole = authState.roles.includes('canvasser');
   const hasSupplementerRole = authState.roles.includes('supplementer');
-  const isDualRole = (hasSalesRole && hasCanvasserRole) || (hasSalesRole && hasSupplementerRole) || (hasCanvasserRole && hasSupplementerRole);
-  const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !isAdmin;
+  const hasProductionRole = authState.roles.includes('production');
+  const roleCount = [hasSalesRole, hasCanvasserRole, hasSupplementerRole, hasProductionRole].filter(Boolean).length;
+  const isDualRole = roleCount >= 2;
+  const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !hasProductionRole && !isAdmin;
+  const isProductionOnly = hasProductionRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !isAdmin;
   
   // Legacy compatibility - primary role for routing decisions
-  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : 'user';
+  const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : hasProductionRole && !hasSalesRole ? 'production' : 'user';
   const isCanvasser = hasCanvasserRole && !hasSalesRole && !isAdmin;
 
   const refreshOnboardingStatus = useCallback(async () => {
