@@ -791,7 +791,7 @@ export default function AdminTimeClock() {
                       <Switch checked={zone.is_active} onCheckedChange={(checked) => handleToggleZone(zone.id, checked)} />
                       <div>
                         <p className="font-medium text-foreground">{zone.name}</p>
-                        <p className="text-xs text-muted-foreground">{zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {zone.radius_meters}m radius</p>
+                        <p className="text-xs text-muted-foreground">{zone.lat.toFixed(4)}, {zone.lng.toFixed(4)} · {(zone.radius_meters / 1609.34).toFixed(1)} mi radius</p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{getZoneAssignmentLabel(zone.id)}</p>
                       </div>
                     </div>
