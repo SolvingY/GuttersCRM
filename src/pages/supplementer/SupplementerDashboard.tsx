@@ -9,7 +9,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { AccordionButton } from "@/components/dashboard/AccordionButton";
+import { SectionCarousel } from "@/components/dashboard/SectionCarousel";
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Bar } from 'recharts';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from "@/lib/constants";
 import { format } from "date-fns";
