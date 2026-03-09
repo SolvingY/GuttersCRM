@@ -881,13 +881,7 @@ export default function CompanyGoals() {
       </div>
       </AccordionButton>
 
-      {/* Additional Metrics Cards with Goal Tracking */}
-      <Collapsible open={additionalMetricsOpen} onOpenChange={setAdditionalMetricsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {additionalMetricsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Additional Metrics</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="additional" title="Additional Metrics" icon={Calculator} isOpen={openSection === "additional"} onToggle={toggleSection}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Lead-to-Close Rate (Canvasser) */}
         <Card>
