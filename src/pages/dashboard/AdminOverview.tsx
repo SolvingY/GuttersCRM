@@ -944,6 +944,7 @@ export default function AdminOverview() {
                   leadsWithoutDamage: canvasserAggregates.totalLeadsWithoutDamage,
                   leadsClosed: canvasserAggregates.totalLeadsClosed,
                 }} 
+              />
           </AccordionButton>
 
           {canvassersNeedingAttention.length > 0 && (
