@@ -1027,9 +1027,8 @@ export default function AdminOverview() {
                 </table>
               </div>
             )}
-            </CollapsibleContent>
-          </div>
-          </Collapsible>
+            </div>
+          </AccordionButton>
 
         </TabsContent>
       </Tabs>
