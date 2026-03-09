@@ -118,6 +118,11 @@ export function LeadFilesSection({ leadId, isAdmin }: LeadFilesSectionProps) {
   };
 
   const handleDownload = async (file: any) => {
+    // Handle checklist:// protocol — navigate to saved checklists
+    if (file.file_url?.startsWith("checklist://")) {
+      window.location.href = "/dashboard/tools/saved-checklists";
+      return;
+    }
     try {
       const pathParts = file.file_url.split("/lead-files/");
       if (!pathParts[1]) return;

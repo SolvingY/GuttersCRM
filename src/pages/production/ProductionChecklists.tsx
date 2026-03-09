@@ -144,21 +144,38 @@ export default function ProductionChecklists() {
 
       if (subError) throw subError;
 
-      // Atomically increment checklists_submitted in daily log
+      // Atomically increment checklists_submitted in daily log & append to tasks_completed
       const today = new Date().toISOString().split("T")[0];
+      const taskEntry = { text: `✅ Completed ${activeChecklist.title}${jobAddress ? ` — ${jobAddress}` : ""}` };
+
       const { data: existingLog } = await (supabase.from("production_daily_logs") as any)
-        .select("id, checklists_submitted")
+        .select("id, checklists_submitted, tasks_completed")
         .eq("user_id", user.id)
         .eq("log_date", today)
         .maybeSingle();
 
       if (existingLog) {
+        const existingTasks = Array.isArray(existingLog.tasks_completed) ? existingLog.tasks_completed : [];
         await (supabase.from("production_daily_logs") as any)
-          .update({ checklists_submitted: (existingLog.checklists_submitted || 0) + 1 })
+          .update({
+            checklists_submitted: (existingLog.checklists_submitted || 0) + 1,
+            tasks_completed: [...existingTasks, taskEntry],
+          })
           .eq("id", existingLog.id);
       } else {
         await (supabase.from("production_daily_logs") as any)
-          .insert({ user_id: user.id, log_date: today, checklists_submitted: 1 });
+          .insert({ user_id: user.id, log_date: today, checklists_submitted: 1, tasks_completed: [taskEntry] });
+      }
+
+      // Auto-link to job files if a job is linked
+      if (linkedJob) {
+        await (supabase.from("lead_files") as any).insert({
+          lead_id: linkedJob.id,
+          uploaded_by: user.id,
+          file_name: `${activeChecklist.title} — ${jobAddress || linkedJob.label}`,
+          file_url: `checklist://production_checklist/${crypto.randomUUID()}`,
+          file_type: "checklist",
+        });
       }
 
       toast.success("Checklist saved! Send the report from Saved Checklists.");
