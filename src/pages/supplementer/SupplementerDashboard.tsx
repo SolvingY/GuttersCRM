@@ -9,7 +9,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { AccordionButton } from "@/components/dashboard/AccordionButton";
+import { SectionCarousel } from "@/components/dashboard/SectionCarousel";
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Bar } from 'recharts';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from "@/lib/constants";
 import { format } from "date-fns";
@@ -176,54 +176,53 @@ export default function SupplementerDashboard() {
         </CardContent>
       </Card>
 
-      {/* Fiscal Year Progress */}
-      <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggle}>
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{format(FISCAL_YEAR.CURRENT_YEAR_START, 'MMM d, yyyy')}</span>
-            <span>{format(FISCAL_YEAR.CURRENT_YEAR_END, 'MMM d, yyyy')}</span>
+      <SectionCarousel activeSection={openSection} onToggle={toggle}>
+        <SectionCarousel.Item id="fiscal" title="Fiscal Year Progress" icon={Calendar}>
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>{format(FISCAL_YEAR.CURRENT_YEAR_START, 'MMM d, yyyy')}</span>
+              <span>{format(FISCAL_YEAR.CURRENT_YEAR_END, 'MMM d, yyyy')}</span>
+            </div>
+            <Progress value={fiscalProgress} className="h-3" />
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{fiscalProgress.toFixed(1)}% complete</span>
+              <span className="font-medium text-primary">{daysRemaining} days remaining</span>
+            </div>
           </div>
-          <Progress value={fiscalProgress} className="h-3" />
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{fiscalProgress.toFixed(1)}% complete</span>
-            <span className="font-medium text-primary">{daysRemaining} days remaining</span>
-          </div>
-        </div>
-      </AccordionButton>
+        </SectionCarousel.Item>
 
-      {/* RCV Goal Progress */}
-      <AccordionButton id="goal" title="RCV Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggle}>
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{formatCurrency(totalRcv)} of {formatCurrency(yearlyGoal)}</span>
-            <span className="font-medium text-primary">{goalProgress.toFixed(1)}%</span>
+        <SectionCarousel.Item id="goal" title="RCV Goal Progress" icon={Target}>
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{formatCurrency(totalRcv)} of {formatCurrency(yearlyGoal)}</span>
+              <span className="font-medium text-primary">{goalProgress.toFixed(1)}%</span>
+            </div>
+            <Progress value={goalProgress} className="h-3" />
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(yearlyGoal - totalRcv > 0 ? yearlyGoal - totalRcv : 0)} remaining to goal
+            </p>
           </div>
-          <Progress value={goalProgress} className="h-3" />
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(yearlyGoal - totalRcv > 0 ? yearlyGoal - totalRcv : 0)} remaining to goal
-          </p>
-        </div>
-      </AccordionButton>
+        </SectionCarousel.Item>
 
-      {/* 52-Week Progress Chart */}
-      <AccordionButton id="chart" title="52-Week RCV Progress" icon={TrendingUp} isOpen={openSection === "chart"} onToggle={toggle}>
-        {weeklyData.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">No weekly data yet</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-              <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-              <RechartsTooltip formatter={(value: number, name: string) => [formatCurrency(value), name === 'rcv_increased' ? 'Weekly RCV' : name === 'cumulative_rcv' ? 'Cumulative RCV' : 'Goal Pace']} />
-              <Legend />
-              <Bar dataKey="rcv_increased" name="Weekly RCV" fill="hsl(var(--primary))" opacity={0.7} />
-              <Line type="monotone" dataKey="cumulative_rcv" name="Cumulative RCV" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="goal_pace" name="Goal Pace" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-      </AccordionButton>
+        <SectionCarousel.Item id="chart" title="52-Week RCV Progress" icon={TrendingUp}>
+          {weeklyData.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No weekly data yet</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                <RechartsTooltip formatter={(value: number, name: string) => [formatCurrency(value), name === 'rcv_increased' ? 'Weekly RCV' : name === 'cumulative_rcv' ? 'Cumulative RCV' : 'Goal Pace']} />
+                <Legend />
+                <Bar dataKey="rcv_increased" name="Weekly RCV" fill="hsl(var(--primary))" opacity={0.7} />
+                <Line type="monotone" dataKey="cumulative_rcv" name="Cumulative RCV" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="goal_pace" name="Goal Pace" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </SectionCarousel.Item>
+      </SectionCarousel>
 
       {/* Secondary KPIs */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

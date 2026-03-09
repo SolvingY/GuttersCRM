@@ -12,13 +12,61 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { AccordionButton } from '@/components/dashboard/AccordionButton';
+import { SectionCarousel } from '@/components/dashboard/SectionCarousel';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 import { format, subWeeks } from 'date-fns';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget';
+
+// Define the type for the motivational quote
+interface Quote {
+  quote: string;
+  author: string;
+}
+
+interface Trend {
+  value: number;
+  isPositive: boolean;
+}
+
+interface Metric {
+  sales: number;
+  approved_revenue: number;
+  collections: number;
+  points: number;
+  leads: number;
+  closed_deals: number;
+}
+
+interface Contest {
+  id: string;
+  name: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  goal_type: string;
+  goal_value: number;
+  reward: string;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  expires_at: string;
+  is_active: boolean;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  due_date: string;
+  is_completed: boolean;
+}
 
 interface UserMetric {
   id: string;
@@ -68,7 +116,6 @@ export default function MyStats() {
       const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
       const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
 
-      // Run all independent queries in parallel
       const [
         metricsResult,
         weeklyResult,
@@ -123,7 +170,6 @@ export default function MyStats() {
         setAllWeeklyMetrics(allWeeklyResult.data || []);
       }
 
-      // Fetch monthly payments — depends on myLeads result above
       const myLeadIds = (myLeadsResult.data || []).map(l => l.id);
       let monthTotal = 0;
       if (myLeadIds.length > 0) {
@@ -155,7 +201,6 @@ export default function MyStats() {
     };
   };
 
-  // Use approved_revenue instead of sales
   const approvedRevenue = Number(latestMetric?.approved_revenue) || 0;
   const collectionsYtd = Number(latestMetric?.collections) || 0;
   const earningsYtd = Number(latestMetric?.earnings_ytd) || 0;
@@ -165,9 +210,7 @@ export default function MyStats() {
   const closedDeals = Number(latestMetric?.closed_deals) || 0;
   const leads = Number(latestMetric?.leads) || 0;
   const selfGeneratedDeals = Number(latestMetric?.self_generated_deals) || 0;
-  // Calculate avg job size based on approved revenue
   const averageJobSize = closedDeals > 0 ? approvedRevenue / closedDeals : 0;
-  // Lead-to-Close = Canvass Deals Closed / Canvass Leads Assigned
   const canvassLeads = Number((latestMetric as any)?.canvass_leads) || 0;
   const canvassDealsClose = Number((latestMetric as any)?.canvass_deals_closed) || 0;
   const internetLeads = Number((latestMetric as any)?.internet_leads) || 0;
@@ -200,8 +243,6 @@ export default function MyStats() {
     }).format(value);
   };
 
-
-
   const weeklyChartData = useMemo(() => {
     const fiscalStart = FISCAL_YEAR.CURRENT_YEAR_START;
     const weeklyGoalPace = yearlyGoal / 52;
@@ -210,10 +251,8 @@ export default function MyStats() {
     for (let i = 0; i < 52; i++) {
       const weekStart = new Date(fiscalStart);
       weekStart.setDate(weekStart.getDate() + (i * 7));
-
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
       const weeklyMetric = allWeeklyMetrics.find(w => w.week_start === weekStartStr);
-
       weeks.push({
         week: `W${i + 1}`,
         weekLabel: format(weekStart, 'MMM d'),
@@ -245,7 +284,6 @@ export default function MyStats() {
     return 'text-red-600';
   };
 
-
   return (
     <div className="space-y-4">
       {/* Motivational Quote Banner */}
@@ -262,9 +300,7 @@ export default function MyStats() {
       </Card>
 
       <div>
-        <h2 className="text-2xl font-heading text-foreground">
-          My Stats
-        </h2>
+        <h2 className="text-2xl font-heading text-foreground">My Stats</h2>
         <p className="text-muted-foreground">
           Welcome back{displayName ? `, ${displayName}` : ''}! Track your personal performance metrics
         </p>
@@ -279,86 +315,30 @@ export default function MyStats() {
         </div>
       ) : (
         <>
-          {/* Overdue Follow-ups Alert */}
           <OverdueFollowupsWidget isAdmin={false} />
-
-          {/* Stale Contracts Alert */}
           <StaleContractsWidget isAdmin={false} />
-
-          {/* Collections Due */}
           <CollectionsPipelineWidget isAdmin={false} />
 
-          {/* 1. Contests */}
-          <AccordionButton id="contests" title="Contests" icon={Target} isOpen={openSection === "contests"} onToggle={toggleSection}>
-            <ActiveContestWidget />
-          </AccordionButton>
+          <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+            <SectionCarousel.Item id="contests" title="Contests" icon={Target}>
+              <ActiveContestWidget />
+            </SectionCarousel.Item>
 
-          {/* 2. Key Metrics */}
-          <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {/* Row 1: Approved Revenue | Avg Job Size */}
-                <StatsCard
-                  title="Approved Revenue"
-                  value={formatCurrency(approvedRevenue)}
-                  icon={DollarSign}
-                  trend={previousMetric ? calculateTrend(Number(latestMetric?.approved_revenue), Number(previousMetric?.approved_revenue)) : undefined}
-                />
-                <StatsCard
-                  title="Avg Job Size"
-                  value={formatCurrency(averageJobSize)}
-                  icon={Calculator}
-                  valueClassName={getAvgJobSizeColor(averageJobSize)}
-                />
-                
-                {/* Row 2: Points | Collections YTD (Green) */}
-                <StatsCard
-                  title="Points"
-                  value={Number(latestMetric?.points || 0).toLocaleString()}
-                  icon={Star}
-                  trend={previousMetric ? calculateTrend(Number(latestMetric?.points), Number(previousMetric?.points)) : undefined}
-                />
-                <StatsCard
-                  title="Collections YTD"
-                  value={formatCurrency(collectionsYtd)}
-                  icon={Wallet}
-                  valueClassName="text-green-500"
-                />
-                
-                {/* Row 3: YTD Earnings | Self Generated */}
-                <StatsCard
-                  title="YTD Earnings"
-                  value={formatCurrency(earningsYtd)}
-                  icon={DollarSign}
-                  valueClassName="text-accent"
-                />
-                <StatsCard
-                  title="Self Generated"
-                  value={selfGeneratedDeals.toLocaleString()}
-                  icon={UserPlus}
-                />
-                
-                {/* Row 4: Closed Deals | Leads */}
-                <StatsCard
-                  title="Closed Deals"
-                  value={latestMetric?.closed_deals || 0}
-                  icon={Briefcase}
-                  trend={previousMetric ? calculateTrend(latestMetric?.closed_deals || 0, previousMetric?.closed_deals || 0) : undefined}
-                />
-                <StatsCard
-                  title="Leads"
-                  value={leads.toLocaleString()}
-                  icon={Users}
-                  trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined}
-                />
-                
-                {/* Collections This Month */}
-                <StatsCard
-                  title="Collections This Month"
-                  value={formatCurrency(collectionsThisMonth)}
-                  icon={Wallet}
-                  valueClassName="text-green-500"
-                />
-                {/* Row 5: Lead to Close % with Tooltip */}
+            <SectionCarousel.Item id="metrics" title="Key Metrics" icon={Star}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <StatsCard title="Approved Revenue" value={formatCurrency(approvedRevenue)} icon={DollarSign}
+                  trend={previousMetric ? calculateTrend(Number(latestMetric?.approved_revenue), Number(previousMetric?.approved_revenue)) : undefined} />
+                <StatsCard title="Avg Job Size" value={formatCurrency(averageJobSize)} icon={Calculator} valueClassName={getAvgJobSizeColor(averageJobSize)} />
+                <StatsCard title="Points" value={Number(latestMetric?.points || 0).toLocaleString()} icon={Star}
+                  trend={previousMetric ? calculateTrend(Number(latestMetric?.points), Number(previousMetric?.points)) : undefined} />
+                <StatsCard title="Collections YTD" value={formatCurrency(collectionsYtd)} icon={Wallet} valueClassName="text-green-500" />
+                <StatsCard title="YTD Earnings" value={formatCurrency(earningsYtd)} icon={DollarSign} valueClassName="text-accent" />
+                <StatsCard title="Self Generated" value={selfGeneratedDeals.toLocaleString()} icon={UserPlus} />
+                <StatsCard title="Closed Deals" value={latestMetric?.closed_deals || 0} icon={Briefcase}
+                  trend={previousMetric ? calculateTrend(latestMetric?.closed_deals || 0, previousMetric?.closed_deals || 0) : undefined} />
+                <StatsCard title="Leads" value={leads.toLocaleString()} icon={Users}
+                  trend={previousMetric ? calculateTrend(leads, Number(previousMetric?.leads) || 0) : undefined} />
+                <StatsCard title="Collections This Month" value={formatCurrency(collectionsThisMonth)} icon={Wallet} valueClassName="text-green-500" />
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -384,151 +364,109 @@ export default function MyStats() {
                     </span>
                   </div>
                 </Card>
-            </div>
-          </AccordionButton>
+              </div>
+            </SectionCarousel.Item>
 
-          {/* 3. Recent Weekly Updates */}
-          {weeklyMetrics.length > 0 && (
-            <AccordionButton id="weekly" title="Recent Weekly Updates" icon={TrendingUp} isOpen={openSection === "weekly"} onToggle={toggleSection}>
-              <div className="space-y-3">
-                {weeklyMetrics.slice(0, 4).map((week) => (
-                        <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium text-foreground">
-                              Week of {format(new Date(week.week_start), 'MMM d')} - {format(new Date(week.week_end), 'MMM d')}
-                            </p>
-                            <div className="flex gap-4 text-xs text-muted-foreground">
-                              <span>{week.leads} leads</span>
-                              <span>{week.closed_deals} closed</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.approved_revenue) || Number(week.sales))}</p>
-                            <p className="text-xs text-accent">+{Number(week.points_earned)} pts</p>
-                          </div>
+            <SectionCarousel.Item id="weekly" title="Recent Weekly Updates" icon={TrendingUp}>
+              {weeklyMetrics.length > 0 ? (
+                <div className="space-y-3">
+                  {weeklyMetrics.slice(0, 4).map((week) => (
+                    <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          Week of {format(new Date(week.week_start), 'MMM d')} - {format(new Date(week.week_end), 'MMM d')}
+                        </p>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>{week.leads} leads</span>
+                          <span>{week.closed_deals} closed</span>
                         </div>
-                      ))}
-              </div>
-            </AccordionButton>
-          )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(Number(week.approved_revenue) || Number(week.sales))}</p>
+                        <p className="text-xs text-accent">+{Number(week.points_earned)} pts</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">No weekly data yet</p>
+              )}
+            </SectionCarousel.Item>
 
-          {/* 4. Fiscal Year Progress */}
-          <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggleSection}>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
-                <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+            <SectionCarousel.Item id="fiscal" title="Fiscal Year Progress" icon={Calendar}>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+                  <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+                </div>
+                <Progress value={fiscalYearProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground text-center">
+                  {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+                </p>
               </div>
-              <Progress value={fiscalYearProgress} className="h-2" />
-              <p className="text-xs text-muted-foreground text-center">
-                {fiscalYearProgress.toFixed(1)}% of fiscal year complete
-              </p>
-            </div>
-          </AccordionButton>
+            </SectionCarousel.Item>
 
-          {/* 5. Goal Progress */}
-          {yearlyGoal > 0 && (
-            <AccordionButton id="goal" title="Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggleSection}>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Yearly Goal</p>
-                    <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
+            <SectionCarousel.Item id="goal" title="Goal Progress" icon={Target}>
+              {yearlyGoal > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Yearly Goal</p>
+                      <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Approved Revenue</p>
+                      <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Approved Revenue</p>
-                    <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className={`font-semibold ${getGoalColor()}`}>{goalPercentage.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Amount Remaining</p>
+                      <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">Rank</p>
+                      <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className={`font-semibold ${getGoalColor()}`}>
-                      {goalPercentage.toFixed(1)}%
-                    </span>
-                  </div>
-                  <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
-                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">No goal set yet</p>
+              )}
+            </SectionCarousel.Item>
 
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">Amount Remaining</p>
-                    <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">Rank</p>
-                    <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
-                  </div>
+            <SectionCarousel.Item id="progress" title="52-Week Progress" icon={TrendingUp}>
+              {yearlyGoal > 0 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={weeklyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={3} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                      <RechartsTooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                        formatter={(value: number, name: string) => [formatCurrency(value), name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace']}
+                        labelFormatter={(label, payload) => payload?.[0] ? `Week of ${payload[0].payload.weekLabel}` : label}
+                      />
+                      <Legend />
+                      <Bar dataKey="approvedRevenue" fill="hsl(var(--accent))" name="Weekly Revenue" radius={[2, 2, 0, 0]} />
+                      <Line type="monotone" dataKey="cumulativeRevenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Cumulative Revenue" />
+                      <Line type="monotone" dataKey="cumulativeGoal" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Goal Pace" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
-            </AccordionButton>
-          )}
-
-          {/* 7. 52-Week Progress */}
-          {yearlyGoal > 0 && (
-            <AccordionButton id="progress" title="52-Week Progress" icon={TrendingUp} isOpen={openSection === "progress"} onToggle={toggleSection}>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={weeklyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="week" 
-                      stroke="hsl(var(--muted-foreground))" 
-                      fontSize={10}
-                      interval={3}
-                    />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))" 
-                      fontSize={12}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                    />
-                    <RechartsTooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value: number, name: string) => [
-                        formatCurrency(value),
-                        name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
-                      ]}
-                      labelFormatter={(label, payload) => {
-                        if (payload && payload[0]) {
-                          return `Week of ${payload[0].payload.weekLabel}`;
-                        }
-                        return label;
-                      }}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="approvedRevenue"
-                      fill="hsl(var(--accent))"
-                      name="Weekly Revenue"
-                      radius={[2, 2, 0, 0]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="cumulativeRevenue"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Cumulative Revenue"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="cumulativeGoal"
-                      stroke="hsl(var(--muted-foreground))"
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      dot={false}
-                      name="Goal Pace"
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </AccordionButton>
-          )}
+              ) : (
+                <p className="text-center text-muted-foreground py-4">Set a yearly goal to see progress</p>
+              )}
+            </SectionCarousel.Item>
+          </SectionCarousel>
         </>
       )}
 

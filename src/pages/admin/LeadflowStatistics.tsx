@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TrendingUp, Clock } from 'lucide-react';
 import { PipelineFunnelWidget } from '@/components/dashboard/PipelineFunnelWidget';
 import { TimeToCloseWidget } from '@/components/dashboard/TimeToCloseWidget';
-import { AccordionButton } from '@/components/dashboard/AccordionButton';
+import { SectionCarousel } from '@/components/dashboard/SectionCarousel';
 
 export default function LeadflowStatistics() {
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -15,13 +15,14 @@ export default function LeadflowStatistics() {
         <p className="text-sm text-muted-foreground">Pipeline conversion and time-to-close analytics</p>
       </div>
 
-      <AccordionButton id="pipeline" title="Pipeline Funnel" icon={TrendingUp} isOpen={openSection === "pipeline"} onToggle={toggle}>
-        <PipelineFunnelWidget />
-      </AccordionButton>
-
-      <AccordionButton id="time-to-close" title="Average Time to Close" icon={Clock} isOpen={openSection === "time-to-close"} onToggle={toggle}>
-        <TimeToCloseWidget />
-      </AccordionButton>
+      <SectionCarousel activeSection={openSection} onToggle={toggle}>
+        <SectionCarousel.Item id="pipeline" title="Pipeline Funnel" icon={TrendingUp}>
+          <PipelineFunnelWidget />
+        </SectionCarousel.Item>
+        <SectionCarousel.Item id="time-to-close" title="Average Time to Close" icon={Clock}>
+          <TimeToCloseWidget />
+        </SectionCarousel.Item>
+      </SectionCarousel>
     </div>
   );
 }
