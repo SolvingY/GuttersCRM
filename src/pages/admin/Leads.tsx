@@ -38,6 +38,7 @@ const statusColors: Record<string, string> = {
   quoted: "bg-blue-500 text-white",
   scheduled: "bg-green-500 text-white",
   won: "bg-emerald-600 text-white",
+  complete: "bg-emerald-700 text-white",
   lost: "bg-muted text-muted-foreground",
   archived: "bg-muted text-muted-foreground",
 };
@@ -56,6 +57,7 @@ const statusCarouselConfig: { id: string; label: string; icon: any }[] = [
   { id: "quoted", label: "Quoted", icon: DollarSign },
   { id: "scheduled", label: "Scheduled", icon: CalendarClock },
   { id: "won", label: "Won", icon: CheckCircle2 },
+  { id: "complete", label: "Complete", icon: CheckCircle2 },
   { id: "lost", label: "Lost", icon: XCircle },
   { id: "archived", label: "Archived", icon: Archive },
 ];
@@ -68,7 +70,7 @@ export default function Leads() {
   const [createOpen, setCreateOpen] = useState(false);
   const [revenueSection, setRevenueSection] = useState<string | null>(null);
   const toggleRevenueSection = (id: string) => setRevenueSection(prev => prev === id ? null : id);
-  const [statusSection, setStatusSection] = useState<string>("all");
+  const [statusSection, setStatusSection] = useState<string | null>(null);
 
   const { data: allLeads = [], isLoading } = useQuery({
     queryKey: ["admin-leads", serviceFilter, priorityFilter, assignedFilter, sourceFilter],
@@ -298,13 +300,14 @@ export default function Leads() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading leads...</div>
       ) : (
-        <SectionCarousel activeSection={statusSection} onToggle={(id) => setStatusSection(id)}>
+        <SectionCarousel activeSection={statusSection} onToggle={(id) => setStatusSection(prev => prev === id ? null : id)}>
           {statusCarouselConfig.map(({ id, label, icon }) => (
             <SectionCarousel.Item
               key={id}
               id={id}
               title={`${label} (${statusCounts[id] ?? 0})`}
               icon={icon}
+              indicator={id === "new" && (statusCounts["new"] ?? 0) > 0 ? "pulse" : undefined}
             >
               {renderLeadCards(getLeadsForStatus(id))}
             </SectionCarousel.Item>

@@ -6,6 +6,7 @@ interface SectionItemProps {
   id: string;
   title: string;
   icon: React.ElementType;
+  indicator?: "pulse";
   children: React.ReactNode;
 }
 
@@ -51,6 +52,12 @@ function SectionCarousel({ activeSection, onToggle, children }: SectionCarouselP
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span>{item.title}</span>
+                {item.indicator === "pulse" && (
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+                  </span>
+                )}
               </button>
             );
           })}
