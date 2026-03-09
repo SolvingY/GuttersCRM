@@ -301,8 +301,8 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     setClockingOut(true);
     try {
       const loc = await getLocation();
-      if (!loc) {
-        toast.warning("Location not captured — enable location for tracking");
+      if (!loc || loc.errorMsg) {
+        toast.warning(loc?.errorMsg || "Location not available — geolocation API not supported");
       }
 
       const clockOutTime = new Date();
