@@ -255,24 +255,28 @@ export default function CommercialHailAssessmentForm() {
   };
 
   if (submitted) {
-    const badgeColor = submittedResult === "no_damage" ? "bg-green-600" : submittedResult === "possible_damage" ? "bg-amber-500" : "bg-red-600";
+    const badgeColor = submittedResult === "no_damage" ? "bg-green-600 text-white" : submittedResult === "possible_damage" ? "bg-amber-500 text-white" : "bg-red-600 text-white";
     const badgeLabel = submittedResult === "no_damage" ? "No Damage" : submittedResult === "possible_damage" ? "Possible Damage" : "Confirmed Damage";
     const totalPhotos = Object.values(form.photos).reduce((s, a) => s + a.length, 0) + Object.values(form.resultPhotos).reduce((s, a) => s + a.length, 0);
 
     return (
       <div className="p-6 max-w-3xl mx-auto text-center space-y-6">
         <CheckCircle2 className="h-16 w-16 mx-auto text-green-600" />
-        <h1 className="text-2xl font-bold text-foreground">Assessment Submitted</h1>
+        <h1 className="text-2xl font-bold text-foreground">Checklist Saved</h1>
+        <p className="text-muted-foreground">Your assessment has been saved. Send the report from Saved Checklists.</p>
         <div className="space-y-2">
           <p className="text-muted-foreground">{form.meta.propertyName}</p>
-          <Badge className={`${badgeColor} text-white`}>{badgeLabel}</Badge>
+          <Badge className={badgeColor}>{badgeLabel}</Badge>
         </div>
         <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto text-sm">
           <div><p className="font-bold text-foreground">{totalChecked}</p><p className="text-muted-foreground">Items Checked</p></div>
           <div><p className="font-bold text-foreground">{totalPhotos}</p><p className="text-muted-foreground">Photos</p></div>
           <div><p className="font-bold text-foreground">{visibleSections.length}</p><p className="text-muted-foreground">Sections</p></div>
         </div>
-        <Button onClick={() => navigate(-1)} variant="outline">← Back to Tools</Button>
+        <div className="flex justify-center gap-3">
+          <Button onClick={() => navigate(-1)} variant="outline">← Back to Tools</Button>
+          <Button onClick={() => navigate("/dashboard/tools/saved-checklists")}>View Saved Checklists</Button>
+        </div>
       </div>
     );
   }
