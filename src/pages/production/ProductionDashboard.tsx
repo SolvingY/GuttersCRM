@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Star, HardHat, AlertTriangle, ClipboardCheck, Percent, FileText } from "lucide-react";
+import { Loader2, Star, HardHat, AlertTriangle, ClipboardCheck, Percent, FileText, Plus, X } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ProductionTimeClockWidget } from "@/components/production/ProductionTimeClockWidget";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ export default function ProductionDashboard() {
   const [loading, setLoading] = useState(true);
   const [buildsToday, setBuildsToday] = useState("");
   const [summaryNotes, setSummaryNotes] = useState("");
+  const [tasksCompleted, setTasksCompleted] = useState<{ text: string }[]>([]);
+  const [newTask, setNewTask] = useState("");
   const [submittingLog, setSubmittingLog] = useState(false);
   const [logSubmitted, setLogSubmitted] = useState(false);
 
@@ -53,14 +55,17 @@ export default function ProductionDashboard() {
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
     const { data } = await (supabase.from("production_daily_logs") as any)
-      .select("builds_completed, summary_notes")
+      .select("builds_completed, summary_notes, tasks_completed")
       .eq("user_id", user.id)
       .eq("log_date", today)
       .maybeSingle();
 
-    if (data && (data.summary_notes || data.builds_completed > 0)) {
+    if (data && (data.summary_notes || data.builds_completed > 0 || (Array.isArray(data.tasks_completed) && data.tasks_completed.length > 0))) {
       setBuildsToday(data.builds_completed?.toString() || "0");
       setSummaryNotes(data.summary_notes || "");
+      if (Array.isArray(data.tasks_completed)) {
+        setTasksCompleted(data.tasks_completed as { text: string }[]);
+      }
       setLogSubmitted(true);
     }
   };
@@ -78,6 +83,7 @@ export default function ProductionDashboard() {
           log_date: today,
           builds_completed: builds,
           summary_notes: summaryNotes || null,
+          tasks_completed: tasksCompleted,
         },
         { onConflict: "user_id,log_date" }
       );
@@ -176,6 +182,56 @@ export default function ProductionDashboard() {
               placeholder="0"
             />
           </div>
+
+          {/* Tasks Accomplished */}
+          <div className="space-y-2">
+            <Label>Tasks Accomplished</Label>
+            <div className="flex gap-2">
+              <Input
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                placeholder="e.g. Installed shingles at 123 Main St"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTask.trim()) {
+                    e.preventDefault();
+                    setTasksCompleted((prev) => [...prev, { text: newTask.trim() }]);
+                    setNewTask("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                disabled={!newTask.trim()}
+                onClick={() => {
+                  if (newTask.trim()) {
+                    setTasksCompleted((prev) => [...prev, { text: newTask.trim() }]);
+                    setNewTask("");
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {tasksCompleted.length > 0 && (
+              <ul className="space-y-1">
+                {tasksCompleted.map((task, i) => (
+                  <li key={i} className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                    <span className="flex-1">{task.text}</span>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      onClick={() => setTasksCompleted((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="summaryNotes">Summary / Notes</Label>
             <Textarea

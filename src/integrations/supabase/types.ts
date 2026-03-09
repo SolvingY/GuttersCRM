@@ -2148,6 +2148,7 @@ export type Database = {
           id: string
           log_date: string
           summary_notes: string | null
+          tasks_completed: Json
           updated_at: string
           user_id: string
         }
@@ -2161,6 +2162,7 @@ export type Database = {
           id?: string
           log_date?: string
           summary_notes?: string | null
+          tasks_completed?: Json
           updated_at?: string
           user_id: string
         }
@@ -2174,6 +2176,7 @@ export type Database = {
           id?: string
           log_date?: string
           summary_notes?: string | null
+          tasks_completed?: Json
           updated_at?: string
           user_id?: string
         }

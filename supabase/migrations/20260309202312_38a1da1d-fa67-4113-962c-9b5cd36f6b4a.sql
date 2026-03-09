@@ -1,0 +1,1 @@
+ALTER TABLE production_daily_logs ADD COLUMN IF NOT EXISTS tasks_completed jsonb NOT NULL DEFAULT '[]';

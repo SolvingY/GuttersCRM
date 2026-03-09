@@ -1,40 +1,42 @@
 
 
-# Add Task List to Production Daily Activity Log
+# Add Edit Button to Shift History
 
-## What's Changing
-Add a dynamic task list to the Daily Activity Log so production contractors can itemize what they accomplished (e.g., "Installed shingles at 123 Main St", "Completed water test at 456 Oak"). This sits alongside the existing "Summary / Notes" textarea.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Database Migration
+## Changes
 
-Add a `tasks_completed` JSONB column to `production_daily_logs`:
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-```sql
-ALTER TABLE production_daily_logs
-  ADD COLUMN IF NOT EXISTS tasks_completed jsonb NOT NULL DEFAULT '[]';
-```
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-Format: `[{"text": "Installed roof at 123 Main St"}, {"text": "Ran water test at 456 Oak Ave"}]`
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-## UI Changes — `ProductionDashboard.tsx`
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-Add a task list section between "Builds Completed Today" and "Summary / Notes":
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-- **Label:** "Tasks Accomplished"
-- **Input row:** Text input + "Add" button. Pressing Enter or clicking Add appends to a local state array.
-- **List below:** Each task shown as a row with the text and a remove (X) button.
-- On submit, `tasks_completed` is included in the upsert payload as a JSON array.
-- On load (existing log for today), pre-populate the task list from `tasks_completed`.
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-## EOD Email Update — `send-production-eod-summary/index.ts`
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-Add a "Tasks Accomplished" section to the HTML email template, rendering the task list as a bulleted list per contractor. Only shown if the array is non-empty.
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-## Files Changed
+## Summary
 
-| File | Change |
+| Area | Change |
 |------|--------|
-| Migration SQL | Add `tasks_completed` jsonb column |
-| `src/pages/production/ProductionDashboard.tsx` | Add task list UI with add/remove, include in upsert |
-| `supabase/functions/send-production-eod-summary/index.ts` | Render tasks in email HTML |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
