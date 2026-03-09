@@ -38,6 +38,7 @@ const statusColors: Record<string, string> = {
   quoted: "bg-blue-500 text-white",
   scheduled: "bg-green-500 text-white",
   won: "bg-emerald-600 text-white",
+  complete: "bg-emerald-700 text-white",
   lost: "bg-muted text-muted-foreground",
   archived: "bg-muted text-muted-foreground",
 };
