@@ -17,7 +17,7 @@ import {
   experienceOptions,
   availabilityOptions,
 } from "@/lib/dnaAssessment";
-import nextGenLogo from "@/assets/next-gen-logo.png";
+import nextGenLogo from "@/assets/ngr-logo.png";
 
 function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;

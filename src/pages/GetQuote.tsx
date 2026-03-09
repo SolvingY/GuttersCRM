@@ -12,7 +12,7 @@ import { QuoteConfirmation } from "@/components/quote/QuoteConfirmation";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/logo.jpg";
+import logo from "@/assets/ngr-logo.png";
 
 const stepLabels = ["Service", "Details", "Contact", "Confirmation"];
 

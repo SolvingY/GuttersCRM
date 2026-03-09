@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, CSSProperties } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import ngrLogo from "@/assets/ngr-logo-circle.jpg";
+import ngrLogo from "@/assets/ngr-logo.png";
 import { buildEstimatePDF, loadLogoBase64 } from "@/lib/generateEstimatePDF";
 
 // ── Pricing Constants (DO NOT MODIFY) ──────────────────────────────────────

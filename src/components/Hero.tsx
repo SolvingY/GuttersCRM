@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Star, Phone, ClipboardList } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-split-building.jpg";
-import heroLogo from "@/assets/hero-logo-new.png";
+import heroLogo from "@/assets/ngr-logo.png";
 import bbbBadge from "@/assets/badge-bbb.png";
 import gafBadge from "@/assets/badge-gaf.png";
 import iicrcBadge from "@/assets/badge-iicrc.png";

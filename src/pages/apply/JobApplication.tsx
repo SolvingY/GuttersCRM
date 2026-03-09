@@ -17,7 +17,7 @@ import {
   experienceOptions,
   availabilityOptions,
 } from "@/lib/dnaAssessment";
-import ngrLogo from "@/assets/next-gen-logo.png";
+import ngrLogo from "@/assets/ngr-logo.png";
 
 const intakeSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required").max(100),
