@@ -38,6 +38,14 @@ export default function SavedChecklists() {
   const [detailItem, setDetailItem] = useState<SavedItem | null>(null);
   const [sendItem, setSendItem] = useState<SavedItem | null>(null);
   const [assigningJobId, setAssigningJobId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("Team Member");
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("full_name").eq("id", user.id).single().then(({ data }) => {
+      if (data?.full_name) setDisplayName(data.full_name);
+    });
+  }, [user]);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["saved-checklists", user?.id],
