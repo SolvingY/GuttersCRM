@@ -88,9 +88,10 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       if (isSalesRep) roles.push('user');
       if (isCanvasser) roles.push('canvasser');
       if (isSupplementer) roles.push('supplementer');
+      if (isProduction) roles.push('production');
 
       // Determine if this is admin-only (admin checked but no operational roles)
-      const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer;
+      const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction;
 
       const response = await supabase.functions.invoke('admin-set-user-role', {
         body: { 
