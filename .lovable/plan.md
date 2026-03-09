@@ -1,73 +1,42 @@
 
 
-# Accordion-Style Section Buttons
+# Add Edit Button to Shift History
 
-## Concept
-Replace the current collapsible sections with **app-style pill/button triggers** that look like tappable list items (think iOS Settings rows). Only one section open at a time — clicking a new one closes the previous. Each trigger is a compact, rounded button with an icon, title, and a chevron indicator.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Shared Component
+## Changes
 
-**`src/components/dashboard/SectionAccordion.tsx`** — A wrapper that manages single-open-at-a-time state and renders children sections.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-**`src/components/dashboard/AccordionButton.tsx`** — The trigger button for each section:
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-```text
-┌──────────────────────────────────────────┐
-│  🎯  Contests                        ▸  │
-└──────────────────────────────────────────┘
-┌──────────────────────────────────────────┐
-│  ⭐  Key Metrics                      ▾  │
-├──────────────────────────────────────────┤
-│  (expanded content)                      │
-└──────────────────────────────────────────┘
-┌──────────────────────────────────────────┐
-│  📊  Weekly Performance               ▸  │
-└──────────────────────────────────────────┘
-```
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-Each button: `rounded-xl`, `bg-card`, `border`, `shadow-sm`, `hover:shadow-md`, `transition-all`, padding `py-3 px-4`. Active/open state gets `border-primary/50 bg-primary/5`. Icon on left, title in the middle, chevron on right. Feels like a phone app list item.
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## Architecture
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-Rather than managing 10+ individual `useState` booleans, each dashboard will track a single `openSection: string | null` state. Clicking a section sets it; clicking the same one toggles it closed.
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-```typescript
-const [openSection, setOpenSection] = useState<string | null>(null);
-const toggle = (id: string) => setOpenSection(prev => prev === id ? null : id);
-```
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-Each section rendered as:
-```tsx
-<AccordionButton
-  id="contests"
-  title="Contests"
-  icon={Target}
-  isOpen={openSection === "contests"}
-  onToggle={toggle}
->
-  <ActiveContestWidget />
-</AccordionButton>
-```
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-## Files to Update
+## Summary
 
-| File | Sections | Change |
-|------|----------|--------|
-| **New:** `src/components/dashboard/AccordionButton.tsx` | — | Shared button component |
-| `src/pages/dashboard/MyStats.tsx` | 6 sections | Replace 6 `useState` booleans + `Collapsible` blocks with single `openSection` state + `AccordionButton` |
-| `src/pages/canvasser/CanvasserStats.tsx` | 10 sections | Same pattern, replace all individual states |
-| `src/pages/supplementer/SupplementerDashboard.tsx` | 3 sections | Same pattern |
-| `src/pages/dashboard/AdminOverview.tsx` | ~4 sections | Same pattern for contract sources, sales rep perf, canvasser sections |
-| `src/pages/admin/CompanyGoals.tsx` | Multiple goal sections | Same pattern |
-| `src/pages/admin/LeadflowStatistics.tsx` | 2 sections | Same pattern |
-| `src/components/dashboard/GoogleCalendarWidget.tsx` | 1 section | Convert to use AccordionButton (standalone, keeps its own state since it's embedded) |
-
-## AccordionButton Styling Details
-
-- **Closed**: `rounded-xl bg-card border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200`
-- **Open**: `rounded-xl bg-primary/5 border border-primary/40 shadow-md`
-- **Content area**: slides in below with `rounded-b-xl` and the trigger gets `rounded-b-none` when open
-- Icon: `h-5 w-5 text-primary`
-- Title: `font-semibold text-sm sm:text-base`
-- Chevron: `h-4 w-4 text-muted-foreground`, rotates 90° on open (animated)
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Star, DollarSign, TrendingUp, Clock, FileCheck, Percent, Info, Trophy, Plus, ChevronDown, ChevronRight, Calendar, Target } from "lucide-react";
+import { Loader2, Star, DollarSign, TrendingUp, Clock, FileCheck, Percent, Info, Trophy, Plus, Calendar, Target } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AccordionButton } from "@/components/dashboard/AccordionButton";
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Bar } from 'recharts';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from "@/lib/constants";
 import { format } from "date-fns";
@@ -53,9 +53,9 @@ export default function SupplementerDashboard() {
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fiscalOpen, setFiscalOpen] = useState(true);
-  const [goalOpen, setGoalOpen] = useState(true);
-  const [chartOpen, setChartOpen] = useState(true);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const toggle = (id: string) => setOpenSection(prev => prev === id ? null : id);
 
   useEffect(() => {
     if (user) fetchData();
@@ -76,7 +76,6 @@ export default function SupplementerDashboard() {
     if (jobsRes.error) console.error("Error fetching jobs:", jobsRes.error);
     else setRecentJobs(jobsRes.data || []);
 
-    // Build 52-week chart data
     const yearlyGoal = Number(metricsRes.data?.yearly_goal) || 100000;
     const weeklyGoalPace = yearlyGoal / 52;
     let cumulative = 0;
@@ -90,7 +89,6 @@ export default function SupplementerDashboard() {
       };
     });
     setWeeklyData(chartData);
-
     setLoading(false);
   };
 
@@ -179,104 +177,53 @@ export default function SupplementerDashboard() {
       </Card>
 
       {/* Fiscal Year Progress */}
-      <Collapsible open={fiscalOpen} onOpenChange={setFiscalOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
-              <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Fiscal Year Progress
-                </div>
-                {fiscalOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </CardTitle>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{format(FISCAL_YEAR.CURRENT_YEAR_START, 'MMM d, yyyy')}</span>
-                  <span>{format(FISCAL_YEAR.CURRENT_YEAR_END, 'MMM d, yyyy')}</span>
-                </div>
-                <Progress value={fiscalProgress} className="h-3" />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{fiscalProgress.toFixed(1)}% complete</span>
-                  <span className="font-medium text-primary">{daysRemaining} days remaining</span>
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+      <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggle}>
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>{format(FISCAL_YEAR.CURRENT_YEAR_START, 'MMM d, yyyy')}</span>
+            <span>{format(FISCAL_YEAR.CURRENT_YEAR_END, 'MMM d, yyyy')}</span>
+          </div>
+          <Progress value={fiscalProgress} className="h-3" />
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{fiscalProgress.toFixed(1)}% complete</span>
+            <span className="font-medium text-primary">{daysRemaining} days remaining</span>
+          </div>
+        </div>
+      </AccordionButton>
 
       {/* RCV Goal Progress */}
-      <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
-              <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  RCV Goal Progress
-                </div>
-                {goalOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </CardTitle>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{formatCurrency(totalRcv)} of {formatCurrency(yearlyGoal)}</span>
-                  <span className="font-medium text-primary">{goalProgress.toFixed(1)}%</span>
-                </div>
-                <Progress value={goalProgress} className="h-3" />
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(yearlyGoal - totalRcv > 0 ? yearlyGoal - totalRcv : 0)} remaining to goal
-                </p>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+      <AccordionButton id="goal" title="RCV Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggle}>
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{formatCurrency(totalRcv)} of {formatCurrency(yearlyGoal)}</span>
+            <span className="font-medium text-primary">{goalProgress.toFixed(1)}%</span>
+          </div>
+          <Progress value={goalProgress} className="h-3" />
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(yearlyGoal - totalRcv > 0 ? yearlyGoal - totalRcv : 0)} remaining to goal
+          </p>
+        </div>
+      </AccordionButton>
 
       {/* 52-Week Progress Chart */}
-      <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
-              <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  52-Week RCV Progress
-                </div>
-                {chartOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </CardTitle>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              {weeklyData.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No weekly data yet</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                    <RechartsTooltip formatter={(value: number, name: string) => [formatCurrency(value), name === 'rcv_increased' ? 'Weekly RCV' : name === 'cumulative_rcv' ? 'Cumulative RCV' : 'Goal Pace']} />
-                    <Legend />
-                    <Bar dataKey="rcv_increased" name="Weekly RCV" fill="hsl(var(--primary))" opacity={0.7} />
-                    <Line type="monotone" dataKey="cumulative_rcv" name="Cumulative RCV" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="goal_pace" name="Goal Pace" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+      <AccordionButton id="chart" title="52-Week RCV Progress" icon={TrendingUp} isOpen={openSection === "chart"} onToggle={toggle}>
+        {weeklyData.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">No weekly data yet</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={weeklyData}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+              <RechartsTooltip formatter={(value: number, name: string) => [formatCurrency(value), name === 'rcv_increased' ? 'Weekly RCV' : name === 'cumulative_rcv' ? 'Cumulative RCV' : 'Goal Pace']} />
+              <Legend />
+              <Bar dataKey="rcv_increased" name="Weekly RCV" fill="hsl(var(--primary))" opacity={0.7} />
+              <Line type="monotone" dataKey="cumulative_rcv" name="Cumulative RCV" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="goal_pace" name="Goal Pace" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+      </AccordionButton>
 
       {/* Secondary KPIs */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

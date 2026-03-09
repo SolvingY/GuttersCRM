@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Target, CheckCircle, AlertTriangle, Clock, DollarSign, TrendingUp, Info, ChevronDown, ChevronRight, Star, Calendar, Percent, Quote, Users, GitCompare, ClipboardList } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AccordionButton } from "@/components/dashboard/AccordionButton";
 import { format, subWeeks } from "date-fns";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { 
@@ -59,18 +59,9 @@ export default function CanvasserStats() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [quote] = useState(getRandomQuote());
   
-  // Collapsible states
-  const [contestsOpen, setContestsOpen] = useState(false);
-  const [rankingOpen, setRankingOpen] = useState(false);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  const [funnelOpen, setFunnelOpen] = useState(false);
-  const [weeklyOpen, setWeeklyOpen] = useState(false);
-  const [fiscalOpen, setFiscalOpen] = useState(false);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [progressOpen, setProgressOpen] = useState(false);
-  const [canvassedLeadsOpen, setCanvassedLeadsOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
   const [canvassedLeads, setCanvassedLeads] = useState<any[]>([]);
-  const [shiftsOpen, setShiftsOpen] = useState(false);
   const [shifts, setShifts] = useState<any[]>([]);
 
   useEffect(() => {
@@ -219,23 +210,6 @@ export default function CanvasserStats() {
     });
   };
 
-  const CollapsibleHeader = ({ 
-    isOpen, 
-    title, 
-    icon: Icon 
-  }: { 
-    isOpen: boolean; 
-    title: string; 
-    icon: React.ElementType;
-  }) => (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-primary" />
-        <span className="text-lg font-semibold">{title}</span>
-      </div>
-      {isOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-    </div>
-  );
 
   const yearlyGoal = metrics?.yearly_goal || 0;
   const leadsClosed = metrics?.leads_closed || 0;
@@ -268,22 +242,11 @@ export default function CanvasserStats() {
       {/* Time Clock Widget — always visible */}
       <TimeClockWidget onShiftChange={fetchMetrics} />
 
-      {/* My Recent Shifts */}
-      <Collapsible open={shiftsOpen} onOpenChange={setShiftsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={shiftsOpen} title="My Recent Shifts" icon={Clock} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <Card>
-            <CardContent className="pt-4">
-              {shifts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
-              ) : (
-                <>
+      <AccordionButton id="shifts" title="My Recent Shifts" icon={Clock} isOpen={openSection === "shifts"} onToggle={toggleSection}>
+        {shifts.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No shifts recorded yet</p>
+        ) : (
+          <>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -352,52 +315,23 @@ export default function CanvasserStats() {
                         .toFixed(1)} hrs
                     </span>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+          </>
+        )}
+      </AccordionButton>
 
       {/* 1. Contests */}
-      <Collapsible open={contestsOpen} onOpenChange={setContestsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={contestsOpen} title="Contests" icon={Target} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <CanvasserActiveContestWidget />
-        </CollapsibleContent>
-      </Collapsible>
+      <AccordionButton id="contests" title="Contests" icon={Target} isOpen={openSection === "contests"} onToggle={toggleSection}>
+        <CanvasserActiveContestWidget />
+      </AccordionButton>
 
       {/* 2. YTD Point Rankings */}
-      <Collapsible open={rankingOpen} onOpenChange={setRankingOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={rankingOpen} title="YTD Point Rankings" icon={TrendingUp} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <CanvasserYTDRankingWidget />
-        </CollapsibleContent>
-      </Collapsible>
+      <AccordionButton id="ranking" title="YTD Point Rankings" icon={TrendingUp} isOpen={openSection === "ranking"} onToggle={toggleSection}>
+        <CanvasserYTDRankingWidget />
+      </AccordionButton>
 
-      {/* 3. Key Metrics (Using StatsCard for consistency) */}
-      <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={metricsOpen} title="Key Metrics" icon={Star} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 3. Key Metrics */}
+      <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard title="Leads Set" value={metrics?.leads_set ?? 0} icon={Target} />
             <StatsCard title="Leads Closed" value={metrics?.leads_closed ?? 0} icon={CheckCircle} />
             <StatsCard title="Leads with Damage" value={metrics?.leads_with_damage ?? 0} icon={AlertTriangle} />
@@ -420,49 +354,29 @@ export default function CanvasserStats() {
               icon={DollarSign}
               valueClassName="text-green-500"
             />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </AccordionButton>
 
-      {/* 3. Conversion Funnel */}
-      <Collapsible open={funnelOpen} onOpenChange={setFunnelOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={funnelOpen} title="Conversion Funnel" icon={GitCompare} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <CanvasserConversionFunnel 
-            data={{
-              doorsKnocked: metrics?.doors_knocked || 0,
-              conversationsHad: metrics?.conversations_had || 0,
-              leadsSet: metrics?.leads_set || 0,
-              leadsWithDamage: metrics?.leads_with_damage || 0,
-              leadsWithoutDamage: metrics?.leads_without_damage || 0,
-              leadsClosed: metrics?.leads_closed || 0,
-            }} 
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Conversion Funnel */}
+      <AccordionButton id="funnel" title="Conversion Funnel" icon={GitCompare} isOpen={openSection === "funnel"} onToggle={toggleSection}>
+        <CanvasserConversionFunnel 
+          data={{
+            doorsKnocked: metrics?.doors_knocked || 0,
+            conversationsHad: metrics?.conversations_had || 0,
+            leadsSet: metrics?.leads_set || 0,
+            leadsWithDamage: metrics?.leads_with_damage || 0,
+            leadsWithoutDamage: metrics?.leads_without_damage || 0,
+            leadsClosed: metrics?.leads_closed || 0,
+          }} 
+        />
+      </AccordionButton>
 
       {/* My Canvassed Leads */}
-      <Collapsible open={canvassedLeadsOpen} onOpenChange={setCanvassedLeadsOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={canvassedLeadsOpen} title="My Canvassed Leads" icon={ClipboardList} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <Card>
-            <CardContent className="pt-4">
-              {canvassedLeads.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No canvassed leads yet</p>
-              ) : (
-                <div className="space-y-2">
+      <AccordionButton id="canvassed-leads" title="My Canvassed Leads" icon={ClipboardList} isOpen={openSection === "canvassed-leads"} onToggle={toggleSection}>
+        {canvassedLeads.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No canvassed leads yet</p>
+        ) : (
+          <div className="space-y-2">
                   {canvassedLeads.map((lead: any) => (
                     <div key={lead.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div className="space-y-1">
@@ -477,33 +391,14 @@ export default function CanvasserStats() {
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+          </div>
+        )}
+      </AccordionButton>
 
       {/* 4. Recent Weekly Updates */}
       {weeklyMetrics.length > 0 && (
-        <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="py-4">
-                <CollapsibleHeader isOpen={weeklyOpen} title="Recent Weekly Updates" icon={TrendingUp} />
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5" />
-                  <span>Points: 10 per lead closed, 5 per lead with damage, 1 per lead set</span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+        <AccordionButton id="weekly" title="Recent Weekly Updates" icon={TrendingUp} isOpen={openSection === "weekly"} onToggle={toggleSection}>
+          <div className="space-y-3">
                   {weeklyMetrics.slice(0, 4).map((week) => (
                     <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div className="space-y-1">
@@ -524,52 +419,28 @@ export default function CanvasserStats() {
                       </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </AccordionButton>
       )}
 
       {/* 4. Fiscal Year Progress */}
-      <Collapsible open={fiscalOpen} onOpenChange={setFiscalOpen}>
-        <CollapsibleTrigger asChild>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="py-4">
-              <CollapsibleHeader isOpen={fiscalOpen} title="Fiscal Year Progress" icon={Calendar} />
-            </CardHeader>
-          </Card>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
-                  <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
-                </div>
-                <Progress value={fiscalYearProgress} className="h-2" />
-                <p className="text-xs text-muted-foreground text-center">
-                  {fiscalYearProgress.toFixed(1)}% of fiscal year complete
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+      <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggleSection}>
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+            <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+          </div>
+          <Progress value={fiscalYearProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center">
+            {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+          </p>
+        </div>
+      </AccordionButton>
 
-      {/* 5. Goal Progress - All Three Goals */}
+      {/* 5. Goal Progress */}
       {(yearlyGoal > 0 || (metrics?.leads_set_goal || 0) > 0 || (metrics?.income_goal || 0) > 0) && (
-        <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="py-4">
-                <CollapsibleHeader isOpen={goalOpen} title="Goal Progress" icon={Target} />
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <div className="space-y-4">
+        <AccordionButton id="goal" title="Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggleSection}>
+          <div className="space-y-4">
               {/* Contracts Goal */}
               {yearlyGoal > 0 && (
                 <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/20">
@@ -641,29 +512,14 @@ export default function CanvasserStats() {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </AccordionButton>
       )}
 
       {/* 6. 52-Week Progress */}
       {yearlyGoal > 0 && (
-        <Collapsible open={progressOpen} onOpenChange={setProgressOpen}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <CardHeader className="py-4">
-                <CollapsibleHeader isOpen={progressOpen} title="52-Week Progress" icon={TrendingUp} />
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">52-Week Progress (Fiscal Year Dec 15 - Dec 15)</CardTitle>
-                <CardDescription>Track your leads closed progress week by week</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
+        <AccordionButton id="progress" title="52-Week Progress" icon={TrendingUp} isOpen={openSection === "progress"} onToggle={toggleSection}>
+          <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={get52WeekData()}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -720,11 +576,8 @@ export default function CanvasserStats() {
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </AccordionButton>
       )}
 
       <GoogleCalendarWidget />

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Save, Target, DollarSign, Users, TrendingUp, Percent, Calculator, Wallet, Download, Globe, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AccordionButton } from '@/components/dashboard/AccordionButton';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
 import { format, addMonths, startOfMonth, subMonths } from 'date-fns';
@@ -73,11 +73,8 @@ export default function CompanyGoals() {
   const [targetAdSpendBudget, setTargetAdSpendBudget] = useState('');
   const [adSpendDialogOpen, setAdSpendDialogOpen] = useState(false);
   const [adSpendEditMonth, setAdSpendEditMonth] = useState<string | null>(null);
-  const [fiscalGoalsOpen, setFiscalGoalsOpen] = useState(false);
-  const [revenueProgressOpen, setRevenueProgressOpen] = useState(true);
-  const [contractProgressOpen, setContractProgressOpen] = useState(true);
-  const [additionalMetricsOpen, setAdditionalMetricsOpen] = useState(false);
-  const [internetMetricsOpen, setInternetMetricsOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>('revenue');
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [salesReps, setSalesReps] = useState<SalesRepData[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserData[]>([]);
@@ -526,22 +523,13 @@ export default function CompanyGoals() {
         }}
       />
 
-      {/* Goal Setting Card */}
-      <Collapsible open={fiscalGoalsOpen} onOpenChange={setFiscalGoalsOpen}>
+      <AccordionButton id="fiscal-goals" title="Fiscal Year Goals" icon={Target} isOpen={openSection === "fiscal-goals"} onToggle={toggleSection}>
       <Card>
         <CardHeader>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
-            {fiscalGoalsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-accent" />
-              Fiscal Year Goals
-            </CardTitle>
-          </CollapsibleTrigger>
           <CardDescription>
             Dec 15, 2025 - Dec 15, 2026
           </CardDescription>
         </CardHeader>
-        <CollapsibleContent>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -672,17 +660,10 @@ export default function CompanyGoals() {
             Save Goals
           </Button>
         </CardContent>
-        </CollapsibleContent>
       </Card>
-      </Collapsible>
+      </AccordionButton>
 
-      {/* Progress Cards - Row 1: Revenue + Collections */}
-      <Collapsible open={revenueProgressOpen} onOpenChange={setRevenueProgressOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {revenueProgressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Revenue & Collections</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="revenue" title="Revenue & Collections" icon={DollarSign} isOpen={openSection === "revenue"} onToggle={toggleSection}>
 
       {/* Progress Cards - Row 1: Revenue + Collections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -771,16 +752,9 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
-      {/* Progress Cards - Row 2: Contract Progress Cards */}
-      <Collapsible open={contractProgressOpen} onOpenChange={setContractProgressOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {contractProgressOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Contract Progress</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="contracts" title="Contract Progress" icon={Target} isOpen={openSection === "contracts"} onToggle={toggleSection}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Canvasser Contracts Progress */}
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
@@ -905,16 +879,9 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
-      {/* Additional Metrics Cards with Goal Tracking */}
-      <Collapsible open={additionalMetricsOpen} onOpenChange={setAdditionalMetricsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {additionalMetricsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Additional Metrics</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="additional" title="Additional Metrics" icon={Calculator} isOpen={openSection === "additional"} onToggle={toggleSection}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Lead-to-Close Rate (Canvasser) */}
         <Card>
@@ -1063,16 +1030,9 @@ export default function CompanyGoals() {
           </CardContent>
         </Card>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
-      {/* Internet / Call-In Lead Metrics */}
-      <Collapsible open={internetMetricsOpen} onOpenChange={setInternetMetricsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {internetMetricsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Internet / Call-In Lead Metrics</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="internet" title="Internet / Call-In Lead Metrics" icon={Globe} isOpen={openSection === "internet"} onToggle={toggleSection}>
       <div className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground">
@@ -1317,8 +1277,7 @@ export default function CompanyGoals() {
           </Card>
         </div>
       </div>
-      </CollapsibleContent>
-      </Collapsible>
+      </AccordionButton>
 
       <AdSpendDialog
         open={adSpendDialogOpen}

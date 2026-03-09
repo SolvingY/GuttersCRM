@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AccordionButton } from '@/components/dashboard/AccordionButton';
 import { FISCAL_YEAR, getFiscalYearProgress, getDaysRemainingInFiscalYear } from '@/lib/constants';
 import { format, subWeeks } from 'date-fns';
 import { getRandomQuote } from '@/lib/motivationalQuotes';
@@ -56,13 +56,8 @@ export default function MyStats() {
   const [displayName, setDisplayName] = useState('');
   const [quote] = useState(getRandomQuote());
   
-  // Collapsible states
-  const [contestsOpen, setContestsOpen] = useState(false);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  const [weeklyOpen, setWeeklyOpen] = useState(false);
-  const [fiscalOpen, setFiscalOpen] = useState(false);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [progressOpen, setProgressOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
   const [collectionsThisMonth, setCollectionsThisMonth] = useState(0);
 
   useEffect(() => {
@@ -250,23 +245,6 @@ export default function MyStats() {
     return 'text-red-600';
   };
 
-  const CollapsibleHeader = ({ 
-    isOpen, 
-    title, 
-    icon: Icon 
-  }: { 
-    isOpen: boolean; 
-    title: string; 
-    icon: React.ElementType;
-  }) => (
-    <div className="flex items-center justify-between w-full">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-accent" />
-        <span className="text-lg font-semibold">{title}</span>
-      </div>
-      {isOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-    </div>
-  );
 
   return (
     <div className="space-y-4">
@@ -311,30 +289,13 @@ export default function MyStats() {
           <CollectionsPipelineWidget isAdmin={false} />
 
           {/* 1. Contests */}
-          <Collapsible open={contestsOpen} onOpenChange={setContestsOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={contestsOpen} title="Contests" icon={Target} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <ActiveContestWidget />
-            </CollapsibleContent>
-          </Collapsible>
+          <AccordionButton id="contests" title="Contests" icon={Target} isOpen={openSection === "contests"} onToggle={toggleSection}>
+            <ActiveContestWidget />
+          </AccordionButton>
 
-          {/* 2. Key Metrics - 4 rows, 2 columns */}
-          <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={metricsOpen} title="Key Metrics" icon={Star} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* 2. Key Metrics */}
+          <AccordionButton id="metrics" title="Key Metrics" icon={Star} isOpen={openSection === "metrics"} onToggle={toggleSection}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Row 1: Approved Revenue | Avg Job Size */}
                 <StatsCard
                   title="Approved Revenue"
@@ -423,25 +384,14 @@ export default function MyStats() {
                     </span>
                   </div>
                 </Card>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          </AccordionButton>
 
           {/* 3. Recent Weekly Updates */}
           {weeklyMetrics.length > 0 && (
-            <Collapsible open={weeklyOpen} onOpenChange={setWeeklyOpen}>
-              <CollapsibleTrigger asChild>
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardHeader className="py-4">
-                    <CollapsibleHeader isOpen={weeklyOpen} title="Recent Weekly Updates" icon={TrendingUp} />
-                  </CardHeader>
-                </Card>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="space-y-3">
-                      {weeklyMetrics.slice(0, 4).map((week) => (
+            <AccordionButton id="weekly" title="Recent Weekly Updates" icon={TrendingUp} isOpen={openSection === "weekly"} onToggle={toggleSection}>
+              <div className="space-y-3">
+                {weeklyMetrics.slice(0, 4).map((week) => (
                         <div key={week.week_start} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                           <div className="space-y-1">
                             <p className="text-sm font-medium text-foreground">
@@ -458,175 +408,126 @@ export default function MyStats() {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+              </div>
+            </AccordionButton>
           )}
 
           {/* 4. Fiscal Year Progress */}
-          <Collapsible open={fiscalOpen} onOpenChange={setFiscalOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardHeader className="py-4">
-                  <CollapsibleHeader isOpen={fiscalOpen} title="Fiscal Year Progress" icon={Calendar} />
-                </CardHeader>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Dec 15, 2025 - Dec 15, 2026
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {daysRemaining} days remaining
-                      </span>
-                    </div>
-                    <Progress value={fiscalYearProgress} className="h-2" />
-                    <p className="text-xs text-muted-foreground text-center">
-                      {fiscalYearProgress.toFixed(1)}% of fiscal year complete
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
+          <AccordionButton id="fiscal" title="Fiscal Year Progress" icon={Calendar} isOpen={openSection === "fiscal"} onToggle={toggleSection}>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Dec 15, 2025 - Dec 15, 2026</span>
+                <span className="font-medium text-foreground">{daysRemaining} days remaining</span>
+              </div>
+              <Progress value={fiscalYearProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground text-center">
+                {fiscalYearProgress.toFixed(1)}% of fiscal year complete
+              </p>
+            </div>
+          </AccordionButton>
 
           {/* 5. Goal Progress */}
           {yearlyGoal > 0 && (
-            <Collapsible open={goalOpen} onOpenChange={setGoalOpen}>
-              <CollapsibleTrigger asChild>
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardHeader className="py-4">
-                    <CollapsibleHeader isOpen={goalOpen} title="Goal Progress" icon={Target} />
-                  </CardHeader>
-                </Card>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Yearly Goal</p>
-                          <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Approved Revenue</p>
-                          <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Progress</span>
-                          <span className={`font-semibold ${getGoalColor()}`}>
-                            {goalPercentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
-                      </div>
+            <AccordionButton id="goal" title="Goal Progress" icon={Target} isOpen={openSection === "goal"} onToggle={toggleSection}>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Yearly Goal</p>
+                    <p className="text-2xl font-bold text-foreground">{formatCurrency(yearlyGoal)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Approved Revenue</p>
+                    <p className="text-2xl font-bold text-foreground">{formatCurrency(approvedRevenue)}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className={`font-semibold ${getGoalColor()}`}>
+                      {goalPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={Math.min(goalPercentage, 100)} className="h-3" />
+                </div>
 
-                      <div className="grid grid-cols-2 gap-4 pt-2">
-                        <div className="bg-muted/50 rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground">Amount Remaining</p>
-                          <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
-                        </div>
-                        <div className="bg-muted/50 rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground">Rank</p>
-                          <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Amount Remaining</p>
+                    <p className="text-lg font-semibold text-foreground">{formatCurrency(amountRemaining)}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">Rank</p>
+                    <p className="text-lg font-semibold text-foreground">{latestMetric?.sales_rank || 'SR1'}</p>
+                  </div>
+                </div>
+              </div>
+            </AccordionButton>
           )}
 
           {/* 7. 52-Week Progress */}
           {yearlyGoal > 0 && (
-            <Collapsible open={progressOpen} onOpenChange={setProgressOpen}>
-              <CollapsibleTrigger asChild>
-                <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardHeader className="py-4">
-                    <CollapsibleHeader isOpen={progressOpen} title="52-Week Progress" icon={TrendingUp} />
-                  </CardHeader>
-                </Card>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">52-Week Progress (Fiscal Year Dec 15 - Dec 15)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={weeklyChartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis 
-                            dataKey="week" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={10}
-                            interval={3}
-                          />
-                          <YAxis 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={12}
-                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                          />
-                          <RechartsTooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                            }}
-                            formatter={(value: number, name: string) => [
-                              formatCurrency(value),
-                              name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
-                            ]}
-                            labelFormatter={(label, payload) => {
-                              if (payload && payload[0]) {
-                                return `Week of ${payload[0].payload.weekLabel}`;
-                              }
-                              return label;
-                            }}
-                          />
-                          <Legend />
-                          <Bar
-                            dataKey="approvedRevenue"
-                            fill="hsl(var(--accent))"
-                            name="Weekly Revenue"
-                            radius={[2, 2, 0, 0]}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulativeRevenue"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={false}
-                            name="Cumulative Revenue"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="cumulativeGoal"
-                            stroke="hsl(var(--muted-foreground))"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                            name="Goal Pace"
-                          />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+            <AccordionButton id="progress" title="52-Week Progress" icon={TrendingUp} isOpen={openSection === "progress"} onToggle={toggleSection}>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={weeklyChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="week" 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={10}
+                      interval={3}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={12}
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => [
+                        formatCurrency(value),
+                        name === 'approvedRevenue' ? 'Weekly Revenue' : name === 'cumulativeRevenue' ? 'Cumulative' : 'Goal Pace'
+                      ]}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return `Week of ${payload[0].payload.weekLabel}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="approvedRevenue"
+                      fill="hsl(var(--accent))"
+                      name="Weekly Revenue"
+                      radius={[2, 2, 0, 0]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="cumulativeRevenue"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Cumulative Revenue"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="cumulativeGoal"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={false}
+                      name="Goal Pace"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </AccordionButton>
           )}
         </>
       )}

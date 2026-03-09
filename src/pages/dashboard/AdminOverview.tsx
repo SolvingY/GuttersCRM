@@ -17,7 +17,7 @@ import { addMonths, format } from 'date-fns';
 import { FISCAL_YEAR } from '@/lib/constants';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CanvasserConversionFunnel } from '@/components/canvasser/CanvasserConversionFunnel';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AccordionButton } from '@/components/dashboard/AccordionButton';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
 import { RevenueAnalyticsWidget } from '@/components/dashboard/RevenueAnalyticsWidget';
@@ -138,10 +138,8 @@ export default function AdminOverview() {
     fiscalYearEnd: string;
   } | null>(null);
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
-  const [contractSourcesOpen, setContractSourcesOpen] = useState(false);
-  const [salesPerfOpen, setSalesPerfOpen] = useState(false);
-  const [conversionFunnelOpen, setConversionFunnelOpen] = useState(false);
-  const [canvasserPerfOpen, setCanvasserPerfOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
 
 
 
@@ -723,15 +721,8 @@ export default function AdminOverview() {
           <RevenueAnalyticsWidget />
 
           {/* Contract Source Comparison Card */}
-          <Collapsible open={contractSourcesOpen} onOpenChange={setContractSourcesOpen}>
-            <div className="bg-card border border-border rounded-lg p-4">
-              <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
-                {contractSourcesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                <GitCompare className="h-5 w-5 text-accent" />
-                <h3 className="font-heading font-semibold text-foreground">Contract Sources</h3>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-3">
+          <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSection === "contract-sources"} onToggle={toggleSection}>
+            <div>
                 {(() => {
                   const totalSelfGenContracts = aggregates.totalSelfGen;
                   const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
@@ -782,10 +773,8 @@ export default function AdminOverview() {
                     </div>
                   );
                 })()}
-                </div>
-              </CollapsibleContent>
             </div>
-          </Collapsible>
+          </AccordionButton>
 
           {usersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
@@ -801,13 +790,8 @@ export default function AdminOverview() {
             </div>
           )}
 
-          <Collapsible open={salesPerfOpen} onOpenChange={setSalesPerfOpen}>
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <CollapsibleTrigger className="p-4 border-b border-border w-full cursor-pointer flex items-center gap-2">
-              {salesPerfOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-              <h3 className="text-lg font-heading text-foreground">Sales Rep Performance</h3>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
+          <AccordionButton id="sales-perf" title="Sales Rep Performance" icon={TrendingUp} isOpen={openSection === "sales-perf"} onToggle={toggleSection}>
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
             {userDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No sales rep data available yet.</p>
@@ -929,9 +913,8 @@ export default function AdminOverview() {
                 </table>
               </div>
             )}
-            </CollapsibleContent>
-          </div>
-          </Collapsible>
+            </div>
+          </AccordionButton>
         </TabsContent>
 
         {/* Canvassers Tab */}
@@ -950,13 +933,8 @@ export default function AdminOverview() {
           </div>
 
           {/* Conversion Funnel */}
-          <Collapsible open={conversionFunnelOpen} onOpenChange={setConversionFunnelOpen}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-              {conversionFunnelOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-              <h3 className="font-heading font-semibold text-foreground">Team Conversion Funnel (YTD)</h3>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CanvasserConversionFunnel 
+          <AccordionButton id="conversion-funnel" title="Team Conversion Funnel (YTD)" icon={GitCompare} isOpen={openSection === "conversion-funnel"} onToggle={toggleSection}>
+            <CanvasserConversionFunnel
                 title="Team Conversion Funnel (YTD)"
                 data={{
                   doorsKnocked: canvasserAggregates.totalDoorsKnocked,
@@ -967,9 +945,7 @@ export default function AdminOverview() {
                   leadsClosed: canvasserAggregates.totalLeadsClosed,
                 }} 
               />
-            </CollapsibleContent>
-          </Collapsible>
-
+          </AccordionButton>
 
           {canvassersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
@@ -985,15 +961,8 @@ export default function AdminOverview() {
             </div>
           )}
 
-          <Collapsible open={canvasserPerfOpen} onOpenChange={setCanvasserPerfOpen}>
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="p-4 border-b border-border">
-              <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer">
-                {canvasserPerfOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-                <h3 className="text-lg font-heading text-foreground">Canvasser Performance</h3>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
+          <AccordionButton id="canvasser-perf" title="Canvasser Performance" icon={Users} isOpen={openSection === "canvasser-perf"} onToggle={toggleSection}>
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
             {canvasserDetails.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">No canvasser data available yet.</p>
@@ -1059,9 +1028,8 @@ export default function AdminOverview() {
                 </table>
               </div>
             )}
-            </CollapsibleContent>
-          </div>
-          </Collapsible>
+            </div>
+          </AccordionButton>
 
         </TabsContent>
       </Tabs>
