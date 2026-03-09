@@ -71,7 +71,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
     if (!user) return;
 
     // Validate at least one role is selected
-    if (!isAdmin && !isSalesRep && !isCanvasser && !isSupplementer) {
+    if (!isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction) {
       toast({
         title: 'Error',
         description: 'Please select at least one role',
