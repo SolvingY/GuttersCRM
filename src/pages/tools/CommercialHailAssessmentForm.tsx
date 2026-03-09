@@ -22,7 +22,7 @@ import HomeownerFields from "@/components/shared/HomeownerFields";
 type PhotoEntry = { id: string; previewUrl: string; sizeMB: string; name: string; file: Blob };
 
 interface FormState {
-  meta: { propertyName: string; address: string; inspectorName: string; inspectionDate: string; stormDate: string };
+  meta: { propertyName: string; address: string; inspectorName: string; inspectionDate: string; stormDate: string; reportNotes: string };
   applicability: Record<string, boolean>;
   checked: Record<string, boolean>;
   photos: Record<string, PhotoEntry[]>;
