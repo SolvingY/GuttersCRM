@@ -70,7 +70,6 @@ const adminNavGroups: NavGroup[] = [
     groupId: 'pipeline-revenue',
     items: [
       { icon: ClipboardList, label: 'Lead Management', path: '/admin/leads' },
-      { icon: FileText, label: 'Quote Requests', path: '/admin/leads?status=new' },
       { icon: TrendingUp, label: 'Lead Analytics', path: '/admin/leadflow' },
     ],
   },
