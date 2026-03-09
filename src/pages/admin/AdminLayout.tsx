@@ -108,6 +108,7 @@ const adminNavGroups: NavGroup[] = [
       { icon: Calendar, label: 'Calendar Setup', path: '/admin/reports' },
       { icon: Bell, label: 'Notifications', path: '/admin/notifications' },
       { icon: Settings, label: 'Admin Presets', path: '/admin/presets' },
+      { icon: FileText, label: 'Sent Reports', path: '/admin/sent-reports' },
     ],
   },
 ];
