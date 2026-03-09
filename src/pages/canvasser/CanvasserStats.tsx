@@ -59,18 +59,9 @@ export default function CanvasserStats() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [quote] = useState(getRandomQuote());
   
-  // Collapsible states
-  const [contestsOpen, setContestsOpen] = useState(false);
-  const [rankingOpen, setRankingOpen] = useState(false);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  const [funnelOpen, setFunnelOpen] = useState(false);
-  const [weeklyOpen, setWeeklyOpen] = useState(false);
-  const [fiscalOpen, setFiscalOpen] = useState(false);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const [progressOpen, setProgressOpen] = useState(false);
-  const [canvassedLeadsOpen, setCanvassedLeadsOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
   const [canvassedLeads, setCanvassedLeads] = useState<any[]>([]);
-  const [shiftsOpen, setShiftsOpen] = useState(false);
   const [shifts, setShifts] = useState<any[]>([]);
 
   useEffect(() => {
