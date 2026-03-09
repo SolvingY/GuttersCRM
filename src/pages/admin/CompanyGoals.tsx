@@ -1032,13 +1032,7 @@ export default function CompanyGoals() {
       </div>
       </AccordionButton>
 
-      {/* Internet / Call-In Lead Metrics */}
-      <Collapsible open={internetMetricsOpen} onOpenChange={setInternetMetricsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer py-2">
-          {internetMetricsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <h3 className="font-heading font-semibold text-foreground">Internet / Call-In Lead Metrics</h3>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <AccordionButton id="internet" title="Internet / Call-In Lead Metrics" icon={Globe} isOpen={openSection === "internet"} onToggle={toggleSection}>
       <div className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground">
