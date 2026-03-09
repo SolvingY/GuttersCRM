@@ -773,10 +773,8 @@ export default function AdminOverview() {
                     </div>
                   );
                 })()}
-                </div>
-              </CollapsibleContent>
             </div>
-          </Collapsible>
+          </AccordionButton>
 
           {usersNeedingAttention.length > 0 && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
