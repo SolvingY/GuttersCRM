@@ -1,32 +1,42 @@
 
 
-# Fix Long Hours Number + Sales Rep Prompt on Lead Edit
+# Add Edit Button to Shift History
 
-## Problem 1: Long Numbers
-In the "Pay Period Daily Activity" table, hours are displayed as raw floats (e.g. `3.7500000000000004h`) because `{hrs}h` has no rounding. Same for day totals.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-**Fix in `AdminTimeClock.tsx`:**
-- Line 595: Change `{hrs}h` → `{parseFloat(hrs.toFixed(2))}h`
-- Line 624: Change `{dayHrs}h` → `{parseFloat(dayHrs.toFixed(2))}h`
+## Changes
 
-## Problem 2: Prompt for Sales Rep When Adding Leads via Edit Shift
-When an admin edits a shift and enters leads (Leads Set > 0), there's no prompt to pick which sales rep ran the lead. Need to add a sales rep attribution step.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-**Changes in `AdminTimeClock.tsx`:**
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-1. **Add state**: `salesReps` (fetched from `user_metrics`), `shiftSalesRepId` for the selected rep, and `repPromptOpen` boolean for a follow-up dialog.
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-2. **Fetch sales reps on mount**: Query `user_metrics` for `user_id, display_name` to populate the dropdown.
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-3. **Update `handleSaveEditShift`**: After saving, if `newLeadsSet > 0` and `leadsSetDelta > 0` (leads were added), open a "Select Sales Rep" dialog instead of immediately closing. Store the attribution in `lead_attributions` table with `entry_type: 'canvasser_lead_set'`.
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-4. **Update `handleAddManualShift`**: Same logic — if leads > 0, prompt for sales rep before finishing.
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-5. **Add a small "Sales Rep Attribution" dialog**: Shows after edit/add when leads > 0. Has a Select dropdown of sales reps. On confirm, inserts into `lead_attributions` and closes both modals.
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-## Files Changed
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-| File | Change |
+## Summary
+
+| Area | Change |
 |------|--------|
-| `src/pages/admin/AdminTimeClock.tsx` | Fix hours display rounding; add sales rep prompt when leads are entered |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

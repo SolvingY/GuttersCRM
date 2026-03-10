@@ -49,6 +49,12 @@ export default function AdminTimeClock() {
   const [shiftCanvasserId, setShiftCanvasserId] = useState('');
   const [savingShift, setSavingShift] = useState(false);
 
+  // Sales rep attribution state
+  const [salesReps, setSalesReps] = useState<{ userId: string; name: string }[]>([]);
+  const [repPromptOpen, setRepPromptOpen] = useState(false);
+  const [shiftSalesRepId, setShiftSalesRepId] = useState('');
+  const [pendingAttribution, setPendingAttribution] = useState<{ canvasserId: string; leadsCount: number; shiftDate: Date } | null>(null);
+
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<Date>(() => {
     const d = new Date(); const day = d.getDay();
     const diff = d.getDate() - ((day + 3) % 7);
@@ -164,10 +170,27 @@ export default function AdminTimeClock() {
     setZoneAssignments((data as any[]) || []);
   }, []);
 
+  const fetchSalesReps = useCallback(async () => {
+    const { data } = await supabase.from('user_metrics').select('user_id, display_name');
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, is_archived').eq('is_archived', false);
+    const activeSet = new Set(profiles?.map(p => p.id) || []);
+    const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
+    const seen = new Set<string>();
+    const result: { userId: string; name: string }[] = [];
+    data?.forEach(m => {
+      if (m.user_id && !seen.has(m.user_id) && activeSet.has(m.user_id)) {
+        seen.add(m.user_id);
+        result.push({ userId: m.user_id, name: m.display_name || profileMap.get(m.user_id) || 'Unknown' });
+      }
+    });
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    setSalesReps(result);
+  }, []);
+
   useEffect(() => {
-    const init = async () => { await fetchCanvassers(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
+    const init = async () => { await fetchCanvassers(); await fetchSalesReps(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
     init();
-  }, [fetchCanvassers, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
+  }, [fetchCanvassers, fetchSalesReps, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
 
   useEffect(() => { fetchShiftHistory(); }, [fetchShiftHistory]);
 
@@ -290,6 +313,13 @@ export default function AdminTimeClock() {
       toast.success('Shift updated');
       setEditShiftModalOpen(false);
       fetchShifts(); fetchShiftHistory();
+
+      // If leads were added, prompt for sales rep attribution
+      if (leadsSetDelta > 0) {
+        setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(shiftClockIn) });
+        setShiftSalesRepId('');
+        setRepPromptOpen(true);
+      }
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingShift(false);
   };
@@ -326,11 +356,23 @@ export default function AdminTimeClock() {
       });
       await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
       toast.success(`Manual shift added: ${shiftHours}h`);
+
+      const savedCanvasserId = shiftCanvasserId;
+      const savedClockIn = shiftClockIn;
+      const savedLeads = leads;
+
       setAddShiftModalOpen(false);
       setShiftCanvasserId(''); setShiftClockIn(''); setShiftClockOut('');
       setShiftDoors(''); setShiftConvos(''); setShiftNotInterested('');
       setShiftLeadsSet(''); setShiftNotes('');
       fetchShifts(); fetchShiftHistory();
+
+      // If leads were added, prompt for sales rep attribution
+      if (savedLeads > 0) {
+        setPendingAttribution({ canvasserId: savedCanvasserId, leadsCount: savedLeads, shiftDate: new Date(savedClockIn) });
+        setShiftSalesRepId('');
+        setRepPromptOpen(true);
+      }
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingShift(false);
   };
@@ -592,7 +634,7 @@ export default function AdminTimeClock() {
                               <td key={date} className={cn('py-2 px-1 text-center align-top', hasData ? 'bg-green-500/5' : '')}>
                                 {hasData ? (
                                   <div className="space-y-0.5 leading-tight">
-                                    {hrs > 0 && <div className="font-medium text-foreground text-xs">{hrs}h</div>}
+                                    {hrs > 0 && <div className="font-medium text-foreground text-xs">{parseFloat(hrs.toFixed(2))}h</div>}
                                     {leadsSet > 0 && <div className="text-emerald-600 dark:text-emerald-400 text-xs">{leadsSet}L</div>}
                                     {leadsClosed > 0 && <div className="text-blue-600 dark:text-blue-400 text-xs">✓{leadsClosed}</div>}
                                     {doors > 0 && <div className="text-muted-foreground text-xs">{doors}D</div>}
@@ -621,7 +663,7 @@ export default function AdminTimeClock() {
                             const dayLeads = dayEntries.reduce((sum, e) => sum + (Number(e.leads_set_delta) || 0), 0);
                             return (
                               <td key={date} className="py-2 px-1 text-center">
-                                {dayHrs > 0 && <div className="font-medium text-foreground text-xs">{dayHrs}h</div>}
+                                {dayHrs > 0 && <div className="font-medium text-foreground text-xs">{parseFloat(dayHrs.toFixed(2))}h</div>}
                                 {dayLeads > 0 && <div className="text-emerald-600 dark:text-emerald-400 text-xs">{dayLeads}L</div>}
                               </td>
                             );
@@ -908,6 +950,52 @@ export default function AdminTimeClock() {
             <Button onClick={handleAddManualShift} disabled={savingShift || !shiftCanvasserId || !shiftClockIn || !shiftClockOut}>
               {savingShift ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Add Shift
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sales Rep Attribution Modal */}
+      <Dialog open={repPromptOpen} onOpenChange={(open) => { if (!open) { setRepPromptOpen(false); setPendingAttribution(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Assign Sales Rep</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {pendingAttribution?.leadsCount} lead{(pendingAttribution?.leadsCount || 0) > 1 ? 's were' : ' was'} added. Which sales rep ran {(pendingAttribution?.leadsCount || 0) > 1 ? 'these leads' : 'this lead'}?
+          </p>
+          <div className="space-y-2">
+            <Label>Sales Rep</Label>
+            <Select value={shiftSalesRepId} onValueChange={setShiftSalesRepId}>
+              <SelectTrigger><SelectValue placeholder="Select sales rep" /></SelectTrigger>
+              <SelectContent>
+                {salesReps.map(r => (<SelectItem key={r.userId} value={r.userId}>{r.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRepPromptOpen(false); setPendingAttribution(null); }}>Skip</Button>
+            <Button disabled={!shiftSalesRepId || !pendingAttribution} onClick={async () => {
+              if (!pendingAttribution || !shiftSalesRepId) return;
+              try {
+                const weekStart = new Date(pendingAttribution.shiftDate);
+                const day = weekStart.getDay();
+                const diff = weekStart.getDate() - ((day + 3) % 7);
+                const thursday = new Date(weekStart.getFullYear(), weekStart.getMonth(), diff);
+                const ws = format(thursday, 'yyyy-MM-dd');
+                const we = format(addDays(thursday, 6), 'yyyy-MM-dd');
+                const { data: { user } } = await supabase.auth.getUser();
+                await supabase.from('lead_attributions').insert({
+                  canvasser_id: pendingAttribution.canvasserId,
+                  sales_rep_id: shiftSalesRepId,
+                  entry_type: 'canvasser_lead_set',
+                  quantity: pendingAttribution.leadsCount,
+                  week_start: ws,
+                  week_end: we,
+                  entered_by: user?.id || null,
+                });
+                toast.success('Sales rep attribution saved');
+              } catch (err: any) { toast.error('Attribution failed: ' + err.message); }
+              setRepPromptOpen(false);
+              setPendingAttribution(null);
+            }}>Save Attribution</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
