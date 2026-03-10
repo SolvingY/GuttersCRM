@@ -151,11 +151,11 @@ export default function FutureTeamMates() {
 
       {/* Stats */}
       {tab === "active" && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(["new", "reviewed", "contacted", "hired"] as const).map((s) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {(["new", "reviewed", "contacted", "scheduled_interview", "hired"] as const).map((s) => (
             <div key={s} className="bg-card border border-border rounded-lg p-4 text-center">
               <p className="text-2xl font-heading">{stats[s]}</p>
-              <p className="text-xs text-muted-foreground uppercase">{s}</p>
+              <p className="text-xs text-muted-foreground uppercase">{s === "scheduled_interview" ? "Interview" : s}</p>
             </div>
           ))}
         </div>
