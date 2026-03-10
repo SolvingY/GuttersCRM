@@ -180,7 +180,6 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <td className="py-3 px-4 text-right">{totals.totalDoors}</td>
               <td className="py-3 px-4 text-right">{totals.totalConvos}</td>
               <td className="py-3 px-4 text-right">{totals.totalNotInterested}</td>
-              <td className="py-3 px-4 text-right">{totals.totalCancelled}</td>
               <td className="py-3 px-4 text-right">{totals.totalLeadsSet}</td>
               <td className="py-3 px-4 text-right">{totals.totalWithDamage}</td>
               <td className="py-3 px-4 text-right">{totals.totalWithoutDamage}</td>
