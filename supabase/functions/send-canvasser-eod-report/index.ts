@@ -30,12 +30,15 @@ Deno.serve(async (req) => {
       .select("user_id")
       .eq("role", "canvasser");
 
-    const canvasserIds = (canvasserRoles || []).map((r: any) => r.user_id);
+    const allCanvasserIds = (canvasserRoles || []).map((r: any) => r.user_id);
 
-    // Get profiles
-    const { data: profiles } = canvasserIds.length > 0
-      ? await supabase.from("profiles").select("id, display_name, full_name").in("id", canvasserIds)
+    // Get profiles — filter out archived
+    const { data: profiles } = allCanvasserIds.length > 0
+      ? await supabase.from("profiles").select("id, display_name, full_name, is_archived").in("id", allCanvasserIds)
       : { data: [] };
+
+    const activeProfiles = (profiles || []).filter((p: any) => !p.is_archived);
+    const canvasserIds = activeProfiles.map((p: any) => p.id);
 
     // Get canvasser_metrics display_name for better name resolution
     const { data: canvasserMetrics } = canvasserIds.length > 0
@@ -66,9 +69,8 @@ Deno.serve(async (req) => {
     const flaggedShifts: any[] = [];
 
     for (const cId of canvasserIds) {
-      const profile = (profiles || []).find((p: any) => p.id === cId);
+      const profile = activeProfiles.find((p: any) => p.id === cId);
       const metric = (canvasserMetrics || []).find((m: any) => m.user_id === cId);
-      // Priority: canvasser_metrics.display_name → profiles.full_name → "Unknown"
       const name = metric?.display_name || profile?.full_name || "Unknown";
       const shift = (shifts || []).find((s: any) => s.canvasser_id === cId);
       const entries = (dailyEntries || []).filter((e: any) => e.user_id === cId);
@@ -108,6 +110,10 @@ Deno.serve(async (req) => {
           flaggedShifts.push({ name, reason: shift.flagged_reason || "Unknown reason" });
         }
       }
+
+      // Skip canvassers with 0 hours (e.g. admin removed their hours)
+      if (shiftHours === 0 && !shift) continue;
+      if (shiftHours <= 0 && shift && shift.clock_out_at) continue;
 
       const allNotes = [shiftNotes, entryNotes].filter(Boolean).join(" | ");
       const truncatedNotes = allNotes.length > 60 ? allNotes.slice(0, 57) + "..." : allNotes;
@@ -207,30 +213,17 @@ Deno.serve(async (req) => {
       </div>
     </div>`;
 
-    // ── Recipient filtering: use saved EOD recipient IDs from report_settings ──
-    const { data: reportSettings } = await supabase
-      .from("report_settings")
-      .select("canvasser_eod_recipient_ids")
-      .limit(1)
-      .maybeSingle();
-
-    const savedEodIds: string[] = (reportSettings as any)?.canvasser_eod_recipient_ids || [];
-
-    // Get recipients — filter to saved IDs if any are configured
-    let recipientQuery = supabase
-      .from("report_recipients")
-      .select("id, name, email")
+    // ── Recipients: read from notification_routing table ──
+    const { data: routingEntries } = await supabase
+      .from("notification_routing")
+      .select("email")
+      .eq("notification_type", "canvasser_eod_report")
       .eq("is_active", true);
 
-    const { data: allRecipients } = await recipientQuery;
-
-    let finalRecipients = allRecipients || [];
-    if (savedEodIds.length > 0) {
-      finalRecipients = finalRecipients.filter((r: any) => savedEodIds.includes(r.id));
-    }
+    const routingEmails = (routingEntries || []).map((r: any) => r.email).filter(Boolean);
 
     // If test_email provided, override recipients
-    const recipientEmails = testEmail ? [testEmail] : finalRecipients.map((r: any) => r.email).filter(Boolean);
+    const recipientEmails = testEmail ? [testEmail] : routingEmails;
 
     let resendMessageId = null;
     if (recipientEmails.length > 0) {
@@ -258,7 +251,7 @@ Deno.serve(async (req) => {
     await supabase.from("canvasser_eod_report_log").insert({
       report_date: todayStr,
       canvassers_included: canvasserData.length,
-      recipients: finalRecipients,
+      recipients: recipientEmails.map((e: string) => ({ email: e })),
       email_sent_at: new Date().toISOString(),
       resend_message_id: resendMessageId,
     } as any);
