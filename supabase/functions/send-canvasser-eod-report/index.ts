@@ -14,6 +14,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const testEmail: string | null = body.test_email || null;
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // Get today's date in Chicago timezone
@@ -227,7 +229,8 @@ Deno.serve(async (req) => {
       finalRecipients = finalRecipients.filter((r: any) => savedEodIds.includes(r.id));
     }
 
-    const recipientEmails = finalRecipients.map((r: any) => r.email).filter(Boolean);
+    // If test_email provided, override recipients
+    const recipientEmails = testEmail ? [testEmail] : finalRecipients.map((r: any) => r.email).filter(Boolean);
 
     let resendMessageId = null;
     if (recipientEmails.length > 0) {
