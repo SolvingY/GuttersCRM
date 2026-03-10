@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Plus, X, Mail, Globe, BarChart3, Calendar, Clock, Save, Send, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
-import ReportRecipientsSelector from '@/components/shared/ReportRecipientsSelector';
+
 
 const NOTIFICATION_TYPES: { key: string; label: string; description: string }[] = [
   { key: 'new_application', label: 'New Applications', description: 'Job application notifications' },
