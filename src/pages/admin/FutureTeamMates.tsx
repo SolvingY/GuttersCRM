@@ -227,6 +227,9 @@ export default function FutureTeamMates() {
                     </p>
                     <p className="text-sm mt-1">Desired: {app.desired_position} · Recommended: {app.recommended_role}</p>
                     <p className="text-sm text-muted-foreground">{app.years_experience} · {app.availability}</p>
+                    {app.interview_scheduled_at && (
+                      <p className="text-sm text-blue-600 mt-1">📅 Interview: {format(new Date(app.interview_scheduled_at), "MMM d, yyyy 'at' h:mm a")}</p>
+                    )}
                     <div className="flex items-center gap-0.5 mt-1">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star key={i} className={`w-4 h-4 ${i < stars ? "text-yellow-500 fill-yellow-500" : "text-muted"}`} />
