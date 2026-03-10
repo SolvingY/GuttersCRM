@@ -89,6 +89,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contracts Goal</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contracts</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
             </tr>
           </thead>
