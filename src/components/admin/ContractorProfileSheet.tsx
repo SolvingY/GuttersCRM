@@ -786,6 +786,43 @@ export function ContractorProfileSheet({ user, open, onClose, onAssignAssessment
                       ))}
                     </div>
                   )}
+
+                  {/* Mark Onboarding Complete Button */}
+                  {!isComplete && (
+                    <div className="mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-green-500 text-green-700 hover:bg-green-50"
+                        onClick={async () => {
+                          try {
+                            // Check if all required steps are done
+                            const { data: checkResult } = await supabase.rpc("check_onboarding_complete", { p_user_id: user.id });
+                            if (!checkResult) {
+                              toast({ title: "Cannot complete onboarding", description: "Not all required steps are finished.", variant: "destructive" });
+                              return;
+                            }
+                            // Mark onboarding complete on profile
+                            await supabase.from("profiles").update({ onboarding_complete: true, onboarding_completed_at: new Date().toISOString() } as any).eq("id", user.id);
+                            // Notify — find their job_applications record
+                            const { data: jobApp } = await supabase.from("job_applications").select("id").eq("created_user_id", user.id).maybeSingle();
+                            if (jobApp) {
+                              await supabase.functions.invoke("notify-applicant-stage-change", {
+                                body: { applicantId: jobApp.id, newStage: "hired" },
+                              });
+                            }
+                            queryClient.invalidateQueries({ queryKey: ["contractor-onboarding", user.id] });
+                            toast({ title: "Onboarding marked complete", description: "Notification sent to Matt Fowler & Jonathan Whitton." });
+                          } catch (err: any) {
+                            toast({ title: "Error", description: err.message, variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Mark Onboarding Complete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
