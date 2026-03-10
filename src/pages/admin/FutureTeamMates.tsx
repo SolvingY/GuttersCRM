@@ -60,6 +60,17 @@ export default function FutureTeamMates() {
         } as any)
         .eq("id", id);
       if (error) throw error;
+
+      // Trigger notification for contacted stage
+      if (status === "contacted") {
+        try {
+          await supabase.functions.invoke("notify-applicant-stage-change", {
+            body: { applicantId: id, newStage: "contacted" },
+          });
+        } catch (err) {
+          console.error("Notification failed:", err);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job-applications"] });
