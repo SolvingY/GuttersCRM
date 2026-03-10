@@ -80,13 +80,13 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Convos</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Not Int.</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Closed</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contracts Goal</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
             </tr>
           </thead>
@@ -133,7 +133,6 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                   <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.conversationsHad || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.notInterested || 0}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
@@ -153,6 +152,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
                   <td className="py-3 px-4 text-right">
                     <PointsBreakdownTooltip
                       data={{
@@ -180,7 +180,6 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <td className="py-3 px-4 text-right">{totals.totalDoors}</td>
               <td className="py-3 px-4 text-right">{totals.totalConvos}</td>
               <td className="py-3 px-4 text-right">{totals.totalNotInterested}</td>
-              <td className="py-3 px-4 text-right">{totals.totalCancelled}</td>
               <td className="py-3 px-4 text-right">{totals.totalLeadsSet}</td>
               <td className="py-3 px-4 text-right">{totals.totalWithDamage}</td>
               <td className="py-3 px-4 text-right">{totals.totalWithoutDamage}</td>
@@ -193,6 +192,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                   </span>
                 ) : '—'}
               </td>
+              <td className="py-3 px-4 text-right">{totals.totalCancelled}</td>
               <td className="py-3 px-4 text-right">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
                   {totals.totalPoints.toLocaleString()}
