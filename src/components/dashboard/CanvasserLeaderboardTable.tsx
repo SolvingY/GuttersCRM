@@ -15,6 +15,7 @@ export interface CanvasserLeaderboardEntry {
   conversationsHad?: number;
   notInterested?: number;
   cancelledLeads?: number;
+  contracts?: number;
   points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
