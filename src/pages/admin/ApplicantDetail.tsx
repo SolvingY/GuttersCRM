@@ -132,6 +132,7 @@ export default function ApplicantDetail() {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [dnaOpen, setDnaOpen] = useState(false);
   const [showHireDialog, setShowHireDialog] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const { data: app, isLoading } = useQuery({
     queryKey: ["job-application", id],
