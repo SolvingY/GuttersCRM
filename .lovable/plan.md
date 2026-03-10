@@ -1,66 +1,42 @@
 
 
-# Combine Reports into Notifications Page & Rename to "Reports"
+# Add Edit Button to Shift History
 
-## What's Changing
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-The user wants to:
-1. Move the Canvasser EOD Report settings (currently in ReportSettings) into the Notifications page
-2. Format the EOD report like a notification card (same card layout with toggle/email rows, not the current form-heavy layout)
-3. Combine everything under one page called "Reports" (remove the separate "Report Settings" sidebar item)
-4. Remove the tabs — just show all notification cards AND the report cards in one scrollable list
-5. Keep routing stable so nothing breaks
+## Changes
 
-## Current Structure
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-- **`/admin/notifications`** → `NotificationRouting.tsx` — has Tabs: "Notification Routing" | "Report Settings"
-- **`/admin/reports`** → `ReportSettings.tsx` — standalone page with scheduled reports, calendar, EOD settings
-- **Sidebar** has both "Report Settings" (`/admin/reports`) and "Notifications" (`/admin/notifications`) and "Calendar Setup" (`/admin/reports`)
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-## Plan
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### Step 1 — Update Sidebar (`AdminLayout.tsx`)
-- Remove "Report Settings" and "Calendar Setup" items
-- Rename "Notifications" to "Reports" (keep path `/admin/notifications`)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### Step 2 — Rewrite `NotificationRouting.tsx` as unified "Reports" page
-- Remove tabs — single scrollable page
-- Page title: "Reports" with description "Manage notification routing and scheduled report settings"
-- Render notification cards first (same format as now)
-- Then add **3 new report-style cards** using the same visual format as notifications:
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-**Card: "Scheduled Performance Report"**
-- Same card format as notifications (Mail icon, title, description, + Add button)
-- Email rows with toggle/delete, same as notification entries
-- Additional settings inline: frequency dropdown, day dropdown, content toggles (goals, sales, canvassers)
-- "Send Test" button
-- Store recipients via `notification_routing` table with type `scheduled_report` (OR keep current `report_settings` approach — keep existing approach to avoid migration)
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-**Card: "Canvasser EOD Report"**
-- Same card format: BarChart3 icon, title, description
-- Send time + frequency dropdowns inline
-- Recipients via `ReportRecipientsSelector` (same as current)
-- Save + Send Test buttons
-- Note about cron schedule
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-**Card: "Team Calendar"**
-- Same card format with Globe icon
-- Calendar URL input + preview
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-### Step 3 — Update Routes (`App.tsx`)
-- Redirect `/admin/reports` to `/admin/notifications` (or just remove the separate route and point both to NotificationRouting)
-- Keep lazy import for NotificationRouting, remove standalone ReportSettings lazy import if no longer needed as a route
+## Summary
 
-### Step 4 — Clean up
-- ReportSettings.tsx can be kept as a component file (its sub-components are reused) or inlined into NotificationRouting
-- Since the EOD card and Calendar card are already defined in ReportSettings.tsx, import them directly
-
-## Files to Edit
-
-| File | Change |
+| Area | Change |
 |------|--------|
-| `src/pages/admin/AdminLayout.tsx` | Remove "Report Settings" + "Calendar Setup" sidebar items; rename "Notifications" → "Reports" |
-| `src/pages/admin/NotificationRouting.tsx` | Remove tabs, add Scheduled Report card + EOD card + Calendar card below notifications, all using consistent card format |
-| `src/App.tsx` | Change `/admin/reports` route to redirect to `/admin/notifications` (or remove) |
-| `src/pages/admin/ReportSettings.tsx` | Keep file but remove default export page wrapper; export sub-components for reuse |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
