@@ -142,6 +142,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
                   {showHours && (
                     <td className="py-3 px-4 text-right font-bold">{entry.hoursWorked}</td>
                   )}
+                  <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
                   <td className="py-3 px-4 text-right">
                     <PointsBreakdownTooltip
                       data={{
