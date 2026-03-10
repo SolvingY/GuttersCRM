@@ -448,6 +448,14 @@ export default function ApplicantDetail() {
           queryClient.invalidateQueries({ queryKey: ["job-applications"] });
         }}
       />
+
+      {/* Schedule Interview Modal */}
+      <ScheduleInterviewModal
+        open={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        applicantId={app.id}
+        applicantName={app.full_name}
+      />
     </div>
   );
 }
