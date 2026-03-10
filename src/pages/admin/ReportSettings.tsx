@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Mail, Calendar, Clock, Send, FileText, X, Globe } from 'lucide-react';
+import { Loader2, Save, Mail, Calendar, Clock, Send, FileText, X, Globe, BarChart3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import ReportRecipientsSelector from '@/components/shared/ReportRecipientsSelector';
 
 function CalendarSettingsCard() {
   const { toast } = useToast();
@@ -445,6 +447,9 @@ export default function ReportSettings() {
       {/* Team Calendar Card */}
       <CalendarSettingsCard />
 
+      {/* Canvasser EOD Report Settings Card */}
+      <CanvasserEODSettingsCard />
+
       {/* Info Card */}
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
@@ -454,9 +459,151 @@ export default function ReportSettings() {
             <li>• All users with admin role receive the report by default</li>
             <li>• Reports include current YTD data and goal progress</li>
             <li>• Use "Send Test Report" to preview the email format</li>
+            <li>• The Canvasser EOD report is sent daily at the configured time to selected recipients</li>
           </ul>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CanvasserEODSettingsCard() {
+  const { toast } = useToast();
+  const [sendHour, setSendHour] = useState("21");
+  const [frequency, setFrequency] = useState("daily");
+  const [selectedRecipients, setSelectedRecipients] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const { data } = await supabase
+        .from('report_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['canvasser_eod_send_hour', 'canvasser_eod_frequency', 'canvasser_eod_recipient_ids']);
+
+      if (data) {
+        data.forEach((row) => {
+          const val = String(row.setting_value || '');
+          if (row.setting_key === 'canvasser_eod_send_hour') setSendHour(val || '21');
+          if (row.setting_key === 'canvasser_eod_frequency') setFrequency(val || 'daily');
+          if (row.setting_key === 'canvasser_eod_recipient_ids') {
+            try {
+              const ids = JSON.parse(val);
+              if (Array.isArray(ids)) {
+                supabase.from('report_recipients' as any).select('id, name, email').in('id', ids).then(({ data: recs }) => {
+                  if (recs) setSelectedRecipients(recs as any[]);
+                });
+              }
+            } catch {}
+          }
+        });
+      }
+      setLoaded(true);
+    };
+    loadSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updates = [
+        { setting_key: 'canvasser_eod_send_hour', setting_value: sendHour, updated_at: new Date().toISOString() },
+        { setting_key: 'canvasser_eod_frequency', setting_value: frequency, updated_at: new Date().toISOString() },
+        { setting_key: 'canvasser_eod_recipient_ids', setting_value: JSON.stringify(selectedRecipients.map(r => r.id)), updated_at: new Date().toISOString() },
+      ];
+      for (const u of updates) {
+        const { error } = await supabase.from('report_settings').upsert(u, { onConflict: 'setting_key' });
+        if (error) throw error;
+      }
+      toast({ title: 'Canvasser EOD settings saved' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    setSendingTest(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-canvasser-eod-report');
+      if (error) throw error;
+      toast({ title: 'Test report sent', description: 'Check your inbox for the canvasser EOD report.' });
+    } catch (err: any) {
+      toast({ title: 'Error sending test', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-accent" />
+          Canvasser EOD Report Settings
+        </CardTitle>
+        <CardDescription>
+          Configure the daily canvasser end-of-day summary email
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Send Time (CT)
+            </Label>
+            <Select value={sendHour} onValueChange={setSendHour}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 24 }, (_, i) => {
+                  const label = i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`;
+                  return <SelectItem key={i} value={String(i)}>{label}</SelectItem>;
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Note: Update cron schedule in November when clocks fall back.</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Frequency
+            </Label>
+            <Select value={frequency} onValueChange={setFrequency}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekdays">Weekdays Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Recipients</Label>
+          <p className="text-xs text-muted-foreground mb-2">Select who receives the daily canvasser EOD report</p>
+          <ReportRecipientsSelector
+            selected={selectedRecipients}
+            onChange={setSelectedRecipients}
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <Button onClick={handleSave} disabled={saving} size="sm">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Save EOD Settings
+          </Button>
+          <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">
+            {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+            Send Test Report
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

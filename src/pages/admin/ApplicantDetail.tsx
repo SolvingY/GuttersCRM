@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle, Archive, ArchiveRestore } from "lucide-react";
+import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle, Archive, ArchiveRestore, CalendarCheck } from "lucide-react";
+import { ScheduleInterviewModal } from "@/components/admin/ScheduleInterviewModal";
 import { format } from "date-fns";
 import {
   dnaQuestions,
@@ -131,6 +132,7 @@ export default function ApplicantDetail() {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [dnaOpen, setDnaOpen] = useState(false);
   const [showHireDialog, setShowHireDialog] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const { data: app, isLoading } = useQuery({
     queryKey: ["job-application", id],
@@ -172,11 +174,22 @@ export default function ApplicantDetail() {
     updateApp.mutate({ admin_notes: adminNotes, interview_notes: interviewNotes });
   };
 
-  const changeStatus = (status: string) => {
+  const changeStatus = async (status: string) => {
     const extra: Record<string, any> = { status };
     if (status === "reviewed") extra.reviewed_at = new Date().toISOString();
     if (status === "contacted") extra.contacted_at = new Date().toISOString();
     updateApp.mutate(extra);
+
+    // Trigger notification for contacted stage
+    if (status === "contacted" && app) {
+      try {
+        await supabase.functions.invoke("notify-applicant-stage-change", {
+          body: { applicantId: id, newStage: "contacted" },
+        });
+      } catch (err) {
+        console.error("Notification failed:", err);
+      }
+    }
   };
 
   if (isLoading) return <p className="text-muted-foreground text-center py-16">Loading...</p>;
@@ -203,8 +216,8 @@ export default function ApplicantDetail() {
         <Select value={app.status} onValueChange={changeStatus}>
           <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {["new", "reviewed", "contacted", "rejected", "hired"].map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+          {["new", "reviewed", "contacted", "scheduled_interview", "rejected", "hired"].map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">{s === "scheduled_interview" ? "Scheduled Interview" : s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -366,14 +379,18 @@ export default function ApplicantDetail() {
         </Button>
       </div>
 
-      {/* Interview Notes */}
+      {/* Interview Info */}
       <div className="bg-card border border-border rounded-lg p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-accent" />
-          <h2 className="font-heading uppercase text-sm text-accent">Interview Notes</h2>
+          <h2 className="font-heading uppercase text-sm text-accent">Interview</h2>
         </div>
+        {app.interview_scheduled_at && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+            <p className="font-semibold text-blue-800">📅 Scheduled: {format(new Date(app.interview_scheduled_at), "MMMM d, yyyy 'at' h:mm a")}</p>
+          </div>
+        )}
         <Textarea value={interviewNotes} onChange={(e) => setInterviewNotes(e.target.value)} rows={4} placeholder="Add interview details..." />
-        <p className="text-xs text-muted-foreground italic">📅 Full calendar integration coming soon.</p>
         <Button size="sm" onClick={saveNotes} disabled={updateApp.isPending}>
           <Save className="w-4 h-4 mr-1" /> Save Notes
         </Button>
@@ -386,6 +403,9 @@ export default function ApplicantDetail() {
         </a>
         <Button variant="outline" onClick={() => changeStatus("contacted")}>
           <Phone className="w-4 h-4 mr-1" /> Mark as Contacted
+        </Button>
+        <Button variant="outline" className="border-blue-500 text-blue-600" onClick={() => setShowScheduleModal(true)}>
+          <CalendarCheck className="w-4 h-4 mr-1" /> Schedule Interview
         </Button>
         <Button variant="outline" onClick={() => generateHTMLReport(app)}>
           <FileText className="w-4 h-4 mr-1" /> Export to PDF
@@ -427,6 +447,14 @@ export default function ApplicantDetail() {
           queryClient.invalidateQueries({ queryKey: ["job-application", id] });
           queryClient.invalidateQueries({ queryKey: ["job-applications"] });
         }}
+      />
+
+      {/* Schedule Interview Modal */}
+      <ScheduleInterviewModal
+        open={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        applicantId={app.id}
+        applicantName={app.full_name}
       />
     </div>
   );

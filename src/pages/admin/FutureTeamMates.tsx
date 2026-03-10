@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Eye, CheckCircle, Phone, Star, AlertTriangle, Archive, ArchiveRestore } from "lucide-react";
+import { Download, Eye, CheckCircle, Phone, Star, AlertTriangle, Archive, ArchiveRestore, CalendarCheck } from "lucide-react";
 import { getAlignmentStars, getScoreColor, desiredPositions } from "@/lib/dnaAssessment";
+import { ScheduleInterviewModal } from "@/components/admin/ScheduleInterviewModal";
 import { format } from "date-fns";
 import type { AlignmentCategory } from "@/lib/dnaAssessment";
 
@@ -16,8 +17,9 @@ const statusColors: Record<string, string> = {
   new: "bg-red-500 text-white",
   reviewed: "bg-yellow-500 text-black",
   contacted: "bg-green-500 text-white",
+  scheduled_interview: "bg-blue-500 text-white",
   rejected: "bg-gray-400 text-white",
-  hired: "bg-blue-500 text-white",
+  hired: "bg-blue-700 text-white",
 };
 
 export default function FutureTeamMates() {
@@ -29,6 +31,7 @@ export default function FutureTeamMates() {
   const [alignmentFilter, setAlignmentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date-desc");
   const [tab, setTab] = useState<"active" | "archived">("active");
+  const [scheduleModal, setScheduleModal] = useState<{ id: string; name: string } | null>(null);
 
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["job-applications", tab],
@@ -104,6 +107,7 @@ export default function FutureTeamMates() {
     new: applications.filter((a) => a.status === "new").length,
     reviewed: applications.filter((a) => a.status === "reviewed").length,
     contacted: applications.filter((a) => a.status === "contacted").length,
+    scheduled_interview: applications.filter((a) => a.status === "scheduled_interview").length,
     hired: applications.filter((a) => a.status === "hired").length,
   }), [applications]);
 
@@ -147,11 +151,11 @@ export default function FutureTeamMates() {
 
       {/* Stats */}
       {tab === "active" && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(["new", "reviewed", "contacted", "hired"] as const).map((s) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {(["new", "reviewed", "contacted", "scheduled_interview", "hired"] as const).map((s) => (
             <div key={s} className="bg-card border border-border rounded-lg p-4 text-center">
               <p className="text-2xl font-heading">{stats[s]}</p>
-              <p className="text-xs text-muted-foreground uppercase">{s}</p>
+              <p className="text-xs text-muted-foreground uppercase">{s === "scheduled_interview" ? "Interview" : s}</p>
             </div>
           ))}
         </div>
@@ -163,8 +167,8 @@ export default function FutureTeamMates() {
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            {["new", "reviewed", "contacted", "rejected", "hired"].map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+            {["new", "reviewed", "contacted", "scheduled_interview", "rejected", "hired"].map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">{s === "scheduled_interview" ? "Scheduled Interview" : s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -223,6 +227,9 @@ export default function FutureTeamMates() {
                     </p>
                     <p className="text-sm mt-1">Desired: {app.desired_position} · Recommended: {app.recommended_role}</p>
                     <p className="text-sm text-muted-foreground">{app.years_experience} · {app.availability}</p>
+                    {app.interview_scheduled_at && (
+                      <p className="text-sm text-blue-600 mt-1">📅 Interview: {format(new Date(app.interview_scheduled_at), "MMM d, yyyy 'at' h:mm a")}</p>
+                    )}
                     <div className="flex items-center gap-0.5 mt-1">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star key={i} className={`w-4 h-4 ${i < stars ? "text-yellow-500 fill-yellow-500" : "text-muted"}`} />
@@ -244,6 +251,11 @@ export default function FutureTeamMates() {
                         {(app.status === "new" || app.status === "reviewed") && (
                           <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: app.id, status: "contacted" })}>
                             <Phone className="w-4 h-4 mr-1" /> Contact
+                          </Button>
+                        )}
+                        {(app.status === "contacted" || app.status === "reviewed") && (
+                          <Button size="sm" variant="outline" className="border-blue-500 text-blue-600" onClick={() => setScheduleModal({ id: app.id, name: app.full_name })}>
+                            <CalendarCheck className="w-4 h-4 mr-1" /> Schedule Interview
                           </Button>
                         )}
                         <Button
@@ -271,6 +283,15 @@ export default function FutureTeamMates() {
             );
           })}
         </div>
+      )}
+
+      {scheduleModal && (
+        <ScheduleInterviewModal
+          open={!!scheduleModal}
+          onClose={() => setScheduleModal(null)}
+          applicantId={scheduleModal.id}
+          applicantName={scheduleModal.name}
+        />
       )}
     </div>
   );

@@ -15,6 +15,7 @@ export interface CanvasserLeaderboardEntry {
   conversationsHad?: number;
   notInterested?: number;
   cancelledLeads?: number;
+  contracts?: number;
   points: number;
   amountUntilGoal: number;
   percentOfGoal: number;
@@ -51,6 +52,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
     const totalConvos = entries.reduce((sum, e) => sum + (e.conversationsHad || 0), 0);
     const totalNotInterested = entries.reduce((sum, e) => sum + (e.notInterested || 0), 0);
     const totalCancelled = entries.reduce((sum, e) => sum + (e.cancelledLeads || 0), 0);
+    const totalContracts = entries.reduce((sum, e) => sum + (e.contracts || 0), 0);
     const totalLeadsSet = entries.reduce((sum, e) => sum + e.leadsSet, 0);
     const totalWithDamage = entries.reduce((sum, e) => sum + e.leadsWithDamage, 0);
     const totalWithoutDamage = entries.reduce((sum, e) => sum + (e.leadsWithoutDamage || 0), 0);
@@ -58,7 +60,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
     const closePercent = totalLeadsSet > 0 ? (totalClosed / totalLeadsSet) * 100 : 0;
     const totalPoints = entries.reduce((sum, e) => sum + (e.points || 0), 0);
     
-    return { totalDoors, totalConvos, totalNotInterested, totalCancelled, totalLeadsSet, totalWithDamage, totalWithoutDamage, totalClosed, closePercent, totalPoints };
+    return { totalDoors, totalConvos, totalNotInterested, totalCancelled, totalContracts, totalLeadsSet, totalWithDamage, totalWithoutDamage, totalClosed, closePercent, totalPoints };
   }, [entries]);
 
   if (entries.length === 0) {
@@ -87,6 +89,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contracts Goal</th>
               <th className="text-center py-3 px-4 text-sm font-bold whitespace-nowrap">% of Goal</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contracts</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
             </tr>
           </thead>
@@ -153,6 +156,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                     )}
                   </td>
                   <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.contracts || 0}</td>
                   <td className="py-3 px-4 text-right">
                     <PointsBreakdownTooltip
                       data={{
@@ -193,6 +197,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                 ) : '—'}
               </td>
               <td className="py-3 px-4 text-right">{totals.totalCancelled}</td>
+              <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
               <td className="py-3 px-4 text-right">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
                   {totals.totalPoints.toLocaleString()}
