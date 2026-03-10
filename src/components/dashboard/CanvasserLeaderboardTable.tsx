@@ -152,6 +152,7 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
+                  <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
                   <td className="py-3 px-4 text-right">
                     <PointsBreakdownTooltip
                       data={{
