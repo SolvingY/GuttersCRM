@@ -17,8 +17,9 @@ const statusColors: Record<string, string> = {
   new: "bg-red-500 text-white",
   reviewed: "bg-yellow-500 text-black",
   contacted: "bg-green-500 text-white",
+  scheduled_interview: "bg-blue-500 text-white",
   rejected: "bg-gray-400 text-white",
-  hired: "bg-blue-500 text-white",
+  hired: "bg-blue-700 text-white",
 };
 
 export default function FutureTeamMates() {
