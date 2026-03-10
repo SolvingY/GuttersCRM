@@ -954,6 +954,52 @@ export default function AdminTimeClock() {
         </DialogContent>
       </Dialog>
 
+      {/* Sales Rep Attribution Modal */}
+      <Dialog open={repPromptOpen} onOpenChange={(open) => { if (!open) { setRepPromptOpen(false); setPendingAttribution(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Assign Sales Rep</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {pendingAttribution?.leadsCount} lead{(pendingAttribution?.leadsCount || 0) > 1 ? 's were' : ' was'} added. Which sales rep ran {(pendingAttribution?.leadsCount || 0) > 1 ? 'these leads' : 'this lead'}?
+          </p>
+          <div className="space-y-2">
+            <Label>Sales Rep</Label>
+            <Select value={shiftSalesRepId} onValueChange={setShiftSalesRepId}>
+              <SelectTrigger><SelectValue placeholder="Select sales rep" /></SelectTrigger>
+              <SelectContent>
+                {salesReps.map(r => (<SelectItem key={r.userId} value={r.userId}>{r.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRepPromptOpen(false); setPendingAttribution(null); }}>Skip</Button>
+            <Button disabled={!shiftSalesRepId || !pendingAttribution} onClick={async () => {
+              if (!pendingAttribution || !shiftSalesRepId) return;
+              try {
+                const weekStart = new Date(pendingAttribution.shiftDate);
+                const day = weekStart.getDay();
+                const diff = weekStart.getDate() - ((day + 3) % 7);
+                const thursday = new Date(weekStart.getFullYear(), weekStart.getMonth(), diff);
+                const ws = format(thursday, 'yyyy-MM-dd');
+                const we = format(addDays(thursday, 6), 'yyyy-MM-dd');
+                const { data: { user } } = await supabase.auth.getUser();
+                await supabase.from('lead_attributions').insert({
+                  canvasser_id: pendingAttribution.canvasserId,
+                  sales_rep_id: shiftSalesRepId,
+                  entry_type: 'canvasser_lead_set',
+                  quantity: pendingAttribution.leadsCount,
+                  week_start: ws,
+                  week_end: we,
+                  entered_by: user?.id || null,
+                });
+                toast.success('Sales rep attribution saved');
+              } catch (err: any) { toast.error('Attribution failed: ' + err.message); }
+              setRepPromptOpen(false);
+              setPendingAttribution(null);
+            }}>Save Attribution</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Zone Assignment Modal */}
       <Dialog open={assignZoneModalOpen} onOpenChange={setAssignZoneModalOpen}>
         <DialogContent>
