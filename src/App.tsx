@@ -258,7 +258,7 @@ const App = () => (
               <Route path="announcements" element={<Announcements />} />
               <Route path="contests" element={<Contests />} />
               <Route path="pit" element={<PitManagement />} />
-              <Route path="reports" element={<ReportSettings />} />
+              <Route path="reports" element={<Navigate to="/admin/notifications" replace />} />
               <Route path="applicants" element={<FutureTeamMates />} />
               <Route path="applicants/:id" element={<ApplicantDetail />} />
               <Route path="leads" element={<Leads />} />
