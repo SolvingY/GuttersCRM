@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle, Archive, ArchiveRestore } from "lucide-react";
+import { ArrowLeft, Mail, Phone, XCircle, UserCheck, ChevronDown, AlertTriangle, Star, Save, Calendar, FileText, CheckCircle, Archive, ArchiveRestore, CalendarCheck } from "lucide-react";
+import { ScheduleInterviewModal } from "@/components/admin/ScheduleInterviewModal";
 import { format } from "date-fns";
 import {
   dnaQuestions,
