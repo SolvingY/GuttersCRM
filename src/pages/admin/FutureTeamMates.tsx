@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Eye, CheckCircle, Phone, Star, AlertTriangle, Archive, ArchiveRestore } from "lucide-react";
+import { Download, Eye, CheckCircle, Phone, Star, AlertTriangle, Archive, ArchiveRestore, CalendarCheck } from "lucide-react";
 import { getAlignmentStars, getScoreColor, desiredPositions } from "@/lib/dnaAssessment";
+import { ScheduleInterviewModal } from "@/components/admin/ScheduleInterviewModal";
 import { format } from "date-fns";
 import type { AlignmentCategory } from "@/lib/dnaAssessment";
 
