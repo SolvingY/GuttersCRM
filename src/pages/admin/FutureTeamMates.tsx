@@ -167,8 +167,8 @@ export default function FutureTeamMates() {
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            {["new", "reviewed", "contacted", "rejected", "hired"].map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+            {["new", "reviewed", "contacted", "scheduled_interview", "rejected", "hired"].map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">{s === "scheduled_interview" ? "Scheduled Interview" : s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
