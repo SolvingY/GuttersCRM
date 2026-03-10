@@ -379,14 +379,18 @@ export default function ApplicantDetail() {
         </Button>
       </div>
 
-      {/* Interview Notes */}
+      {/* Interview Info */}
       <div className="bg-card border border-border rounded-lg p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-accent" />
-          <h2 className="font-heading uppercase text-sm text-accent">Interview Notes</h2>
+          <h2 className="font-heading uppercase text-sm text-accent">Interview</h2>
         </div>
+        {app.interview_scheduled_at && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+            <p className="font-semibold text-blue-800">📅 Scheduled: {format(new Date(app.interview_scheduled_at), "MMMM d, yyyy 'at' h:mm a")}</p>
+          </div>
+        )}
         <Textarea value={interviewNotes} onChange={(e) => setInterviewNotes(e.target.value)} rows={4} placeholder="Add interview details..." />
-        <p className="text-xs text-muted-foreground italic">📅 Full calendar integration coming soon.</p>
         <Button size="sm" onClick={saveNotes} disabled={updateApp.isPending}>
           <Save className="w-4 h-4 mr-1" /> Save Notes
         </Button>
