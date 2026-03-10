@@ -479,9 +479,11 @@ export default function NotificationRouting() {
       {/* Notification routing cards */}
       <NotificationCards />
 
-      {/* Report settings cards */}
-      <ScheduledReportCard />
+      {/* Canvasser EOD Report — right after notifications */}
       <CanvasserEODCard />
+
+      {/* Other report settings */}
+      <ScheduledReportCard />
       <CalendarCard />
     </div>
   );

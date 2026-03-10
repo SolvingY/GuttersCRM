@@ -29,16 +29,18 @@ Deno.serve(async (req) => {
       .eq("role", "canvasser");
 
     const canvasserIds = (canvasserRoles || []).map((r: any) => r.user_id);
-    if (canvasserIds.length === 0) {
-      // Still send "no canvassers" email
-    }
 
     // Get profiles
     const { data: profiles } = canvasserIds.length > 0
       ? await supabase.from("profiles").select("id, display_name, full_name").in("id", canvasserIds)
       : { data: [] };
 
-    // Get shifts for today (using AT TIME ZONE comparison)
+    // Get canvasser_metrics display_name for better name resolution
+    const { data: canvasserMetrics } = canvasserIds.length > 0
+      ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", canvasserIds)
+      : { data: [] };
+
+    // Get shifts for today
     const { data: shifts } = canvasserIds.length > 0
       ? await supabase
           .from("canvasser_shifts")
@@ -63,7 +65,9 @@ Deno.serve(async (req) => {
 
     for (const cId of canvasserIds) {
       const profile = (profiles || []).find((p: any) => p.id === cId);
-      const name = profile?.display_name || profile?.full_name || "Unknown";
+      const metric = (canvasserMetrics || []).find((m: any) => m.user_id === cId);
+      // Priority: canvasser_metrics.display_name → profiles.full_name → "Unknown"
+      const name = metric?.display_name || profile?.full_name || "Unknown";
       const shift = (shifts || []).find((s: any) => s.canvasser_id === cId);
       const entries = (dailyEntries || []).filter((e: any) => e.user_id === cId);
 
@@ -201,13 +205,29 @@ Deno.serve(async (req) => {
       </div>
     </div>`;
 
-    // Get recipients from report_recipients table
-    const { data: recipients } = await supabase
+    // ── Recipient filtering: use saved EOD recipient IDs from report_settings ──
+    const { data: reportSettings } = await supabase
+      .from("report_settings")
+      .select("canvasser_eod_recipient_ids")
+      .limit(1)
+      .maybeSingle();
+
+    const savedEodIds: string[] = (reportSettings as any)?.canvasser_eod_recipient_ids || [];
+
+    // Get recipients — filter to saved IDs if any are configured
+    let recipientQuery = supabase
       .from("report_recipients")
-      .select("name, email")
+      .select("id, name, email")
       .eq("is_active", true);
 
-    const recipientEmails = (recipients || []).map((r: any) => r.email).filter(Boolean);
+    const { data: allRecipients } = await recipientQuery;
+
+    let finalRecipients = allRecipients || [];
+    if (savedEodIds.length > 0) {
+      finalRecipients = finalRecipients.filter((r: any) => savedEodIds.includes(r.id));
+    }
+
+    const recipientEmails = finalRecipients.map((r: any) => r.email).filter(Boolean);
 
     let resendMessageId = null;
     if (recipientEmails.length > 0) {
@@ -235,7 +255,7 @@ Deno.serve(async (req) => {
     await supabase.from("canvasser_eod_report_log").insert({
       report_date: todayStr,
       canvassers_included: canvasserData.length,
-      recipients: recipients || [],
+      recipients: finalRecipients,
       email_sent_at: new Date().toISOString(),
       resend_message_id: resendMessageId,
     } as any);

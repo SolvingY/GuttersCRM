@@ -1,37 +1,42 @@
 
 
-# Fix Canvasser EOD Report — Names, Recipients, UI Order
+# Add Edit Button to Shift History
 
-## Issues Found
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-1. **Names showing "Unknown"**: The edge function queries `profiles.display_name`, but `profiles` has NO `display_name` column. Canvasser names are stored in `canvasser_metrics.display_name`. It falls back to `profiles.full_name`, but that's also empty for some users.
+## Changes
 
-2. **Sent to too many people**: The edge function ignores the saved EOD recipient settings (`canvasser_eod_recipient_ids` in `report_settings`) and instead sends to ALL active `report_recipients` (7 people). It should only send to the selected subset.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-3. **Card order**: Move Canvasser EOD Report card up to appear right after Flagged Shifts notification card.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-4. **Add button style**: The EOD card is missing the "+ Add" button that other notification cards have (it uses `ReportRecipientsSelector` instead, which is fine — but the card header should match the other cards' layout).
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-## Plan
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### 1. Fix Edge Function (`supabase/functions/send-canvasser-eod-report/index.ts`)
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-**Name resolution**: After getting profiles, also query `canvasser_metrics` for `display_name`. Use priority: `canvasser_metrics.display_name` → `profiles.full_name` → "Unknown".
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-**Recipient filtering**: Read `canvasser_eod_recipient_ids` from `report_settings`. If set, filter `report_recipients` to only those IDs. If not set, fall back to all active recipients.
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-### 2. Reorder Cards (`src/pages/admin/NotificationRouting.tsx`)
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-Move `<CanvasserEODCard />` to render right after `<NotificationCards />` (which ends with Flagged Shifts), before `<ScheduledReportCard />`.
+## Summary
 
-### 3. Match Add Button Style
-
-The EOD card currently has no header action button. The recipients are managed inline with checkboxes (ReportRecipientsSelector), which is actually a better UX than the email input pattern. No change needed here — the card already has a clean layout. The "Add" button pattern doesn't apply since recipients come from a managed list with checkboxes.
-
-## Files to Change
-
-| File | Change |
+| Area | Change |
 |------|--------|
-| `supabase/functions/send-canvasser-eod-report/index.ts` | Fix name resolution via `canvasser_metrics`; filter recipients by saved EOD settings |
-| `src/pages/admin/NotificationRouting.tsx` | Reorder: EOD card after notification cards, before scheduled report |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
