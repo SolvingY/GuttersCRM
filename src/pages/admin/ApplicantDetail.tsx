@@ -174,11 +174,22 @@ export default function ApplicantDetail() {
     updateApp.mutate({ admin_notes: adminNotes, interview_notes: interviewNotes });
   };
 
-  const changeStatus = (status: string) => {
+  const changeStatus = async (status: string) => {
     const extra: Record<string, any> = { status };
     if (status === "reviewed") extra.reviewed_at = new Date().toISOString();
     if (status === "contacted") extra.contacted_at = new Date().toISOString();
     updateApp.mutate(extra);
+
+    // Trigger notification for contacted stage
+    if (status === "contacted" && app) {
+      try {
+        await supabase.functions.invoke("notify-applicant-stage-change", {
+          body: { applicantId: id, newStage: "contacted" },
+        });
+      } catch (err) {
+        console.error("Notification failed:", err);
+      }
+    }
   };
 
   if (isLoading) return <p className="text-muted-foreground text-center py-16">Loading...</p>;
