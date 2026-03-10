@@ -313,6 +313,13 @@ export default function AdminTimeClock() {
       toast.success('Shift updated');
       setEditShiftModalOpen(false);
       fetchShifts(); fetchShiftHistory();
+
+      // If leads were added, prompt for sales rep attribution
+      if (leadsSetDelta > 0) {
+        setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(shiftClockIn) });
+        setShiftSalesRepId('');
+        setRepPromptOpen(true);
+      }
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingShift(false);
   };
