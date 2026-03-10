@@ -133,7 +133,6 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
                   <td className="py-3 px-4 text-right font-bold">{entry.doorsKnocked || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.conversationsHad || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.notInterested || 0}</td>
-                  <td className="py-3 px-4 text-right font-bold">{entry.cancelledLeads || 0}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsSet}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithDamage}</td>
                   <td className="py-3 px-4 text-right font-bold">{entry.leadsWithoutDamage || 0}</td>
