@@ -485,14 +485,13 @@ function CanvasserEODSettingsCard() {
 
       if (data) {
         data.forEach((row) => {
-          if (row.setting_key === 'canvasser_eod_send_hour') setSendHour(row.setting_value || '21');
-          if (row.setting_key === 'canvasser_eod_frequency') setFrequency(row.setting_value || 'daily');
+          const val = String(row.setting_value || '');
+          if (row.setting_key === 'canvasser_eod_send_hour') setSendHour(val || '21');
+          if (row.setting_key === 'canvasser_eod_frequency') setFrequency(val || 'daily');
           if (row.setting_key === 'canvasser_eod_recipient_ids') {
             try {
-              const ids = JSON.parse(row.setting_value);
-              // We'll load the full recipients below
+              const ids = JSON.parse(val);
               if (Array.isArray(ids)) {
-                // Load full recipient data
                 supabase.from('report_recipients' as any).select('id, name, email').in('id', ids).then(({ data: recs }) => {
                   if (recs) setSelectedRecipients(recs as any[]);
                 });
