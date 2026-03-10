@@ -152,11 +152,42 @@ export type Database = {
         }
         Relationships: []
       }
+      canvasser_eod_report_log: {
+        Row: {
+          canvassers_included: number
+          created_at: string
+          email_sent_at: string | null
+          id: string
+          recipients: Json
+          report_date: string
+          resend_message_id: string | null
+        }
+        Insert: {
+          canvassers_included?: number
+          created_at?: string
+          email_sent_at?: string | null
+          id?: string
+          recipients?: Json
+          report_date: string
+          resend_message_id?: string | null
+        }
+        Update: {
+          canvassers_included?: number
+          created_at?: string
+          email_sent_at?: string | null
+          id?: string
+          recipients?: Json
+          report_date?: string
+          resend_message_id?: string | null
+        }
+        Relationships: []
+      }
       canvasser_metrics: {
         Row: {
           cancelled_leads: number | null
           canvasser_rank: string | null
           contest_points: number | null
+          contracts: number
           conversations_had: number | null
           created_at: string | null
           display_name: string | null
@@ -183,6 +214,7 @@ export type Database = {
           cancelled_leads?: number | null
           canvasser_rank?: string | null
           contest_points?: number | null
+          contracts?: number
           conversations_had?: number | null
           created_at?: string | null
           display_name?: string | null
@@ -209,6 +241,7 @@ export type Database = {
           cancelled_leads?: number | null
           canvasser_rank?: string | null
           contest_points?: number | null
+          contracts?: number
           conversations_had?: number | null
           created_at?: string | null
           display_name?: string | null
@@ -795,6 +828,7 @@ export type Database = {
       daily_canvasser_metric_entries: {
         Row: {
           cancelled_leads_delta: number | null
+          contracts_delta: number
           conversations_had_delta: number | null
           created_at: string
           doors_knocked_delta: number | null
@@ -816,6 +850,7 @@ export type Database = {
         }
         Insert: {
           cancelled_leads_delta?: number | null
+          contracts_delta?: number
           conversations_had_delta?: number | null
           created_at?: string
           doors_knocked_delta?: number | null
@@ -837,6 +872,7 @@ export type Database = {
         }
         Update: {
           cancelled_leads_delta?: number | null
+          contracts_delta?: number
           conversations_had_delta?: number | null
           created_at?: string
           doors_knocked_delta?: number | null
@@ -1161,6 +1197,7 @@ export type Database = {
         Row: {
           admin_notes: string | null
           alignment_category: string
+          applicant_source: string | null
           archived: boolean
           archived_at: string | null
           availability: string
@@ -1169,6 +1206,7 @@ export type Database = {
           created_user_id: string | null
           current_job_title: string | null
           desired_position: string
+          desired_role: string | null
           dna_answers: Json
           dna_score: number
           email: string
@@ -1176,6 +1214,7 @@ export type Database = {
           hired_at: string | null
           id: string
           interview_notes: string | null
+          interview_scheduled_at: string | null
           narrative_mentor: string
           narrative_ownership: string
           narrative_why_ngr: string
@@ -1184,6 +1223,7 @@ export type Database = {
           red_flags: Json
           reviewed_at: string | null
           reviewed_by: string | null
+          routing_notified_at: string | null
           start_date: string | null
           status: string
           status_changed_at: string | null
@@ -1194,6 +1234,7 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           alignment_category: string
+          applicant_source?: string | null
           archived?: boolean
           archived_at?: string | null
           availability: string
@@ -1202,6 +1243,7 @@ export type Database = {
           created_user_id?: string | null
           current_job_title?: string | null
           desired_position: string
+          desired_role?: string | null
           dna_answers: Json
           dna_score: number
           email: string
@@ -1209,6 +1251,7 @@ export type Database = {
           hired_at?: string | null
           id?: string
           interview_notes?: string | null
+          interview_scheduled_at?: string | null
           narrative_mentor: string
           narrative_ownership: string
           narrative_why_ngr: string
@@ -1217,6 +1260,7 @@ export type Database = {
           red_flags?: Json
           reviewed_at?: string | null
           reviewed_by?: string | null
+          routing_notified_at?: string | null
           start_date?: string | null
           status?: string
           status_changed_at?: string | null
@@ -1227,6 +1271,7 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           alignment_category?: string
+          applicant_source?: string | null
           archived?: boolean
           archived_at?: string | null
           availability?: string
@@ -1235,6 +1280,7 @@ export type Database = {
           created_user_id?: string | null
           current_job_title?: string | null
           desired_position?: string
+          desired_role?: string | null
           dna_answers?: Json
           dna_score?: number
           email?: string
@@ -1242,6 +1288,7 @@ export type Database = {
           hired_at?: string | null
           id?: string
           interview_notes?: string | null
+          interview_scheduled_at?: string | null
           narrative_mentor?: string
           narrative_ownership?: string
           narrative_why_ngr?: string
@@ -1250,6 +1297,7 @@ export type Database = {
           red_flags?: Json
           reviewed_at?: string | null
           reviewed_by?: string | null
+          routing_notified_at?: string | null
           start_date?: string | null
           status?: string
           status_changed_at?: string | null
@@ -3088,6 +3136,7 @@ export type Database = {
         Row: {
           cancelled_leads: number | null
           canvasser_rank: string | null
+          contracts: number
           conversations_had: number | null
           created_at: string
           doors_knocked: number | null
@@ -3109,6 +3158,7 @@ export type Database = {
         Insert: {
           cancelled_leads?: number | null
           canvasser_rank?: string | null
+          contracts?: number
           conversations_had?: number | null
           created_at?: string
           doors_knocked?: number | null
@@ -3130,6 +3180,7 @@ export type Database = {
         Update: {
           cancelled_leads?: number | null
           canvasser_rank?: string | null
+          contracts?: number
           conversations_had?: number | null
           created_at?: string
           doors_knocked?: number | null
