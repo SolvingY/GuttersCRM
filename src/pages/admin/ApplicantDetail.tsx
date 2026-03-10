@@ -404,6 +404,9 @@ export default function ApplicantDetail() {
         <Button variant="outline" onClick={() => changeStatus("contacted")}>
           <Phone className="w-4 h-4 mr-1" /> Mark as Contacted
         </Button>
+        <Button variant="outline" className="border-blue-500 text-blue-600" onClick={() => setShowScheduleModal(true)}>
+          <CalendarCheck className="w-4 h-4 mr-1" /> Schedule Interview
+        </Button>
         <Button variant="outline" onClick={() => generateHTMLReport(app)}>
           <FileText className="w-4 h-4 mr-1" /> Export to PDF
         </Button>
