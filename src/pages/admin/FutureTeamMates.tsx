@@ -253,6 +253,11 @@ export default function FutureTeamMates() {
                             <Phone className="w-4 h-4 mr-1" /> Contact
                           </Button>
                         )}
+                        {(app.status === "contacted" || app.status === "reviewed") && (
+                          <Button size="sm" variant="outline" className="border-blue-500 text-blue-600" onClick={() => setScheduleModal({ id: app.id, name: app.full_name })}>
+                            <CalendarCheck className="w-4 h-4 mr-1" /> Schedule Interview
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
