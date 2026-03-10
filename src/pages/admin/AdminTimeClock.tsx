@@ -356,11 +356,23 @@ export default function AdminTimeClock() {
       });
       await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
       toast.success(`Manual shift added: ${shiftHours}h`);
+
+      const savedCanvasserId = shiftCanvasserId;
+      const savedClockIn = shiftClockIn;
+      const savedLeads = leads;
+
       setAddShiftModalOpen(false);
       setShiftCanvasserId(''); setShiftClockIn(''); setShiftClockOut('');
       setShiftDoors(''); setShiftConvos(''); setShiftNotInterested('');
       setShiftLeadsSet(''); setShiftNotes('');
       fetchShifts(); fetchShiftHistory();
+
+      // If leads were added, prompt for sales rep attribution
+      if (savedLeads > 0) {
+        setPendingAttribution({ canvasserId: savedCanvasserId, leadsCount: savedLeads, shiftDate: new Date(savedClockIn) });
+        setShiftSalesRepId('');
+        setRepPromptOpen(true);
+      }
     } catch (err: any) { toast.error('Failed: ' + err.message); }
     setSavingShift(false);
   };
