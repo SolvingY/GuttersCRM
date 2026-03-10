@@ -229,7 +229,8 @@ Deno.serve(async (req) => {
       finalRecipients = finalRecipients.filter((r: any) => savedEodIds.includes(r.id));
     }
 
-    const recipientEmails = finalRecipients.map((r: any) => r.email).filter(Boolean);
+    // If test_email provided, override recipients
+    const recipientEmails = testEmail ? [testEmail] : finalRecipients.map((r: any) => r.email).filter(Boolean);
 
     let resendMessageId = null;
     if (recipientEmails.length > 0) {
