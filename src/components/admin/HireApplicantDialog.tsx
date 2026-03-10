@@ -125,6 +125,15 @@ export function HireApplicantDialog({ isOpen, onClose, applicant, onSuccess }: H
         }
       }
 
+      // Trigger hired notification to Matt & Jonathan
+      try {
+        await supabase.functions.invoke("notify-applicant-stage-change", {
+          body: { applicantId: applicant.id, newStage: "hired" },
+        });
+      } catch (notifyErr) {
+        console.error("Hired notification failed:", notifyErr);
+      }
+
       toast({ title: "Account created successfully!", description: `User account for ${applicant.full_name} is ready. Onboarding checklist initialized.` });
       onSuccess(newUserId);
       onClose();
