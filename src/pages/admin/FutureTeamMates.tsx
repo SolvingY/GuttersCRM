@@ -107,6 +107,7 @@ export default function FutureTeamMates() {
     new: applications.filter((a) => a.status === "new").length,
     reviewed: applications.filter((a) => a.status === "reviewed").length,
     contacted: applications.filter((a) => a.status === "contacted").length,
+    scheduled_interview: applications.filter((a) => a.status === "scheduled_interview").length,
     hired: applications.filter((a) => a.status === "hired").length,
   }), [applications]);
 
