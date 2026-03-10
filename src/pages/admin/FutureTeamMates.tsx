@@ -284,6 +284,15 @@ export default function FutureTeamMates() {
           })}
         </div>
       )}
+
+      {scheduleModal && (
+        <ScheduleInterviewModal
+          open={!!scheduleModal}
+          onClose={() => setScheduleModal(null)}
+          applicantId={scheduleModal.id}
+          applicantName={scheduleModal.name}
+        />
+      )}
     </div>
   );
 }

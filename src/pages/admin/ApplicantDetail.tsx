@@ -216,8 +216,8 @@ export default function ApplicantDetail() {
         <Select value={app.status} onValueChange={changeStatus}>
           <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {["new", "reviewed", "contacted", "rejected", "hired"].map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+          {["new", "reviewed", "contacted", "scheduled_interview", "rejected", "hired"].map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">{s === "scheduled_interview" ? "Scheduled Interview" : s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
