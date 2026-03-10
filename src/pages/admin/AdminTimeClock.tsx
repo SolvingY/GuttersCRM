@@ -170,10 +170,27 @@ export default function AdminTimeClock() {
     setZoneAssignments((data as any[]) || []);
   }, []);
 
+  const fetchSalesReps = useCallback(async () => {
+    const { data } = await supabase.from('user_metrics').select('user_id, display_name');
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, is_archived').eq('is_archived', false);
+    const activeSet = new Set(profiles?.map(p => p.id) || []);
+    const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
+    const seen = new Set<string>();
+    const result: { userId: string; name: string }[] = [];
+    data?.forEach(m => {
+      if (m.user_id && !seen.has(m.user_id) && activeSet.has(m.user_id)) {
+        seen.add(m.user_id);
+        result.push({ userId: m.user_id, name: m.display_name || profileMap.get(m.user_id) || 'Unknown' });
+      }
+    });
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    setSalesReps(result);
+  }, []);
+
   useEffect(() => {
-    const init = async () => { await fetchCanvassers(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
+    const init = async () => { await fetchCanvassers(); await fetchSalesReps(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
     init();
-  }, [fetchCanvassers, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
+  }, [fetchCanvassers, fetchSalesReps, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
 
   useEffect(() => { fetchShiftHistory(); }, [fetchShiftHistory]);
 
