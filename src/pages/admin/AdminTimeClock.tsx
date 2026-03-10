@@ -592,7 +592,7 @@ export default function AdminTimeClock() {
                               <td key={date} className={cn('py-2 px-1 text-center align-top', hasData ? 'bg-green-500/5' : '')}>
                                 {hasData ? (
                                   <div className="space-y-0.5 leading-tight">
-                                    {hrs > 0 && <div className="font-medium text-foreground text-xs">{hrs}h</div>}
+                                    {hrs > 0 && <div className="font-medium text-foreground text-xs">{parseFloat(hrs.toFixed(2))}h</div>}
                                     {leadsSet > 0 && <div className="text-emerald-600 dark:text-emerald-400 text-xs">{leadsSet}L</div>}
                                     {leadsClosed > 0 && <div className="text-blue-600 dark:text-blue-400 text-xs">✓{leadsClosed}</div>}
                                     {doors > 0 && <div className="text-muted-foreground text-xs">{doors}D</div>}
