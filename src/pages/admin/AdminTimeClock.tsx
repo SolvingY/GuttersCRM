@@ -621,7 +621,7 @@ export default function AdminTimeClock() {
                             const dayLeads = dayEntries.reduce((sum, e) => sum + (Number(e.leads_set_delta) || 0), 0);
                             return (
                               <td key={date} className="py-2 px-1 text-center">
-                                {dayHrs > 0 && <div className="font-medium text-foreground text-xs">{dayHrs}h</div>}
+                                {dayHrs > 0 && <div className="font-medium text-foreground text-xs">{parseFloat(dayHrs.toFixed(2))}h</div>}
                                 {dayLeads > 0 && <div className="text-emerald-600 dark:text-emerald-400 text-xs">{dayLeads}L</div>}
                               </td>
                             );
