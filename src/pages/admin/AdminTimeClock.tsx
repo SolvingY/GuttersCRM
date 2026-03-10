@@ -49,6 +49,12 @@ export default function AdminTimeClock() {
   const [shiftCanvasserId, setShiftCanvasserId] = useState('');
   const [savingShift, setSavingShift] = useState(false);
 
+  // Sales rep attribution state
+  const [salesReps, setSalesReps] = useState<{ userId: string; name: string }[]>([]);
+  const [repPromptOpen, setRepPromptOpen] = useState(false);
+  const [shiftSalesRepId, setShiftSalesRepId] = useState('');
+  const [pendingAttribution, setPendingAttribution] = useState<{ canvasserId: string; leadsCount: number; shiftDate: Date } | null>(null);
+
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<Date>(() => {
     const d = new Date(); const day = d.getDay();
     const diff = d.getDate() - ((day + 3) % 7);
