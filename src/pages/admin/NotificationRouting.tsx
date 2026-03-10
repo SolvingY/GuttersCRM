@@ -320,29 +320,72 @@ function ScheduledReportCard() {
 
 function CanvasserEODCard() {
   const { toast: toastUI } = useToast();
+  const queryClient = useQueryClient();
   const [sendHour, setSendHour] = useState("21");
   const [frequency, setFrequency] = useState("daily");
-  const [selectedRecipients, setSelectedRecipients] = useState<{ id: string; name: string; email: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [addingEmail, setAddingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+
+  const { data: eodEntries = [] } = useQuery({
+    queryKey: ['notification-routing-eod'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notification_routing')
+        .select('*')
+        .eq('notification_type', 'canvasser_eod_report')
+        .order('email');
+      if (error) throw error;
+      return data as RoutingEntry[];
+    },
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.from('notification_routing').insert({ notification_type: 'canvasser_eod_report', email: email.trim().toLowerCase() });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['notification-routing-eod'] }); setNewEmail(''); setAddingEmail(false); toast.success('Recipient added'); },
+    onError: (err: any) => { toast.error(err.message?.includes('duplicate') ? 'Already added' : err.message); },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase.from('notification_routing').update({ is_active, updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, is_active }) => {
+      await queryClient.cancelQueries({ queryKey: ['notification-routing-eod'] });
+      const previous = queryClient.getQueryData<RoutingEntry[]>(['notification-routing-eod']);
+      queryClient.setQueryData<RoutingEntry[]>(['notification-routing-eod'], (old = []) => old.map((e) => (e.id === id ? { ...e, is_active } : e)));
+      return { previous };
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['notification-routing-eod'] }); },
+    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(['notification-routing-eod'], context.previous); },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from('notification_routing').delete().eq('id', id); if (error) throw error; },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['notification-routing-eod'] });
+      const previous = queryClient.getQueryData<RoutingEntry[]>(['notification-routing-eod']);
+      queryClient.setQueryData<RoutingEntry[]>(['notification-routing-eod'], (old = []) => old.filter((e) => e.id !== id));
+      return { previous };
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['notification-routing-eod'] }); toast.success('Recipient removed'); },
+    onError: (_err, _id, context) => { if (context?.previous) queryClient.setQueryData(['notification-routing-eod'], context.previous); },
+  });
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('report_settings').select('setting_key, setting_value').in('setting_key', ['canvasser_eod_send_hour', 'canvasser_eod_frequency', 'canvasser_eod_recipient_ids']);
+      const { data } = await supabase.from('report_settings').select('setting_key, setting_value').in('setting_key', ['canvasser_eod_send_hour', 'canvasser_eod_frequency']);
       if (data) {
         data.forEach((row) => {
           const val = String(row.setting_value || '');
           if (row.setting_key === 'canvasser_eod_send_hour') setSendHour(val || '21');
           if (row.setting_key === 'canvasser_eod_frequency') setFrequency(val || 'daily');
-          if (row.setting_key === 'canvasser_eod_recipient_ids') {
-            try {
-              const ids = JSON.parse(val);
-              if (Array.isArray(ids)) {
-                supabase.from('report_recipients' as any).select('id, name, email').in('id', ids).then(({ data: recs }) => { if (recs) setSelectedRecipients(recs as any[]); });
-              }
-            } catch {}
-          }
         });
       }
       setLoaded(true);
@@ -355,7 +398,6 @@ function CanvasserEODCard() {
       const updates = [
         { setting_key: 'canvasser_eod_send_hour', setting_value: sendHour, updated_at: new Date().toISOString() },
         { setting_key: 'canvasser_eod_frequency', setting_value: frequency, updated_at: new Date().toISOString() },
-        { setting_key: 'canvasser_eod_recipient_ids', setting_value: JSON.stringify(selectedRecipients.map(r => r.id)), updated_at: new Date().toISOString() },
       ];
       for (const u of updates) { const { error } = await supabase.from('report_settings').upsert(u, { onConflict: 'setting_key' }); if (error) throw error; }
       toastUI({ title: 'Canvasser EOD settings saved' });
@@ -373,17 +415,52 @@ function CanvasserEODCard() {
     setSendingTest(false);
   };
 
+  const handleAddEmail = () => {
+    if (!newEmail.trim() || !newEmail.includes('@')) { toast.error('Please enter a valid email'); return; }
+    addMutation.mutate(newEmail);
+  };
+
   if (!loaded) return null;
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div>
-          <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-accent" />Canvasser EOD Report</CardTitle>
-          <CardDescription className="text-xs mt-1">Configure the daily canvasser end-of-day summary email</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-accent" />Canvasser EOD Report</CardTitle>
+            <CardDescription className="text-xs mt-1">Configure the daily canvasser end-of-day summary email</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { setAddingEmail(!addingEmail); setNewEmail(''); }}><Plus className="h-3.5 w-3.5 mr-1" />Add</Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Recipients */}
+        <div className="space-y-3">
+          {addingEmail && (
+            <div className="flex gap-2">
+              <Input type="email" placeholder="email@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddEmail()} className="flex-1" autoFocus />
+              <Button size="sm" onClick={handleAddEmail} disabled={addMutation.isPending}>{addMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save'}</Button>
+              <Button variant="ghost" size="sm" onClick={() => { setAddingEmail(false); setNewEmail(''); }}>Cancel</Button>
+            </div>
+          )}
+          {eodEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No recipients configured.</p>
+          ) : (
+            <div className="space-y-2">
+              {eodEntries.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <Switch checked={entry.is_active} onCheckedChange={(checked) => toggleMutation.mutate({ id: entry.id, is_active: checked })} />
+                    <span className={`text-sm ${!entry.is_active ? 'text-muted-foreground line-through' : ''}`}>{entry.email}</span>
+                    {!entry.is_active && <Badge variant="secondary" className="text-[10px]">Paused</Badge>}
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(entry.id)}><X className="h-3.5 w-3.5" /></Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><Clock className="h-4 w-4" />Send Time (CT)</Label>
@@ -405,11 +482,6 @@ function CanvasserEODCard() {
               <SelectContent><SelectItem value="daily">Daily</SelectItem><SelectItem value="weekdays">Weekdays Only</SelectItem></SelectContent>
             </Select>
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Recipients</Label>
-          <p className="text-xs text-muted-foreground mb-2">Select who receives the daily canvasser EOD report</p>
-          <ReportRecipientsSelector selected={selectedRecipients} onChange={setSelectedRecipients} />
         </div>
         <div className="flex gap-3">
           <Button onClick={handleSave} disabled={saving} size="sm">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}Save EOD Settings</Button>
