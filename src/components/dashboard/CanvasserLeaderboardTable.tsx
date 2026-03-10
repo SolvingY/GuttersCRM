@@ -80,7 +80,6 @@ export function CanvasserLeaderboardTable({ entries, currentUserId }: CanvasserL
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Doors</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Convos</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Not Int.</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads Set</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/ Damage</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">w/o Damage</th>
