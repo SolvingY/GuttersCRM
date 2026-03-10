@@ -31,6 +31,7 @@ export default function FutureTeamMates() {
   const [alignmentFilter, setAlignmentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date-desc");
   const [tab, setTab] = useState<"active" | "archived">("active");
+  const [scheduleModal, setScheduleModal] = useState<{ id: string; name: string } | null>(null);
 
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["job-applications", tab],
