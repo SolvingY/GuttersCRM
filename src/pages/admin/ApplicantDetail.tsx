@@ -175,6 +175,12 @@ export default function ApplicantDetail() {
   };
 
   const changeStatus = async (status: string) => {
+    // If selecting scheduled_interview, open the modal instead of directly updating
+    if (status === "scheduled_interview") {
+      setShowScheduleModal(true);
+      return;
+    }
+
     const extra: Record<string, any> = { status };
     if (status === "reviewed") extra.reviewed_at = new Date().toISOString();
     if (status === "contacted") extra.contacted_at = new Date().toISOString();
