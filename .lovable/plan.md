@@ -1,42 +1,57 @@
 
 
-# Add Edit Button to Shift History
+# Fix: Standardize YTD Canvasser Data Sources + Negative Numbers
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Problem Summary
 
-## Changes
+Three places show YTD canvasser metrics using **different data sources**, producing inconsistent numbers:
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+| Location | Current Source | Numbers |
+|----------|---------------|---------|
+| Admin Overview (Canvasser section) | `daily_canvasser_metric_entries` | Leads Set: 54, Leads Closed: 9 |
+| Company Goals (Contract Progress) | `canvasser_metrics` (cumulative) | Leads Set: 117, Contracts: 12 |
+| Admin Leaderboard > YTD > Canvassers | `canvasser_metrics` (cumulative) | Shows negative values |
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+The daily entries table is the source of truth. The cumulative `canvasser_metrics` table has drifted and contains stale/incorrect data.
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+## Fix
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+### 1. Admin Leaderboard YTD — switch to daily entries
+**File:** `src/pages/admin/AdminLeaderboards.tsx` (lines 413-508)
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+Replace the `fetchCanvasserYtd` function to use `fetchCanvasserLeaderboardByDateRange` (same function used for weekly/monthly) with the fiscal year date range. This automatically includes clamping, hidden user filtering, and computed points.
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+The existing function reads from `canvasser_metrics` — replace it with:
+```typescript
+const fetchCanvasserYtd = async () => {
+  setCanvasserLoading(true);
+  const startDate = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+  const endDate = format(new Date(), 'yyyy-MM-dd');
+  const entries = await fetchCanvasserLeaderboardByDateRange(startDate, endDate);
+  setCanvasserYtdEntries(entries);
+  setCanvasserLoading(false);
+};
+```
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+This is exactly what the Canvasser Leaderboard page already does (line 56-59 of `CanvasserLeaderboard.tsx`).
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+### 2. Company Goals — switch to daily entries
+**File:** `src/pages/admin/CompanyGoals.tsx` (lines 233-256)
 
-## Summary
+Replace the canvasser data fetching block that reads from `canvasser_metrics` with aggregation from `daily_canvasser_metric_entries` for the fiscal year. Aggregate `leads_set_delta`, `leads_closed_delta`, and `income_delta` per user, clamp to >= 0, then compute totals.
 
-| Area | Change |
+### 3. Add contest/wager points to `fetchCanvasserLeaderboardByDateRange`
+**File:** `src/lib/fetchCanvasserLeaderboardData.ts`
+
+The shared fetch function currently computes points only from performance fields. Add `contest_points` and `wager_points` from `canvasser_metrics` to the point total, matching what the previous YTD code did.
+
+## Files Changed
+
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `src/pages/admin/AdminLeaderboards.tsx` | Replace `fetchCanvasserYtd` to use `fetchCanvasserLeaderboardByDateRange` |
+| `src/pages/admin/CompanyGoals.tsx` | Replace canvasser data fetch with daily entries aggregation |
+| `src/lib/fetchCanvasserLeaderboardData.ts` | Include contest/wager points from canvasser_metrics in total |
+
+No database changes needed.
 
