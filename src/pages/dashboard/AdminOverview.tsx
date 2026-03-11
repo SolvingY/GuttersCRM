@@ -766,6 +766,7 @@ export default function AdminOverview() {
               )}
 
               {isWidgetVisible('contract_sources') && (
+              <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSubSection === 'contract-sources'} onToggle={toggleSubSection}>
                 {(() => {
                   const totalSelfGenContracts = aggregates.totalSelfGen;
                   const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
@@ -817,10 +818,13 @@ export default function AdminOverview() {
                   );
                 })()}
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('sales_leaderboard') && (
               <AccordionButton id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy} isOpen={openSubSection === 'sales-leaderboard'} onToggle={toggleSubSection}>
                 <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
               </AccordionButton>
+              )}
             </div>
           </div>
         </SectionCarousel.Item>
