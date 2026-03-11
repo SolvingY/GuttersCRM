@@ -417,6 +417,19 @@ export default function AdminLayout() {
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
             {collapsed ? (
               <>
+                {/* Home icon */}
+                <button
+                  title="Home"
+                  onClick={() => navigate('/admin/home')}
+                  className={cn(
+                    'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
+                    location.pathname === '/admin/home'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <Home className="h-4 w-4" />
+                </button>
                 {/* Scoreboard icon */}
                 <button
                   title="Scoreboard"
