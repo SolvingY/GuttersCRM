@@ -573,6 +573,11 @@ export default function WeeklyUpdates() {
     if (hasDelta) {
       const { data: cm } = await supabase.from('canvasser_metrics').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
       if (cm) {
+        // Compute points delta using canvasser formula
+        const newCanvPoints = (current.leads_closed_delta * 10) + (current.leads_with_damage_delta * 5) + current.leads_set_delta;
+        const oldCanvPoints = ((baseline.leads_closed_delta || 0) * 10) + ((baseline.leads_with_damage_delta || 0) * 5) + (baseline.leads_set_delta || 0);
+        const dPoints = newCanvPoints - oldCanvPoints;
+
         await supabase.from('canvasser_metrics').update({
           leads_set: (Number(cm.leads_set) || 0) + dLeadsSet,
           leads_closed: (Number(cm.leads_closed) || 0) + dLeadsClosed,
@@ -584,6 +589,7 @@ export default function WeeklyUpdates() {
           hours_worked: (Number((cm as any).hours_worked) || 0) + dHours,
           income: (Number(cm.income) || 0) + dIncome,
           doors_knocked: (Number((cm as any).doors_knocked) || 0) + dDoors,
+          points: (Number(cm.points) || 0) + dPoints,
           updated_at: new Date().toISOString(),
         } as any).eq('user_id', userId);
       }
