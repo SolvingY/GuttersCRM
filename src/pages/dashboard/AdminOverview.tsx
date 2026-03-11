@@ -614,8 +614,7 @@ export default function AdminOverview() {
         }}
       />
 
-      {/* Stale Contracts Alert */}
-      <StaleContractsWidget isAdmin={true} />
+      {isWidgetVisible('stale_contracts') && <StaleContractsWidget isAdmin={true} />}
 
       {/* Main SectionCarousel replacing Tabs */}
       <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
