@@ -846,6 +846,7 @@ export default function AdminOverview() {
             </div>
 
             <div className="space-y-3">
+              {isWidgetVisible('canvasser_details') && (
               <AccordionButton id="canvasser-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'canvasser-details'} onToggle={toggleSubSection}>
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {canvasserDetails.length === 0 ? (
@@ -915,7 +916,9 @@ export default function AdminOverview() {
                   )}
                 </div>
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('conversion_funnel') && (
               <AccordionButton id="conversion-funnel" title="Team Conversion Funnel" icon={TrendingUp} isOpen={openSubSection === 'conversion-funnel'} onToggle={toggleSubSection}>
                 <CanvasserConversionFunnel
                   title="Team Conversion Funnel (YTD)"
@@ -929,10 +932,13 @@ export default function AdminOverview() {
                   }} 
                 />
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('canvasser_leaderboard') && (
               <AccordionButton id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3} isOpen={openSubSection === 'canvasser-leaderboard'} onToggle={toggleSubSection}>
                 <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
               </AccordionButton>
+              )}
             </div>
           </div>
         </SectionCarousel.Item>
