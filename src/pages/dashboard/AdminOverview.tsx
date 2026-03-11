@@ -415,7 +415,7 @@ export default function AdminOverview() {
           leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
           conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
           hoursWorked: perf.hoursWorked, doorsKnocked: perf.doorsKnocked,
-          points: config?.points || 0, income: config?.income || 0, yearlyGoal: config?.yearlyGoal || 0,
+          points: config?.points || 0, income: Math.max(0, perf.income), yearlyGoal: config?.yearlyGoal || 0,
           conversionRate, revenue: 0, role: 'canvasser' as const,
         };
       });
