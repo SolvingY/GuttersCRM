@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { useAdminShortcutPreferences } from '@/hooks/useAdminShortcutPreferences';
 import { AdminShortcutPanel } from '@/components/admin/AdminShortcutPanel';
 import { ShortcutPickerDrawer } from '@/components/admin/ShortcutPickerDrawer';
@@ -8,9 +9,28 @@ export default function AdminHome() {
   const { user } = useAuth();
   const { pinnedShortcuts, loading, savePinnedShortcuts } = useAdminShortcutPreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [firstName, setFirstName] = useState<string | null>(null);
 
-  const fullName = user?.user_metadata?.full_name as string | undefined;
-  const firstName = fullName?.split(' ')[0];
+  useEffect(() => {
+    if (!user) return;
+    // Try user_metadata first, then fall back to profiles table
+    const metaName = user.user_metadata?.full_name as string | undefined;
+    if (metaName) {
+      setFirstName(metaName.split(' ')[0]);
+      return;
+    }
+    // Fetch from profiles
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.full_name) {
+          setFirstName(data.full_name.split(' ')[0]);
+        }
+      });
+  }, [user]);
 
   return (
     <div className="p-2 sm:p-6 space-y-6">
