@@ -470,6 +470,19 @@ export default function AdminOverview() {
 
   useEffect(() => {
     fetchAdminData();
+
+    // Realtime subscription: refetch when canvasser_metrics change
+    const channel = supabase
+      .channel('admin-canvasser-metrics-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'canvasser_metrics' }, () => {
+        fetchAdminData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_metrics' }, () => {
+        fetchAdminData();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const handleViewUser = (user: UserDetail) => {

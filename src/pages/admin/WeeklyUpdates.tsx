@@ -292,75 +292,76 @@ export default function WeeklyUpdates() {
   useEffect(() => { fetchUsers(); fetchDropdownOptions(); }, []);
   useEffect(() => { fetchAttributionData(); }, [selectedDate]);
 
-  // Load saved daily entries when date changes
-  useEffect(() => {
+  // Load saved daily entries — extracted so it can be called after save too
+  const loadSavedEntries = useCallback(async () => {
     if (users.length === 0 && canvassers.length === 0) return;
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-    const loadSavedEntries = async () => {
-      if (users.length > 0) {
-        const { data: salesDaily } = await supabase
-          .from('daily_user_metric_entries')
-          .select('*')
-          .eq('entry_date', dateStr)
-          .in('user_id', users.map(u => u.user_id));
+    if (users.length > 0) {
+      const { data: salesDaily } = await supabase
+        .from('daily_user_metric_entries')
+        .select('*')
+        .eq('entry_date', dateStr)
+        .in('user_id', users.map(u => u.user_id));
 
-        if (salesDaily && salesDaily.length > 0) {
-          const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
-          setWeeklyEntries(prev => prev.map(entry => {
-            const saved = dailyMap.get(entry.userId);
-            if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
-            return {
-              ...entry,
-              weeklyApprovedRevenue: saved.approved_revenue_delta ? String(saved.approved_revenue_delta) : '',
-              weeklyLeads: saved.leads_delta ? String(saved.leads_delta) : '',
-              weeklyClosedDeals: saved.closed_deals_delta ? String(saved.closed_deals_delta) : '',
-              weeklySelfGeneratedDeals: saved.self_generated_deals_delta ? String(saved.self_generated_deals_delta) : '',
-              weeklyCanvassLeads: saved.canvass_leads_delta ? String(saved.canvass_leads_delta) : '',
-              weeklyCanvassDealsClose: saved.canvass_deals_closed_delta ? String(saved.canvass_deals_closed_delta) : '',
-              weeklyCollections: saved.collections_delta ? String(saved.collections_delta) : '',
-              weeklyEarnings: saved.earnings_delta ? String(saved.earnings_delta) : '',
-            };
-          }));
-        } else {
-          setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
-        }
+      if (salesDaily && salesDaily.length > 0) {
+        const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
+        setWeeklyEntries(prev => prev.map(entry => {
+          const saved = dailyMap.get(entry.userId);
+          if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
+          return {
+            ...entry,
+            weeklyApprovedRevenue: saved.approved_revenue_delta ? String(saved.approved_revenue_delta) : '',
+            weeklyLeads: saved.leads_delta ? String(saved.leads_delta) : '',
+            weeklyClosedDeals: saved.closed_deals_delta ? String(saved.closed_deals_delta) : '',
+            weeklySelfGeneratedDeals: saved.self_generated_deals_delta ? String(saved.self_generated_deals_delta) : '',
+            weeklyCanvassLeads: saved.canvass_leads_delta ? String(saved.canvass_leads_delta) : '',
+            weeklyCanvassDealsClose: saved.canvass_deals_closed_delta ? String(saved.canvass_deals_closed_delta) : '',
+            weeklyCollections: saved.collections_delta ? String(saved.collections_delta) : '',
+            weeklyEarnings: saved.earnings_delta ? String(saved.earnings_delta) : '',
+          };
+        }));
+      } else {
+        setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
       }
+    }
 
-      if (canvassers.length > 0) {
-        const { data: canvasserDaily } = await supabase
-          .from('daily_canvasser_metric_entries')
-          .select('*')
-          .eq('entry_date', dateStr)
-          .in('user_id', canvassers.map(c => c.user_id));
+    if (canvassers.length > 0) {
+      const { data: canvasserDaily } = await supabase
+        .from('daily_canvasser_metric_entries')
+        .select('*')
+        .eq('entry_date', dateStr)
+        .in('user_id', canvassers.map(c => c.user_id));
 
-        if (canvasserDaily && canvasserDaily.length > 0) {
-          const dailyMap = new Map(canvasserDaily.map(d => [d.user_id, d]));
-          setCanvasserEntries(prev => prev.map(entry => {
-            const saved = dailyMap.get(entry.userId);
-            if (!saved) return { ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' };
-            return {
-              ...entry,
-              weeklyLeadsSet: saved.leads_set_delta ? String(saved.leads_set_delta) : '',
-              weeklyLeadsClosed: saved.leads_closed_delta ? String(saved.leads_closed_delta) : '',
-              weeklyLeadsWithDamage: saved.leads_with_damage_delta ? String(saved.leads_with_damage_delta) : '',
-              weeklyLeadsWithoutDamage: saved.leads_without_damage_delta ? String(saved.leads_without_damage_delta) : '',
-              weeklyConversationsHad: saved.conversations_had_delta ? String(saved.conversations_had_delta) : '',
-              weeklyNotInterested: saved.not_interested_delta ? String(saved.not_interested_delta) : '',
-              weeklyCancelledLeads: saved.cancelled_leads_delta ? String(saved.cancelled_leads_delta) : '',
-              weeklyHoursWorked: saved.hours_worked_delta ? String(saved.hours_worked_delta) : '',
-              weeklyIncome: saved.income_delta ? String(saved.income_delta) : '',
-              weeklyDoorsKnocked: saved.doors_knocked_delta ? String(saved.doors_knocked_delta) : '',
-            };
-          }));
-        } else {
-          setCanvasserEntries(prev => prev.map(entry => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
-        }
+      if (canvasserDaily && canvasserDaily.length > 0) {
+        const dailyMap = new Map(canvasserDaily.map(d => [d.user_id, d]));
+        setCanvasserEntries(prev => prev.map(entry => {
+          const saved = dailyMap.get(entry.userId);
+          if (!saved) return { ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' };
+          return {
+            ...entry,
+            weeklyLeadsSet: saved.leads_set_delta ? String(saved.leads_set_delta) : '',
+            weeklyLeadsClosed: saved.leads_closed_delta ? String(saved.leads_closed_delta) : '',
+            weeklyLeadsWithDamage: saved.leads_with_damage_delta ? String(saved.leads_with_damage_delta) : '',
+            weeklyLeadsWithoutDamage: saved.leads_without_damage_delta ? String(saved.leads_without_damage_delta) : '',
+            weeklyConversationsHad: saved.conversations_had_delta ? String(saved.conversations_had_delta) : '',
+            weeklyNotInterested: saved.not_interested_delta ? String(saved.not_interested_delta) : '',
+            weeklyCancelledLeads: saved.cancelled_leads_delta ? String(saved.cancelled_leads_delta) : '',
+            weeklyHoursWorked: saved.hours_worked_delta ? String(saved.hours_worked_delta) : '',
+            weeklyIncome: saved.income_delta ? String(saved.income_delta) : '',
+            weeklyDoorsKnocked: saved.doors_knocked_delta ? String(saved.doors_knocked_delta) : '',
+          };
+        }));
+      } else {
+        setCanvasserEntries(prev => prev.map(entry => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
       }
-    };
+    }
+  }, [selectedDate, users, canvassers]);
 
+  // Load saved daily entries when date changes
+  useEffect(() => {
     loadSavedEntries();
-  }, [selectedDate, users.length, canvassers.length]);
+  }, [loadSavedEntries]);
 
   const saveSalesDraft = useCallback(async (entry: WeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -666,8 +667,8 @@ export default function WeeklyUpdates() {
 
       if (successCount > 0) {
         toast({ title: 'Weekly Updates Saved', description: `Successfully updated ${successCount} user(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}. Points auto-calculated.` });
-        setWeeklyEntries((prev) => prev.map((entry) => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
-        setCanvasserEntries((prev) => prev.map((entry) => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
+        // Reload saved entries from DB instead of clearing fields
+        await loadSavedEntries();
         fetchAttributionData(); // Refresh close rate data
       } else if (errorCount > 0) {
         toast({ title: 'Error', description: `Failed to update ${errorCount} user(s)`, variant: 'destructive' });
