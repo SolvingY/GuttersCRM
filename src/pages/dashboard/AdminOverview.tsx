@@ -987,6 +987,13 @@ export default function AdminOverview() {
       />
 
       <GoogleCalendarWidget />
+
+      <DashboardSettingsDrawer
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        config={widgetConfig}
+        onSave={savePreferences}
+      />
     </div>
   );
 }
