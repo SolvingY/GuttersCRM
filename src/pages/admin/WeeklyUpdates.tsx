@@ -679,6 +679,7 @@ export default function WeeklyUpdates() {
           closed_deals_delta: weeklyClosedDeals, self_generated_deals_delta: weeklySelfGeneratedDeals,
           canvass_leads_delta: weeklyCanvassLeads, canvass_deals_closed_delta: weeklyCanvassDealsClose,
           collections_delta: weeklyCollections, earnings_delta: weeklyEarnings,
+          points_earned: calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections),
           entered_by: authUser.user?.id, updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id,entry_date' });
 
