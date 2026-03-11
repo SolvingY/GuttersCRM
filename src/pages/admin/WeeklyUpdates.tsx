@@ -318,6 +318,22 @@ export default function WeeklyUpdates() {
 
       if (salesDaily && salesDaily.length > 0) {
         const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
+        // Capture baselines for delta calculation
+        const baselines = new Map<string, Record<string, number>>();
+        for (const u of users) {
+          const saved = dailyMap.get(u.user_id);
+          baselines.set(u.user_id, {
+            approved_revenue_delta: Number(saved?.approved_revenue_delta) || 0,
+            leads_delta: Number(saved?.leads_delta) || 0,
+            closed_deals_delta: Number(saved?.closed_deals_delta) || 0,
+            self_generated_deals_delta: Number(saved?.self_generated_deals_delta) || 0,
+            canvass_leads_delta: Number(saved?.canvass_leads_delta) || 0,
+            canvass_deals_closed_delta: Number(saved?.canvass_deals_closed_delta) || 0,
+            collections_delta: Number(saved?.collections_delta) || 0,
+            earnings_delta: Number(saved?.earnings_delta) || 0,
+          });
+        }
+        salesBaselines.current = baselines;
         setWeeklyEntries(prev => prev.map(entry => {
           const saved = dailyMap.get(entry.userId);
           if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
@@ -334,6 +350,16 @@ export default function WeeklyUpdates() {
           };
         }));
       } else {
+        // No saved entries — baselines are all zeros
+        const baselines = new Map<string, Record<string, number>>();
+        for (const u of users) {
+          baselines.set(u.user_id, {
+            approved_revenue_delta: 0, leads_delta: 0, closed_deals_delta: 0,
+            self_generated_deals_delta: 0, canvass_leads_delta: 0, canvass_deals_closed_delta: 0,
+            collections_delta: 0, earnings_delta: 0,
+          });
+        }
+        salesBaselines.current = baselines;
         setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
       }
     }
