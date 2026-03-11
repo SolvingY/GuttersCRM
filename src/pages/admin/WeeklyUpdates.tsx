@@ -606,9 +606,12 @@ export default function WeeklyUpdates() {
         const weeklyIncome = parseFloat(entry.weeklyIncome) || 0;
         const weeklyDoorsKnocked = parseInt(entry.weeklyDoorsKnocked) || 0;
 
-        if (weeklyLeadsSet === 0 && weeklyLeadsClosed === 0 && weeklyLeadsWithDamage === 0 && 
+        const currentAllZeroCanv = weeklyLeadsSet === 0 && weeklyLeadsClosed === 0 && weeklyLeadsWithDamage === 0 && 
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
-            weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) continue;
+            weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0;
+        const canvBl = canvasserBaselines.current.get(entry.userId) || {};
+        const baselineAllZeroCanv = Object.values(canvBl).every(v => v === 0);
+        if (currentAllZeroCanv && baselineAllZeroCanv) continue;
 
         // Use baseline from page load instead of re-querying DB (autosave already overwrote DB)
         const baseline = canvasserBaselines.current.get(entry.userId) || {};
