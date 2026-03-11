@@ -45,14 +45,13 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
     const totalConvos = entries.reduce((sum, e) => sum + e.conversationsHad, 0);
     const totalNotInterested = entries.reduce((sum, e) => sum + e.notInterested, 0);
     const totalCancelled = entries.reduce((sum, e) => sum + (e.cancelledLeads || 0), 0);
-    const totalContracts = entries.reduce((sum, e) => sum + (e.contracts || 0), 0);
     const totalWithDamage = entries.reduce((sum, e) => sum + e.leadsWithDamage, 0);
     const totalWithoutDamage = entries.reduce((sum, e) => sum + e.leadsWithoutDamage, 0);
     const closePercent = totalLeadsSet > 0 ? (totalClosed / totalLeadsSet) * 100 : 0;
     const totalPoints = entries.reduce((sum, e) => sum + e.pointsEarned, 0);
     const totalHours = entries.reduce((sum, e) => sum + e.hoursWorked, 0);
     
-    return { totalLeadsSet, totalClosed, totalDoors, totalConvos, totalNotInterested, totalCancelled, totalContracts, totalWithDamage, totalWithoutDamage, closePercent, totalPoints, totalHours };
+    return { totalLeadsSet, totalClosed, totalDoors, totalConvos, totalNotInterested, totalCancelled, totalWithDamage, totalWithoutDamage, closePercent, totalPoints, totalHours };
   }, [entries]);
 
   if (entries.length === 0) {
