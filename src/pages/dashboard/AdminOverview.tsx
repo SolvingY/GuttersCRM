@@ -362,11 +362,7 @@ export default function AdminOverview() {
         .filter((id): id is string => id !== null);
       
       const { data: canvasserProfilesData } = canvasserUserIds.length > 0
-        ? await supabase.from('profiles').select('id, is_archived, full_name').in('id', canvasserUserIds)
-        : { data: [] };
-
-      const { data: canvasserRolesData } = canvasserUserIds.length > 0
-        ? await supabase.from('user_roles').select('user_id, role').in('user_id', canvasserUserIds).eq('role', 'canvasser')
+        ? await supabase.from('profiles').select('id, full_name').in('id', canvasserUserIds)
         : { data: [] };
 
       const canvasserProfilesMap = new Map<string, string>(
