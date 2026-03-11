@@ -92,42 +92,7 @@ Deno.serve(async (req) => {
           });
       }
 
-      // TIER 2: Weekly aggregate (Thursday-based week)
-      const shiftDate = clockIn;
-      const dayOfWeek = shiftDate.getDay(); // 0=Sun
-      // Thursday = 4. Calculate days since last Thursday
-      const daysSinceThursday = (dayOfWeek + 7 - 4) % 7;
-      const weekStartDate = new Date(shiftDate);
-      weekStartDate.setDate(shiftDate.getDate() - daysSinceThursday);
-      const weekStart = weekStartDate.toISOString().split("T")[0];
-      const weekEndDate = new Date(weekStartDate);
-      weekEndDate.setDate(weekStartDate.getDate() + 6);
-      const weekEnd = weekEndDate.toISOString().split("T")[0];
-
-      const { data: weeklyRow } = await supabaseAdmin
-        .from("weekly_canvasser_metrics")
-        .select("id, hours_worked")
-        .eq("user_id", shift.canvasser_id)
-        .eq("week_start", weekStart)
-        .maybeSingle();
-
-      if (weeklyRow) {
-        await supabaseAdmin
-          .from("weekly_canvasser_metrics")
-          .update({
-            hours_worked: Math.max(0, (Number(weeklyRow.hours_worked) || 0) + cappedHours),
-          })
-          .eq("id", weeklyRow.id);
-      } else {
-        await supabaseAdmin
-          .from("weekly_canvasser_metrics")
-          .insert({
-            user_id: shift.canvasser_id,
-            week_start: weekStart,
-            week_end: weekEnd,
-            hours_worked: cappedHours,
-          });
-      }
+      // TIER 2: Removed — leaderboard now aggregates from daily_canvasser_metric_entries directly
 
       // TIER 3: YTD
       const { data: ytdRow } = await supabaseAdmin
