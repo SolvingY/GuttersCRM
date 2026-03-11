@@ -159,7 +159,7 @@ export default function CanvasserStats() {
       .from('weekly_canvasser_metrics')
       .select('*')
       .eq('user_id', user.id)
-      .gte('week_start', fiscalStartStr)
+      .gte('week_start', fiscalStartStr2)
       .order('week_start', { ascending: true });
 
     if (allWeeklyError) {

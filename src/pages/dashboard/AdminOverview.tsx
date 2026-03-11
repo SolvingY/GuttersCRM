@@ -360,32 +360,32 @@ export default function AdminOverview() {
       setUserDetails(activeSalesReps.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
-    if (canvasserMetrics && canvasserMetrics.length > 0) {
-      const latestByCanvasser = new Map<string, {
-        metricId: string; realUserId: string | null; displayName: string | null;
-        leadsSet: number; leadsClosed: number; leadsWithDamage: number;
-        leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
-        hoursWorked: number; doorsKnocked: number; points: number; income: number; yearlyGoal: number;
-      }>();
-
-      for (const item of canvasserMetrics) {
+    // Build canvasser config map from canvasser_metrics (latest per user)
+    const latestConfigByCanvasser = new Map<string, {
+      metricId: string; realUserId: string | null; displayName: string | null;
+      points: number; income: number; yearlyGoal: number;
+    }>();
+    if (canvasserConfigRows) {
+      for (const item of canvasserConfigRows) {
         const key = item.user_id || `metric_${item.id}`;
-        if (!latestByCanvasser.has(key)) {
-          latestByCanvasser.set(key, {
+        if (!latestConfigByCanvasser.has(key)) {
+          latestConfigByCanvasser.set(key, {
             metricId: item.id, realUserId: item.user_id, displayName: item.display_name,
-            leadsSet: item.leads_set || 0, leadsClosed: item.leads_closed || 0,
-            leadsWithDamage: item.leads_with_damage || 0,
-            leadsWithoutDamage: Number(item.leads_without_damage) || 0,
-            conversationsHad: Number(item.conversations_had) || 0,
-            notInterested: Number(item.not_interested) || 0,
-            hoursWorked: Number(item.hours_worked) || 0,
-            doorsKnocked: Number(item.doors_knocked) || 0,
             points: Number(item.points) || 0,
             income: Number(item.income) || 0,
             yearlyGoal: item.yearly_goal || 0,
           });
         }
       }
+    }
+
+    // Merge: all user_ids from both config and daily sums
+    const allCanvasserKeys = new Set([
+      ...Array.from(latestConfigByCanvasser.keys()),
+      ...Array.from(dailySumsByUser.keys()),
+    ]);
+
+    if (allCanvasserKeys.size > 0) {
 
       const canvasserUserIds = Array.from(latestByCanvasser.values())
         .map(v => v.realUserId)
