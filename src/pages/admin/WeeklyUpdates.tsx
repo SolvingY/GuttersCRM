@@ -373,6 +373,24 @@ export default function WeeklyUpdates() {
 
       if (canvasserDaily && canvasserDaily.length > 0) {
         const dailyMap = new Map(canvasserDaily.map(d => [d.user_id, d]));
+        // Capture canvasser baselines
+        const baselines = new Map<string, Record<string, number>>();
+        for (const c of canvassers) {
+          const saved = dailyMap.get(c.user_id);
+          baselines.set(c.user_id, {
+            leads_set_delta: Number(saved?.leads_set_delta) || 0,
+            leads_closed_delta: Number(saved?.leads_closed_delta) || 0,
+            leads_with_damage_delta: Number(saved?.leads_with_damage_delta) || 0,
+            leads_without_damage_delta: Number(saved?.leads_without_damage_delta) || 0,
+            conversations_had_delta: Number(saved?.conversations_had_delta) || 0,
+            not_interested_delta: Number(saved?.not_interested_delta) || 0,
+            cancelled_leads_delta: Number(saved?.cancelled_leads_delta) || 0,
+            hours_worked_delta: Number(saved?.hours_worked_delta) || 0,
+            income_delta: Number(saved?.income_delta) || 0,
+            doors_knocked_delta: Number(saved?.doors_knocked_delta) || 0,
+          });
+        }
+        canvasserBaselines.current = baselines;
         setCanvasserEntries(prev => prev.map(entry => {
           const saved = dailyMap.get(entry.userId);
           if (!saved) return { ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' };
@@ -391,6 +409,16 @@ export default function WeeklyUpdates() {
           };
         }));
       } else {
+        // No saved entries — baselines are all zeros
+        const baselines = new Map<string, Record<string, number>>();
+        for (const c of canvassers) {
+          baselines.set(c.user_id, {
+            leads_set_delta: 0, leads_closed_delta: 0, leads_with_damage_delta: 0,
+            leads_without_damage_delta: 0, conversations_had_delta: 0, not_interested_delta: 0,
+            cancelled_leads_delta: 0, hours_worked_delta: 0, income_delta: 0, doors_knocked_delta: 0,
+          });
+        }
+        canvasserBaselines.current = baselines;
         setCanvasserEntries(prev => prev.map(entry => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
       }
     }
