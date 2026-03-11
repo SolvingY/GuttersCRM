@@ -15,7 +15,7 @@ export interface WeeklyCanvasserEntry {
   conversationsHad: number;
   notInterested: number;
   cancelledLeads?: number;
-  contracts?: number;
+  hoursWorked: number;
   hoursWorked: number;
   doorsKnocked: number;
   pointsEarned: number;
