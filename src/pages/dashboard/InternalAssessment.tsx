@@ -184,7 +184,8 @@ export default function InternalAssessment() {
       return;
     }
 
-    // Clear the pending flag
+    // Clear draft and pending flag
+    if (draftKey) localStorage.removeItem(draftKey);
     await supabase
       .from("profiles")
       .update({ dna_assessment_pending: false } as any)
