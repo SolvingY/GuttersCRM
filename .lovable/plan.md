@@ -1,42 +1,35 @@
 
 
-# Add Edit Button to Shift History
+## Fix: Expand Silent-Update Guard for Tab-Switch Reload
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+**File:** `src/contexts/AuthContext.tsx` — 3 surgical changes:
 
-## Changes
+### Change 1 — Add `useRef` to import (line 1)
+Add `useRef` to the existing React import.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### Change 2 — Add ref mirror (after line 55)
+```typescript
+const authStateRef = useRef(authState);
+authStateRef.current = authState;
+```
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+### Change 3 — Replace `onAuthStateChange` handler (lines 118–146)
+Expand the silent guard to catch both `TOKEN_REFRESHED` and `SIGNED_IN` for the same already-loaded user. Read from `authStateRef.current` to avoid stale closures:
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+```typescript
+(event, session) => {
+  if (
+    (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') &&
+    session?.user &&
+    authStateRef.current.user?.id === session.user.id &&
+    !authStateRef.current.roleLoading
+  ) {
+    setAuthState(prev => ({ ...prev, session, user: session.user }));
+    return;
+  }
+  // ... full reset path unchanged
+}
+```
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
-
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+The `getSession` block (lines 148–163) and dependency array `[fetchAllUserData]` remain untouched. One file, no database changes.
 
