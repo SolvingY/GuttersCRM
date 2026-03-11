@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Check, Pencil, Archive, ArchiveRestore, Trash2, KeyRound, Mail, Settings2 } from 'lucide-react';
