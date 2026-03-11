@@ -455,12 +455,16 @@ export default function WeeklyUpdates() {
   const saveCanvasserDraft = useCallback(async (entry: CanvasserWeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const { data: authUser } = await supabase.auth.getUser();
+    const cLeadsSet = parseInt(entry.weeklyLeadsSet) || 0;
+    const cLeadsClosed = parseInt(entry.weeklyLeadsClosed) || 0;
+    const cLeadsWithDamage = parseInt(entry.weeklyLeadsWithDamage) || 0;
+    const canvPoints = (cLeadsClosed * 10) + (cLeadsWithDamage * 5) + cLeadsSet;
     await supabase.from('daily_canvasser_metric_entries').upsert({
       user_id: entry.userId,
       entry_date: dateStr,
-      leads_set_delta: parseInt(entry.weeklyLeadsSet) || 0,
-      leads_closed_delta: parseInt(entry.weeklyLeadsClosed) || 0,
-      leads_with_damage_delta: parseInt(entry.weeklyLeadsWithDamage) || 0,
+      leads_set_delta: cLeadsSet,
+      leads_closed_delta: cLeadsClosed,
+      leads_with_damage_delta: cLeadsWithDamage,
       leads_without_damage_delta: parseInt(entry.weeklyLeadsWithoutDamage) || 0,
       conversations_had_delta: parseInt(entry.weeklyConversationsHad) || 0,
       not_interested_delta: parseInt(entry.weeklyNotInterested) || 0,
@@ -468,6 +472,7 @@ export default function WeeklyUpdates() {
       hours_worked_delta: parseFloat(entry.weeklyHoursWorked) || 0,
       doors_knocked_delta: parseInt(entry.weeklyDoorsKnocked) || 0,
       income_delta: parseFloat(entry.weeklyIncome) || 0,
+      points_earned: canvPoints,
       entered_by: authUser.user?.id,
       updated_at: new Date().toISOString(),
     } as any, { onConflict: 'user_id,entry_date' });
