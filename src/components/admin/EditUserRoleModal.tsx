@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
@@ -44,6 +45,7 @@ interface EditUserRoleModalProps {
 export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditUserRoleModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [displayName, setDisplayName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSalesRep, setIsSalesRep] = useState(false);
   const [isCanvasser, setIsCanvasser] = useState(false);
@@ -55,6 +57,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
 
   useEffect(() => {
     if (user) {
+      setDisplayName(user.fullName || '');
       setIsAdmin(user.roles.includes('admin'));
       setIsSalesRep(user.roles.includes('user'));
       setIsCanvasser(user.roles.includes('canvasser'));
@@ -82,6 +85,16 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
 
     setIsSubmitting(true);
     try {
+      // Update display name in profiles table if changed
+      const trimmedName = displayName.trim();
+      if (trimmedName !== (user.fullName || '')) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: trimmedName || null })
+          .eq('id', user.id);
+        if (profileError) throw new Error('Failed to update display name');
+      }
+
       // Build roles array
       const roles: string[] = [];
       if (isAdmin) roles.push('admin');
@@ -122,7 +135,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
 
       toast({
         title: 'Success',
-        description: `Updated ${user.fullName || 'user'} to ${roleNames.join(' + ')}`,
+        description: `Updated ${trimmedName || 'user'} to ${roleNames.join(' + ')}`,
       });
       onSuccess();
       onOpenChange(false);
@@ -153,6 +166,19 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 py-4">
+            {/* Display Name */}
+            <div className="space-y-2">
+              <Label htmlFor="displayName" className="text-sm font-medium">
+                Display Name
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Enter display name"
+              />
+            </div>
+
             {/* Admin Access Section */}
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
