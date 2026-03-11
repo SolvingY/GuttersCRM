@@ -607,19 +607,19 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
             weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) continue;
 
-        const { data: prevCanvDaily } = await supabase.from('daily_canvasser_metric_entries')
-          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+        // Use baseline from page load instead of re-querying DB (autosave already overwrote DB)
+        const baseline = canvasserBaselines.current.get(entry.userId) || {};
 
-        const dLeadsSet = weeklyLeadsSet - (Number(prevCanvDaily?.leads_set_delta) || 0);
-        const dLeadsClosed = weeklyLeadsClosed - (Number(prevCanvDaily?.leads_closed_delta) || 0);
-        const dLeadsWithDamage = weeklyLeadsWithDamage - (Number(prevCanvDaily?.leads_with_damage_delta) || 0);
-        const dLeadsWithoutDamage = weeklyLeadsWithoutDamage - (Number(prevCanvDaily?.leads_without_damage_delta) || 0);
-        const dConvos = weeklyConversationsHad - (Number(prevCanvDaily?.conversations_had_delta) || 0);
-        const dNotInterested = weeklyNotInterested - (Number(prevCanvDaily?.not_interested_delta) || 0);
-        const dCancelled = weeklyCancelledLeads - (Number(prevCanvDaily?.cancelled_leads_delta) || 0);
-        const dHours = weeklyHoursWorked - (Number(prevCanvDaily?.hours_worked_delta) || 0);
-        const dIncome = weeklyIncome - (Number(prevCanvDaily?.income_delta) || 0);
-        const dDoors = weeklyDoorsKnocked - (Number(prevCanvDaily?.doors_knocked_delta) || 0);
+        const dLeadsSet = weeklyLeadsSet - (baseline.leads_set_delta || 0);
+        const dLeadsClosed = weeklyLeadsClosed - (baseline.leads_closed_delta || 0);
+        const dLeadsWithDamage = weeklyLeadsWithDamage - (baseline.leads_with_damage_delta || 0);
+        const dLeadsWithoutDamage = weeklyLeadsWithoutDamage - (baseline.leads_without_damage_delta || 0);
+        const dConvos = weeklyConversationsHad - (baseline.conversations_had_delta || 0);
+        const dNotInterested = weeklyNotInterested - (baseline.not_interested_delta || 0);
+        const dCancelled = weeklyCancelledLeads - (baseline.cancelled_leads_delta || 0);
+        const dHours = weeklyHoursWorked - (baseline.hours_worked_delta || 0);
+        const dIncome = weeklyIncome - (baseline.income_delta || 0);
+        const dDoors = weeklyDoorsKnocked - (baseline.doors_knocked_delta || 0);
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('canvasser_metrics').select('*').eq('user_id', entry.userId).order('created_at', { ascending: false }).limit(1).single();
