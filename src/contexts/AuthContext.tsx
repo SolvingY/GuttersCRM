@@ -54,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roleLoading: true,
   });
 
+  const authStateRef = useRef(authState);
+  authStateRef.current = authState;
+
   const fetchUserRoles = useCallback(async (userId: string): Promise<AppRole[]> => {
     const { data, error } = await supabase
       .from('user_roles')
