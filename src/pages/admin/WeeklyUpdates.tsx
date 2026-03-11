@@ -432,17 +432,21 @@ export default function WeeklyUpdates() {
   const saveSalesDraft = useCallback(async (entry: WeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const { data: authUser } = await supabase.auth.getUser();
+    const salesRevenue = parseFloat(entry.weeklyApprovedRevenue) || 0;
+    const salesClosed = parseInt(entry.weeklyClosedDeals) || 0;
+    const salesCollections = parseFloat(entry.weeklyCollections) || 0;
     await supabase.from('daily_user_metric_entries').upsert({
       user_id: entry.userId,
       entry_date: dateStr,
-      approved_revenue_delta: parseFloat(entry.weeklyApprovedRevenue) || 0,
+      approved_revenue_delta: salesRevenue,
       leads_delta: parseInt(entry.weeklyLeads) || 0,
-      closed_deals_delta: parseInt(entry.weeklyClosedDeals) || 0,
+      closed_deals_delta: salesClosed,
       self_generated_deals_delta: parseInt(entry.weeklySelfGeneratedDeals) || 0,
       canvass_leads_delta: parseInt(entry.weeklyCanvassLeads) || 0,
       canvass_deals_closed_delta: parseInt(entry.weeklyCanvassDealsClose) || 0,
-      collections_delta: parseFloat(entry.weeklyCollections) || 0,
+      collections_delta: salesCollections,
       earnings_delta: parseFloat(entry.weeklyEarnings) || 0,
+      points_earned: calculatePoints(salesRevenue, salesClosed, salesCollections),
       entered_by: authUser.user?.id,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,entry_date' });
