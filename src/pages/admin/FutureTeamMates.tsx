@@ -30,7 +30,9 @@ export default function FutureTeamMates() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [alignmentFilter, setAlignmentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date-desc");
-  const [tab, setTab] = useState<"active" | "archived">("active");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get("tab") as "active" | "archived") || "active";
+  const setTab = (v: "active" | "archived") => setSearchParams(prev => { prev.set("tab", v); return prev; }, { replace: true });
   const [scheduleModal, setScheduleModal] = useState<{ id: string; name: string } | null>(null);
 
   const { data: applications = [], isLoading } = useQuery({

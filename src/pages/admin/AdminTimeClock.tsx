@@ -109,8 +109,12 @@ export default function AdminTimeClock() {
   };
   const [savingZone, setSavingZone] = useState(false);
 
-  const [openSection, setOpenSection] = useState<string | null>('hours');
-  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openSection = searchParams.get("section") || 'hours';
+  const toggleSection = (id: string) => {
+    const newVal = openSection === id ? '' : id;
+    setSearchParams(prev => { if (newVal) prev.set("section", newVal); else prev.delete("section"); return prev; }, { replace: true });
+  };
 
   // Helper functions
   const getWeekStartForDate = (dateStr: string): string => {

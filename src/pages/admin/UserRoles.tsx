@@ -57,7 +57,9 @@ export default function UserRoles() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as 'active' | 'archived') || 'active';
+  const setActiveTab = (v: 'active' | 'archived') => setSearchParams(prev => { prev.set("tab", v); return prev; }, { replace: true });
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
