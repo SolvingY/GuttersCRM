@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,7 +42,9 @@ interface SalesRepEntry {
 
 
 export default function AdminLeaderboards() {
-  const [timeFrame, setTimeFrame] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const timeFrame = (searchParams.get("timeFrame") as 'weekly' | 'monthly' | 'yearly') || 'weekly';
+  const setTimeFrame = (v: 'weekly' | 'monthly' | 'yearly') => setSearchParams(prev => { prev.set("timeFrame", v); return prev; }, { replace: true });
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
   

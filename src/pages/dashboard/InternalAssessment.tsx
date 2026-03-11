@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,18 +34,46 @@ export default function InternalAssessment() {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const draftKey = useMemo(() => user?.id ? `ngr_draft_internal_assessment_${user.id}` : null, [user?.id]);
+
   // Pre-filled from profile
-  const [desiredPosition, setDesiredPosition] = useState("");
+  const [desiredPosition, setDesiredPosition] = useState(() => {
+    try { if (!user?.id) return ""; const s = localStorage.getItem(`ngr_draft_internal_assessment_${user.id}`); if (s) return JSON.parse(s).desiredPosition || ""; } catch {} return "";
+  });
   const [yearsExperience, setYearsExperience] = useState("2-5 years");
   const [availability, setAvailability] = useState("Immediate");
 
   // DNA answers
-  const [dnaAnswers, setDnaAnswers] = useState<Record<string, "A" | "B">>({});
+  const [dnaAnswers, setDnaAnswers] = useState<Record<string, "A" | "B">>(() => {
+    try { if (!user?.id) return {}; const s = localStorage.getItem(`ngr_draft_internal_assessment_${user.id}`); if (s) return JSON.parse(s).dnaAnswers || {}; } catch {} return {};
+  });
 
   // Narratives
-  const [narrativeOwnership, setNarrativeOwnership] = useState("");
-  const [narrativeMentor, setNarrativeMentor] = useState("");
-  const [narrativeWhyNgr, setNarrativeWhyNgr] = useState("");
+  const [narrativeOwnership, setNarrativeOwnership] = useState(() => {
+    try { if (!user?.id) return ""; const s = localStorage.getItem(`ngr_draft_internal_assessment_${user.id}`); if (s) return JSON.parse(s).narrativeOwnership || ""; } catch {} return "";
+  });
+  const [narrativeMentor, setNarrativeMentor] = useState(() => {
+    try { if (!user?.id) return ""; const s = localStorage.getItem(`ngr_draft_internal_assessment_${user.id}`); if (s) return JSON.parse(s).narrativeMentor || ""; } catch {} return "";
+  });
+  const [narrativeWhyNgr, setNarrativeWhyNgr] = useState(() => {
+    try { if (!user?.id) return ""; const s = localStorage.getItem(`ngr_draft_internal_assessment_${user.id}`); if (s) return JSON.parse(s).narrativeWhyNgr || ""; } catch {} return "";
+  });
+
+  // Restore step from draft
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const s = localStorage.getItem(draftKey);
+      if (s) { const parsed = JSON.parse(s); if (parsed.step) setStep(parsed.step); }
+    } catch {}
+  }, [draftKey]);
+
+  // Autosave draft
+  useEffect(() => {
+    if (!draftKey || submitted) return;
+    const draft = { dnaAnswers, narrativeOwnership, narrativeMentor, narrativeWhyNgr, desiredPosition, step };
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+  }, [dnaAnswers, narrativeOwnership, narrativeMentor, narrativeWhyNgr, desiredPosition, step, draftKey, submitted]);
 
   // Fetch profile data to pre-fill
   const { data: profileData } = useQuery({
@@ -156,7 +184,8 @@ export default function InternalAssessment() {
       return;
     }
 
-    // Clear the pending flag
+    // Clear draft and pending flag
+    if (draftKey) localStorage.removeItem(draftKey);
     await supabase
       .from("profiles")
       .update({ dna_assessment_pending: false } as any)

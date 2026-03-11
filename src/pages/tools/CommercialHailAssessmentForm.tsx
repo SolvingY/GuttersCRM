@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Camera, X, ExternalLink, Loader2, CheckCircle2, AlertTriangle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,17 +41,39 @@ export default function CommercialHailAssessmentForm() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [form, setForm] = useState<FormState>({
-    meta: { ...initialMeta },
-    applicability: {},
-    checked: {},
-    photos: {},
-    docLinks: {},
-    notes: {},
-    resultSelection: null,
-    resultPhotos: {},
-    resultDocLinks: {},
-    resultNotes: {},
+  const DRAFT_KEY = "ngr_draft_hail_assessment";
+
+  const [form, setForm] = useState<FormState>(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          meta: parsed.meta || { ...initialMeta },
+          applicability: parsed.applicability || {},
+          checked: parsed.checked || {},
+          photos: {},
+          docLinks: parsed.docLinks || {},
+          notes: parsed.notes || {},
+          resultSelection: parsed.resultSelection || null,
+          resultPhotos: {},
+          resultDocLinks: parsed.resultDocLinks || {},
+          resultNotes: parsed.resultNotes || {},
+        };
+      }
+    } catch {}
+    return {
+      meta: { ...initialMeta },
+      applicability: {},
+      checked: {},
+      photos: {},
+      docLinks: {},
+      notes: {},
+      resultSelection: null,
+      resultPhotos: {},
+      resultDocLinks: {},
+      resultNotes: {},
+    };
   });
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ "section-1": true });
   const [errors, setErrors] = useState<string[]>([]);
@@ -61,8 +83,38 @@ export default function CommercialHailAssessmentForm() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Job linking & homeowner
-  const [linkedJob, setLinkedJob] = useState<{ id: string; label: string } | null>(null);
-  const [homeowner, setHomeowner] = useState({ name: "", phone: "", email: "" });
+  const [linkedJob, setLinkedJob] = useState<{ id: string; label: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) { const parsed = JSON.parse(saved); return parsed.linkedJob || null; }
+    } catch {}
+    return null;
+  });
+  const [homeowner, setHomeowner] = useState(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) { const parsed = JSON.parse(saved); return parsed.homeowner || { name: "", phone: "", email: "" }; }
+    } catch {}
+    return { name: "", phone: "", email: "" };
+  });
+
+  // Autosave draft to localStorage (excludes photos/blobs)
+  useEffect(() => {
+    if (submitted) return;
+    const draft = {
+      meta: form.meta,
+      applicability: form.applicability,
+      checked: form.checked,
+      docLinks: form.docLinks,
+      notes: form.notes,
+      resultSelection: form.resultSelection,
+      resultDocLinks: form.resultDocLinks,
+      resultNotes: form.resultNotes,
+      homeowner,
+      linkedJob,
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [form.meta, form.applicability, form.checked, form.docLinks, form.notes, form.resultSelection, form.resultDocLinks, form.resultNotes, homeowner, linkedJob, submitted]);
 
   const setMeta = (key: keyof FormState["meta"], value: string) =>
     setForm((f) => ({ ...f, meta: { ...f.meta, [key]: value } }));
@@ -255,6 +307,7 @@ export default function CommercialHailAssessmentForm() {
         });
       }
 
+      localStorage.removeItem(DRAFT_KEY);
       setSubmitted(true);
       setSubmittedResult(selectedOption?.value || null);
       toast({ title: "Checklist saved", description: "Your assessment has been saved. Send the report from Saved Checklists." });

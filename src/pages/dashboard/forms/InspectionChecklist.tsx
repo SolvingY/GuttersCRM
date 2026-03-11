@@ -56,13 +56,28 @@ export default function InspectionChecklist() {
 
   const isRoofingOnly = lead ? roofingOnlyServices.includes(lead.service_type) : false;
 
-  const [conditions, setConditions] = useState<Record<string, boolean>>({});
-  const [perimeterChecks, setPerimeterChecks] = useState<Record<string, boolean | null>>({});
-  const [insideChecks, setInsideChecks] = useState<Record<string, boolean | null>>({});
-  const [preExisting, setPreExisting] = useState("");
-  const [safetyConcerns, setSafetyConcerns] = useState("");
-  const [notes, setNotes] = useState("");
+  const DRAFT_KEY = `ngr_draft_inspection_checklist_${id}`;
 
+  const [conditions, setConditions] = useState<Record<string, boolean>>(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); if (s) return JSON.parse(s).conditions || {}; } catch {} return {};
+  });
+  const [perimeterChecks, setPerimeterChecks] = useState<Record<string, boolean | null>>(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); if (s) return JSON.parse(s).perimeterChecks || {}; } catch {} return {};
+  });
+  const [insideChecks, setInsideChecks] = useState<Record<string, boolean | null>>(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); if (s) return JSON.parse(s).insideChecks || {}; } catch {} return {};
+  });
+  const [preExisting, setPreExisting] = useState(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); if (s) return JSON.parse(s).preExisting || ""; } catch {} return "";
+  });
+  const [safetyConcerns, setSafetyConcerns] = useState(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); if (s) return JSON.parse(s).safetyConcerns || ""; } catch {} return "";
+  });
+  const [notes, setNotes] = useState(() => {
+    try { const s = localStorage.getItem(DRAFT_KEY); if (s) return JSON.parse(s).notes || ""; } catch {} return "";
+  });
+
+  // Override with existing form data if editing
   useEffect(() => {
     if (existingForm) {
       const d = existingForm.form_data as any;
@@ -74,6 +89,12 @@ export default function InspectionChecklist() {
       setNotes(d.notes || "");
     }
   }, [existingForm]);
+
+  // Autosave draft
+  useEffect(() => {
+    const draft = { conditions, perimeterChecks, insideChecks, preExisting, safetyConcerns, notes };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [conditions, perimeterChecks, insideChecks, preExisting, safetyConcerns, notes, DRAFT_KEY]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -113,6 +134,7 @@ export default function InspectionChecklist() {
         content: "20-Point Inspection Checklist completed",
       });
 
+      localStorage.removeItem(DRAFT_KEY);
       toast({ title: "Checklist saved successfully" });
       navigate(`/dashboard/leads/${id}`);
     } catch (err: any) {

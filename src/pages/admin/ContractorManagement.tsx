@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Star } from "lucide-react";
@@ -65,7 +66,9 @@ export default function ContractorManagement() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<TabValue>("active");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get("tab") as TabValue) || "active";
+  const setTab = (v: TabValue) => setSearchParams(prev => { prev.set("tab", v); return prev; }, { replace: true });
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [mandatoryTarget, setMandatoryTarget] = useState<string | null>(null);
