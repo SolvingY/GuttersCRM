@@ -154,7 +154,7 @@ export default function CanvasserStats() {
     }
 
     const fiscalStart = new Date(2025, 11, 15);
-    const fiscalStartStr = format(fiscalStart, 'yyyy-MM-dd');
+    const fiscalStartStr2 = format(fiscalStart, 'yyyy-MM-dd');
     const { data: allWeeklyData, error: allWeeklyError } = await supabase
       .from('weekly_canvasser_metrics')
       .select('*')
