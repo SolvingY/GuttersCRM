@@ -128,6 +128,8 @@ export default function AdminOverview() {
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [openSubSection, setOpenSubSection] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { config: widgetConfig, isWidgetVisible, savePreferences } = useAdminDashboardPreferences();
   const toggleSection = (id: string) => {
     setOpenSection(prev => prev === id ? null : id);
     setOpenSubSection(null);
