@@ -1,44 +1,42 @@
 
 
-# Fix: Canvasser "Paid" / Income Not Displaying Correctly
+# Add Edit Button to Shift History
 
-## Root Cause
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-The `AdminOverview.tsx` canvasser table still reads income from the cumulative `canvasser_metrics.income` column (line 375, 417), which is stale and out of sync with actual daily entries. This is the same data-source inconsistency we just fixed for Company Goals and Leaderboards.
+## Changes
 
-**Evidence from database:**
-| Canvasser | `canvasser_metrics.income` (stale) | `daily_entries` income (truth) |
-|-----------|--------------------------------------|-------------------------------|
-| The Fieldmaster | $13,710 | $0 |
-| David Olson | $7,625 | $0 |
-| Sean Arvelo | $4,792 | $4,351 |
-| Kam Awasthi | $4,770 | $0 |
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-The cumulative table has carried forward historical data that doesn't match the daily entries.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-## Fix
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### File: `src/pages/dashboard/AdminOverview.tsx`
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-**Change:** Instead of reading `income` from `canvasser_metrics` (config), compute it from the daily entries aggregation (`dailySumsByUser`) — the same source already used for leads, hours, and other metrics.
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-1. **Add `income` to the daily sums aggregation** (around lines 220-260 where `dailySumsByUser` is built). Include `income_delta` in the select and sum it alongside other fields.
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-2. **Use daily income instead of config income** on line 417:
-   ```typescript
-   // Before:
-   income: config?.income || 0,
-   // After:
-   income: Math.max(0, perf.income || 0),
-   ```
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-This ensures the "YTD Income" column in the canvasser performance table and the `totalCanvasserIncome` state (used in reports) both read from daily entries — consistent with Company Goals and Leaderboards.
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-### Files Changed
+## Summary
 
-| File | Change |
+| Area | Change |
 |------|--------|
-| `src/pages/dashboard/AdminOverview.tsx` | Switch canvasser income from cumulative table to daily entries aggregation |
-
-No database changes needed.
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

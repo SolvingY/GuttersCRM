@@ -214,12 +214,12 @@ export default function AdminOverview() {
     const dailySumsByUser = new Map<string, {
       leadsSet: number; leadsClosed: number; leadsWithDamage: number;
       leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
-      hoursWorked: number; doorsKnocked: number;
+      hoursWorked: number; doorsKnocked: number; income: number;
     }>();
     for (const e of (dailyCanvasserEntries || [])) {
       const existing = dailySumsByUser.get(e.user_id) || {
         leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
-        conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+        conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
       };
       existing.leadsSet += e.leads_set_delta || 0;
       existing.leadsClosed += e.leads_closed_delta || 0;
@@ -229,6 +229,7 @@ export default function AdminOverview() {
       existing.notInterested += e.not_interested_delta || 0;
       existing.hoursWorked += Number(e.hours_worked_delta || 0);
       existing.doorsKnocked += e.doors_knocked_delta || 0;
+      existing.income += Number(e.income_delta || 0);
       dailySumsByUser.set(e.user_id, existing);
     }
 
@@ -404,7 +405,7 @@ export default function AdminOverview() {
         const config = latestConfigByCanvasser.get(userId);
         const perf = dailySumsByUser.get(userId) || {
           leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
-          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
         };
         const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
@@ -414,7 +415,7 @@ export default function AdminOverview() {
           leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
           conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
           hoursWorked: perf.hoursWorked, doorsKnocked: perf.doorsKnocked,
-          points: config?.points || 0, income: config?.income || 0, yearlyGoal: config?.yearlyGoal || 0,
+          points: config?.points || 0, income: Math.max(0, perf.income), yearlyGoal: config?.yearlyGoal || 0,
           conversionRate, revenue: 0, role: 'canvasser' as const,
         };
       });
