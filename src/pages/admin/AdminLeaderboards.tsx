@@ -656,178 +656,26 @@ export default function AdminLeaderboards() {
     }
   }, [timeFrame, selectedDate, refreshKey]);
 
-  // Fetch weekly/monthly canvasser leaderboard
+  // Fetch weekly/monthly canvasser leaderboard from daily_canvasser_metric_entries
   useEffect(() => {
     const fetchCanvasserWeekly = async () => {
       setCanvasserLoading(true);
 
+      let startDate: string;
+      let endDate: string;
+
       if (timeFrame === 'weekly') {
-        // Fetch active profiles to filter archived and hidden users
-        const { data: activeProfiles } = await supabase
-          .from('profiles')
-          .select('id, hidden_from_leaderboard')
-          .eq('is_archived', false);
-        
-        const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
-        const hiddenUserIds = new Set(
-          activeProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
-        );
-
-        const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-        const { data: weeklyData } = await supabase
-          .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned')
-          .eq('week_start', weekStartStr);
-
-        if (!weeklyData || weeklyData.length === 0) {
-          setCanvasserWeeklyEntries([]);
-          setCanvasserLoading(false);
-          return;
-        }
-
-        // Filter for active and non-hidden users only
-        const filteredWeeklyData = weeklyData.filter(w => activeUserIds.has(w.user_id) && !hiddenUserIds.has(w.user_id));
-
-        const userIds = filteredWeeklyData.map(w => w.user_id);
-        const { data: metricsData } = userIds.length > 0
-          ? await supabase.from('canvasser_metrics').select('user_id, display_name, canvasser_rank').in('user_id', userIds)
-          : { data: [] };
-
-        const displayNameMap = new Map<string, string | null>();
-        const rankMap = new Map<string, string | null>();
-        metricsData?.forEach(m => {
-          if (m.display_name && !displayNameMap.has(m.user_id)) {
-            displayNameMap.set(m.user_id, m.display_name);
-          }
-          if (m.canvasser_rank && !rankMap.has(m.user_id)) {
-            rankMap.set(m.user_id, m.canvasser_rank);
-          }
-        });
-
-        const sorted = filteredWeeklyData
-          .map(w => ({
-            userId: w.user_id,
-            leadsSet: Number(w.leads_set) || 0,
-            leadsWithDamage: Number(w.leads_with_damage) || 0,
-            leadsWithoutDamage: Number(w.leads_without_damage) || 0,
-            leadsClosed: Number(w.leads_closed) || 0,
-            conversationsHad: Number(w.conversations_had) || 0,
-            notInterested: Number(w.not_interested) || 0,
-            cancelledLeads: Number((w as any).cancelled_leads) || 0,
-            hoursWorked: Number(w.hours_worked) || 0,
-            doorsKnocked: Number(w.doors_knocked) || 0,
-            pointsEarned: Number(w.points_earned) || 0,
-            name: displayNameMap.get(w.user_id) || 'Anonymous',
-            canvasserRank: rankMap.get(w.user_id) || 'C1',
-          }))
-          // Filter out canvassers with zero metrics for weekly
-          .filter(entry => 
-            entry.leadsSet > 0 || 
-            entry.leadsClosed > 0 || 
-            entry.leadsWithDamage > 0 || 
-            entry.doorsKnocked > 0 || 
-            entry.pointsEarned > 0
-          )
-          .sort((a, b) => b.pointsEarned - a.pointsEarned)
-          .map((entry, index) => ({ ...entry, rank: index + 1 }));
-
-        setCanvasserWeeklyEntries(sorted);
+        startDate = format(weekStart, 'yyyy-MM-dd');
+        endDate = format(weekEnd, 'yyyy-MM-dd');
       } else if (timeFrame === 'monthly') {
-        // Fetch active profiles to filter archived and hidden users
-        const { data: activeProfiles } = await supabase
-          .from('profiles')
-          .select('id, hidden_from_leaderboard')
-          .eq('is_archived', false);
-        
-        const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
-        const hiddenUserIds = new Set(
-          activeProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
-        );
-
-        const monthStartStr = format(monthStart, 'yyyy-MM-dd');
-        const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
-
-        const { data: weeklyData } = await supabase
-          .from('weekly_canvasser_metrics')
-          .select('user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned')
-          .gte('week_start', monthStartStr)
-          .lte('week_start', monthEndStr);
-
-        if (!weeklyData || weeklyData.length === 0) {
-          setCanvasserWeeklyEntries([]);
-          setCanvasserLoading(false);
-          return;
-        }
-
-        // Aggregate by user - only for active and non-hidden users
-        const aggregated = new Map<string, any>();
-        weeklyData.forEach(w => {
-          if (!activeUserIds.has(w.user_id) || hiddenUserIds.has(w.user_id)) return; // Skip archived or hidden users
-          
-          const existing = aggregated.get(w.user_id) || { 
-            leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
-            conversationsHad: 0, notInterested: 0, cancelledLeads: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
-          };
-          aggregated.set(w.user_id, {
-            leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
-            leadsWithDamage: existing.leadsWithDamage + (Number(w.leads_with_damage) || 0),
-            leadsWithoutDamage: existing.leadsWithoutDamage + (Number(w.leads_without_damage) || 0),
-            leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
-            conversationsHad: existing.conversationsHad + (Number(w.conversations_had) || 0),
-            notInterested: existing.notInterested + (Number(w.not_interested) || 0),
-            cancelledLeads: existing.cancelledLeads + (Number((w as any).cancelled_leads) || 0),
-            hoursWorked: existing.hoursWorked + (Number(w.hours_worked) || 0),
-            doorsKnocked: existing.doorsKnocked + (Number(w.doors_knocked) || 0),
-            pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
-          });
-        });
-
-        const userIds = Array.from(aggregated.keys());
-        const { data: metricsData } = userIds.length > 0
-          ? await supabase.from('canvasser_metrics').select('user_id, display_name, canvasser_rank').in('user_id', userIds)
-          : { data: [] };
-
-        const displayNameMap = new Map<string, string | null>();
-        const rankMap = new Map<string, string | null>();
-        metricsData?.forEach(m => {
-          if (m.display_name && !displayNameMap.has(m.user_id)) {
-            displayNameMap.set(m.user_id, m.display_name);
-          }
-          if (m.canvasser_rank && !rankMap.has(m.user_id)) {
-            rankMap.set(m.user_id, m.canvasser_rank);
-          }
-        });
-
-        const sorted = Array.from(aggregated.entries())
-          .map(([userId, data]) => ({
-            userId,
-            leadsSet: data.leadsSet,
-            leadsWithDamage: data.leadsWithDamage,
-            leadsWithoutDamage: data.leadsWithoutDamage,
-            leadsClosed: data.leadsClosed,
-            conversationsHad: data.conversationsHad,
-            notInterested: data.notInterested,
-            cancelledLeads: data.cancelledLeads,
-            hoursWorked: data.hoursWorked,
-            doorsKnocked: data.doorsKnocked,
-            pointsEarned: data.pointsEarned,
-            name: displayNameMap.get(userId) || 'Anonymous',
-            canvasserRank: rankMap.get(userId) || 'C1',
-          }))
-          // Filter out canvassers with zero metrics for monthly
-          .filter(entry => 
-            entry.leadsSet > 0 || 
-            entry.leadsClosed > 0 || 
-            entry.leadsWithDamage > 0 || 
-            entry.doorsKnocked > 0 || 
-            entry.pointsEarned > 0
-          )
-          .sort((a, b) => b.pointsEarned - a.pointsEarned)
-          .map((entry, index) => ({ ...entry, rank: index + 1 }));
-
-        setCanvasserWeeklyEntries(sorted);
+        startDate = format(monthStart, 'yyyy-MM-dd');
+        endDate = format(monthEnd, 'yyyy-MM-dd');
+      } else {
+        return;
       }
 
+      const entries = await fetchCanvasserLeaderboardByDateRange(startDate, endDate);
+      setCanvasserWeeklyEntries(entries);
       setCanvasserLoading(false);
     };
 
