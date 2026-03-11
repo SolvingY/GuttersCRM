@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ["react", "react-dom", "@radix-ui/react-tooltip", "@radix-ui/react-dialog"],
+    force: true,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
