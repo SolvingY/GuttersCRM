@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { SectionCarousel } from "@/components/dashboard/SectionCarousel";
 import { format, subWeeks } from "date-fns";
+import { FISCAL_YEAR } from "@/lib/constants";
 import { CanvasserActiveContestWidget } from "@/components/canvasser/CanvasserActiveContestWidget";
 import { 
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Bar
