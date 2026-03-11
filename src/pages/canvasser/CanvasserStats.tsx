@@ -66,9 +66,21 @@ export default function CanvasserStats() {
   const [shifts, setShifts] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user) {
-      fetchMetrics();
-    }
+    if (!user) return;
+    fetchMetrics();
+
+    // Realtime: refetch when canvasser_metrics row for this user changes
+    const channel = supabase
+      .channel(`canvasser-metrics-${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'canvasser_metrics',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        fetchMetrics();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const fetchMetrics = async () => {

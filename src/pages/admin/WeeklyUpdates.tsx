@@ -667,8 +667,8 @@ export default function WeeklyUpdates() {
 
       if (successCount > 0) {
         toast({ title: 'Weekly Updates Saved', description: `Successfully updated ${successCount} user(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}. Points auto-calculated.` });
-        setWeeklyEntries((prev) => prev.map((entry) => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
-        setCanvasserEntries((prev) => prev.map((entry) => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
+        // Reload saved entries from DB instead of clearing fields
+        await loadSavedEntries();
         fetchAttributionData(); // Refresh close rate data
       } else if (errorCount > 0) {
         toast({ title: 'Error', description: `Failed to update ${errorCount} user(s)`, variant: 'destructive' });
