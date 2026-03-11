@@ -20,9 +20,8 @@ Deno.serve(async (req) => {
 
     // Get today's date in Chicago timezone
     const now = new Date();
-    const chicagoDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
-    const todayStr = chicagoDate.toISOString().split("T")[0];
-    const reportDateFormatted = chicagoDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const todayStr = now.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+    const reportDateFormatted = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
 
     // Get all canvassers
     const { data: canvasserRoles } = await supabase
