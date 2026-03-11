@@ -79,26 +79,30 @@ export async function fetchCanvasserLeaderboardByDateRange(
 
   if (aggregated.size === 0) return [];
 
-  // 4. Enrich with display_name and canvasser_rank
+  // 4. Enrich with display_name, canvasser_rank, and contest/wager points
   const userIds = Array.from(aggregated.keys());
   const { data: metricsData } = await supabase
     .from('canvasser_metrics')
-    .select('user_id, display_name, canvasser_rank')
+    .select('user_id, display_name, canvasser_rank, contest_points, wager_points')
     .in('user_id', userIds);
 
   const displayNameMap = new Map<string, string>();
   const rankMap = new Map<string, string>();
+  const contestPointsMap = new Map<string, number>();
+  const wagerPointsMap = new Map<string, number>();
   metricsData?.forEach(m => {
     if (m.display_name && !displayNameMap.has(m.user_id)) displayNameMap.set(m.user_id, m.display_name);
     if (m.canvasser_rank && !rankMap.has(m.user_id)) rankMap.set(m.user_id, m.canvasser_rank);
+    if (!contestPointsMap.has(m.user_id)) contestPointsMap.set(m.user_id, Number(m.contest_points) || 0);
+    if (!wagerPointsMap.has(m.user_id)) wagerPointsMap.set(m.user_id, Number(m.wager_points) || 0);
   });
 
   // 5. Build sorted entries
-  // Compute points from aggregated performance fields
+  // Compute points from aggregated performance fields + contest/wager points
   const withPoints = Array.from(aggregated.entries()).map(([userId, d]) => ({
     userId,
     ...d,
-    pointsEarned: (d.leadsClosed * 10) + (d.leadsWithDamage * 5) + d.leadsSet,
+    pointsEarned: (d.leadsClosed * 10) + (d.leadsWithDamage * 5) + d.leadsSet + (contestPointsMap.get(userId) || 0) + (wagerPointsMap.get(userId) || 0),
   }));
 
   const sorted = withPoints

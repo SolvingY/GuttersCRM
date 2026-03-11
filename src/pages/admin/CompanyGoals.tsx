@@ -230,27 +230,56 @@ export default function CompanyGoals() {
       const totalCanvassDeals = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.canvassDealsClose, 0);
       const totalInternetClosed = Array.from(salesByUser.values()).reduce((sum, s) => sum + s.internetLeadsClosed, 0);
 
-      const { data: canvasserData } = canvasserIds.length > 0
-        ? await supabase.from('canvasser_metrics')
-            .select('user_id, leads_closed, income, leads_set')
-            .in('user_id', canvasserIds).order('metric_date', { ascending: false })
+      // Use daily_canvasser_metric_entries as source of truth for canvasser YTD
+      const fiscalStart = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+      const fiscalEnd = format(new Date(), 'yyyy-MM-dd');
+      const { data: dailyCanvasserData } = canvasserIds.length > 0
+        ? await supabase.from('daily_canvasser_metric_entries')
+            .select('user_id, leads_set_delta, leads_closed_delta, income_delta, leads_with_damage_delta, hours_worked_delta, doors_knocked_delta')
+            .in('user_id', canvasserIds)
+            .gte('entry_date', fiscalStart)
+            .lte('entry_date', fiscalEnd)
         : { data: [] };
 
-      const leadsByUser = new Map<string, any>();
-      canvasserData?.forEach(c => {
-        if (!leadsByUser.has(c.user_id)) {
-          leadsByUser.set(c.user_id, {
-            leadsClosed: Number(c.leads_closed) || 0,
-            income: Number(c.income) || 0,
-            leadsSet: Number((c as any).leads_set) || 0,
-            leadsWithDamage: Number((c as any).leads_with_damage) || 0,
-            hoursWorked: Number((c as any).hours_worked) || 0,
-            points: Number((c as any).points) || 0,
-            name: (c as any).display_name || 'Unknown',
-            yearlyGoal: Number((c as any).yearly_goal) || 0,
-          });
-        }
+      // Also fetch display names, goals from canvasser_metrics (metadata only)
+      const { data: canvasserMeta } = canvasserIds.length > 0
+        ? await supabase.from('canvasser_metrics')
+            .select('user_id, display_name, yearly_goal, points')
+            .in('user_id', canvasserIds)
+        : { data: [] };
+      const metaByUser = new Map<string, any>();
+      canvasserMeta?.forEach(m => {
+        if (!metaByUser.has(m.user_id)) metaByUser.set(m.user_id, m);
       });
+
+      // Aggregate daily entries per user
+      const leadsByUser = new Map<string, any>();
+      dailyCanvasserData?.forEach(d => {
+        const existing = leadsByUser.get(d.user_id) || {
+          leadsClosed: 0, income: 0, leadsSet: 0, leadsWithDamage: 0, hoursWorked: 0, points: 0,
+          name: 'Unknown', yearlyGoal: 0,
+        };
+        existing.leadsClosed += Number(d.leads_closed_delta) || 0;
+        existing.income += Number(d.income_delta) || 0;
+        existing.leadsSet += Number(d.leads_set_delta) || 0;
+        existing.leadsWithDamage += Number(d.leads_with_damage_delta) || 0;
+        existing.hoursWorked += Number(d.hours_worked_delta) || 0;
+        leadsByUser.set(d.user_id, existing);
+      });
+
+      // Enrich with metadata and clamp values
+      leadsByUser.forEach((v, userId) => {
+        const meta = metaByUser.get(userId);
+        v.name = meta?.display_name || 'Unknown';
+        v.yearlyGoal = Number(meta?.yearly_goal) || 0;
+        v.leadsClosed = Math.max(0, v.leadsClosed);
+        v.income = Math.max(0, v.income);
+        v.leadsSet = Math.max(0, v.leadsSet);
+        v.leadsWithDamage = Math.max(0, v.leadsWithDamage);
+        v.hoursWorked = Math.max(0, v.hoursWorked);
+        v.points = (v.leadsClosed * 10) + (v.leadsWithDamage * 5) + v.leadsSet;
+      });
+
       const totalLeadsClosed = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.leadsClosed, 0);
       const totalCanvasserLeadsSet = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.leadsSet, 0);
       const totalCanvasserIncome = Array.from(leadsByUser.values()).reduce((sum, l) => sum + l.income, 0);
