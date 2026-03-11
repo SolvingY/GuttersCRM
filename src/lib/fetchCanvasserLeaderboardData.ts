@@ -61,6 +61,22 @@ export async function fetchCanvasserLeaderboardByDateRange(
     });
   });
 
+  // Clamp all values to >= 0 (negative deltas from admin corrections can cause sub-zero totals)
+  aggregated.forEach((d, userId) => {
+    aggregated.set(userId, {
+      leadsSet: Math.max(0, d.leadsSet),
+      leadsClosed: Math.max(0, d.leadsClosed),
+      leadsWithDamage: Math.max(0, d.leadsWithDamage),
+      leadsWithoutDamage: Math.max(0, d.leadsWithoutDamage),
+      conversationsHad: Math.max(0, d.conversationsHad),
+      notInterested: Math.max(0, d.notInterested),
+      cancelledLeads: Math.max(0, d.cancelledLeads),
+      hoursWorked: Math.max(0, d.hoursWorked),
+      doorsKnocked: Math.max(0, d.doorsKnocked),
+      pointsEarned: 0,
+    });
+  });
+
   if (aggregated.size === 0) return [];
 
   // 4. Enrich with display_name and canvasser_rank

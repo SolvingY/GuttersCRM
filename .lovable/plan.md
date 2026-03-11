@@ -1,58 +1,42 @@
 
 
-# Fix Plan: Welcome Modal Persistence + Negative YTD Numbers
+# Add Edit Button to Shift History
 
-## Issue 1: Welcome Modal Shows Every Time
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-**Root cause:** `CanvasserWelcomeModal` (and `WelcomeModal` for sales) writes `sessionStorage.setItem('welcome_modal_shown_...')` on close (line 277) but **never reads it** before deciding to show. Every render of the component re-fetches data and calls `setIsOpen(true)`.
+## Changes
 
-**Fix:** Add a `sessionStorage.getItem` check at the top of the `useEffect` in both modals. If the key exists, skip all fetching and return early.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-### File: `src/components/canvasser/CanvasserWelcomeModal.tsx`
-- At the start of the `useEffect` (line 83), add:
-  ```typescript
-  if (sessionStorage.getItem(`welcome_modal_shown_${user.id}`)) return;
-  ```
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### File: `src/components/dashboard/WelcomeModal.tsx`
-- Same guard at the start of its `useEffect`.
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
----
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## Issue 2: Negative Numbers on YTD Canvasser Leaderboard
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-**Root cause:** `fetchCanvasserLeaderboardData.ts` aggregates `_delta` columns from `daily_canvasser_metric_entries`. When an admin corrects a value downward (e.g., leads_set from 3 to 0), the delta written is negative (e.g., -3). For YTD aggregation over many months, these negative deltas can cause totals to go below zero — particularly for canvassers with minimal activity where one correction wipes out their positive entries.
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-**Fix:** After aggregation, clamp all metric fields to a minimum of 0 before computing points and building the result set.
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-### File: `src/lib/fetchCanvasserLeaderboardData.ts`
-- After the aggregation loop (line 62), add a clamping step:
-  ```typescript
-  aggregated.forEach((d, userId) => {
-    aggregated.set(userId, {
-      leadsSet: Math.max(0, d.leadsSet),
-      leadsClosed: Math.max(0, d.leadsClosed),
-      leadsWithDamage: Math.max(0, d.leadsWithDamage),
-      leadsWithoutDamage: Math.max(0, d.leadsWithoutDamage),
-      conversationsHad: Math.max(0, d.conversationsHad),
-      notInterested: Math.max(0, d.notInterested),
-      cancelledLeads: Math.max(0, d.cancelledLeads),
-      hoursWorked: Math.max(0, d.hoursWorked),
-      doorsKnocked: Math.max(0, d.doorsKnocked),
-      pointsEarned: 0,
-    });
-  });
-  ```
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
----
+## Summary
 
-## Files to update
-
-| File | Change |
+| Area | Change |
 |------|--------|
-| `src/components/canvasser/CanvasserWelcomeModal.tsx` | Add sessionStorage guard at top of useEffect |
-| `src/components/dashboard/WelcomeModal.tsx` | Add sessionStorage guard at top of useEffect |
-| `src/lib/fetchCanvasserLeaderboardData.ts` | Clamp aggregated values to >= 0 after summing deltas |
-
-No database changes needed.
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
