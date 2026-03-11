@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -53,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionLoading: true,
     roleLoading: true,
   });
+
+  const authStateRef = useRef(authState);
+  authStateRef.current = authState;
 
   const fetchUserRoles = useCallback(async (userId: string): Promise<AppRole[]> => {
     const { data, error } = await supabase
@@ -118,17 +121,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // TOKEN_REFRESHED: silently update session/user, do NOT re-fetch roles
-        if (event === 'TOKEN_REFRESHED') {
+        // Silent update: token refresh or re-sign-in for the SAME already-loaded user
+        // Supabase v2 fires both TOKEN_REFRESHED and SIGNED_IN on tab return
+        if (
+          (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') &&
+          session?.user &&
+          authStateRef.current.user?.id === session.user.id &&
+          !authStateRef.current.roleLoading
+        ) {
           setAuthState(prev => ({
             ...prev,
             session,
-            user: session?.user ?? null,
+            user: session.user,
           }));
           return;
         }
 
-        // INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, USER_UPDATED: full state reset
+        // INITIAL_SESSION, SIGNED_OUT, USER_UPDATED, or genuinely new SIGNED_IN
         setAuthState(prev => ({
           ...prev,
           session,
