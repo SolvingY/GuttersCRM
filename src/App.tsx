@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 
 // Eagerly loaded — small, always needed
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Lazy-loaded pages — split into separate chunks per route group
 const Index = lazy(() => import("./pages/Index"));
