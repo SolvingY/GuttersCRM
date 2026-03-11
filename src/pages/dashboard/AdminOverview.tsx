@@ -192,14 +192,44 @@ export default function AdminOverview() {
       console.error('Error fetching admin metrics:', metricsError);
     }
 
-    const { data: canvasserMetrics, error: canvasserError } = await supabase
+    // Fetch config fields from canvasser_metrics (display_name, yearly_goal, income, points)
+    const { data: canvasserConfigRows } = await supabase
       .from('canvasser_metrics')
-      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, doors_knocked, points, income, yearly_goal, metric_date, updated_at')
+      .select('id, user_id, display_name, yearly_goal, points, income, metric_date, updated_at')
       .order('metric_date', { ascending: false })
       .order('updated_at', { ascending: false });
 
+    // Aggregate performance from daily entries
+    const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+    const { data: dailyCanvasserEntries, error: canvasserError } = await supabase
+      .from('daily_canvasser_metric_entries')
+      .select('*')
+      .gte('entry_date', fiscalStartStr);
+
     if (canvasserError) {
-      console.error('Error fetching canvasser metrics:', canvasserError);
+      console.error('Error fetching canvasser daily entries:', canvasserError);
+    }
+
+    // Sum daily deltas per user
+    const dailySumsByUser = new Map<string, {
+      leadsSet: number; leadsClosed: number; leadsWithDamage: number;
+      leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
+      hoursWorked: number; doorsKnocked: number;
+    }>();
+    for (const e of (dailyCanvasserEntries || [])) {
+      const existing = dailySumsByUser.get(e.user_id) || {
+        leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
+        conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+      };
+      existing.leadsSet += e.leads_set_delta || 0;
+      existing.leadsClosed += e.leads_closed_delta || 0;
+      existing.leadsWithDamage += e.leads_with_damage_delta || 0;
+      existing.leadsWithoutDamage += e.leads_without_damage_delta || 0;
+      existing.conversationsHad += e.conversations_had_delta || 0;
+      existing.notInterested += e.not_interested_delta || 0;
+      existing.hoursWorked += Number(e.hours_worked_delta || 0);
+      existing.doorsKnocked += e.doors_knocked_delta || 0;
+      dailySumsByUser.set(e.user_id, existing);
     }
 
     if (metrics && metrics.length > 0) {
@@ -330,36 +360,37 @@ export default function AdminOverview() {
       setUserDetails(activeSalesReps.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
-    if (canvasserMetrics && canvasserMetrics.length > 0) {
-      const latestByCanvasser = new Map<string, {
-        metricId: string; realUserId: string | null; displayName: string | null;
-        leadsSet: number; leadsClosed: number; leadsWithDamage: number;
-        leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
-        hoursWorked: number; doorsKnocked: number; points: number; income: number; yearlyGoal: number;
-      }>();
-
-      for (const item of canvasserMetrics) {
+    // Build canvasser config map from canvasser_metrics (latest per user)
+    const latestConfigByCanvasser = new Map<string, {
+      metricId: string; realUserId: string | null; displayName: string | null;
+      points: number; income: number; yearlyGoal: number;
+    }>();
+    if (canvasserConfigRows) {
+      for (const item of canvasserConfigRows) {
         const key = item.user_id || `metric_${item.id}`;
-        if (!latestByCanvasser.has(key)) {
-          latestByCanvasser.set(key, {
+        if (!latestConfigByCanvasser.has(key)) {
+          latestConfigByCanvasser.set(key, {
             metricId: item.id, realUserId: item.user_id, displayName: item.display_name,
-            leadsSet: item.leads_set || 0, leadsClosed: item.leads_closed || 0,
-            leadsWithDamage: item.leads_with_damage || 0,
-            leadsWithoutDamage: Number(item.leads_without_damage) || 0,
-            conversationsHad: Number(item.conversations_had) || 0,
-            notInterested: Number(item.not_interested) || 0,
-            hoursWorked: Number(item.hours_worked) || 0,
-            doorsKnocked: Number(item.doors_knocked) || 0,
             points: Number(item.points) || 0,
             income: Number(item.income) || 0,
             yearlyGoal: item.yearly_goal || 0,
           });
         }
       }
+    }
 
-      const canvasserUserIds = Array.from(latestByCanvasser.values())
-        .map(v => v.realUserId)
-        .filter((id): id is string => id !== null);
+    // Merge: all user_ids from both config and daily sums
+    const allCanvasserKeys = new Set([
+      ...Array.from(latestConfigByCanvasser.keys()),
+      ...Array.from(dailySumsByUser.keys()),
+    ]);
+
+    if (allCanvasserKeys.size > 0) {
+
+      const canvasserUserIds = Array.from(new Set([
+        ...Array.from(latestConfigByCanvasser.values()).map(v => v.realUserId).filter((id): id is string => id !== null),
+        ...Array.from(dailySumsByUser.keys()),
+      ]));
       
       const { data: canvasserProfilesData } = canvasserUserIds.length > 0
         ? await supabase.from('profiles').select('id, full_name').in('id', canvasserUserIds)
@@ -369,16 +400,21 @@ export default function AdminOverview() {
         canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
       );
 
-      const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
-        const conversionRate = data.leadsSet > 0 ? (data.leadsClosed / data.leadsSet) * 100 : 0;
+      const canvassers: CanvasserDetail[] = canvasserUserIds.map((userId) => {
+        const config = latestConfigByCanvasser.get(userId);
+        const perf = dailySumsByUser.get(userId) || {
+          leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
+          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+        };
+        const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
-          metricId: data.metricId, realUserId: data.realUserId,
-          name: data.displayName || (data.realUserId ? canvasserProfilesMap.get(data.realUserId) : null) || 'Unknown Canvasser',
-          leadsSet: data.leadsSet, leadsClosed: data.leadsClosed,
-          leadsWithDamage: data.leadsWithDamage, leadsWithoutDamage: data.leadsWithoutDamage,
-          conversationsHad: data.conversationsHad, notInterested: data.notInterested,
-          hoursWorked: data.hoursWorked, doorsKnocked: data.doorsKnocked,
-          points: data.points, income: data.income, yearlyGoal: data.yearlyGoal,
+          metricId: config?.metricId || userId, realUserId: userId,
+          name: config?.displayName || canvasserProfilesMap.get(userId) || 'Unknown Canvasser',
+          leadsSet: perf.leadsSet, leadsClosed: perf.leadsClosed,
+          leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
+          conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
+          hoursWorked: perf.hoursWorked, doorsKnocked: perf.doorsKnocked,
+          points: config?.points || 0, income: config?.income || 0, yearlyGoal: config?.yearlyGoal || 0,
           conversionRate, revenue: 0, role: 'canvasser' as const,
         };
       });
