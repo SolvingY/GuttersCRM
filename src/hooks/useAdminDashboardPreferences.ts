@@ -15,14 +15,12 @@ export function useAdminDashboardPreferences() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const { data } = await supabase
-        .from('admin_dashboard_preferences' as any)
+      const { data } = await (supabase.from('admin_dashboard_preferences' as any) as any)
         .select('widget_config')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (data?.widget_config) {
-        // Merge with defaults so new widgets get default visibility
         setConfig({ ...DEFAULT_WIDGET_CONFIG, ...(data.widget_config as WidgetConfig) });
       }
     } catch {
