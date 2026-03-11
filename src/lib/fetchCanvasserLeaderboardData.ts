@@ -10,15 +10,13 @@ export async function fetchCanvasserLeaderboardByDateRange(
   startDate: string,
   endDate: string
 ): Promise<WeeklyCanvasserEntry[]> {
-  // 1. Fetch active, non-hidden profiles
-  const { data: activeProfiles } = await supabase
+  // 1. Fetch all profiles (include archived for historical accuracy), exclude hidden
+  const { data: allProfiles } = await supabase
     .from('profiles')
-    .select('id, hidden_from_leaderboard')
-    .eq('is_archived', false);
+    .select('id, hidden_from_leaderboard');
 
-  const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
   const hiddenUserIds = new Set(
-    activeProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+    allProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
   );
 
   // 2. Query daily_canvasser_metric_entries for the date range
