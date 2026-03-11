@@ -83,7 +83,7 @@ export default function AdminLeaderboards() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'canvasser_metrics' }, () => {
         setRefreshKey(prev => prev + 1);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_canvasser_metrics' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_canvasser_metric_entries' }, () => {
         setRefreshKey(prev => prev + 1);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'supplementer_metrics' }, () => {
