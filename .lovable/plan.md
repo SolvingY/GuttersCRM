@@ -1,42 +1,55 @@
 
 
-# Add Edit Button to Shift History
+## Two Targeted Fixes
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+### FIX 1 — Disable React Query refetchOnWindowFocus
 
-## Changes
+**File:** `src/App.tsx`, line 105
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+**Before:**
+```typescript
+queries: {
+  staleTime: 1000 * 60 * 5,
+  retry: 1,
+},
+```
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**After:**
+```typescript
+queries: {
+  staleTime: 1000 * 60 * 5,
+  refetchOnWindowFocus: false,
+  retry: 1,
+},
+```
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+One line added. Nothing else changes.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+---
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+### FIX 2 — Personalized welcome with admin name
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+**File:** `src/pages/admin/AdminHome.tsx`
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+- Import `useAuth` from `@/hooks/useAuth` (same hook used across all protected pages)
+- Extract first name from `authState.user.user_metadata.full_name` (first word), fall back to empty
+- Replace `<h1>Home</h1>` with `<h1>Welcome back, FirstName.</h1>` or `<h1>Welcome back.</h1>` if no name
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+No skeleton, no extra fetch. One import + ~3 lines of logic added to the existing component.
 
-## Summary
+---
 
-| Area | Change |
+### Also: Remove `force: true` from vite.config.ts
+
+The previous fix added `force: true` to `optimizeDeps` which causes Vite to re-bundle deps on every dev server start. Now that React dedup is handled via `resolve.dedupe`, this flag should be removed.
+
+---
+
+### Files touched
+
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `src/App.tsx` | Add `refetchOnWindowFocus: false` (1 line) |
+| `src/pages/admin/AdminHome.tsx` | Add useAuth + personalized h1 |
+| `vite.config.ts` | Remove `force: true` |
 
