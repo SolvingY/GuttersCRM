@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
 import { CommentsSection } from "@/components/dashboard/CommentsSection";
+import { fetchCanvasserLeaderboardByDateRange } from "@/lib/fetchCanvasserLeaderboardData";
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -106,152 +107,28 @@ export default function CanvasserLeaderboard() {
     fetchYtdLeaderboard();
   }, []);
 
-  // Fetch weekly leaderboard
+  // Fetch weekly leaderboard from daily_canvasser_metric_entries
   useEffect(() => {
     const fetchWeeklyLeaderboard = async () => {
       setWeeklyLoading(true);
-      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-
-      const { data: activeProfiles } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("is_archived", false);
-      
-      const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
-
-      const { data: weeklyData, error } = await supabase
-        .from("weekly_canvasser_metrics")
-        .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned")
-        .eq("week_start", weekStartStr);
-
-      if (error) {
-        console.error("Error fetching weekly leaderboard:", error);
-        setWeeklyLoading(false);
-        return;
-      }
-
-      if (!weeklyData || weeklyData.length === 0) {
-        setWeeklyEntries([]);
-        setWeeklyLoading(false);
-        return;
-      }
-
-      const filteredData = weeklyData.filter(w => activeUserIds.has(w.user_id));
-
-      const userIds = filteredData.map(w => w.user_id);
-      const { data: metricsData } = userIds.length > 0
-        ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
-        : { data: [] };
-
-      const displayNameMap = new Map<string, string | null>();
-      metricsData?.forEach(m => {
-        if (m.display_name && !displayNameMap.has(m.user_id)) {
-          displayNameMap.set(m.user_id, m.display_name);
-        }
-      });
-
-      const sorted = filteredData
-        .map(w => ({
-          userId: w.user_id,
-          leadsSet: Number(w.leads_set) || 0,
-          leadsWithDamage: Number(w.leads_with_damage) || 0,
-          leadsWithoutDamage: Number(w.leads_without_damage) || 0,
-          leadsClosed: Number(w.leads_closed) || 0,
-          conversationsHad: Number(w.conversations_had) || 0,
-          notInterested: Number(w.not_interested) || 0,
-          cancelledLeads: Number(w.cancelled_leads) || 0,
-          hoursWorked: Number(w.hours_worked) || 0,
-          doorsKnocked: Number(w.doors_knocked) || 0,
-          pointsEarned: Number(w.points_earned) || 0,
-          name: displayNameMap.get(w.user_id) || "Anonymous",
-        }))
-        .sort((a, b) => b.pointsEarned - a.pointsEarned)
-        .map((entry, index) => ({ ...entry, rank: index + 1 }));
-
-      setWeeklyEntries(sorted);
+      const startDate = format(weekStart, 'yyyy-MM-dd');
+      const endDate = format(weekEnd, 'yyyy-MM-dd');
+      const entries = await fetchCanvasserLeaderboardByDateRange(startDate, endDate);
+      setWeeklyEntries(entries);
       setWeeklyLoading(false);
     };
 
     fetchWeeklyLeaderboard();
   }, [selectedDate]);
 
-  // Fetch monthly leaderboard
+  // Fetch monthly leaderboard from daily_canvasser_metric_entries
   useEffect(() => {
     const fetchMonthlyLeaderboard = async () => {
       setMonthlyLoading(true);
-
-      const { data: activeProfiles } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("is_archived", false);
-      
-      const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
-
-      const monthStartStr = format(monthStart, 'yyyy-MM-dd');
-      const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
-
-      const { data: weeklyData, error } = await supabase
-        .from("weekly_canvasser_metrics")
-        .select("user_id, leads_set, leads_with_damage, leads_without_damage, leads_closed, conversations_had, not_interested, cancelled_leads, hours_worked, doors_knocked, points_earned")
-        .gte("week_start", monthStartStr)
-        .lte("week_start", monthEndStr);
-
-      if (error) {
-        console.error("Error fetching monthly leaderboard:", error);
-        setMonthlyLoading(false);
-        return;
-      }
-
-      if (!weeklyData || weeklyData.length === 0) {
-        setMonthlyEntries([]);
-        setMonthlyLoading(false);
-        return;
-      }
-
-      const aggregated = new Map<string, any>();
-      weeklyData.forEach(w => {
-        if (!activeUserIds.has(w.user_id)) return;
-        
-        const existing = aggregated.get(w.user_id) || { 
-          leadsSet: 0, leadsWithDamage: 0, leadsWithoutDamage: 0, leadsClosed: 0, 
-          conversationsHad: 0, notInterested: 0, cancelledLeads: 0, hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0 
-        };
-        aggregated.set(w.user_id, {
-          leadsSet: existing.leadsSet + (Number(w.leads_set) || 0),
-          leadsWithDamage: existing.leadsWithDamage + (Number(w.leads_with_damage) || 0),
-          leadsWithoutDamage: existing.leadsWithoutDamage + (Number(w.leads_without_damage) || 0),
-          leadsClosed: existing.leadsClosed + (Number(w.leads_closed) || 0),
-          conversationsHad: existing.conversationsHad + (Number(w.conversations_had) || 0),
-          notInterested: existing.notInterested + (Number(w.not_interested) || 0),
-          cancelledLeads: existing.cancelledLeads + (Number(w.cancelled_leads) || 0),
-          hoursWorked: existing.hoursWorked + (Number(w.hours_worked) || 0),
-          doorsKnocked: existing.doorsKnocked + (Number(w.doors_knocked) || 0),
-          pointsEarned: existing.pointsEarned + (Number(w.points_earned) || 0),
-        });
-      });
-
-      const userIds = Array.from(aggregated.keys());
-      const { data: metricsData } = userIds.length > 0
-        ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", userIds)
-        : { data: [] };
-
-      const displayNameMap = new Map<string, string | null>();
-      metricsData?.forEach(m => {
-        if (m.display_name && !displayNameMap.has(m.user_id)) {
-          displayNameMap.set(m.user_id, m.display_name);
-        }
-      });
-
-      const sorted = Array.from(aggregated.entries())
-        .map(([userId, data]) => ({
-          userId,
-          ...data,
-          name: displayNameMap.get(userId) || "Anonymous",
-        }))
-        .sort((a, b) => b.pointsEarned - a.pointsEarned)
-        .map((entry, index) => ({ ...entry, rank: index + 1 }));
-
-      setMonthlyEntries(sorted);
+      const startDate = format(monthStart, 'yyyy-MM-dd');
+      const endDate = format(monthEnd, 'yyyy-MM-dd');
+      const entries = await fetchCanvasserLeaderboardByDateRange(startDate, endDate);
+      setMonthlyEntries(entries);
       setMonthlyLoading(false);
     };
 

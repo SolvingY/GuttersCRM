@@ -1,36 +1,42 @@
 
 
-# Canvasser Leaderboard Fix — Implementation Plan
+# Add Edit Button to Shift History
 
-## Summary
-Change canvasser leaderboard queries from `weekly_canvasser_metrics` to `daily_canvasser_metric_entries`, SUMming all 11 confirmed `_delta` columns by date range. Remove the TIER 2 write from the clock-out path.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. `src/lib/updateCanvasserHours.ts`
-Remove the entire TIER 2 block (lines 61–93) that writes to `weekly_canvasser_metrics`. Keep TIER 1 (daily entries) and TIER 3 (YTD) unchanged.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-### 2. `supabase/functions/auto-clockout-9pm/index.ts`
-Remove the TIER 2 block that writes to `weekly_canvasser_metrics`.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### 3. `src/pages/admin/AdminLeaderboards.tsx`
-Replace the canvasser weekly/monthly query against `weekly_canvasser_metrics` with:
-- Query `daily_canvasser_metric_entries` WHERE `entry_date` BETWEEN Monday–Sunday (weekly) or month start–end (monthly)
-- SUM all 11 `_delta` columns per `user_id`
-- Join with `canvasser_metrics` for `display_name` and `canvasser_rank`
-- Filter out archived/hidden users via `profiles`
-- Full outer join logic: canvassers with daily entries but no weekly updates still appear (supplemental fields default to 0)
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### 4. `src/components/dashboard/ScoreboardCanvasserLeaderboard.tsx`
-Same query change as #3 — replace `weekly_canvasser_metrics` with `daily_canvasser_metric_entries` aggregation.
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### 5. `src/pages/canvasser/CanvasserLeaderboard.tsx`
-Same query change as #3 and #4.
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-## What stays unchanged
-- `weekly_canvasser_metrics` table — no migration, no data changes
-- Weekly Updates write path (continues writing to both `daily_canvasser_metric_entries` AND `weekly_canvasser_metrics`)
-- AdminTimeClock manual shift operations
-- `CanvasserStats.tsx`, `PitManagement.tsx` (they query `weekly_canvasser_metrics` for their own purposes)
-- YTD (TIER 3) and daily (TIER 1) writes from clock-out remain
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

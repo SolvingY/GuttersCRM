@@ -58,39 +58,7 @@ export async function updateCanvasserHours(
       });
   }
 
-  // TIER 2: Weekly aggregate
-  const { data: weeklyRow } = await supabase
-    .from('weekly_canvasser_metrics')
-    .select('id, hours_worked, doors_knocked, conversations_had, not_interested, leads_set')
-    .eq('user_id', userId)
-    .eq('week_start', weekStart)
-    .maybeSingle();
-
-  if (weeklyRow) {
-    await supabase
-      .from('weekly_canvasser_metrics')
-      .update({
-        hours_worked: Math.max(0, (Number(weeklyRow.hours_worked) || 0) + hoursDelta),
-        doors_knocked: Math.max(0, (Number(weeklyRow.doors_knocked) || 0) + doorsDelta),
-        conversations_had: Math.max(0, (Number(weeklyRow.conversations_had) || 0) + convosDelta),
-        not_interested: Math.max(0, (Number(weeklyRow.not_interested) || 0) + notInterestedDelta),
-        leads_set: Math.max(0, (Number(weeklyRow.leads_set) || 0) + leadsSetDelta),
-      })
-      .eq('id', weeklyRow.id);
-  } else {
-    await supabase
-      .from('weekly_canvasser_metrics')
-      .insert({
-        user_id: userId,
-        week_start: weekStart,
-        week_end: weekEnd,
-        hours_worked: Math.max(0, hoursDelta),
-        doors_knocked: Math.max(0, doorsDelta),
-        conversations_had: Math.max(0, convosDelta),
-        not_interested: Math.max(0, notInterestedDelta),
-        leads_set: Math.max(0, leadsSetDelta),
-      });
-  }
+  // TIER 2: Removed — leaderboard now aggregates from daily_canvasser_metric_entries directly
 
   // TIER 3: YTD running total
   const { data: ytdRow } = await supabase
