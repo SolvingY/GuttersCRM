@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
         ${longNotesSection}
 
         <p style="margin-top:24px;font-size:12px;color:#9ca3af;">
-          This report reflects activity logged in the NGR dashboard as of ${chicagoDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })} CT.<br/>
+          This report reflects activity logged in the NGR dashboard as of ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })} CT.<br/>
           Contact Kara for discrepancies · <a href="https://oknextgen.com" style="color:#dc2626;">oknextgen.com</a>
         </p>
       </div>
