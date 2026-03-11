@@ -405,7 +405,7 @@ export default function AdminOverview() {
         const config = latestConfigByCanvasser.get(userId);
         const perf = dailySumsByUser.get(userId) || {
           leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
-          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
         };
         const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
