@@ -39,7 +39,7 @@ export async function fetchCanvasserLeaderboardByDateRange(
   }>();
 
   dailyData.forEach(d => {
-    if (!activeUserIds.has(d.user_id) || hiddenUserIds.has(d.user_id)) return;
+    if (hiddenUserIds.has(d.user_id)) return;
 
     const e = aggregated.get(d.user_id) || {
       leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,

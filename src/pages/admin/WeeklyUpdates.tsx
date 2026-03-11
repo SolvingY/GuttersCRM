@@ -473,18 +473,114 @@ export default function WeeklyUpdates() {
     setWeeklyEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
   };
 
-  const handleSalesBlur = (userId: string) => {
+  const handleSalesBlur = async (userId: string) => {
     const entry = weeklyEntries.find(e => e.userId === userId);
-    if (entry) saveSalesDraft(entry);
+    if (!entry) return;
+    await saveSalesDraft(entry);
+
+    // Compute delta vs baseline and update cumulative immediately
+    const baseline = salesBaselines.current.get(userId) || {};
+    const current: Record<string, number> = {
+      approved_revenue_delta: parseFloat(entry.weeklyApprovedRevenue) || 0,
+      leads_delta: parseInt(entry.weeklyLeads) || 0,
+      closed_deals_delta: parseInt(entry.weeklyClosedDeals) || 0,
+      self_generated_deals_delta: parseInt(entry.weeklySelfGeneratedDeals) || 0,
+      canvass_leads_delta: parseInt(entry.weeklyCanvassLeads) || 0,
+      canvass_deals_closed_delta: parseInt(entry.weeklyCanvassDealsClose) || 0,
+      collections_delta: parseFloat(entry.weeklyCollections) || 0,
+      earnings_delta: parseFloat(entry.weeklyEarnings) || 0,
+    };
+
+    const dLeads = current.leads_delta - (baseline.leads_delta || 0);
+    const dClosed = current.closed_deals_delta - (baseline.closed_deals_delta || 0);
+    const dEarnings = current.earnings_delta - (baseline.earnings_delta || 0);
+    const dSelfGen = current.self_generated_deals_delta - (baseline.self_generated_deals_delta || 0);
+    const dCanvLeads = current.canvass_leads_delta - (baseline.canvass_leads_delta || 0);
+    const dCanvDeals = current.canvass_deals_closed_delta - (baseline.canvass_deals_closed_delta || 0);
+    const dCollections = current.collections_delta - (baseline.collections_delta || 0);
+    const dApprovedRev = current.approved_revenue_delta - (baseline.approved_revenue_delta || 0);
+    const newPoints = calculatePoints(current.approved_revenue_delta, current.closed_deals_delta, current.collections_delta);
+    const oldPoints = calculatePoints(baseline.approved_revenue_delta || 0, baseline.closed_deals_delta || 0, baseline.collections_delta || 0);
+    const dPoints = newPoints - oldPoints;
+
+    const hasDelta = dLeads !== 0 || dClosed !== 0 || dEarnings !== 0 || dSelfGen !== 0 || dCanvLeads !== 0 || dCanvDeals !== 0 || dCollections !== 0 || dApprovedRev !== 0;
+    if (hasDelta) {
+      const { data: cm } = await supabase.from('user_metrics').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
+      if (cm) {
+        await supabase.from('user_metrics').update({
+          leads: (Number(cm.leads) || 0) + dLeads,
+          closed_deals: (Number(cm.closed_deals) || 0) + dClosed,
+          earnings_ytd: (Number(cm.earnings_ytd) || 0) + dEarnings,
+          points: (Number(cm.points) || 0) + dPoints,
+          self_generated_deals: (Number(cm.self_generated_deals) || 0) + dSelfGen,
+          canvass_leads: (Number((cm as any).canvass_leads) || 0) + dCanvLeads,
+          canvass_deals_closed: (Number((cm as any).canvass_deals_closed) || 0) + dCanvDeals,
+          collections: (Number((cm as any).collections) || 0) + dCollections,
+          approved_revenue: (Number((cm as any).approved_revenue) || 0) + dApprovedRev,
+          updated_at: new Date().toISOString(),
+        }).eq('user_id', userId);
+      }
+    }
+    // Update baseline so next blur/save computes correct delta
+    salesBaselines.current.set(userId, current);
   };
 
   const updateCanvasserEntry = (userId: string, field: keyof CanvasserWeeklyEntry, value: string) => {
     setCanvasserEntries((prev) => prev.map((entry) => entry.userId === userId ? { ...entry, [field]: value } : entry));
   };
 
-  const handleCanvasserBlur = (userId: string) => {
+  const handleCanvasserBlur = async (userId: string) => {
     const entry = canvasserEntries.find(e => e.userId === userId);
-    if (entry) saveCanvasserDraft(entry);
+    if (!entry) return;
+    await saveCanvasserDraft(entry);
+
+    // Compute delta vs baseline and update cumulative immediately
+    const baseline = canvasserBaselines.current.get(userId) || {};
+    const current: Record<string, number> = {
+      leads_set_delta: parseInt(entry.weeklyLeadsSet) || 0,
+      leads_closed_delta: parseInt(entry.weeklyLeadsClosed) || 0,
+      leads_with_damage_delta: parseInt(entry.weeklyLeadsWithDamage) || 0,
+      leads_without_damage_delta: parseInt(entry.weeklyLeadsWithoutDamage) || 0,
+      conversations_had_delta: parseInt(entry.weeklyConversationsHad) || 0,
+      not_interested_delta: parseInt(entry.weeklyNotInterested) || 0,
+      cancelled_leads_delta: parseInt(entry.weeklyCancelledLeads) || 0,
+      hours_worked_delta: parseFloat(entry.weeklyHoursWorked) || 0,
+      income_delta: parseFloat(entry.weeklyIncome) || 0,
+      doors_knocked_delta: parseInt(entry.weeklyDoorsKnocked) || 0,
+    };
+
+    const dLeadsSet = current.leads_set_delta - (baseline.leads_set_delta || 0);
+    const dLeadsClosed = current.leads_closed_delta - (baseline.leads_closed_delta || 0);
+    const dDamage = current.leads_with_damage_delta - (baseline.leads_with_damage_delta || 0);
+    const dNoDamage = current.leads_without_damage_delta - (baseline.leads_without_damage_delta || 0);
+    const dConvos = current.conversations_had_delta - (baseline.conversations_had_delta || 0);
+    const dNotInt = current.not_interested_delta - (baseline.not_interested_delta || 0);
+    const dCancelled = current.cancelled_leads_delta - (baseline.cancelled_leads_delta || 0);
+    const dHours = current.hours_worked_delta - (baseline.hours_worked_delta || 0);
+    const dIncome = current.income_delta - (baseline.income_delta || 0);
+    const dDoors = current.doors_knocked_delta - (baseline.doors_knocked_delta || 0);
+
+    const hasDelta = dLeadsSet !== 0 || dLeadsClosed !== 0 || dDamage !== 0 || dNoDamage !== 0 || dConvos !== 0 || dNotInt !== 0 || dCancelled !== 0 || dHours !== 0 || dIncome !== 0 || dDoors !== 0;
+    if (hasDelta) {
+      const { data: cm } = await supabase.from('canvasser_metrics').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
+      if (cm) {
+        await supabase.from('canvasser_metrics').update({
+          leads_set: (Number(cm.leads_set) || 0) + dLeadsSet,
+          leads_closed: (Number(cm.leads_closed) || 0) + dLeadsClosed,
+          leads_with_damage: (Number(cm.leads_with_damage) || 0) + dDamage,
+          leads_without_damage: (Number((cm as any).leads_without_damage) || 0) + dNoDamage,
+          conversations_had: (Number((cm as any).conversations_had) || 0) + dConvos,
+          not_interested: (Number((cm as any).not_interested) || 0) + dNotInt,
+          cancelled_leads: (Number((cm as any).cancelled_leads) || 0) + dCancelled,
+          hours_worked: (Number((cm as any).hours_worked) || 0) + dHours,
+          income: (Number(cm.income) || 0) + dIncome,
+          doors_knocked: (Number((cm as any).doors_knocked) || 0) + dDoors,
+          updated_at: new Date().toISOString(),
+        } as any).eq('user_id', userId);
+      }
+    }
+    // Update baseline so next blur/save computes correct delta
+    canvasserBaselines.current.set(userId, current);
   };
 
   const updateSupplementerEntry = (userId: string, field: keyof SupplementerWeeklyEntry, value: string) => {
