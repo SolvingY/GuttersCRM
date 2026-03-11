@@ -82,8 +82,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
               {showHours && (
                 <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Hours</th>
               )}
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
-              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Contracts</th>
+               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Canceled</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Points</th>
             </tr>
           </thead>
