@@ -122,6 +122,10 @@ export default function WeeklyUpdates() {
   const [activeSection, setActiveSection] = useState<string | null>('sales-reps');
   const toggleSection = (id: string) => setActiveSection(prev => prev === id ? null : id);
 
+  // Baseline refs: capture DB values at page load / date change so Save All computes correct deltas
+  const salesBaselines = useRef<Map<string, Record<string, number>>>(new Map());
+  const canvasserBaselines = useRef<Map<string, Record<string, number>>>(new Map());
+
   // Attribution state
   const [attributionModalOpen, setAttributionModalOpen] = useState(false);
   const [attributionItems, setAttributionItems] = useState<AttributionItem[]>([]);
