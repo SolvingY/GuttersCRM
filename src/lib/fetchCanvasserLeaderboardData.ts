@@ -37,7 +37,7 @@ export async function fetchCanvasserLeaderboardByDateRange(
     leadsSet: number; leadsClosed: number; leadsWithDamage: number;
     leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
     cancelledLeads: number; hoursWorked: number; doorsKnocked: number;
-    pointsEarned: number; contracts: number;
+    pointsEarned: number;
   }>();
 
   dailyData.forEach(d => {
@@ -46,7 +46,7 @@ export async function fetchCanvasserLeaderboardByDateRange(
     const e = aggregated.get(d.user_id) || {
       leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
       conversationsHad: 0, notInterested: 0, cancelledLeads: 0,
-      hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0, contracts: 0,
+      hoursWorked: 0, doorsKnocked: 0, pointsEarned: 0,
     };
 
     aggregated.set(d.user_id, {
