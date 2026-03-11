@@ -57,7 +57,7 @@ export async function fetchCanvasserLeaderboardByDateRange(
       cancelledLeads: e.cancelledLeads + (Number(d.cancelled_leads_delta) || 0),
       hoursWorked: e.hoursWorked + (Number(d.hours_worked_delta) || 0),
       doorsKnocked: e.doorsKnocked + (Number(d.doors_knocked_delta) || 0),
-      pointsEarned: e.pointsEarned + (Number(d.points_earned) || 0),
+      pointsEarned: 0, // will be computed from aggregated fields below
     });
   });
 
