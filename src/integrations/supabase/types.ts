@@ -44,18 +44,21 @@ export type Database = {
       admin_dashboard_preferences: {
         Row: {
           id: string
+          pinned_shortcuts: Json
           updated_at: string
           user_id: string
           widget_config: Json
         }
         Insert: {
           id?: string
+          pinned_shortcuts?: Json
           updated_at?: string
           user_id: string
           widget_config?: Json
         }
         Update: {
           id?: string
+          pinned_shortcuts?: Json
           updated_at?: string
           user_id?: string
           widget_config?: Json
