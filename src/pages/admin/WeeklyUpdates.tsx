@@ -432,17 +432,21 @@ export default function WeeklyUpdates() {
   const saveSalesDraft = useCallback(async (entry: WeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const { data: authUser } = await supabase.auth.getUser();
+    const salesRevenue = parseFloat(entry.weeklyApprovedRevenue) || 0;
+    const salesClosed = parseInt(entry.weeklyClosedDeals) || 0;
+    const salesCollections = parseFloat(entry.weeklyCollections) || 0;
     await supabase.from('daily_user_metric_entries').upsert({
       user_id: entry.userId,
       entry_date: dateStr,
-      approved_revenue_delta: parseFloat(entry.weeklyApprovedRevenue) || 0,
+      approved_revenue_delta: salesRevenue,
       leads_delta: parseInt(entry.weeklyLeads) || 0,
-      closed_deals_delta: parseInt(entry.weeklyClosedDeals) || 0,
+      closed_deals_delta: salesClosed,
       self_generated_deals_delta: parseInt(entry.weeklySelfGeneratedDeals) || 0,
       canvass_leads_delta: parseInt(entry.weeklyCanvassLeads) || 0,
       canvass_deals_closed_delta: parseInt(entry.weeklyCanvassDealsClose) || 0,
-      collections_delta: parseFloat(entry.weeklyCollections) || 0,
+      collections_delta: salesCollections,
       earnings_delta: parseFloat(entry.weeklyEarnings) || 0,
+      points_earned: calculatePoints(salesRevenue, salesClosed, salesCollections),
       entered_by: authUser.user?.id,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,entry_date' });
@@ -451,12 +455,16 @@ export default function WeeklyUpdates() {
   const saveCanvasserDraft = useCallback(async (entry: CanvasserWeeklyEntry) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const { data: authUser } = await supabase.auth.getUser();
+    const cLeadsSet = parseInt(entry.weeklyLeadsSet) || 0;
+    const cLeadsClosed = parseInt(entry.weeklyLeadsClosed) || 0;
+    const cLeadsWithDamage = parseInt(entry.weeklyLeadsWithDamage) || 0;
+    const canvPoints = (cLeadsClosed * 10) + (cLeadsWithDamage * 5) + cLeadsSet;
     await supabase.from('daily_canvasser_metric_entries').upsert({
       user_id: entry.userId,
       entry_date: dateStr,
-      leads_set_delta: parseInt(entry.weeklyLeadsSet) || 0,
-      leads_closed_delta: parseInt(entry.weeklyLeadsClosed) || 0,
-      leads_with_damage_delta: parseInt(entry.weeklyLeadsWithDamage) || 0,
+      leads_set_delta: cLeadsSet,
+      leads_closed_delta: cLeadsClosed,
+      leads_with_damage_delta: cLeadsWithDamage,
       leads_without_damage_delta: parseInt(entry.weeklyLeadsWithoutDamage) || 0,
       conversations_had_delta: parseInt(entry.weeklyConversationsHad) || 0,
       not_interested_delta: parseInt(entry.weeklyNotInterested) || 0,
@@ -464,6 +472,7 @@ export default function WeeklyUpdates() {
       hours_worked_delta: parseFloat(entry.weeklyHoursWorked) || 0,
       doors_knocked_delta: parseInt(entry.weeklyDoorsKnocked) || 0,
       income_delta: parseFloat(entry.weeklyIncome) || 0,
+      points_earned: canvPoints,
       entered_by: authUser.user?.id,
       updated_at: new Date().toISOString(),
     } as any, { onConflict: 'user_id,entry_date' });
@@ -564,6 +573,11 @@ export default function WeeklyUpdates() {
     if (hasDelta) {
       const { data: cm } = await supabase.from('canvasser_metrics').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
       if (cm) {
+        // Compute points delta using canvasser formula
+        const newCanvPoints = (current.leads_closed_delta * 10) + (current.leads_with_damage_delta * 5) + current.leads_set_delta;
+        const oldCanvPoints = ((baseline.leads_closed_delta || 0) * 10) + ((baseline.leads_with_damage_delta || 0) * 5) + (baseline.leads_set_delta || 0);
+        const dPoints = newCanvPoints - oldCanvPoints;
+
         await supabase.from('canvasser_metrics').update({
           leads_set: (Number(cm.leads_set) || 0) + dLeadsSet,
           leads_closed: (Number(cm.leads_closed) || 0) + dLeadsClosed,
@@ -575,6 +589,7 @@ export default function WeeklyUpdates() {
           hours_worked: (Number((cm as any).hours_worked) || 0) + dHours,
           income: (Number(cm.income) || 0) + dIncome,
           doors_knocked: (Number((cm as any).doors_knocked) || 0) + dDoors,
+          points: (Number(cm.points) || 0) + dPoints,
           updated_at: new Date().toISOString(),
         } as any).eq('user_id', userId);
       }
@@ -664,6 +679,7 @@ export default function WeeklyUpdates() {
           closed_deals_delta: weeklyClosedDeals, self_generated_deals_delta: weeklySelfGeneratedDeals,
           canvass_leads_delta: weeklyCanvassLeads, canvass_deals_closed_delta: weeklyCanvassDealsClose,
           collections_delta: weeklyCollections, earnings_delta: weeklyEarnings,
+          points_earned: calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections),
           entered_by: authUser.user?.id, updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id,entry_date' });
 
@@ -769,6 +785,7 @@ export default function WeeklyUpdates() {
           leads_without_damage_delta: weeklyLeadsWithoutDamage, conversations_had_delta: weeklyConversationsHad,
           not_interested_delta: weeklyNotInterested, cancelled_leads_delta: weeklyCancelledLeads,
           doors_knocked_delta: weeklyDoorsKnocked, income_delta: weeklyIncome,
+          points_earned: canvasserPoints,
           entered_by: authUser.user?.id, updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id,entry_date' });
 

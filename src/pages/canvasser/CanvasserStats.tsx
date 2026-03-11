@@ -90,7 +90,7 @@ export default function CanvasserStats() {
     // Fetch config fields (display_name, goals) from canvasser_metrics
     const { data: configData } = await supabase
       .from("canvasser_metrics")
-      .select("display_name, yearly_goal, leads_set_goal, income_goal, points, income")
+      .select("display_name, yearly_goal, leads_set_goal, income_goal, contest_points, wager_points")
       .eq("user_id", user.id)
       .order("metric_date", { ascending: false })
       .limit(1)
@@ -117,18 +117,23 @@ export default function CanvasserStats() {
       not_interested: acc.not_interested + (e.not_interested_delta || 0),
       hours_worked: acc.hours_worked + Number(e.hours_worked_delta || 0),
       doors_knocked: acc.doors_knocked + (e.doors_knocked_delta || 0),
+      income: acc.income + Number(e.income_delta || 0),
     }), {
       leads_set: 0, leads_closed: 0, leads_with_damage: 0, leads_without_damage: 0,
-      conversations_had: 0, not_interested: 0, hours_worked: 0, doors_knocked: 0,
+      conversations_had: 0, not_interested: 0, hours_worked: 0, doors_knocked: 0, income: 0,
     });
+
+    // Compute points from aggregated performance fields + bonus points from config
+    const performancePoints = (summed.leads_closed * 10) + (summed.leads_with_damage * 5) + summed.leads_set;
+    const bonusPoints = (Number(configData?.contest_points) || 0) + (Number(configData?.wager_points) || 0);
 
     setMetrics({
       display_name: configData?.display_name || null,
       yearly_goal: configData?.yearly_goal || 0,
       leads_set_goal: configData?.leads_set_goal || 0,
       income_goal: configData?.income_goal || 0,
-      points: configData?.points || 0,
-      income: configData?.income || 0,
+      points: performancePoints + bonusPoints,
+      income: summed.income,
       leads_set: summed.leads_set,
       leads_closed: summed.leads_closed,
       leads_with_damage: summed.leads_with_damage,

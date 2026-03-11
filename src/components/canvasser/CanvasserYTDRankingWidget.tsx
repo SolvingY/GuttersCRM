@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Trophy, Medal, Award, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { FISCAL_YEAR } from '@/lib/constants';
+import { format } from 'date-fns';
 
 interface RankedCanvasser {
   user_id: string;
@@ -30,31 +32,58 @@ export function CanvasserYTDRankingWidget() {
     if (!user) return;
 
     try {
-      // Fetch all canvasser metrics ordered by points
-      const { data, error } = await supabase
-        .from('canvasser_metrics')
-        .select('user_id, display_name, points')
-        .order('points', { ascending: false });
+      const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
 
-      if (error) {
-        console.error('Error fetching canvasser rankings:', error);
+      // Fetch daily entries for fiscal year
+      const { data: dailyData, error: dailyError } = await supabase
+        .from('daily_canvasser_metric_entries')
+        .select('user_id, leads_set_delta, leads_closed_delta, leads_with_damage_delta')
+        .gte('entry_date', fiscalStartStr);
+
+      if (dailyError) {
+        console.error('Error fetching daily entries:', dailyError);
         setLoading(false);
         return;
       }
 
-      // Add rank to each canvasser
-      const ranked = (data || []).map((c, idx) => ({
-        ...c,
-        points: Number(c.points) || 0,
-        rank: idx + 1,
-      }));
+      // Aggregate by user_id and compute points
+      const aggregated = new Map<string, { leadsSet: number; leadsClosed: number; leadsWithDamage: number }>();
+      (dailyData || []).forEach(d => {
+        const e = aggregated.get(d.user_id) || { leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0 };
+        aggregated.set(d.user_id, {
+          leadsSet: e.leadsSet + (d.leads_set_delta || 0),
+          leadsClosed: e.leadsClosed + (d.leads_closed_delta || 0),
+          leadsWithDamage: e.leadsWithDamage + (d.leads_with_damage_delta || 0),
+        });
+      });
 
-      // Get top 3
+      // Fetch display_name + bonus points from canvasser_metrics
+      const userIds = Array.from(aggregated.keys());
+      const { data: metricsData } = userIds.length > 0
+        ? await supabase.from('canvasser_metrics').select('user_id, display_name, contest_points, wager_points').in('user_id', userIds)
+        : { data: [] };
+
+      const nameMap = new Map<string, string>();
+      const bonusMap = new Map<string, number>();
+      (metricsData || []).forEach(m => {
+        if (m.display_name) nameMap.set(m.user_id, m.display_name);
+        bonusMap.set(m.user_id, (Number(m.contest_points) || 0) + (Number(m.wager_points) || 0));
+      });
+
+      // Build ranked list
+      const ranked = Array.from(aggregated.entries())
+        .map(([userId, d]) => ({
+          user_id: userId,
+          display_name: nameMap.get(userId) || null,
+          points: (d.leadsClosed * 10) + (d.leadsWithDamage * 5) + d.leadsSet + (bonusMap.get(userId) || 0),
+          rank: 0,
+        }))
+        .filter(c => c.points > 0)
+        .sort((a, b) => b.points - a.points)
+        .map((c, idx) => ({ ...c, rank: idx + 1 }));
+
       setTopCanvassers(ranked.slice(0, 3));
-
-      // Find current user's rank
-      const userRank = ranked.find(c => c.user_id === user.id);
-      setUserRanking(userRank || null);
+      setUserRanking(ranked.find(c => c.user_id === user.id) || null);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -114,7 +143,6 @@ export function CanvasserYTDRankingWidget() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Top 3 */}
         {topCanvassers.map((canvasser) => (
           <div
             key={canvasser.user_id}
@@ -137,7 +165,6 @@ export function CanvasserYTDRankingWidget() {
           </div>
         ))}
 
-        {/* User's ranking if not in top 3 */}
         {userRanking && userRanking.rank > 3 && (
           <>
             <div className="text-center text-muted-foreground text-sm py-1">• • •</div>
@@ -156,7 +183,6 @@ export function CanvasserYTDRankingWidget() {
           </>
         )}
 
-        {/* No rankings yet */}
         {topCanvassers.length === 0 && (
           <p className="text-center text-muted-foreground py-4">
             No rankings available yet

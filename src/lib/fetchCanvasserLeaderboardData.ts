@@ -57,7 +57,7 @@ export async function fetchCanvasserLeaderboardByDateRange(
       cancelledLeads: e.cancelledLeads + (Number(d.cancelled_leads_delta) || 0),
       hoursWorked: e.hoursWorked + (Number(d.hours_worked_delta) || 0),
       doorsKnocked: e.doorsKnocked + (Number(d.doors_knocked_delta) || 0),
-      pointsEarned: e.pointsEarned + (Number(d.points_earned) || 0),
+      pointsEarned: 0, // will be computed from aggregated fields below
     });
   });
 
@@ -78,17 +78,24 @@ export async function fetchCanvasserLeaderboardByDateRange(
   });
 
   // 5. Build sorted entries
-  const sorted = Array.from(aggregated.entries())
-    .filter(([_, d]) =>
+  // Compute points from aggregated performance fields
+  const withPoints = Array.from(aggregated.entries()).map(([userId, d]) => ({
+    userId,
+    ...d,
+    pointsEarned: (d.leadsClosed * 10) + (d.leadsWithDamage * 5) + d.leadsSet,
+  }));
+
+  const sorted = withPoints
+    .filter(d =>
       d.leadsSet > 0 || d.leadsClosed > 0 || d.leadsWithDamage > 0 ||
       d.doorsKnocked > 0 || d.pointsEarned > 0
     )
-    .sort((a, b) => b[1].pointsEarned - a[1].pointsEarned)
-    .map(([userId, d], i) => ({
+    .sort((a, b) => b.pointsEarned - a.pointsEarned)
+    .map((d, i) => ({
       rank: i + 1,
-      userId,
-      name: displayNameMap.get(userId) || 'Anonymous',
-      canvasserRank: rankMap.get(userId) || 'C1',
+      userId: d.userId,
+      name: displayNameMap.get(d.userId) || 'Anonymous',
+      canvasserRank: rankMap.get(d.userId) || 'C1',
       leadsSet: d.leadsSet,
       leadsClosed: d.leadsClosed,
       leadsWithDamage: d.leadsWithDamage,
