@@ -387,9 +387,10 @@ export default function AdminOverview() {
 
     if (allCanvasserKeys.size > 0) {
 
-      const canvasserUserIds = Array.from(latestByCanvasser.values())
-        .map(v => v.realUserId)
-        .filter((id): id is string => id !== null);
+      const canvasserUserIds = Array.from(new Set([
+        ...Array.from(latestConfigByCanvasser.values()).map(v => v.realUserId).filter((id): id is string => id !== null),
+        ...Array.from(dailySumsByUser.keys()),
+      ]));
       
       const { data: canvasserProfilesData } = canvasserUserIds.length > 0
         ? await supabase.from('profiles').select('id, full_name').in('id', canvasserUserIds)
@@ -399,16 +400,21 @@ export default function AdminOverview() {
         canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
       );
 
-      const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
-        const conversionRate = data.leadsSet > 0 ? (data.leadsClosed / data.leadsSet) * 100 : 0;
+      const canvassers: CanvasserDetail[] = canvasserUserIds.map((userId) => {
+        const config = latestConfigByCanvasser.get(userId);
+        const perf = dailySumsByUser.get(userId) || {
+          leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
+          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+        };
+        const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
-          metricId: data.metricId, realUserId: data.realUserId,
-          name: data.displayName || (data.realUserId ? canvasserProfilesMap.get(data.realUserId) : null) || 'Unknown Canvasser',
-          leadsSet: data.leadsSet, leadsClosed: data.leadsClosed,
-          leadsWithDamage: data.leadsWithDamage, leadsWithoutDamage: data.leadsWithoutDamage,
-          conversationsHad: data.conversationsHad, notInterested: data.notInterested,
-          hoursWorked: data.hoursWorked, doorsKnocked: data.doorsKnocked,
-          points: data.points, income: data.income, yearlyGoal: data.yearlyGoal,
+          metricId: config?.metricId || userId, realUserId: userId,
+          name: config?.displayName || canvasserProfilesMap.get(userId) || 'Unknown Canvasser',
+          leadsSet: perf.leadsSet, leadsClosed: perf.leadsClosed,
+          leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
+          conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
+          hoursWorked: perf.hoursWorked, doorsKnocked: perf.doorsKnocked,
+          points: config?.points || 0, income: config?.income || 0, yearlyGoal: config?.yearlyGoal || 0,
           conversionRate, revenue: 0, role: 'canvasser' as const,
         };
       });
