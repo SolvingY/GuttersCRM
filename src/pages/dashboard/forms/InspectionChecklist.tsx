@@ -134,6 +134,7 @@ export default function InspectionChecklist() {
         content: "20-Point Inspection Checklist completed",
       });
 
+      localStorage.removeItem(DRAFT_KEY);
       toast({ title: "Checklist saved successfully" });
       navigate(`/dashboard/leads/${id}`);
     } catch (err: any) {

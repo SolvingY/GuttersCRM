@@ -307,6 +307,7 @@ export default function CommercialHailAssessmentForm() {
         });
       }
 
+      localStorage.removeItem(DRAFT_KEY);
       setSubmitted(true);
       setSubmittedResult(selectedOption?.value || null);
       toast({ title: "Checklist saved", description: "Your assessment has been saved. Send the report from Saved Checklists." });
