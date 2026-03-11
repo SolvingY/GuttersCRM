@@ -135,6 +135,7 @@ export function WelcomeModal() {
 
   useEffect(() => {
     if (!user) return;
+    if (sessionStorage.getItem(`welcome_modal_shown_${user.id}`)) return;
 
     const fetchData = async () => {
       try {
