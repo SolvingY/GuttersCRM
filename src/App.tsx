@@ -104,6 +104,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes — avoids refetch on every tab focus
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
