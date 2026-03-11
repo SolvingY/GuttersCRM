@@ -1,42 +1,58 @@
 
+Goal: make YTD/cumulative metrics update reliably when same-day Weekly Updates are edited, and make YTD leaderboard use the same source logic as Weekly/Monthly.
 
-# Add Edit Button to Shift History
+What I found
+1) In `WeeklyUpdates.tsx`, Save All skips entries when all current fields are `0`.  
+   - That prevents correction deltas from applying when a previously saved entry is changed back to zero.
+2) Autosave-on-blur currently writes only daily rows, while YTD widgets read cumulative rows.  
+   - So Weekly/Monthly can look correct immediately, but YTD/stats lag unless cumulative updates run.
+3) Canvasser YTD leaderboard uses a different data source than Weekly/Monthly (`canvasser_metrics` vs daily aggregation), so drift appears even when Weekly/Monthly look right.
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+Implementation plan
+1) Fix same-day edit delta handling (core bug)
+- File: `src/pages/admin/WeeklyUpdates.tsx`
+- Change skip logic so we only skip when:
+  - current values are all zero, AND
+  - baseline values are also all zero.
+- If baseline had values and user changed to zero, still process deltas (including negatives) and update cumulative rows.
+- Apply this to both Sales and Canvasser loops.
 
-## Changes
+2) Make cumulative updates happen from the same edit flow
+- File: `src/pages/admin/WeeklyUpdates.tsx`
+- Unify blur/save behavior so edits do not silently update only daily rows:
+  - Keep autosave draft upsert.
+  - Immediately run the same delta commit path for that edited row (silent/no duplicate toast), so YTD/cumulative and dashboards stay in sync after each edit.
+- Keep Save All as final bulk safety + attribution flow.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+3) Align YTD leaderboard source with Weekly/Monthly logic
+- File: `src/pages/canvasser/CanvasserLeaderboard.tsx`
+- Replace YTD tab fetch to use date-range aggregation helper (fiscal-year start → today), same as Weekly/Monthly style aggregation.
+- This ensures YTD reflects edited daily values using the same logic path.
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+4) Keep archived-history behavior consistent for tracking
+- Files:
+  - `src/lib/fetchCanvasserLeaderboardData.ts`
+  - `src/pages/canvasser/CanvasserLeaderboard.tsx` (if needed)
+- Remove archived-user exclusion from aggregate totals where historical tracking is expected, so YTD numbers stay truthful across active + archived users.
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+Validation checklist
+1) Enter non-zero Weekly Update, save, verify:
+- Canvasser YTD leaderboard updates
+- Canvasser Stats key metrics/funnel update
+- Admin Overview canvasser cards/funnel update
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+2) Edit same day from non-zero → different non-zero, verify YTD changes by exact delta.
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+3) Edit same day from non-zero → all zeros, verify cumulative values decrement correctly (no stale old totals).
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+4) Compare Weekly, Monthly, and YTD totals for the same user/date range and confirm consistency.
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+Files to update
+- `src/pages/admin/WeeklyUpdates.tsx`
+- `src/pages/canvasser/CanvasserLeaderboard.tsx`
+- `src/lib/fetchCanvasserLeaderboardData.ts` (for archived-history inclusion consistency)
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
-
+Technical notes
+- No backend schema changes required.
+- This is a logic/sync consistency fix in the frontend update flow and leaderboard sourcing.
+- Main objective is eliminating split-brain behavior between “daily draft writes” and “cumulative display reads.”
