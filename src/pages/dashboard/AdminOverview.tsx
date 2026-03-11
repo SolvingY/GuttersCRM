@@ -535,13 +535,23 @@ export default function AdminOverview() {
           <h2 className="text-2xl font-heading text-foreground">Master Overview</h2>
           <p className="text-muted-foreground">Manage all team members and their performance</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => setReportModalOpen(true)}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setReportModalOpen(true)}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+            title="Customize dashboard"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <ReportDateRangeModal
