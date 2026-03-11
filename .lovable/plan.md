@@ -1,70 +1,42 @@
 
 
-# Root Cause: Autosave-on-Blur Defeats Save All Delta Logic
+# Add Edit Button to Shift History
 
-## The Bug
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-The Weekly Updates page has two save paths that conflict:
+## Changes
 
-1. **Autosave on blur** (`saveCanvasserDraft`, line 393): Immediately writes the new absolute values to `daily_canvasser_metric_entries` when a field loses focus
-2. **Save All** (`executeSave`, line 536): Reads the *same* `daily_canvasser_metric_entries` row to calculate the delta between "new value" and "previous value"
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-Since autosave already wrote the new values, Save All reads them back and computes `delta = newValue - newValue = 0`. The YTD totals (`canvasser_metrics`) and weekly totals (`weekly_canvasser_metrics`) never get updated.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-**This is why:**
-- Leaderboards work — they aggregate from `daily_canvasser_metric_entries` directly
-- Timeclock page works — it reads `daily_canvasser_metric_entries`  
-- CanvasserStats shows stale data — reads from `canvasser_metrics` (YTD)
-- AdminOverview shows stale data — reads from `canvasser_metrics` (YTD)
-- Conversion Funnel shows stale data — reads from `canvasser_metrics`
-- The same bug affects **sales reps** too (`saveSalesDraft` vs Save All for `user_metrics`)
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-## The Fix
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-**File: `src/pages/admin/WeeklyUpdates.tsx`**
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-Change the Save All delta calculation to compare against the **values loaded when the page opened** (or when the date was last changed), not against the current database row (which autosave already updated).
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-Specifically:
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-1. **Store the "baseline" daily values** when `loadSavedEntries` runs (on mount / date change). These are the values that existed *before* any edits in this session.
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-2. **In `executeSave`**, calculate deltas against these stored baselines instead of re-querying the database.
+## Summary
 
-3. This applies to **both** the sales rep section (lines 464-466) and the canvasser section (lines 552-564).
-
-### Implementation detail
-
-Add two `useRef` maps to store baselines:
-
-```typescript
-const salesBaselines = useRef<Map<string, Record<string, number>>>(new Map());
-const canvasserBaselines = useRef<Map<string, Record<string, number>>>(new Map());
-```
-
-In `loadSavedEntries`, after reading the daily entries, populate these refs with the loaded values (or zeros if no entry exists).
-
-In `executeSave`, replace:
-```typescript
-const { data: prevCanvDaily } = await supabase.from('daily_canvasser_metric_entries')...
-const dLeadsSet = weeklyLeadsSet - (Number(prevCanvDaily?.leads_set_delta) || 0);
-```
-with:
-```typescript
-const baseline = canvasserBaselines.current.get(entry.userId);
-const dLeadsSet = weeklyLeadsSet - (baseline?.leads_set_delta || 0);
-```
-
-Same pattern for all canvasser fields and all sales rep fields.
-
-### Files touched
-- `src/pages/admin/WeeklyUpdates.tsx` — single file, ~30 lines changed
-
-### What this fixes
-- CanvasserStats Key Metrics (Leads Set, Conversations, etc.)
-- CanvasserStats Conversion Funnel
-- AdminOverview canvasser stats cards
-- AdminOverview canvasser conversion funnel
-- AdminOverview detailed stats table
-- Sales rep stats (same bug existed but may not have been noticed yet)
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

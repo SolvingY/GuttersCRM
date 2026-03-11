@@ -122,6 +122,10 @@ export default function WeeklyUpdates() {
   const [activeSection, setActiveSection] = useState<string | null>('sales-reps');
   const toggleSection = (id: string) => setActiveSection(prev => prev === id ? null : id);
 
+  // Baseline refs: capture DB values at page load / date change so Save All computes correct deltas
+  const salesBaselines = useRef<Map<string, Record<string, number>>>(new Map());
+  const canvasserBaselines = useRef<Map<string, Record<string, number>>>(new Map());
+
   // Attribution state
   const [attributionModalOpen, setAttributionModalOpen] = useState(false);
   const [attributionItems, setAttributionItems] = useState<AttributionItem[]>([]);
@@ -314,6 +318,22 @@ export default function WeeklyUpdates() {
 
       if (salesDaily && salesDaily.length > 0) {
         const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
+        // Capture baselines for delta calculation
+        const baselines = new Map<string, Record<string, number>>();
+        for (const u of users) {
+          const saved = dailyMap.get(u.user_id);
+          baselines.set(u.user_id, {
+            approved_revenue_delta: Number(saved?.approved_revenue_delta) || 0,
+            leads_delta: Number(saved?.leads_delta) || 0,
+            closed_deals_delta: Number(saved?.closed_deals_delta) || 0,
+            self_generated_deals_delta: Number(saved?.self_generated_deals_delta) || 0,
+            canvass_leads_delta: Number(saved?.canvass_leads_delta) || 0,
+            canvass_deals_closed_delta: Number(saved?.canvass_deals_closed_delta) || 0,
+            collections_delta: Number(saved?.collections_delta) || 0,
+            earnings_delta: Number(saved?.earnings_delta) || 0,
+          });
+        }
+        salesBaselines.current = baselines;
         setWeeklyEntries(prev => prev.map(entry => {
           const saved = dailyMap.get(entry.userId);
           if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
@@ -330,6 +350,16 @@ export default function WeeklyUpdates() {
           };
         }));
       } else {
+        // No saved entries — baselines are all zeros
+        const baselines = new Map<string, Record<string, number>>();
+        for (const u of users) {
+          baselines.set(u.user_id, {
+            approved_revenue_delta: 0, leads_delta: 0, closed_deals_delta: 0,
+            self_generated_deals_delta: 0, canvass_leads_delta: 0, canvass_deals_closed_delta: 0,
+            collections_delta: 0, earnings_delta: 0,
+          });
+        }
+        salesBaselines.current = baselines;
         setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
       }
     }
@@ -343,6 +373,24 @@ export default function WeeklyUpdates() {
 
       if (canvasserDaily && canvasserDaily.length > 0) {
         const dailyMap = new Map(canvasserDaily.map(d => [d.user_id, d]));
+        // Capture canvasser baselines
+        const baselines = new Map<string, Record<string, number>>();
+        for (const c of canvassers) {
+          const saved = dailyMap.get(c.user_id);
+          baselines.set(c.user_id, {
+            leads_set_delta: Number(saved?.leads_set_delta) || 0,
+            leads_closed_delta: Number(saved?.leads_closed_delta) || 0,
+            leads_with_damage_delta: Number(saved?.leads_with_damage_delta) || 0,
+            leads_without_damage_delta: Number(saved?.leads_without_damage_delta) || 0,
+            conversations_had_delta: Number(saved?.conversations_had_delta) || 0,
+            not_interested_delta: Number(saved?.not_interested_delta) || 0,
+            cancelled_leads_delta: Number(saved?.cancelled_leads_delta) || 0,
+            hours_worked_delta: Number(saved?.hours_worked_delta) || 0,
+            income_delta: Number(saved?.income_delta) || 0,
+            doors_knocked_delta: Number(saved?.doors_knocked_delta) || 0,
+          });
+        }
+        canvasserBaselines.current = baselines;
         setCanvasserEntries(prev => prev.map(entry => {
           const saved = dailyMap.get(entry.userId);
           if (!saved) return { ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' };
@@ -361,6 +409,16 @@ export default function WeeklyUpdates() {
           };
         }));
       } else {
+        // No saved entries — baselines are all zeros
+        const baselines = new Map<string, Record<string, number>>();
+        for (const c of canvassers) {
+          baselines.set(c.user_id, {
+            leads_set_delta: 0, leads_closed_delta: 0, leads_with_damage_delta: 0,
+            leads_without_damage_delta: 0, conversations_had_delta: 0, not_interested_delta: 0,
+            cancelled_leads_delta: 0, hours_worked_delta: 0, income_delta: 0, doors_knocked_delta: 0,
+          });
+        }
+        canvasserBaselines.current = baselines;
         setCanvasserEntries(prev => prev.map(entry => ({ ...entry, weeklyLeadsSet: '', weeklyLeadsClosed: '', weeklyLeadsWithDamage: '', weeklyLeadsWithoutDamage: '', weeklyConversationsHad: '', weeklyNotInterested: '', weeklyCancelledLeads: '', weeklyHoursWorked: '', weeklyIncome: '', weeklyDoorsKnocked: '' })));
       }
     }
@@ -461,23 +519,23 @@ export default function WeeklyUpdates() {
             weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) continue;
 
-        const { data: prevDaily } = await supabase.from('daily_user_metric_entries')
-          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+        // Use baseline from page load instead of re-querying DB (autosave already overwrote DB)
+        const baseline = salesBaselines.current.get(entry.userId) || {};
 
-        const deltaLeads = weeklyLeads - (Number(prevDaily?.leads_delta) || 0);
-        const deltaClosedDeals = weeklyClosedDeals - (Number(prevDaily?.closed_deals_delta) || 0);
-        const deltaEarnings = weeklyEarnings - (Number(prevDaily?.earnings_delta) || 0);
-        const deltaSelfGen = weeklySelfGeneratedDeals - (Number(prevDaily?.self_generated_deals_delta) || 0);
-        const deltaCanvassLeads = weeklyCanvassLeads - (Number(prevDaily?.canvass_leads_delta) || 0);
-        const deltaCanvassDeals = weeklyCanvassDealsClose - (Number(prevDaily?.canvass_deals_closed_delta) || 0);
-        const deltaCollections = weeklyCollections - (Number(prevDaily?.collections_delta) || 0);
-        const deltaApprovedRev = weeklyApprovedRevenue - (Number(prevDaily?.approved_revenue_delta) || 0);
+        const deltaLeads = weeklyLeads - (baseline.leads_delta || 0);
+        const deltaClosedDeals = weeklyClosedDeals - (baseline.closed_deals_delta || 0);
+        const deltaEarnings = weeklyEarnings - (baseline.earnings_delta || 0);
+        const deltaSelfGen = weeklySelfGeneratedDeals - (baseline.self_generated_deals_delta || 0);
+        const deltaCanvassLeads = weeklyCanvassLeads - (baseline.canvass_leads_delta || 0);
+        const deltaCanvassDeals = weeklyCanvassDealsClose - (baseline.canvass_deals_closed_delta || 0);
+        const deltaCollections = weeklyCollections - (baseline.collections_delta || 0);
+        const deltaApprovedRev = weeklyApprovedRevenue - (baseline.approved_revenue_delta || 0);
 
         const weeklyPoints = calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections);
         const oldPoints = calculatePoints(
-          Number(prevDaily?.approved_revenue_delta) || 0,
-          Number(prevDaily?.closed_deals_delta) || 0,
-          Number(prevDaily?.collections_delta) || 0
+          baseline.approved_revenue_delta || 0,
+          baseline.closed_deals_delta || 0,
+          baseline.collections_delta || 0
         );
         const deltaPoints = weeklyPoints - oldPoints;
 
@@ -549,19 +607,19 @@ export default function WeeklyUpdates() {
             weeklyLeadsWithoutDamage === 0 && weeklyConversationsHad === 0 && weeklyNotInterested === 0 &&
             weeklyCancelledLeads === 0 && weeklyHoursWorked === 0 && weeklyIncome === 0 && weeklyDoorsKnocked === 0) continue;
 
-        const { data: prevCanvDaily } = await supabase.from('daily_canvasser_metric_entries')
-          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+        // Use baseline from page load instead of re-querying DB (autosave already overwrote DB)
+        const baseline = canvasserBaselines.current.get(entry.userId) || {};
 
-        const dLeadsSet = weeklyLeadsSet - (Number(prevCanvDaily?.leads_set_delta) || 0);
-        const dLeadsClosed = weeklyLeadsClosed - (Number(prevCanvDaily?.leads_closed_delta) || 0);
-        const dLeadsWithDamage = weeklyLeadsWithDamage - (Number(prevCanvDaily?.leads_with_damage_delta) || 0);
-        const dLeadsWithoutDamage = weeklyLeadsWithoutDamage - (Number(prevCanvDaily?.leads_without_damage_delta) || 0);
-        const dConvos = weeklyConversationsHad - (Number(prevCanvDaily?.conversations_had_delta) || 0);
-        const dNotInterested = weeklyNotInterested - (Number(prevCanvDaily?.not_interested_delta) || 0);
-        const dCancelled = weeklyCancelledLeads - (Number(prevCanvDaily?.cancelled_leads_delta) || 0);
-        const dHours = weeklyHoursWorked - (Number(prevCanvDaily?.hours_worked_delta) || 0);
-        const dIncome = weeklyIncome - (Number(prevCanvDaily?.income_delta) || 0);
-        const dDoors = weeklyDoorsKnocked - (Number(prevCanvDaily?.doors_knocked_delta) || 0);
+        const dLeadsSet = weeklyLeadsSet - (baseline.leads_set_delta || 0);
+        const dLeadsClosed = weeklyLeadsClosed - (baseline.leads_closed_delta || 0);
+        const dLeadsWithDamage = weeklyLeadsWithDamage - (baseline.leads_with_damage_delta || 0);
+        const dLeadsWithoutDamage = weeklyLeadsWithoutDamage - (baseline.leads_without_damage_delta || 0);
+        const dConvos = weeklyConversationsHad - (baseline.conversations_had_delta || 0);
+        const dNotInterested = weeklyNotInterested - (baseline.not_interested_delta || 0);
+        const dCancelled = weeklyCancelledLeads - (baseline.cancelled_leads_delta || 0);
+        const dHours = weeklyHoursWorked - (baseline.hours_worked_delta || 0);
+        const dIncome = weeklyIncome - (baseline.income_delta || 0);
+        const dDoors = weeklyDoorsKnocked - (baseline.doors_knocked_delta || 0);
 
         const { data: currentMetrics, error: fetchError } = await supabase
           .from('canvasser_metrics').select('*').eq('user_id', entry.userId).order('created_at', { ascending: false }).limit(1).single();
