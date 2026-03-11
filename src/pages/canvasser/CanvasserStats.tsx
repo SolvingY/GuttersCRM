@@ -90,7 +90,7 @@ export default function CanvasserStats() {
     // Fetch config fields (display_name, goals) from canvasser_metrics
     const { data: configData } = await supabase
       .from("canvasser_metrics")
-      .select("display_name, yearly_goal, leads_set_goal, income_goal, points, income")
+      .select("display_name, yearly_goal, leads_set_goal, income_goal, contest_points, wager_points")
       .eq("user_id", user.id)
       .order("metric_date", { ascending: false })
       .limit(1)
