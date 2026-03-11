@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from './WeeklyCanvasserLeaderboardTable';
+import { fetchCanvasserLeaderboardByDateRange } from '@/lib/fetchCanvasserLeaderboardData';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 
 interface CanvasserDetail {
