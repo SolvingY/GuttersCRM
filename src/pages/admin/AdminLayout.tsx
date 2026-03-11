@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Clock,
   LayoutDashboard,
+  Home,
   FileText,
   Settings,
   Activity,
