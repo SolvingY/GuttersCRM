@@ -25,6 +25,8 @@ import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
 import { WeeklyCanvasserLeaderboardTable } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
 import { ScoreboardSalesLeaderboard } from '@/components/dashboard/ScoreboardSalesLeaderboard';
 import { ScoreboardCanvasserLeaderboard } from '@/components/dashboard/ScoreboardCanvasserLeaderboard';
+import { useAdminDashboardPreferences } from '@/hooks/useAdminDashboardPreferences';
+import { DashboardSettingsDrawer } from '@/components/admin/DashboardSettingsDrawer';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
