@@ -637,6 +637,7 @@ export default function AdminOverview() {
             {isWidgetVisible('collections_pipeline') && <CollectionsPipelineWidget isAdmin={true} />}
 
             <div className="space-y-3">
+              {isWidgetVisible('sales_details') && (
               <AccordionButton id="sales-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'sales-details'} onToggle={toggleSubSection}>
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {userDetails.length === 0 ? (
@@ -762,8 +763,9 @@ export default function AdminOverview() {
                   )}
                 </div>
               </AccordionButton>
+              )}
 
-              <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSubSection === 'contract-sources'} onToggle={toggleSubSection}>
+              {isWidgetVisible('contract_sources') && (
                 {(() => {
                   const totalSelfGenContracts = aggregates.totalSelfGen;
                   const totalCanvassContracts = aggregates.totalCanvassClosedDeals;
