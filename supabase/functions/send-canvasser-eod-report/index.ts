@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     // Get profiles — filter out archived
     const { data: profiles } = allCanvasserIds.length > 0
-      ? await supabase.from("profiles").select("id, display_name, full_name, is_archived").in("id", allCanvasserIds)
+      ? await supabase.from("profiles").select("id, full_name, is_archived").in("id", allCanvasserIds)
       : { data: [] };
 
     const activeProfiles = (profiles || []).filter((p: any) => !p.is_archived);
