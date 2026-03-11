@@ -406,7 +406,7 @@ export default function AdminOverview() {
         }
       });
 
-      const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId));
+      const activeCanvassers = canvassers.filter(c => c.realUserId);
 
       const canvasserTotals = activeCanvassers.reduce(
         (acc, c) => ({
