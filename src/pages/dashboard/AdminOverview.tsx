@@ -634,7 +634,7 @@ export default function AdminOverview() {
               />
             </div>
 
-            <CollectionsPipelineWidget isAdmin={true} />
+            {isWidgetVisible('collections_pipeline') && <CollectionsPipelineWidget isAdmin={true} />}
 
             <div className="space-y-3">
               <AccordionButton id="sales-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'sales-details'} onToggle={toggleSubSection}>
