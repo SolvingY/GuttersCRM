@@ -1,42 +1,57 @@
 
 
-# Add Edit Button to Shift History
+## Build Personalized Shortcut System on /admin/home
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+### Current State
 
-## Changes
+- **Home nav item**: Already present in desktop sidebar (collapsed + expanded). **Missing from mobile drawer** (lines 533-547) -- needs fix.
+- **Database**: `admin_dashboard_preferences` exists with columns: `id`, `user_id`, `widget_config`, `updated_at`. No `pinned_shortcuts` column yet.
+- **Existing hook**: `useAdminDashboardPreferences.ts` manages widget visibility -- will NOT be touched.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### Implementation Steps
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**1. Fix mobile nav -- Add Home item to mobile drawer**
+In `AdminLayout.tsx` lines 533-547, insert a Home NavLink above the existing Scoreboard NavLink in the mobile sidebar. Same pattern, same styling.
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**2. Database migration**
+```sql
+ALTER TABLE public.admin_dashboard_preferences
+  ADD COLUMN IF NOT EXISTS pinned_shortcuts jsonb NOT NULL DEFAULT '[]';
+```
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+**3. Create `src/lib/shortcutRegistry.ts`**
+Export `SHORTCUT_REGISTRY` array (18 entries with corrected icons) and `DEFAULT_SHORTCUTS` (6 defaults). Exact content as specified in the prompt.
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+**4. Create `src/hooks/useAdminShortcutPreferences.ts`**
+New hook that reads/writes `pinned_shortcuts` from `admin_dashboard_preferences`. Uses `as any` casts for the new column. Falls back to `DEFAULT_SHORTCUTS` when no saved data exists.
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+**5. Create `src/components/admin/AdminShortcutPanel.tsx`**
+- Header row: "Quick Access" + Settings2 "Edit Shortcuts" button
+- Grid: `grid-cols-2 md:grid-cols-3`, 88px cards with icon + label
+- Uses `icons` map from `lucide-react` for dynamic icon rendering
+- Loading: 6 skeleton cards. Empty: dashed placeholder message.
+- Cards navigate via `useNavigate`. Unknown IDs silently skipped.
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+**6. Create `src/components/admin/ShortcutPickerDrawer.tsx`**
+- Right-side `Sheet` (matching existing `DashboardSettingsDrawer` pattern)
+- Shortcuts grouped by `group` field with muted section headers
+- Checkboxes, 6-item cap with disabled+tooltip at limit
+- Local state; Save button persists + toast; Reset sets defaults + toast
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+**7. Replace `src/pages/admin/AdminHome.tsx`**
+Wire up `useAdminShortcutPreferences`, `AdminShortcutPanel`, and `ShortcutPickerDrawer`.
 
-## Summary
+### Files
 
-| Area | Change |
+| File | Action |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `src/pages/admin/AdminLayout.tsx` | Add Home to mobile nav (1 insertion) |
+| DB migration | Add `pinned_shortcuts` column |
+| `src/lib/shortcutRegistry.ts` | New |
+| `src/hooks/useAdminShortcutPreferences.ts` | New |
+| `src/components/admin/AdminShortcutPanel.tsx` | New |
+| `src/components/admin/ShortcutPickerDrawer.tsx` | New |
+| `src/pages/admin/AdminHome.tsx` | Replace placeholder |
+
+**Not touched**: `useAdminDashboardPreferences.ts`, `AdminOverview.tsx`, any other existing file.
 
