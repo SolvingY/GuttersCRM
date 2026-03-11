@@ -5,7 +5,7 @@ import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3 } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3, Settings2 } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,8 @@ import { LeaderboardTable } from '@/components/dashboard/LeaderboardTable';
 import { WeeklyCanvasserLeaderboardTable } from '@/components/dashboard/WeeklyCanvasserLeaderboardTable';
 import { ScoreboardSalesLeaderboard } from '@/components/dashboard/ScoreboardSalesLeaderboard';
 import { ScoreboardCanvasserLeaderboard } from '@/components/dashboard/ScoreboardCanvasserLeaderboard';
+import { useAdminDashboardPreferences } from '@/hooks/useAdminDashboardPreferences';
+import { DashboardSettingsDrawer } from '@/components/admin/DashboardSettingsDrawer';
 
 interface AggregateMetrics {
   totalApprovedRevenue: number;
@@ -126,6 +128,8 @@ export default function AdminOverview() {
   const [totalCanvasserIncome, setTotalCanvasserIncome] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [openSubSection, setOpenSubSection] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { config: widgetConfig, isWidgetVisible, savePreferences } = useAdminDashboardPreferences();
   const toggleSection = (id: string) => {
     setOpenSection(prev => prev === id ? null : id);
     setOpenSubSection(null);
@@ -531,13 +535,23 @@ export default function AdminOverview() {
           <h2 className="text-2xl font-heading text-foreground">Master Overview</h2>
           <p className="text-muted-foreground">Manage all team members and their performance</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => setReportModalOpen(true)}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setReportModalOpen(true)}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+            title="Customize dashboard"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <ReportDateRangeModal
@@ -600,8 +614,7 @@ export default function AdminOverview() {
         }}
       />
 
-      {/* Stale Contracts Alert */}
-      <StaleContractsWidget isAdmin={true} />
+      {isWidgetVisible('stale_contracts') && <StaleContractsWidget isAdmin={true} />}
 
       {/* Main SectionCarousel replacing Tabs */}
       <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
@@ -621,9 +634,10 @@ export default function AdminOverview() {
               />
             </div>
 
-            <CollectionsPipelineWidget isAdmin={true} />
+            {isWidgetVisible('collections_pipeline') && <CollectionsPipelineWidget isAdmin={true} />}
 
             <div className="space-y-3">
+              {isWidgetVisible('sales_details') && (
               <AccordionButton id="sales-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'sales-details'} onToggle={toggleSubSection}>
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {userDetails.length === 0 ? (
@@ -749,7 +763,9 @@ export default function AdminOverview() {
                   )}
                 </div>
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('contract_sources') && (
               <AccordionButton id="contract-sources" title="Contract Sources" icon={GitCompare} isOpen={openSubSection === 'contract-sources'} onToggle={toggleSubSection}>
                 {(() => {
                   const totalSelfGenContracts = aggregates.totalSelfGen;
@@ -802,10 +818,13 @@ export default function AdminOverview() {
                   );
                 })()}
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('sales_leaderboard') && (
               <AccordionButton id="sales-leaderboard" title="Sales Leaderboard" icon={Trophy} isOpen={openSubSection === 'sales-leaderboard'} onToggle={toggleSubSection}>
                 <ScoreboardSalesLeaderboard ytdUserDetails={userDetails} />
               </AccordionButton>
+              )}
             </div>
           </div>
         </SectionCarousel.Item>
@@ -827,6 +846,7 @@ export default function AdminOverview() {
             </div>
 
             <div className="space-y-3">
+              {isWidgetVisible('canvasser_details') && (
               <AccordionButton id="canvasser-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'canvasser-details'} onToggle={toggleSubSection}>
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   {canvasserDetails.length === 0 ? (
@@ -896,7 +916,9 @@ export default function AdminOverview() {
                   )}
                 </div>
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('conversion_funnel') && (
               <AccordionButton id="conversion-funnel" title="Team Conversion Funnel" icon={TrendingUp} isOpen={openSubSection === 'conversion-funnel'} onToggle={toggleSubSection}>
                 <CanvasserConversionFunnel
                   title="Team Conversion Funnel (YTD)"
@@ -910,10 +932,13 @@ export default function AdminOverview() {
                   }} 
                 />
               </AccordionButton>
+              )}
 
+              {isWidgetVisible('canvasser_leaderboard') && (
               <AccordionButton id="canvasser-leaderboard" title="Canvasser Leaderboard" icon={BarChart3} isOpen={openSubSection === 'canvasser-leaderboard'} onToggle={toggleSubSection}>
                 <ScoreboardCanvasserLeaderboard ytdCanvasserDetails={canvasserDetails} />
               </AccordionButton>
+              )}
             </div>
           </div>
         </SectionCarousel.Item>
@@ -962,6 +987,13 @@ export default function AdminOverview() {
       />
 
       <GoogleCalendarWidget />
+
+      <DashboardSettingsDrawer
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        config={widgetConfig}
+        onSave={savePreferences}
+      />
     </div>
   );
 }

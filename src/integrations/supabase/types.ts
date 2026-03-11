@@ -41,6 +41,27 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_dashboard_preferences: {
+        Row: {
+          id: string
+          updated_at: string
+          user_id: string
+          widget_config: Json
+        }
+        Insert: {
+          id?: string
+          updated_at?: string
+          user_id: string
+          widget_config?: Json
+        }
+        Update: {
+          id?: string
+          updated_at?: string
+          user_id?: string
+          widget_config?: Json
+        }
+        Relationships: []
+      }
       admin_presets: {
         Row: {
           created_at: string | null
