@@ -1,25 +1,42 @@
 
 
-## Fix: Double Timezone Conversion in Canvasser EOD Report
+# Add Edit Button to Shift History
 
-### Problem
-The footer timestamp shows ~5 hours behind actual Central Time because the code converts UTC→CT twice:
-1. Creates `chicagoDate` by parsing a CT-formatted string back into a Date (which JS interprets as UTC)
-2. Then applies `timeZone: "America/Chicago"` again when formatting that date
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-### Solution
-Use `now` (the raw UTC Date) directly with `toLocaleTimeString("en-US", { timeZone: "America/Chicago" })` — this does a single, correct conversion.
+## Changes
 
-### Changes
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-**`supabase/functions/send-canvasser-eod-report/index.ts`**
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-1. Keep `now = new Date()` as the single source of truth
-2. Generate `todayStr` and `reportDateFormatted` directly from `now` with timezone formatting (no intermediate `chicagoDate` object)
-3. Use `now.toLocaleTimeString(...)` with `timeZone: "America/Chicago"` for the footer timestamp
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-Specifically:
-- Replace line 23-25 — derive `todayStr` using `now.toLocaleDateString("en-CA", { timeZone: "America/Chicago" })` (gives yyyy-MM-dd format)
-- Replace line 210 — use `now.toLocaleTimeString(...)` instead of `chicagoDate.toLocaleTimeString(...)`
-- Remove the `chicagoDate` variable entirely, replace all references with direct `now` + timezone formatting
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

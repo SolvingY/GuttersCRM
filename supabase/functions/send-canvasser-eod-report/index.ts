@@ -20,9 +20,8 @@ Deno.serve(async (req) => {
 
     // Get today's date in Chicago timezone
     const now = new Date();
-    const chicagoDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
-    const todayStr = chicagoDate.toISOString().split("T")[0];
-    const reportDateFormatted = chicagoDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const todayStr = now.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+    const reportDateFormatted = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
 
     // Get all canvassers
     const { data: canvasserRoles } = await supabase
@@ -207,7 +206,7 @@ Deno.serve(async (req) => {
         ${longNotesSection}
 
         <p style="margin-top:24px;font-size:12px;color:#9ca3af;">
-          This report reflects activity logged in the NGR dashboard as of ${chicagoDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })} CT.<br/>
+          This report reflects activity logged in the NGR dashboard as of ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })} CT.<br/>
           Contact Kara for discrepancies · <a href="https://oknextgen.com" style="color:#dc2626;">oknextgen.com</a>
         </p>
       </div>
