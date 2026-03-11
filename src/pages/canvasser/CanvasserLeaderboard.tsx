@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
+import { FISCAL_YEAR } from "@/lib/constants";
 import { CommentsSection } from "@/components/dashboard/CommentsSection";
 import { fetchCanvasserLeaderboardByDateRange } from "@/lib/fetchCanvasserLeaderboardData";
 import { 
@@ -49,58 +49,14 @@ export default function CanvasserLeaderboard() {
     setSelectedMonthDate(direction === 'prev' ? subMonths(selectedMonthDate, 1) : addMonths(selectedMonthDate, 1));
   };
 
-  // Fetch YTD leaderboard
+  // Fetch YTD leaderboard using same daily aggregation as Weekly/Monthly
   useEffect(() => {
     const fetchYtdLeaderboard = async () => {
       setLoading(true);
-      
-      const { data: activeProfiles } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("is_archived", false);
-      
-      const activeUserIds = new Set(activeProfiles?.map(p => p.id) || []);
-
-      const { data: metricsData, error } = await supabase
-        .from("canvasser_metrics")
-        .select("user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, doors_knocked, points, conversations_had, not_interested, cancelled_leads, hours_worked, contest_points, wager_points")
-        .order("leads_closed", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching leaderboard:", error);
-        setLoading(false);
-        return;
-      }
-
-      // Get unique entries per user (latest) - filter for active users only
-      const uniqueUsers = new Map<string, any>();
-      metricsData?.forEach((entry) => {
-        if (!uniqueUsers.has(entry.user_id) && activeUserIds.has(entry.user_id)) {
-          uniqueUsers.set(entry.user_id, entry);
-        }
-      });
-
-      const sorted = Array.from(uniqueUsers.values())
-        .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
-        .map((entry, index) => ({
-          rank: index + 1,
-          userId: entry.user_id,
-          name: entry.display_name || "Anonymous",
-          leadsClosed: entry.leads_closed || 0,
-          leadsSet: entry.leads_set || 0,
-          leadsWithDamage: entry.leads_with_damage || 0,
-          leadsWithoutDamage: entry.leads_without_damage || 0,
-          doorsKnocked: entry.doors_knocked || 0,
-          conversationsHad: entry.conversations_had || 0,
-          notInterested: entry.not_interested || 0,
-          cancelledLeads: entry.cancelled_leads || 0,
-          hoursWorked: entry.hours_worked || 0,
-          pointsEarned: Number(entry.points) || 0,
-          contestPoints: Number(entry.contest_points) || 0,
-          wagerPoints: Number(entry.wager_points) || 0,
-        }));
-
-      setYtdEntries(sorted);
+      const startDate = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+      const endDate = format(new Date(), 'yyyy-MM-dd');
+      const entries = await fetchCanvasserLeaderboardByDateRange(startDate, endDate);
+      setYtdEntries(entries);
       setLoading(false);
     };
 
