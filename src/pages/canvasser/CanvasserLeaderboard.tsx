@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { WeeklyCanvasserLeaderboardTable, type WeeklyCanvasserEntry } from "@/components/dashboard/WeeklyCanvasserLeaderboardTable";
 import { CommentsSection } from "@/components/dashboard/CommentsSection";
+import { fetchCanvasserLeaderboardByDateRange } from "@/lib/fetchCanvasserLeaderboardData";
 import { 
   startOfWeek, 
   endOfWeek, 
