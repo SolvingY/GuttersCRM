@@ -23,6 +23,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 
 const LANDING_PAGE_OPTIONS = [
+  { value: '/admin/home', label: 'Home' },
   { value: '/admin/overview', label: 'Scoreboard' },
   { value: '/admin/leads', label: 'Lead Management' },
   { value: '/admin/leaderboards', label: 'Leaderboards' },

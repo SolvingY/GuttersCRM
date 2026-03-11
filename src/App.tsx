@@ -249,7 +249,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/admin/overview" replace />} />
+              <Route index element={<Navigate to="/admin/home" replace />} />
+              <Route path="home" element={<AdminHome />} />
               <Route path="overview" element={<AdminOverview />} />
               <Route path="leaderboards" element={<AdminLeaderboards />} />
               <Route path="goals" element={<CompanyGoals />} />
