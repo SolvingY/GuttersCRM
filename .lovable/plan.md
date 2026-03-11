@@ -1,42 +1,69 @@
 
 
-# Add Edit Button to Shift History
+# Fix: Include All Canvassers in Metrics + Weekly Updates Not Propagating
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Issue 1: Archived canvassers excluded from Overview and Company Goals
 
-## Changes
+**Root cause**: `AdminOverview.tsx` (line 417) filters canvassers to only active, non-archived users. The Company Goals page already includes all canvassers (no archive filter). Your data confirms: active canvassers have 12 leads closed, archived have 5 more = 17 total.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+**You want both pages to show ALL canvassers regardless of archive status**, so the numbers stay true for historical tracking.
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**Fix in `AdminOverview.tsx`**:
+- Line 417: Remove the `activeCanvasserIds` filter. Change from:
+  ```
+  const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId));
+  ```
+  to using ALL canvassers for aggregates and the canvasser details list. The `activeCanvasserIds` set and the profiles archive check can be removed entirely from the canvasser section.
+- The aggregate totals (funnel, stats cards, leaderboard) will now include archived canvassers' historical numbers.
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+Both pages will then show 17.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+## Issue 2: Weekly Updates entries not appearing in Canvasser Funnel, Overview Stats, or Canvasser Stats
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+**Root cause identified**: The Weekly Updates save flow works correctly — it updates `canvasser_metrics` (YTD totals), `weekly_canvasser_metrics`, and `daily_canvasser_metric_entries`. The data IS being written.
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+The issue is that the **AdminOverview canvasser query** (line 195-199) fetches `canvasser_metrics` but does NOT include all the columns needed. Specifically, it selects:
+```
+'id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, doors_knocked, points, income, yearly_goal, metric_date, updated_at'
+```
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+This query IS correct and includes all the necessary fields. However, the **CanvasserStats page** (individual canvasser dashboard) reads from `canvasser_metrics` with `select("*")` — this should also work.
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+The most likely cause is that when you edited stats in Weekly Updates **after** they were already saved, the delta calculation may have produced zero deltas (since `prevCanvDaily` already had the same values), resulting in no net change to `canvasser_metrics`. Let me verify the delta logic:
 
-## Summary
+The save flow does: `delta = newValue - previousDailyEntry`. If you re-submit the same values, delta = 0, so `canvasser_metrics` gets `+0`. This is correct behavior — it's idempotent.
 
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+**But if you changed values after initial save**: The daily entry gets overwritten with the new absolute values, and the delta correctly adjusts the YTD totals. This should work.
+
+**The real issue**: The `canvasser_metrics` update on line 570-582 uses `.eq('user_id', entry.userId)` without specifying which row (there's only one per user since it's the latest). But `.order('created_at', { ascending: false }).limit(1).single()` on line 567 gets the right row. The update then applies to ALL rows for that user — which is fine if there's only one.
+
+Let me check if there's a mismatch — the query on line 567 uses `.single()` which will ERROR if there are multiple rows. If a canvasser has multiple `canvasser_metrics` rows, this would fail silently.
+
+**Proposed investigation step**: I'll query the database to check for duplicate canvasser_metrics rows.
+
+**However**, since the data IS flowing to leaderboards and timeclock but NOT to the funnel/overview/stats, the filter at line 417 (excluding archived users) is the primary blocker — removing it will fix the funnel and overview stats showing lower numbers.
+
+## Plan
+
+### Database check (read-only, no migration needed)
+Verify no duplicate `canvasser_metrics` rows per user.
+
+### File changes
+
+**`src/pages/dashboard/AdminOverview.tsx`** — Remove archive filtering from canvasser section:
+- Remove the `activeCanvasserIds` set creation (lines 372-374)
+- Remove the canvasser profiles archive query if only used for filtering (keep it for name resolution)
+- Line 417: Change filter to include all canvassers (only filter by role, not archive status)
+- Line 419: Use all canvassers for aggregate totals
+- Line 439: Use all canvassers for the details list
+
+**`src/pages/admin/CompanyGoals.tsx`** — Already includes all canvassers. No change needed. Confirmed correct.
+
+**No other files need changes.** The CanvasserStats page reads directly from `canvasser_metrics` for the logged-in user — if the Weekly Updates save wrote correctly, it will show. The issue is isolated to the AdminOverview filtering.
+
+### Summary
+- 1 file changed: `AdminOverview.tsx`
+- Root cause: archive filter excluding 5 canvassers with historical data
+- Both Overview and Company Goals will show identical totals (17 LTC)
+- Funnel, stats cards, and leaderboard will reflect all canvasser data
 
