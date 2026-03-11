@@ -87,19 +87,57 @@ export default function CanvasserStats() {
   const fetchMetrics = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    // Fetch config fields (display_name, goals) from canvasser_metrics
+    const { data: configData } = await supabase
       .from("canvasser_metrics")
-      .select("*")
+      .select("display_name, yearly_goal, leads_set_goal, income_goal, points, income")
       .eq("user_id", user.id)
       .order("metric_date", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching metrics:", error);
-    } else {
-      setMetrics(data);
+    // Aggregate performance data from daily entries (fiscal year)
+    const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+    const { data: dailyEntries, error: dailyError } = await supabase
+      .from("daily_canvasser_metric_entries")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("entry_date", fiscalStartStr);
+
+    if (dailyError) {
+      console.error("Error fetching daily entries:", dailyError);
     }
+
+    const summed = (dailyEntries || []).reduce((acc, e) => ({
+      leads_set: acc.leads_set + (e.leads_set_delta || 0),
+      leads_closed: acc.leads_closed + (e.leads_closed_delta || 0),
+      leads_with_damage: acc.leads_with_damage + (e.leads_with_damage_delta || 0),
+      leads_without_damage: acc.leads_without_damage + (e.leads_without_damage_delta || 0),
+      conversations_had: acc.conversations_had + (e.conversations_had_delta || 0),
+      not_interested: acc.not_interested + (e.not_interested_delta || 0),
+      hours_worked: acc.hours_worked + Number(e.hours_worked_delta || 0),
+      doors_knocked: acc.doors_knocked + (e.doors_knocked_delta || 0),
+    }), {
+      leads_set: 0, leads_closed: 0, leads_with_damage: 0, leads_without_damage: 0,
+      conversations_had: 0, not_interested: 0, hours_worked: 0, doors_knocked: 0,
+    });
+
+    setMetrics({
+      display_name: configData?.display_name || null,
+      yearly_goal: configData?.yearly_goal || 0,
+      leads_set_goal: configData?.leads_set_goal || 0,
+      income_goal: configData?.income_goal || 0,
+      points: configData?.points || 0,
+      income: configData?.income || 0,
+      leads_set: summed.leads_set,
+      leads_closed: summed.leads_closed,
+      leads_with_damage: summed.leads_with_damage,
+      leads_without_damage: summed.leads_without_damage,
+      conversations_had: summed.conversations_had,
+      not_interested: summed.not_interested,
+      hours_worked: summed.hours_worked,
+      doors_knocked: summed.doors_knocked,
+    });
 
     const eightWeeksAgo = format(subWeeks(new Date(), 8), 'yyyy-MM-dd');
     const { data: weeklyData, error: weeklyError } = await supabase

@@ -192,14 +192,44 @@ export default function AdminOverview() {
       console.error('Error fetching admin metrics:', metricsError);
     }
 
-    const { data: canvasserMetrics, error: canvasserError } = await supabase
+    // Fetch config fields from canvasser_metrics (display_name, yearly_goal, income, points)
+    const { data: canvasserConfigRows } = await supabase
       .from('canvasser_metrics')
-      .select('id, user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, hours_worked, doors_knocked, points, income, yearly_goal, metric_date, updated_at')
+      .select('id, user_id, display_name, yearly_goal, points, income, metric_date, updated_at')
       .order('metric_date', { ascending: false })
       .order('updated_at', { ascending: false });
 
+    // Aggregate performance from daily entries
+    const fiscalStartStr = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+    const { data: dailyCanvasserEntries, error: canvasserError } = await supabase
+      .from('daily_canvasser_metric_entries')
+      .select('*')
+      .gte('entry_date', fiscalStartStr);
+
     if (canvasserError) {
-      console.error('Error fetching canvasser metrics:', canvasserError);
+      console.error('Error fetching canvasser daily entries:', canvasserError);
+    }
+
+    // Sum daily deltas per user
+    const dailySumsByUser = new Map<string, {
+      leadsSet: number; leadsClosed: number; leadsWithDamage: number;
+      leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
+      hoursWorked: number; doorsKnocked: number;
+    }>();
+    for (const e of (dailyCanvasserEntries || [])) {
+      const existing = dailySumsByUser.get(e.user_id) || {
+        leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
+        conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0,
+      };
+      existing.leadsSet += e.leads_set_delta || 0;
+      existing.leadsClosed += e.leads_closed_delta || 0;
+      existing.leadsWithDamage += e.leads_with_damage_delta || 0;
+      existing.leadsWithoutDamage += e.leads_without_damage_delta || 0;
+      existing.conversationsHad += e.conversations_had_delta || 0;
+      existing.notInterested += e.not_interested_delta || 0;
+      existing.hoursWorked += Number(e.hours_worked_delta || 0);
+      existing.doorsKnocked += e.doors_knocked_delta || 0;
+      dailySumsByUser.set(e.user_id, existing);
     }
 
     if (metrics && metrics.length > 0) {
