@@ -60,7 +60,6 @@ export async function fetchCanvasserLeaderboardByDateRange(
       hoursWorked: e.hoursWorked + (Number(d.hours_worked_delta) || 0),
       doorsKnocked: e.doorsKnocked + (Number(d.doors_knocked_delta) || 0),
       pointsEarned: e.pointsEarned + (Number(d.points_earned) || 0),
-      contracts: e.contracts + (Number(d.contracts_delta) || 0),
     });
   });
 

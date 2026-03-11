@@ -185,7 +185,6 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
               </td>
               {showHours && <td className="py-3 px-4 text-right">{totals.totalHours}</td>}
               <td className="py-3 px-4 text-right">{totals.totalCancelled}</td>
-              <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
               <td className="py-3 px-4 text-right">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20">
                   {totals.totalPoints.toLocaleString()}
