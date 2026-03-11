@@ -515,9 +515,12 @@ export default function WeeklyUpdates() {
         const weeklyCollections = parseFloat(entry.weeklyCollections) || 0;
         const weeklyApprovedRevenue = parseFloat(entry.weeklyApprovedRevenue) || 0;
 
-        if (weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && 
+        const currentAllZeroSales = weeklyLeads === 0 && weeklyClosedDeals === 0 && weeklyEarnings === 0 && 
             weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
-            weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) continue;
+            weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0;
+        const salesBl = salesBaselines.current.get(entry.userId) || {};
+        const baselineAllZeroSales = Object.values(salesBl).every(v => v === 0);
+        if (currentAllZeroSales && baselineAllZeroSales) continue;
 
         // Use baseline from page load instead of re-querying DB (autosave already overwrote DB)
         const baseline = salesBaselines.current.get(entry.userId) || {};
