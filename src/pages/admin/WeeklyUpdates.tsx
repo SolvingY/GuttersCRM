@@ -519,23 +519,23 @@ export default function WeeklyUpdates() {
             weeklySelfGeneratedDeals === 0 && weeklyCanvassLeads === 0 && 
             weeklyCanvassDealsClose === 0 && weeklyCollections === 0 && weeklyApprovedRevenue === 0) continue;
 
-        const { data: prevDaily } = await supabase.from('daily_user_metric_entries')
-          .select('*').eq('user_id', entry.userId).eq('entry_date', dateStr).maybeSingle();
+        // Use baseline from page load instead of re-querying DB (autosave already overwrote DB)
+        const baseline = salesBaselines.current.get(entry.userId) || {};
 
-        const deltaLeads = weeklyLeads - (Number(prevDaily?.leads_delta) || 0);
-        const deltaClosedDeals = weeklyClosedDeals - (Number(prevDaily?.closed_deals_delta) || 0);
-        const deltaEarnings = weeklyEarnings - (Number(prevDaily?.earnings_delta) || 0);
-        const deltaSelfGen = weeklySelfGeneratedDeals - (Number(prevDaily?.self_generated_deals_delta) || 0);
-        const deltaCanvassLeads = weeklyCanvassLeads - (Number(prevDaily?.canvass_leads_delta) || 0);
-        const deltaCanvassDeals = weeklyCanvassDealsClose - (Number(prevDaily?.canvass_deals_closed_delta) || 0);
-        const deltaCollections = weeklyCollections - (Number(prevDaily?.collections_delta) || 0);
-        const deltaApprovedRev = weeklyApprovedRevenue - (Number(prevDaily?.approved_revenue_delta) || 0);
+        const deltaLeads = weeklyLeads - (baseline.leads_delta || 0);
+        const deltaClosedDeals = weeklyClosedDeals - (baseline.closed_deals_delta || 0);
+        const deltaEarnings = weeklyEarnings - (baseline.earnings_delta || 0);
+        const deltaSelfGen = weeklySelfGeneratedDeals - (baseline.self_generated_deals_delta || 0);
+        const deltaCanvassLeads = weeklyCanvassLeads - (baseline.canvass_leads_delta || 0);
+        const deltaCanvassDeals = weeklyCanvassDealsClose - (baseline.canvass_deals_closed_delta || 0);
+        const deltaCollections = weeklyCollections - (baseline.collections_delta || 0);
+        const deltaApprovedRev = weeklyApprovedRevenue - (baseline.approved_revenue_delta || 0);
 
         const weeklyPoints = calculatePoints(weeklyApprovedRevenue, weeklyClosedDeals, weeklyCollections);
         const oldPoints = calculatePoints(
-          Number(prevDaily?.approved_revenue_delta) || 0,
-          Number(prevDaily?.closed_deals_delta) || 0,
-          Number(prevDaily?.collections_delta) || 0
+          baseline.approved_revenue_delta || 0,
+          baseline.closed_deals_delta || 0,
+          baseline.collections_delta || 0
         );
         const deltaPoints = weeklyPoints - oldPoints;
 
