@@ -362,23 +362,11 @@ export default function AdminOverview() {
         .filter((id): id is string => id !== null);
       
       const { data: canvasserProfilesData } = canvasserUserIds.length > 0
-        ? await supabase.from('profiles').select('id, is_archived, full_name').in('id', canvasserUserIds)
+        ? await supabase.from('profiles').select('id, full_name').in('id', canvasserUserIds)
         : { data: [] };
-
-      const { data: canvasserRolesData } = canvasserUserIds.length > 0
-        ? await supabase.from('user_roles').select('user_id, role').in('user_id', canvasserUserIds).eq('role', 'canvasser')
-        : { data: [] };
-
-      const activeCanvasserIds = new Set<string>(
-        canvasserProfilesData?.filter(p => !p.is_archived).map(p => p.id) || []
-      );
 
       const canvasserProfilesMap = new Map<string, string>(
         canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
-      );
-
-      const currentCanvasserRoleIds = new Set<string>(
-        canvasserRolesData?.map(r => r.user_id) || []
       );
 
       const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
@@ -414,7 +402,7 @@ export default function AdminOverview() {
         }
       });
 
-      const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId) && currentCanvasserRoleIds.has(c.realUserId));
+      const activeCanvassers = canvassers.filter(c => c.realUserId);
 
       const canvasserTotals = activeCanvassers.reduce(
         (acc, c) => ({
