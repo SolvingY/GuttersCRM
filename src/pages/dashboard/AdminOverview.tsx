@@ -369,16 +369,8 @@ export default function AdminOverview() {
         ? await supabase.from('user_roles').select('user_id, role').in('user_id', canvasserUserIds).eq('role', 'canvasser')
         : { data: [] };
 
-      const activeCanvasserIds = new Set<string>(
-        canvasserProfilesData?.filter(p => !p.is_archived).map(p => p.id) || []
-      );
-
       const canvasserProfilesMap = new Map<string, string>(
         canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
-      );
-
-      const currentCanvasserRoleIds = new Set<string>(
-        canvasserRolesData?.map(r => r.user_id) || []
       );
 
       const canvassers: CanvasserDetail[] = Array.from(latestByCanvasser.entries()).map(([key, data]) => {
