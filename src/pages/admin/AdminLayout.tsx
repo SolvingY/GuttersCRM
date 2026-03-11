@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Clock,
   LayoutDashboard,
+  Home,
   FileText,
   Settings,
   Activity,
@@ -416,6 +417,19 @@ export default function AdminLayout() {
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
             {collapsed ? (
               <>
+                {/* Home icon */}
+                <button
+                  title="Home"
+                  onClick={() => navigate('/admin/home')}
+                  className={cn(
+                    'flex items-center justify-center w-full h-10 rounded-md transition-colors relative',
+                    location.pathname === '/admin/home'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <Home className="h-4 w-4" />
+                </button>
                 {/* Scoreboard icon */}
                 <button
                   title="Scoreboard"
@@ -456,6 +470,19 @@ export default function AdminLayout() {
               </>
             ) : (
               <>
+                {/* Home direct link */}
+                <NavLink
+                  to="/admin/home"
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors',
+                    location.pathname === '/admin/home'
+                      ? 'bg-background text-foreground'
+                      : 'text-accent-foreground/80 hover:bg-accent-foreground/10 hover:text-accent-foreground'
+                  )}
+                >
+                  <Home className="h-4 w-4 shrink-0" />
+                  <span>Home</span>
+                </NavLink>
                 {/* Scoreboard direct link */}
                 <NavLink
                   to="/admin/overview"

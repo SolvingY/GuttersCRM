@@ -66,6 +66,7 @@ const SalesPerformance = lazy(() => import("./pages/admin/SalesPerformance"));
 const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting"));
 const AdminPresets = lazy(() => import("./pages/admin/AdminPresets"));
 const SentReports = lazy(() => import("./pages/admin/SentReports"));
+const AdminHome = lazy(() => import("./pages/admin/AdminHome"));
 
 // Canvasser routes
 const CanvasserLayout = lazy(() => import("./pages/canvasser/CanvasserLayout"));
@@ -248,7 +249,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/admin/overview" replace />} />
+              <Route index element={<Navigate to="/admin/home" replace />} />
+              <Route path="home" element={<AdminHome />} />
               <Route path="overview" element={<AdminOverview />} />
               <Route path="leaderboards" element={<AdminLeaderboards />} />
               <Route path="goals" element={<CompanyGoals />} />
