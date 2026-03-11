@@ -410,95 +410,14 @@ export default function AdminLeaderboards() {
     }
   }, [timeFrame, selectedDate, refreshKey]);
 
-  // Fetch YTD canvasser leaderboard
+  // Fetch YTD canvasser leaderboard — uses daily entries as source of truth
   useEffect(() => {
     const fetchCanvasserYtd = async () => {
       setCanvasserLoading(true);
-
-      // Fetch profiles to check hidden_from_leaderboard and is_archived status
-      const { data: profilesForHidden } = await supabase
-        .from('profiles')
-        .select('id, hidden_from_leaderboard, is_archived');
-      
-      const hiddenUserIds = new Set(
-        profilesForHidden?.filter(p => p.hidden_from_leaderboard || p.is_archived).map(p => p.id) || []
-      );
-
-      // Fetch current canvasser role holders to exclude deleted users
-      const { data: canvasserRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'canvasser');
-
-      const currentCanvasserRoleIds = new Set(
-        canvasserRoles?.map(r => r.user_id) || []
-      );
-
-      const { data } = await supabase
-        .from('canvasser_metrics')
-        .select('user_id, display_name, leads_set, leads_closed, leads_with_damage, leads_without_damage, conversations_had, not_interested, cancelled_leads, doors_knocked, hours_worked, canvasser_rank, yearly_goal, points, contest_points, wager_points')
-        .order('leads_closed', { ascending: false });
-
-      if (!data || data.length === 0) {
-        setCanvasserYtdEntries([]);
-        setCanvasserLoading(false);
-        return;
-      }
-
-      // Fetch contests won for canvassers
-      const { data: contestsData } = await supabase
-        .from('contests')
-        .select('winner_user_id, winner_2nd_user_id, winner_3rd_user_id')
-        .eq('target_role', 'canvasser');
-
-      const contestWins = new Map<string, number>();
-      contestsData?.forEach((contest) => {
-        if (contest.winner_user_id) {
-          contestWins.set(contest.winner_user_id, (contestWins.get(contest.winner_user_id) || 0) + 1);
-        }
-        if (contest.winner_2nd_user_id) {
-          contestWins.set(contest.winner_2nd_user_id, (contestWins.get(contest.winner_2nd_user_id) || 0) + 1);
-        }
-        if (contest.winner_3rd_user_id) {
-          contestWins.set(contest.winner_3rd_user_id, (contestWins.get(contest.winner_3rd_user_id) || 0) + 1);
-        }
-      });
-
-      // Filter out hidden users
-      const uniqueUsers = new Map<string, any>();
-      data.forEach(entry => {
-        if (!uniqueUsers.has(entry.user_id) && !hiddenUserIds.has(entry.user_id) && currentCanvasserRoleIds.has(entry.user_id)) {
-          uniqueUsers.set(entry.user_id, entry);
-        }
-      });
-
-      // Sort by points descending (per system requirements for canvasser YTD)
-      const sorted = Array.from(uniqueUsers.values())
-        .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
-        .map((entry, index) => {
-          const leadsClosed = entry.leads_closed || 0;
-
-          return {
-            rank: index + 1,
-            userId: entry.user_id,
-            name: entry.display_name || 'Anonymous',
-            leadsClosed,
-            leadsSet: entry.leads_set || 0,
-            leadsWithDamage: entry.leads_with_damage || 0,
-            leadsWithoutDamage: (entry as any).leads_without_damage || 0,
-            conversationsHad: (entry as any).conversations_had || 0,
-            notInterested: (entry as any).not_interested || 0,
-            cancelledLeads: (entry as any).cancelled_leads || 0,
-            doorsKnocked: (entry as any).doors_knocked || 0,
-            hoursWorked: Number((entry as any).hours_worked) || 0,
-            canvasserRank: (entry as any).canvasser_rank || undefined,
-            pointsEarned: Number(entry.points) || 0,
-            contestPoints: Number((entry as any).contest_points) || 0,
-            wagerPoints: Number((entry as any).wager_points) || 0,
-          };
-        });
-
-      setCanvasserYtdEntries(sorted);
+      const startDate = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+      const endDate = format(new Date(), 'yyyy-MM-dd');
+      const entries = await fetchCanvasserLeaderboardByDateRange(startDate, endDate);
+      setCanvasserYtdEntries(entries);
       setCanvasserLoading(false);
     };
 
