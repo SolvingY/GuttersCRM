@@ -228,6 +228,10 @@ export default function WeeklyUpdates() {
       const { data: profilesData } = await supabase.from('profiles').select('id, is_archived');
       const archivedUserIds = new Set(profilesData?.filter(p => p.is_archived).map(p => p.id) || []);
 
+      // Fetch profiles for authoritative display names
+      const { data: allProfiles } = await supabase.from('profiles').select('id, full_name').eq('is_archived', false);
+      const profileNameMap = new Map((allProfiles || []).map(p => [p.id, p.full_name || null]));
+
       const { data: salesData, error: salesError } = await supabase
         .from('user_metrics').select('user_id, display_name, sales, leads, closed_deals, earnings_ytd, points').order('display_name', { ascending: true });
       if (salesError) throw salesError;
@@ -235,7 +239,9 @@ export default function WeeklyUpdates() {
       const uniqueUsers = new Map<string, UserMetric>();
       (salesData || []).forEach((item) => {
         if (item.user_id && !uniqueUsers.has(item.user_id) && !canvasserUserIds.has(item.user_id) && !archivedUserIds.has(item.user_id)) {
-          uniqueUsers.set(item.user_id, item as UserMetric);
+          // Prefer profiles.full_name over metrics display_name
+          const profileName = profileNameMap.get(item.user_id);
+          uniqueUsers.set(item.user_id, { ...item, display_name: profileName || item.display_name } as UserMetric);
         }
       });
       const userList = Array.from(uniqueUsers.values());
@@ -254,7 +260,8 @@ export default function WeeklyUpdates() {
       const uniqueCanvassers = new Map<string, CanvasserMetric>();
       (canvasserData || []).forEach((item) => {
         if (item.user_id && !uniqueCanvassers.has(item.user_id) && !archivedUserIds.has(item.user_id) && canvasserUserIds.has(item.user_id)) {
-          uniqueCanvassers.set(item.user_id, item as CanvasserMetric);
+          const profileName = profileNameMap.get(item.user_id);
+          uniqueCanvassers.set(item.user_id, { ...item, display_name: profileName || item.display_name } as CanvasserMetric);
         }
       });
       const canvasserList = Array.from(uniqueCanvassers.values());
@@ -272,7 +279,8 @@ export default function WeeklyUpdates() {
       const uniqueSupps = new Map<string, SupplementerMetricEntry>();
       (suppData || []).forEach((item) => {
         if (item.user_id && !uniqueSupps.has(item.user_id) && !archivedUserIds.has(item.user_id) && suppUserIds.has(item.user_id)) {
-          uniqueSupps.set(item.user_id, item);
+          const profileName = profileNameMap.get(item.user_id);
+          uniqueSupps.set(item.user_id, { ...item, display_name: profileName || item.display_name });
         }
       });
       const suppList = Array.from(uniqueSupps.values());

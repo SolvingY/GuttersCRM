@@ -93,6 +93,14 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
           .update({ full_name: trimmedName || null })
           .eq('id', user.id);
         if (profileError) throw new Error('Failed to update display name');
+
+        // Sync display_name across all metrics tables
+        const nameToSync = trimmedName || null;
+        await Promise.all([
+          supabase.from('user_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
+          supabase.from('canvasser_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
+          supabase.from('supplementer_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
+        ]);
       }
 
       // Build roles array
