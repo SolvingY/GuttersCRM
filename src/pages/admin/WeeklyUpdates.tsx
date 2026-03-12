@@ -310,33 +310,47 @@ export default function WeeklyUpdates() {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
     if (users.length > 0) {
-      const { data: salesDaily } = await supabase
-        .from('daily_user_metric_entries')
-        .select('*')
-        .eq('entry_date', dateStr)
-        .in('user_id', users.map(u => u.user_id));
+      const weekStartStr = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      const userIds = users.map(u => u.user_id);
 
-      if (salesDaily && salesDaily.length > 0) {
-        const dailyMap = new Map(salesDaily.map(d => [d.user_id, d]));
-        // Capture baselines for delta calculation
-        const baselines = new Map<string, Record<string, number>>();
-        for (const u of users) {
-          const saved = dailyMap.get(u.user_id);
-          baselines.set(u.user_id, {
-            approved_revenue_delta: Number(saved?.approved_revenue_delta) || 0,
-            leads_delta: Number(saved?.leads_delta) || 0,
-            closed_deals_delta: Number(saved?.closed_deals_delta) || 0,
-            self_generated_deals_delta: Number(saved?.self_generated_deals_delta) || 0,
-            canvass_leads_delta: Number(saved?.canvass_leads_delta) || 0,
-            canvass_deals_closed_delta: Number(saved?.canvass_deals_closed_delta) || 0,
-            collections_delta: Number(saved?.collections_delta) || 0,
-            earnings_delta: Number(saved?.earnings_delta) || 0,
-          });
-        }
-        salesBaselines.current = baselines;
-        setWeeklyEntries(prev => prev.map(entry => {
-          const saved = dailyMap.get(entry.userId);
-          if (!saved) return { ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' };
+      // Fetch daily entries AND weekly metrics in parallel
+      const [{ data: salesDaily }, { data: weeklyRows }] = await Promise.all([
+        supabase
+          .from('daily_user_metric_entries')
+          .select('*')
+          .eq('entry_date', dateStr)
+          .in('user_id', userIds),
+        supabase
+          .from('weekly_user_metrics')
+          .select('user_id, canvass_leads, canvass_deals_closed')
+          .eq('week_start', weekStartStr)
+          .in('user_id', userIds),
+      ]);
+
+      const dailyMap = new Map((salesDaily || []).map(d => [d.user_id, d]));
+      const weeklyMap = new Map((weeklyRows || []).map(w => [w.user_id, w]));
+
+      const baselines = new Map<string, Record<string, number>>();
+      for (const u of users) {
+        const saved = dailyMap.get(u.user_id);
+        baselines.set(u.user_id, {
+          approved_revenue_delta: Number(saved?.approved_revenue_delta) || 0,
+          leads_delta: Number(saved?.leads_delta) || 0,
+          closed_deals_delta: Number(saved?.closed_deals_delta) || 0,
+          self_generated_deals_delta: Number(saved?.self_generated_deals_delta) || 0,
+          canvass_leads_delta: Number(saved?.canvass_leads_delta) || 0,
+          canvass_deals_closed_delta: Number(saved?.canvass_deals_closed_delta) || 0,
+          collections_delta: Number(saved?.collections_delta) || 0,
+          earnings_delta: Number(saved?.earnings_delta) || 0,
+        });
+      }
+      salesBaselines.current = baselines;
+
+      setWeeklyEntries(prev => prev.map(entry => {
+        const saved = dailyMap.get(entry.userId);
+        const weekly = weeklyMap.get(entry.userId);
+
+        if (saved) {
           return {
             ...entry,
             weeklyApprovedRevenue: saved.approved_revenue_delta ? String(saved.approved_revenue_delta) : '',
@@ -348,20 +362,23 @@ export default function WeeklyUpdates() {
             weeklyCollections: saved.collections_delta ? String(saved.collections_delta) : '',
             weeklyEarnings: saved.earnings_delta ? String(saved.earnings_delta) : '',
           };
-        }));
-      } else {
-        // No saved entries — baselines are all zeros
-        const baselines = new Map<string, Record<string, number>>();
-        for (const u of users) {
-          baselines.set(u.user_id, {
-            approved_revenue_delta: 0, leads_delta: 0, closed_deals_delta: 0,
-            self_generated_deals_delta: 0, canvass_leads_delta: 0, canvass_deals_closed_delta: 0,
-            collections_delta: 0, earnings_delta: 0,
-          });
         }
-        salesBaselines.current = baselines;
-        setWeeklyEntries(prev => prev.map(entry => ({ ...entry, weeklyLeads: '', weeklyClosedDeals: '', weeklyEarnings: '', weeklySelfGeneratedDeals: '', weeklyCanvassLeads: '', weeklyCanvassDealsClose: '', weeklyCollections: '', weeklyApprovedRevenue: '' })));
-      }
+
+        // No daily entry for this date — pre-fill canvass fields from weekly aggregate
+        const weeklyCanvass = Number(weekly?.canvass_leads) || 0;
+        const weeklyCanvassDeals = Number(weekly?.canvass_deals_closed) || 0;
+        return {
+          ...entry,
+          weeklyLeads: '',
+          weeklyClosedDeals: '',
+          weeklyEarnings: '',
+          weeklySelfGeneratedDeals: '',
+          weeklyCanvassLeads: weeklyCanvass > 0 ? String(weeklyCanvass) : '',
+          weeklyCanvassDealsClose: weeklyCanvassDeals > 0 ? String(weeklyCanvassDeals) : '',
+          weeklyCollections: '',
+          weeklyApprovedRevenue: '',
+        };
+      }));
     }
 
     if (canvassers.length > 0) {
