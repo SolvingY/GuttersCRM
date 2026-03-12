@@ -879,11 +879,13 @@ export default function WeeklyUpdates() {
           // Auto-populate sales rep canvass metrics from canvasser-tab attributions
           const repDeltas: Record<string, { canvassLeads: number; canvassDeals: number }> = {};
           for (const a of attributions) {
-            if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'canvasser_lead_closed') {
+            const isLeadType = a.entry_type === 'canvasser_lead_set' || a.entry_type === 'rep_canvass_lead';
+            const isDealType = a.entry_type === 'canvasser_lead_closed' || a.entry_type === 'rep_canvass_contract';
+            if (isLeadType || isDealType) {
               if (!repDeltas[a.sales_rep_id]) {
                 repDeltas[a.sales_rep_id] = { canvassLeads: 0, canvassDeals: 0 };
               }
-              if (a.entry_type === 'canvasser_lead_set') {
+              if (isLeadType) {
                 repDeltas[a.sales_rep_id].canvassLeads += a.quantity;
               } else {
                 repDeltas[a.sales_rep_id].canvassDeals += a.quantity;
