@@ -13,10 +13,10 @@ export async function fetchCanvasserLeaderboardByDateRange(
   // 1. Fetch all profiles (include archived for historical accuracy), exclude hidden
   const { data: allProfiles } = await supabase
     .from('profiles')
-    .select('id, hidden_from_leaderboard');
+    .select('id, hidden_from_leaderboard, is_archived');
 
-  const hiddenUserIds = new Set(
-    allProfiles?.filter(p => (p as any).hidden_from_leaderboard).map(p => p.id) || []
+  const excludedUserIds = new Set(
+    allProfiles?.filter(p => (p as any).hidden_from_leaderboard || (p as any).is_archived).map(p => p.id) || []
   );
 
   // 2. Query daily_canvasser_metric_entries for the date range
