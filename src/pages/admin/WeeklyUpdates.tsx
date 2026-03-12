@@ -847,6 +847,57 @@ export default function WeeklyUpdates() {
         if (attrError) {
           console.error('Attribution insert error:', attrError);
           toast({ title: 'Warning', description: 'Metrics saved but attribution failed to save', variant: 'destructive' });
+        } else {
+          // Auto-populate sales rep canvass metrics from canvasser-tab attributions
+          const repDeltas: Record<string, { canvassLeads: number; canvassDeals: number }> = {};
+          for (const a of attributions) {
+            if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'canvasser_lead_closed') {
+              if (!repDeltas[a.sales_rep_id]) {
+                repDeltas[a.sales_rep_id] = { canvassLeads: 0, canvassDeals: 0 };
+              }
+              if (a.entry_type === 'canvasser_lead_set') {
+                repDeltas[a.sales_rep_id].canvassLeads += a.quantity;
+              } else {
+                repDeltas[a.sales_rep_id].canvassDeals += a.quantity;
+              }
+            }
+          }
+
+          for (const [repId, deltas] of Object.entries(repDeltas)) {
+            if (deltas.canvassLeads === 0 && deltas.canvassDeals === 0) continue;
+
+            // Update cumulative user_metrics
+            const { data: repMetrics } = await supabase.from('user_metrics').select('*').eq('user_id', repId).order('created_at', { ascending: false }).limit(1).single();
+            if (repMetrics) {
+              await supabase.from('user_metrics').update({
+                canvass_leads: (Number((repMetrics as any).canvass_leads) || 0) + deltas.canvassLeads,
+                canvass_deals_closed: (Number((repMetrics as any).canvass_deals_closed) || 0) + deltas.canvassDeals,
+                updated_at: new Date().toISOString(),
+              }).eq('user_id', repId);
+            }
+
+            // Upsert daily_user_metric_entries — add to existing deltas
+            const { data: existingDaily } = await supabase.from('daily_user_metric_entries').select('*').eq('user_id', repId).eq('entry_date', dateStr).maybeSingle();
+            await supabase.from('daily_user_metric_entries').upsert({
+              user_id: repId,
+              entry_date: dateStr,
+              canvass_leads_delta: (Number(existingDaily?.canvass_leads_delta) || 0) + deltas.canvassLeads,
+              canvass_deals_closed_delta: (Number(existingDaily?.canvass_deals_closed_delta) || 0) + deltas.canvassDeals,
+              entered_by: authUser.user?.id,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id,entry_date' });
+
+            // Upsert weekly_user_metrics — add to existing values
+            const { data: existingWeeklyRep } = await supabase.from('weekly_user_metrics').select('*').eq('user_id', repId).eq('week_start', weekStartStr).maybeSingle();
+            await supabase.from('weekly_user_metrics').upsert({
+              user_id: repId,
+              week_start: weekStartStr,
+              week_end: weekEndStr,
+              canvass_leads: (Number(existingWeeklyRep?.canvass_leads) || 0) + deltas.canvassLeads,
+              canvass_deals_closed: (Number(existingWeeklyRep?.canvass_deals_closed) || 0) + deltas.canvassDeals,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id,week_start' });
+          }
         }
       }
 
