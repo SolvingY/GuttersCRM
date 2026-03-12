@@ -313,22 +313,32 @@ export default function WeeklyUpdates() {
       const weekStartStr = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const userIds = users.map(u => u.user_id);
 
-      // Fetch daily entries AND weekly metrics in parallel
-      const [{ data: salesDaily }, { data: weeklyRows }] = await Promise.all([
+      // Fetch daily entries AND lead_attributions (source of truth for canvass) in parallel
+      const [{ data: salesDaily }, { data: attrRows }] = await Promise.all([
         supabase
           .from('daily_user_metric_entries')
           .select('*')
           .eq('entry_date', dateStr)
           .in('user_id', userIds),
         supabase
-          .from('weekly_user_metrics')
-          .select('user_id, canvass_leads, canvass_deals_closed')
+          .from('lead_attributions')
+          .select('sales_rep_id, entry_type, quantity')
           .eq('week_start', weekStartStr)
-          .in('user_id', userIds),
+          .in('sales_rep_id', userIds),
       ]);
 
       const dailyMap = new Map((salesDaily || []).map(d => [d.user_id, d]));
-      const weeklyMap = new Map((weeklyRows || []).map(w => [w.user_id, w]));
+      // Aggregate attribution totals per sales rep
+      const attrTotals = new Map<string, { canvassLeads: number; canvassDeals: number }>();
+      for (const a of (attrRows || [])) {
+        if (!attrTotals.has(a.sales_rep_id)) attrTotals.set(a.sales_rep_id, { canvassLeads: 0, canvassDeals: 0 });
+        const t = attrTotals.get(a.sales_rep_id)!;
+        if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'rep_canvass_lead') {
+          t.canvassLeads += a.quantity;
+        } else if (a.entry_type === 'canvasser_lead_closed' || a.entry_type === 'rep_canvass_contract') {
+          t.canvassDeals += a.quantity;
+        }
+      }
 
       const baselines = new Map<string, Record<string, number>>();
       for (const u of users) {
