@@ -1,45 +1,42 @@
 
 
-# Fix: Duplicate Attribution Double-Counting for Andre
+# Add Edit Button to Shift History
 
 ## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-Andre shows 11 canvass leads, but his Lead Sources accordion shows only 3 (Blake=1, Sean=2). The `lead_attributions` table has **duplicate rows** from two sources:
+## Changes
 
-1. **Dual entry types**: The same attribution is recorded as both `canvasser_lead_set` AND `rep_canvass_lead`, doubling the count
-2. **Re-insertion on save**: Each "Save All" re-inserts attributions without deduplication, creating additional rows
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-The pre-fill code sums ALL of these, inflating the number.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-## Fix — `src/pages/admin/WeeklyUpdates.tsx`
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### Change 1: Deduplicate attribution types in pre-fill aggregation
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-When aggregating from `lead_attributions` for pre-fill, only count **one set** of entry types — use `canvasser_lead_set` / `canvasser_lead_closed` as the canonical types. Ignore `rep_canvass_lead` / `rep_canvass_contract` since they duplicate the same data:
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-```typescript
-// Only aggregate canonical types to avoid double-counting
-if (a.entry_type === 'canvasser_lead_set') t.canvassLeads += a.quantity;
-else if (a.entry_type === 'canvasser_lead_closed') t.canvassDeals += a.quantity;
-```
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-### Change 2: Same fix in `executeSave()` sync logic
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-Apply the same canonical-type-only filter in the post-save sync that writes to `user_metrics` / `daily_user_metric_entries` / `weekly_user_metrics`.
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-### Change 3: Prevent duplicate insertions
+## Summary
 
-Before inserting new attribution rows, delete existing attributions for the same `week_start` + `canvasser_id` + `sales_rep_id` + `entry_type` combination, or use an upsert pattern. This prevents repeated saves from creating duplicate rows.
-
-### Change 4: Clean up existing duplicates
-
-Run a one-time cleanup to remove the `rep_canvass_lead` and `rep_canvass_contract` rows that duplicate `canvasser_lead_set` / `canvasser_lead_closed` rows, and correct Andre's `weekly_user_metrics.canvass_leads` to the true value (3).
-
-## Expected Result
-
-After fix: Andre's canvass leads = 3 (Blake 1 + Sean 2), matching the Lead Sources accordion.
-
-## Files Changed
-- `src/pages/admin/WeeklyUpdates.tsx` — three locations (pre-fill aggregation, save sync, insertion dedup)
-- One database cleanup migration for existing duplicates
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

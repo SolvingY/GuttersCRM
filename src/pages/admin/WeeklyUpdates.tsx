@@ -333,9 +333,10 @@ export default function WeeklyUpdates() {
       for (const a of (attrRows || [])) {
         if (!attrTotals.has(a.sales_rep_id)) attrTotals.set(a.sales_rep_id, { canvassLeads: 0, canvassDeals: 0 });
         const t = attrTotals.get(a.sales_rep_id)!;
-        if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'rep_canvass_lead') {
+        // Only count canonical types to avoid double-counting (rep_canvass_* duplicates canvasser_lead_*)
+        if (a.entry_type === 'canvasser_lead_set') {
           t.canvassLeads += a.quantity;
-        } else if (a.entry_type === 'canvasser_lead_closed' || a.entry_type === 'rep_canvass_contract') {
+        } else if (a.entry_type === 'canvasser_lead_closed') {
           t.canvassDeals += a.quantity;
         }
       }
@@ -861,6 +862,20 @@ export default function WeeklyUpdates() {
 
       // Insert attribution rows if provided
       if (attributions && attributions.length > 0) {
+        // Deduplicate: delete existing attributions for the same week/canvasser/rep/type combos before re-inserting
+        const uniqueCombos = new Set<string>();
+        for (const a of attributions) {
+          uniqueCombos.add(`${a.canvasser_id}|${a.sales_rep_id}|${a.entry_type}`);
+        }
+        for (const combo of uniqueCombos) {
+          const [cid, rid, etype] = combo.split('|');
+          await supabase.from('lead_attributions').delete()
+            .eq('week_start', weekStartStr)
+            .eq('canvasser_id', cid)
+            .eq('sales_rep_id', rid)
+            .eq('entry_type', etype);
+        }
+
         const attrRows = attributions.map(a => ({
           entry_type: a.entry_type,
           canvasser_id: a.canvasser_id,
@@ -875,16 +890,14 @@ export default function WeeklyUpdates() {
           console.error('Attribution insert error:', attrError);
           toast({ title: 'Warning', description: 'Metrics saved but attribution failed to save', variant: 'destructive' });
         } else {
-          // Auto-populate sales rep canvass metrics from canvasser-tab attributions
+          // Auto-populate sales rep canvass metrics from canvasser-tab attributions (canonical types only)
           const repDeltas: Record<string, { canvassLeads: number; canvassDeals: number }> = {};
           for (const a of attributions) {
-            const isLeadType = a.entry_type === 'canvasser_lead_set' || a.entry_type === 'rep_canvass_lead';
-            const isDealType = a.entry_type === 'canvasser_lead_closed' || a.entry_type === 'rep_canvass_contract';
-            if (isLeadType || isDealType) {
+            if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'canvasser_lead_closed') {
               if (!repDeltas[a.sales_rep_id]) {
                 repDeltas[a.sales_rep_id] = { canvassLeads: 0, canvassDeals: 0 };
               }
-              if (isLeadType) {
+              if (a.entry_type === 'canvasser_lead_set') {
                 repDeltas[a.sales_rep_id].canvassLeads += a.quantity;
               } else {
                 repDeltas[a.sales_rep_id].canvassDeals += a.quantity;
