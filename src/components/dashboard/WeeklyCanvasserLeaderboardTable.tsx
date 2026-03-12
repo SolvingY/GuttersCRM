@@ -86,7 +86,7 @@ export function WeeklyCanvasserLeaderboardTable({ entries, currentUserId, showHo
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
+            {entries.filter(e => !e.isArchived).map((entry) => {
               const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
               const closePercent = entry.leadsSet > 0 ? (entry.leadsClosed / entry.leadsSet) * 100 : 0;

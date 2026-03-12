@@ -103,11 +103,16 @@ export async function fetchCanvasserLeaderboardByDateRange(
     pointsEarned: (d.leadsClosed * 10) + (d.leadsWithDamage * 5) + d.leadsSet + (contestPointsMap.get(userId) || 0) + (wagerPointsMap.get(userId) || 0),
   }));
 
-  const sorted = withPoints
-    .filter(d =>
-      d.leadsSet > 0 || d.leadsClosed > 0 || d.leadsWithDamage > 0 ||
-      d.doorsKnocked > 0 || d.pointsEarned > 0
-    )
+  const active = withPoints.filter(d =>
+    (d.leadsSet > 0 || d.leadsClosed > 0 || d.leadsWithDamage > 0 ||
+      d.doorsKnocked > 0 || d.pointsEarned > 0)
+  );
+
+  // Rank only visible (non-excluded) entries; archived/hidden still included for totals
+  const visible = active.filter(d => !excludedUserIds.has(d.userId));
+  const archived = active.filter(d => excludedUserIds.has(d.userId));
+
+  const sorted = visible
     .sort((a, b) => b.pointsEarned - a.pointsEarned)
     .map((d, i) => ({
       rank: i + 1,
@@ -125,6 +130,27 @@ export async function fetchCanvasserLeaderboardByDateRange(
       doorsKnocked: d.doorsKnocked,
       pointsEarned: d.pointsEarned,
     }));
+
+  // Add archived entries (included in totals, hidden from rows)
+  const archivedEntries = archived.map(d => ({
+    rank: 0,
+    userId: d.userId,
+    name: 'Archived',
+    canvasserRank: '',
+    leadsSet: d.leadsSet,
+    leadsClosed: d.leadsClosed,
+    leadsWithDamage: d.leadsWithDamage,
+    leadsWithoutDamage: d.leadsWithoutDamage,
+    conversationsHad: d.conversationsHad,
+    notInterested: d.notInterested,
+    cancelledLeads: d.cancelledLeads,
+    hoursWorked: d.hoursWorked,
+    doorsKnocked: d.doorsKnocked,
+    pointsEarned: d.pointsEarned,
+    isArchived: true,
+  }));
+
+  return [...sorted, ...archivedEntries];
 
   return sorted;
 }
