@@ -1,42 +1,60 @@
 
 
-# Add Edit Button to Shift History
+# Fix: Backfill Missing Historical Data into Daily Entries
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## What Happened
 
-## Changes
+The daily entries system (`daily_canvasser_metric_entries`) started recording on **Feb 13, 2026**. But the fiscal year started **Dec 15, 2025**. Any canvasser activity between Dec 15 and Feb 12 was only tracked in the cumulative `canvasser_metrics` table — it was never written to daily entries.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+When we switched all dashboards to aggregate from daily entries, we lost that historical data. Here's Devenae as an example:
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+| Metric | Cumulative (correct) | Daily Entries (incomplete) | Gap |
+|--------|-----|-----|-----|
+| Doors | 1,128 | 810 | 318 |
+| Leads Set | 23 | 15 | 8 |
+| Leads Closed | 7 | 5 | 2 |
+| Leads w/ Damage | 10 | 5 | 5 |
+| **Points** | **143** | **90** | **53** |
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+This affects nearly every canvasser — not just Devenae.
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+## Fix: One-Time Backfill Migration
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+Run a database migration that, for each canvasser, inserts a single "backfill" daily entry dated **Dec 15, 2025** (fiscal year start) containing the gap: `cumulative_value - SUM(daily_deltas)`.
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+This is a data-only fix. No code changes needed — once the backfill entries exist, all the daily-aggregation logic we already built will produce the correct numbers.
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+### Migration SQL (conceptual)
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+```sql
+INSERT INTO daily_canvasser_metric_entries (user_id, entry_date, leads_set_delta, leads_closed_delta, leads_with_damage_delta, doors_knocked_delta, ...)
+SELECT
+  cm.user_id,
+  '2025-12-15'::date,
+  GREATEST(0, cm.leads_set - COALESCE(d.sum_leads_set, 0)),
+  GREATEST(0, cm.leads_closed - COALESCE(d.sum_leads_closed, 0)),
+  GREATEST(0, cm.leads_with_damage - COALESCE(d.sum_leads_with_damage, 0)),
+  GREATEST(0, cm.doors_knocked - COALESCE(d.sum_doors, 0)),
+  ...
+FROM canvasser_metrics cm
+LEFT JOIN (aggregate daily sums per user) d ON d.user_id = cm.user_id
+WHERE gap > 0 for any metric;
+```
 
-## Summary
+The backfill includes all metric columns: `leads_set`, `leads_closed`, `leads_with_damage`, `leads_without_damage`, `conversations_had`, `not_interested`, `doors_knocked`, `hours_worked`, `income`, and `cancelled_leads`.
 
-| Area | Change |
+### What This Achieves
+
+- Daily aggregation will now match the cumulative totals exactly
+- No code changes required — all views already aggregate from daily entries
+- Points will compute correctly since the underlying metrics are restored
+- Future data continues flowing through daily entries as normal
+
+## Files Changed
+
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| Database migration only | Backfill gap entries into `daily_canvasser_metric_entries` |
+
+No frontend code changes.
 
