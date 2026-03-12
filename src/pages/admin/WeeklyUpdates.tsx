@@ -374,9 +374,10 @@ export default function WeeklyUpdates() {
           };
         }
 
-        // No daily entry for this date — pre-fill canvass fields from weekly aggregate
-        const weeklyCanvass = Number(weekly?.canvass_leads) || 0;
-        const weeklyCanvassDeals = Number(weekly?.canvass_deals_closed) || 0;
+        // No daily entry for this date — pre-fill canvass fields from lead_attributions
+        const attrTotal = attrTotals.get(entry.userId);
+        const weeklyCanvass = attrTotal?.canvassLeads || 0;
+        const weeklyCanvassDeals = attrTotal?.canvassDeals || 0;
         return {
           ...entry,
           weeklyLeads: '',
