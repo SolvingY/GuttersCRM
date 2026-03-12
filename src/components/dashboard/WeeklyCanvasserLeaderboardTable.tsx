@@ -20,6 +20,7 @@ export interface WeeklyCanvasserEntry {
   pointsEarned: number;
   contestPoints?: number;
   wagerPoints?: number;
+  isArchived?: boolean;
 }
 
 interface WeeklyCanvasserLeaderboardTableProps {
