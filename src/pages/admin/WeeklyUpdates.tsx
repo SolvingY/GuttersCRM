@@ -333,9 +333,10 @@ export default function WeeklyUpdates() {
       for (const a of (attrRows || [])) {
         if (!attrTotals.has(a.sales_rep_id)) attrTotals.set(a.sales_rep_id, { canvassLeads: 0, canvassDeals: 0 });
         const t = attrTotals.get(a.sales_rep_id)!;
-        if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'rep_canvass_lead') {
+        // Only count canonical types to avoid double-counting (rep_canvass_* duplicates canvasser_lead_*)
+        if (a.entry_type === 'canvasser_lead_set') {
           t.canvassLeads += a.quantity;
-        } else if (a.entry_type === 'canvasser_lead_closed' || a.entry_type === 'rep_canvass_contract') {
+        } else if (a.entry_type === 'canvasser_lead_closed') {
           t.canvassDeals += a.quantity;
         }
       }
