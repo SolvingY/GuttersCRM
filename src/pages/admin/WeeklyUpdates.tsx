@@ -358,7 +358,6 @@ export default function WeeklyUpdates() {
 
       setWeeklyEntries(prev => prev.map(entry => {
         const saved = dailyMap.get(entry.userId);
-        const weekly = weeklyMap.get(entry.userId);
 
         if (saved) {
           return {
