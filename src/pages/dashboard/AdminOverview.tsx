@@ -394,11 +394,15 @@ export default function AdminOverview() {
       ]));
       
       const { data: canvasserProfilesData } = canvasserUserIds.length > 0
-        ? await supabase.from('profiles').select('id, full_name').in('id', canvasserUserIds)
+        ? await supabase.from('profiles').select('id, full_name, is_archived').in('id', canvasserUserIds)
         : { data: [] };
 
       const canvasserProfilesMap = new Map<string, string>(
         canvasserProfilesData?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
+      );
+
+      const activeCanvasserIds = new Set<string>(
+        canvasserProfilesData?.filter(p => !p.is_archived).map(p => p.id) || []
       );
 
       const canvassers: CanvasserDetail[] = canvasserUserIds.map((userId) => {
@@ -439,7 +443,7 @@ export default function AdminOverview() {
         }
       });
 
-      const activeCanvassers = canvassers.filter(c => c.realUserId);
+      const activeCanvassers = canvassers.filter(c => c.realUserId && activeCanvasserIds.has(c.realUserId));
 
       const canvasserTotals = activeCanvassers.reduce(
         (acc, c) => ({
