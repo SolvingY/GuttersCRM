@@ -1,57 +1,42 @@
 
 
-# Fix: Dru's Canvass Metrics Not Populating
+# Add Edit Button to Shift History
 
-## Root Cause (confirmed via DB queries)
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-Two bugs are causing Dru's canvass fields to show 0:
+## Changes
 
-1. **Missing entry type in sync code**: The attribution sync (line 871) only processes `canvasser_lead_set` and `canvasser_lead_closed`, but the Attribution Modal also produces `rep_canvass_lead` and `rep_canvass_contract` entry types. Dru has `rep_canvass_lead` attributions that are being ignored.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-2. **Historical data gap**: Dru's `weekly_user_metrics.canvass_leads = 0` because most attributions were created before the sync code existed. The weekly pre-fill fallback correctly reads from `weekly_user_metrics`, but finds 0.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-## DB State (verified)
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-| Rep | `weekly_user_metrics.canvass_leads` | `daily.canvass_leads_delta` | Attributions (total) |
-|-----|-----|-----|-----|
-| Andre | 1 | — | ~5 `canvasser_lead_set` + 2 `rep_canvass_lead` |
-| Dru | **0** | 1 (on 03-10 only) | ~6 `canvasser_lead_set` + 1 `rep_canvass_lead` |
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## Fix — Two Changes
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### 1. Code: Include all attribution types in sync (`WeeklyUpdates.tsx`)
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-Update the sync filter (line 871) to also process `rep_canvass_lead` and `rep_canvass_contract` entry types:
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-```typescript
-if (a.entry_type === 'canvasser_lead_set' || a.entry_type === 'rep_canvass_lead') {
-  repDeltas[a.sales_rep_id].canvassLeads += a.quantity;
-} else if (a.entry_type === 'canvasser_lead_closed' || a.entry_type === 'rep_canvass_contract') {
-  repDeltas[a.sales_rep_id].canvassDeals += a.quantity;
-}
-```
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-### 2. Code: Derive canvass totals from `lead_attributions` instead of relying on `weekly_user_metrics`
+## Summary
 
-In `loadSavedEntries()`, instead of (or in addition to) reading from `weekly_user_metrics` for the canvass fallback, query `lead_attributions` directly to get the **true** attributed totals for each rep for the current week. This makes the pre-fill resilient to historical gaps:
-
-```sql
-SELECT sales_rep_id, 
-  SUM(CASE WHEN entry_type IN ('canvasser_lead_set','rep_canvass_lead') THEN quantity ELSE 0 END) as canvass_leads,
-  SUM(CASE WHEN entry_type IN ('canvasser_lead_closed','rep_canvass_contract') THEN quantity ELSE 0 END) as canvass_deals
-FROM lead_attributions 
-WHERE week_start = :weekStart
-GROUP BY sales_rep_id
-```
-
-Use these totals to pre-fill `weeklyCanvassLeads` and `weeklyCanvassDealsClose` when no daily entry exists for the selected date.
-
-### 3. Backfill: Sync Dru's existing data
-
-After fixing the code, also update Dru's `weekly_user_metrics` to reflect the current attribution count. This can be done by the code itself on next load (since we're reading from `lead_attributions` directly), so no manual SQL patch is needed.
-
-## Files Changed
-- `src/pages/admin/WeeklyUpdates.tsx` — two locations:
-  1. Attribution sync in `executeSave()`: add `rep_canvass_lead` / `rep_canvass_contract` types
-  2. `loadSavedEntries()`: query `lead_attributions` for canvass pre-fill instead of `weekly_user_metrics`
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
