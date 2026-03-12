@@ -39,8 +39,6 @@ export async function fetchCanvasserLeaderboardByDateRange(
   }>();
 
   dailyData.forEach(d => {
-    if (hiddenUserIds.has(d.user_id)) return;
-
     const e = aggregated.get(d.user_id) || {
       leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
       conversationsHad: 0, notInterested: 0, cancelledLeads: 0,
