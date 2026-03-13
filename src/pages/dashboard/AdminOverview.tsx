@@ -133,6 +133,10 @@ export default function AdminOverview() {
   });
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [canvasserDetails, setCanvasserDetails] = useState<CanvasserDetail[]>([]);
+  const [productionAggregates, setProductionAggregates] = useState<ProductionAggregates>({
+    totalCrew: 0, totalBuilds: 0, totalIssues: 0, totalChecklists: 0, totalHoursWorked: 0, avgEfficiency: 0,
+  });
+  const [productionDetails, setProductionDetails] = useState<ProductionDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editCanvasserModalOpen, setEditCanvasserModalOpen] = useState(false);
