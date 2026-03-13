@@ -1,42 +1,25 @@
 
 
-# Add Edit Button to Shift History
+# Fix: Lead Form Data Not Displaying Properly for Canvasser-Submitted Leads
 
 ## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Changes
+When a canvasser submits a lead, the `form_data` JSONB field contains nested objects (e.g., `roofing: {...}`, `roofingAppointment: {...}`). The `renderFormData()` function in the Lead Detail page uses `String(value)` to display all values, which renders nested objects as `[object Object]` instead of showing the actual data. This is visible in the screenshot where "Roofing" and "Roofing Appointment" both show `[object Object]`.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+## Fix — `src/pages/admin/LeadDetail.tsx`
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+Update the `renderFormData()` function (lines 222-238) to handle nested objects and arrays properly:
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+1. For **primitive values** (string, number, boolean) — render as-is with `String(value)`
+2. For **arrays** — join with commas (already handled but only at top level)
+3. For **objects** (like `roofing` qualification data, `roofingAppointment`) — recursively render key-value pairs in a nested, indented format showing each sub-field on its own line
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+The rendering logic will:
+- Detect when a value is a plain object (`typeof value === 'object' && !Array.isArray(value)`)
+- Render its entries as a nested list with human-readable labels (converting camelCase keys to spaced words)
+- Handle deeply nested objects (e.g., roofing data has sub-objects for materials, damage type, etc.)
+- Skip empty/null values to keep the display clean
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+## Files Changed
+- `src/pages/admin/LeadDetail.tsx` — update `renderFormData()` to recursively display nested objects
 
