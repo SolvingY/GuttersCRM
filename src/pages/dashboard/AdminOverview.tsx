@@ -616,6 +616,9 @@ export default function AdminOverview() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_metrics' }, () => {
         fetchAdminData();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'production_metrics' }, () => {
+        fetchAdminData();
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
