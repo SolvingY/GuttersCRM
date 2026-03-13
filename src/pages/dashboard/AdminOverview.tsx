@@ -5,7 +5,7 @@ import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3, Settings2 } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3, Settings2, HardHat, Wrench } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
