@@ -832,6 +832,49 @@ export default function LeadDetail() {
             </Button>
           </DialogFooter>
         </DialogContent>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Permanently Delete Lead</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this lead and all associated data (files, activity logs, forms, payments). Canvasser metrics will be reversed. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>Type the reference number <span className="font-mono font-bold">{lead.reference_number}</span> to confirm:</Label>
+            <Input
+              value={deleteConfirmRef}
+              onChange={(e) => setDeleteConfirmRef(e.target.value)}
+              placeholder={lead.reference_number || ""}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmRef !== lead.reference_number || deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  const { error } = await supabase.rpc("hard_delete_lead", { p_lead_id: lead.id });
+                  if (error) throw error;
+                  toast({ title: "Lead permanently deleted" });
+                  queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+                  navigate("/admin/leads");
+                } catch (err: any) {
+                  toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+                } finally {
+                  setDeleting(false);
+                  setDeleteOpen(false);
+                }
+              }}
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete Forever
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
