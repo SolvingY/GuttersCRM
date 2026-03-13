@@ -238,7 +238,7 @@ export default function LeadDetail() {
             if (rendered === null) return null;
             return (
               <div key={k} className="flex flex-col sm:flex-row sm:items-start gap-1">
-                <span className="text-xs text-muted-foreground min-w-[120px]">{formatLabel(k)}:</span>
+                <span className="text-xs text-muted-foreground min-w-[160px]">{formatLabel(k)}:</span>
                 <span className="text-sm font-medium">{rendered}</span>
               </div>
             );
