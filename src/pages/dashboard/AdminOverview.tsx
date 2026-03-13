@@ -1099,6 +1099,100 @@ export default function AdminOverview() {
           </div>
         </SectionCarousel.Item>
 
+        {/* Production */}
+        <SectionCarousel.Item id="production" title={`Production (${productionAggregates.totalCrew})`} icon={HardHat}>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <StatsCard title="Total Crew" value={productionAggregates.totalCrew} icon={HardHat} />
+              <StatsCard title="Builds Completed" value={productionAggregates.totalBuilds} icon={CheckCircle} />
+              <StatsCard title="Build Issues" value={productionAggregates.totalIssues} icon={AlertTriangle} />
+              <StatsCard title="Checklists" value={productionAggregates.totalChecklists} icon={Target} />
+              <StatsCard title="Hours Worked" value={productionAggregates.totalHoursWorked} icon={Clock} />
+              <StatsCard title="Avg Efficiency" value={`${productionAggregates.avgEfficiency}%`} icon={Percent} />
+            </div>
+
+            <div className="space-y-3">
+              {isWidgetVisible('production_details') && (
+              <AccordionButton id="production-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'production-details'} onToggle={toggleSubSection}>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  {productionDetails.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">No production data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Builds</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Issues</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Checklists</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Efficiency %</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productionDetails.map((member) => (
+                            <tr key={member.metricId} className="border-t border-border transition-colors hover:bg-muted/30">
+                              <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildsCompleted}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildIssues}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.checklistsCompleted}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildEfficiency}%</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.hoursWorked}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.points.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </AccordionButton>
+              )}
+
+              {isWidgetVisible('production_leaderboard') && (
+              <AccordionButton id="production-leaderboard" title="Production Leaderboard" icon={Trophy} isOpen={openSubSection === 'production-leaderboard'} onToggle={toggleSubSection}>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  {productionDetails.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">No production data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">#</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Builds</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Efficiency %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...productionDetails].sort((a, b) => b.points - a.points).map((member, idx) => (
+                            <tr key={member.metricId} className="border-t border-border transition-colors hover:bg-muted/30">
+                              <td className="py-3 px-4 text-center text-foreground font-semibold">{idx + 1}</td>
+                              <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
+                              <td className="py-3 px-4 text-right text-foreground font-semibold">{member.points.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildsCompleted}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildEfficiency}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </AccordionButton>
+              )}
+            </div>
+          </div>
+        </SectionCarousel.Item>
+
       </SectionCarousel>
 
       <UserStatsModal
