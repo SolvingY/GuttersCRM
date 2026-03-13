@@ -93,6 +93,20 @@ export default function Leads() {
     },
   });
 
+  // Fetch canvasser names for leads with canvasser_id
+  const canvasserIds = [...new Set(allLeads.filter(l => l.canvasser_id).map(l => l.canvasser_id as string))];
+  const { data: canvasserProfiles = [] } = useQuery({
+    queryKey: ["canvasser-profiles", canvasserIds],
+    queryFn: async () => {
+      if (canvasserIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, full_name").in("id", canvasserIds);
+      return data || [];
+    },
+    enabled: canvasserIds.length > 0,
+  });
+  const canvasserNames: Record<string, string> = {};
+  canvasserProfiles.forEach((p: any) => { if (p.full_name) canvasserNames[p.id] = p.full_name; });
+
   const { data: salesReps = [] } = useQuery({
     queryKey: ["sales-reps-for-filter"],
     queryFn: async () => {
@@ -178,6 +192,9 @@ export default function Leads() {
                       )}
                     </div>
                     <p className="font-medium">{lead.full_name}</p>
+                    {leadType === "canvasser" && lead.canvasser_id && canvasserNames[lead.canvasser_id] && (
+                      <p className="text-xs text-purple-600">Set by: {canvasserNames[lead.canvasser_id]}</p>
+                    )}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3" />

@@ -128,6 +128,15 @@ export default function LeadDetail() {
     },
   });
 
+  const { data: canvasserName } = useQuery({
+    queryKey: ["canvasser-profile", lead?.canvasser_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", lead!.canvasser_id!).single();
+      return data?.full_name || null;
+    },
+    enabled: !!lead?.canvasser_id,
+  });
+
   const { data: leadForms = [] } = useQuery({
     queryKey: ["lead-forms", id],
     queryFn: async () => {
@@ -238,7 +247,7 @@ export default function LeadDetail() {
             if (rendered === null) return null;
             return (
               <div key={k} className="flex flex-col sm:flex-row sm:items-start gap-1">
-                <span className="text-xs text-muted-foreground min-w-[120px]">{formatLabel(k)}:</span>
+                <span className="text-xs text-muted-foreground min-w-[160px]">{formatLabel(k)}:</span>
                 <span className="text-sm font-medium">{rendered}</span>
               </div>
             );
@@ -357,6 +366,9 @@ export default function LeadDetail() {
               })()}
             </div>
             <p className="text-sm text-muted-foreground">{serviceLabels[lead.service_type]} • {lead.reference_number}</p>
+            {canvasserName && (
+              <p className="text-xs text-purple-600">Set by: {canvasserName}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -449,10 +461,8 @@ export default function LeadDetail() {
       })()}
 
       <div className="space-y-6">
-          <CollapsibleSection title="Service / Client Details" defaultOpen={false}>
-            {renderFormData()}
-            <div className="border-t border-border my-4" />
-            <div className="space-y-3">
+      <CollapsibleSection title="Service / Client Details" defaultOpen={true}>
+            <div className="space-y-3 mb-4">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
                 <a href={`mailto:${lead.email}`} className="text-sm hover:text-accent">{lead.email}</a>
@@ -479,6 +489,8 @@ export default function LeadDetail() {
               )}
               <p className="text-xs text-muted-foreground">Lead Source: {getLeadSourceLabel((lead as any).lead_source || "internet")}</p>
             </div>
+            <div className="border-t border-border my-4" />
+            {renderFormData()}
           </CollapsibleSection>
 
           {lead.photo_urls?.length > 0 && (

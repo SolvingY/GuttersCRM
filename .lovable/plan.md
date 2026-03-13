@@ -1,52 +1,42 @@
 
 
-# Fix: Canvasser Lead — Name Display, Metrics Sync, and Email Notification
+# Add Edit Button to Shift History
+
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. Show canvasser name on lead cards and lead detail
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-**`src/pages/admin/Leads.tsx`** (lead cards in main list, ~line 180):
-- Query `profiles` for canvasser names (using `canvasser_id` from `quote_requests`)
-- Below the client name on canvasser-type leads, show "Set by: {canvasser name}" in muted text
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-**`src/pages/admin/LeadDetail.tsx`** (header area, ~line 338):
-- Fetch profile for `lead.canvasser_id` when it exists
-- Display "Set by: {canvasser name}" below the reference number line for canvasser leads
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### 2. Client details at top + formatting (approved items)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-**`src/pages/admin/LeadDetail.tsx`**:
-- Change `defaultOpen={false}` to `defaultOpen={true}` on Service / Client Details section (line 452)
-- Move contact info block (email, phone, address) ABOVE `renderFormData()` so it's the first thing visible
-- Standardize label widths to `min-w-[160px]`
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### 3. Send notification email when canvasser creates a lead
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-**`src/pages/canvasser/CreateCanvasserLead.tsx`** (~line 265, after `increment_canvasser_lead_set`):
-- Call `notify-new-lead` edge function with the lead data (clientName, phone, email, address, serviceType, referenceNumber, leadId, formData)
-- Wrap in try/catch so email failure doesn't block submission
-- Fetch the created lead's `reference_number` from the insert response (add `reference_number` to `.select()`)
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-### 4. Add "New Canvasser Lead" notification type to routing
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-**`src/pages/admin/NotificationRouting.tsx`** (line 16-21):
-- Add entry: `{ key: 'new_canvasser_lead', label: 'New Canvasser Leads', description: 'When a canvasser submits a new lead' }`
+## Summary
 
-**`supabase/functions/notify-new-lead/index.ts`**:
-- Update to check for both `new_lead` and `new_canvasser_lead` notification types based on a `leadSource` parameter
-- When `leadSource === 'canvasser'`, query `notification_routing` for `new_canvasser_lead` type, falling back to `new_lead` recipients
-- Update email subject to distinguish: "🏠 New Canvasser Lead: {name}" vs "🏠 New Internet Lead: {name}"
-- Include canvasser name in the email body
-
-### 5. Canvasser lead counter already works
-
-The form already calls `increment_canvasser_lead_set` (line 267) which updates `canvasser_metrics`, `weekly_canvasser_metrics`, and `daily_canvasser_metric_entries`. This feeds into the time clock display and weekly updates. No change needed here — this is already working correctly.
-
-## Files Changed
-- `src/pages/admin/LeadDetail.tsx` — canvasser name display, defaultOpen, contact info reorder, formatting
-- `src/pages/admin/Leads.tsx` — canvasser name on lead cards
-- `src/pages/canvasser/CreateCanvasserLead.tsx` — invoke notify-new-lead after submission
-- `src/pages/admin/NotificationRouting.tsx` — add new_canvasser_lead type
-- `supabase/functions/notify-new-lead/index.ts` — support canvasser lead source, include canvasser name
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
