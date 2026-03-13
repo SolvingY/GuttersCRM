@@ -1,42 +1,56 @@
 
 
-# Add Edit Button to Shift History
+# Add Production Tab to Master Overview / Scoreboard
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+## Overview
 
-## Changes
+Add a "Production" tab alongside Sales Reps, Canvassers, and Supplementers in the Admin Overview (Master Overview) page. This tab will display all production team members with their statistics, following the same pattern as the existing tabs.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+## Data Source
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+Production metrics come from two tables:
+- **`production_metrics`** — YTD totals per user: `builds_completed`, `build_issues`, `checklists_completed`, `build_efficiency`, `points`, `yearly_goal`, `display_name`
+- **`production_shifts`** — Individual shifts with `hours_worked` for aggregating total hours
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+## Changes — `src/pages/dashboard/AdminOverview.tsx`
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+### 1. Add Production state and interfaces
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+Add a `ProductionAggregates` interface and `ProductionDetail` interface (similar to `CanvasserAggregates` / `CanvasserDetail`):
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+| Field | Source |
+|---|---|
+| Total Crew | count of production users |
+| Builds Completed | sum of `builds_completed` |
+| Build Issues | sum of `build_issues` |
+| Checklists Completed | sum of `checklists_completed` |
+| Hours Worked | sum from `production_shifts` (fiscal year) |
+| Avg Efficiency | weighted average of `build_efficiency` |
+| Points | from `production_metrics` |
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+### 2. Fetch production data in `fetchAdminData()`
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+- Query `production_metrics` for all production users (latest per user)
+- Query `production_shifts` for hours worked (sum `hours_worked` per user, fiscal year filtered)
+- Filter to active (non-archived) users with the `production` role via `user_roles`
+- Build aggregate totals and detail rows
 
-## Summary
+### 3. Add Production tab to `SectionCarousel`
 
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+After the Supplementers tab, add a new `SectionCarousel.Item` with `HardHat` icon showing:
+- **6 StatsCards**: Total Crew, Builds Completed, Build Issues, Checklists, Hours Worked, Avg Efficiency
+- **Detailed Stats accordion**: Table with columns — Name, Builds, Issues, Checklists, Efficiency %, Hours, Points, Actions (edit)
+- **Production Leaderboard accordion** (optional, if `ScoreboardProductionLeaderboard` exists or inline ranking by points)
+
+### 4. Add `HardHat` to imports
+
+Already imported in some files; add to the AdminOverview import line.
+
+### 5. Widget registry (optional)
+
+Add `production_details` and `production_leaderboard` entries to `src/lib/widgetRegistry.ts` for the settings drawer visibility toggle.
+
+## Files Changed
+- `src/pages/dashboard/AdminOverview.tsx` — main changes (interfaces, fetch logic, Production tab UI)
+- `src/lib/widgetRegistry.ts` — add production widget entries
 
