@@ -202,6 +202,7 @@ const App = () => (
               <Route path="pit" element={<CanvasserPit />} />
               <Route path="points-history" element={<CanvasserPointsHistory />} />
               <Route path="create-lead" element={<CreateCanvasserLead />} />
+              <Route path="my-leads" element={<CanvasserMyLeads />} />
               <Route path="settings" element={<CanvasserSettings />} />
               <Route path="assessment" element={<InternalAssessment />} />
             </Route>
