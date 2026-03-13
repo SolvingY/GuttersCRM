@@ -97,6 +97,9 @@ export default function LeadDetail() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [archiving, setArchiving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmRef, setDeleteConfirmRef] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // Check if current user is admin
   const { data: isAdmin = false } = useQuery({
