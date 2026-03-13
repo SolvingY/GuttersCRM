@@ -732,6 +732,21 @@ export default function LeadDetail() {
             </CollapsibleSection>
           )}
 
+          {isAdmin && (
+            <CollapsibleSection title="Permanently Delete" defaultOpen={false} className="border-destructive/40">
+              <p className="text-sm text-muted-foreground mb-3">
+                This will permanently remove the lead, all associated files, activity logs, forms, and reverse any canvasser metric increments. This action is irreversible.
+              </p>
+              <Button 
+                variant="destructive" 
+                className="w-full gap-2"
+                onClick={() => { setDeleteConfirmRef(""); setDeleteOpen(true); }}
+              >
+                <Trash2 className="w-4 h-4" /> Permanently Delete Lead
+              </Button>
+            </CollapsibleSection>
+          )}
+
           {lead.status === 'archived' && (
             <div className="border border-muted rounded-lg p-5 bg-muted/30">
               <h2 className="font-heading text-lg uppercase mb-2 text-muted-foreground">Archived</h2>
