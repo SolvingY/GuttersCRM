@@ -532,14 +532,14 @@ export default function AdminOverview() {
 
       // Also get hours from production_shifts
       const { data: prodShifts } = await supabase
-        .from('production_shifts' as any)
+        .from('production_shifts')
         .select('user_id, hours_worked')
         .in('user_id', Array.from(activeProdIds))
         .gte('clock_in_at', FISCAL_YEAR.CURRENT_YEAR_START.toISOString());
 
       const hoursByUser = new Map<string, number>();
       for (const s of (prodShifts || [])) {
-        hoursByUser.set(s.user_id, (hoursByUser.get(s.user_id) || 0) + Number(s.hours_worked || 0));
+        hoursByUser.set(s.user_id, (hoursByUser.get(s.user_id) || 0) + Number((s as any).hours_worked || 0));
       }
 
       const prodDetails: ProductionDetail[] = Array.from(activeProdIds).map(userId => {
