@@ -1,42 +1,42 @@
 
 
-# Hard Delete Leads with Full Data Cleanup
+# Add Edit Button to Shift History
 
 ## Problem
-When testing the system with demo leads, there's no way to permanently delete them. Leads can only be archived, but they persist in the database and pollute metrics, leaderboards, and reports.
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-## Approach
-Add a "Permanently Delete" button on the Lead Detail page (admin only) that removes the lead and reverses any canvasser metric increments caused by its creation.
+## Changes
 
-## Database
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-### Foreign key cascade status (already configured)
-- `lead_activity_log`, `lead_files`, `lead_forms`, `lead_payments` → **ON DELETE CASCADE** (auto-deleted)
-- `gutter_estimates`, `commercial_hail_assessments`, `production_checklist_submissions` → **ON DELETE SET NULL** (orphaned gracefully)
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-No schema migration needed for cascades — they're already correct.
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### New database function: `hard_delete_lead`
-Create a `SECURITY DEFINER` function that:
-1. Looks up the lead's `canvasser_id` and `created_at` to determine if canvasser metrics need reversing
-2. If the lead has a `canvasser_id` and `lead_source = 'canvasser'`:
-   - Decrement `canvasser_metrics.leads_set` by 1 for that canvasser
-   - Decrement `weekly_canvasser_metrics.leads_set` by 1 for the matching week
-   - Decrement `daily_canvasser_metric_entries.leads_set_delta` by 1 for the matching day
-3. Delete any files from storage (`lead-files` bucket) associated with `lead_files` rows for this lead
-4. Delete the `quote_requests` row (cascades handle child tables)
-5. Only callable by admins (check `has_role`)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## UI Changes
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-### `src/pages/admin/LeadDetail.tsx`
-- Add a red "Permanently Delete" button in the header actions area (near Archive/Cancel)
-- Show a confirmation dialog warning that this action is irreversible and will remove all associated data
-- Require typing the lead's reference number to confirm (safety measure for production data)
-- On confirm, call the `hard_delete_lead` RPC, then navigate back to `/admin/leads`
-- Invalidate all relevant query caches
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-## Files Changed
-- **Database migration** — create `hard_delete_lead(p_lead_id UUID)` function
-- **`src/pages/admin/LeadDetail.tsx`** — add delete button, confirmation dialog, and mutation
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
