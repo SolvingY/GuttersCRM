@@ -353,7 +353,7 @@ export default function AdminOverview() {
           points: data.points, leads: realLeads, closedDeals: calculatedClosedDeals,
           yearlyGoal: data.yearlyGoal, salesRank: data.salesRank,
           earningsYtd: data.earningsYtd,
-          name: data.displayName || (data.realUserId ? profilesMap.get(data.realUserId) : null) || 'Unknown User',
+          name: (data.realUserId ? profilesMap.get(data.realUserId) : null) || data.displayName || 'Unknown User',
           avgJobSize, leadToClosePercent,
           role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
           selfGeneratedDeals: data.selfGeneratedDeals,
