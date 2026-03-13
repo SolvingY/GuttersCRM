@@ -5,7 +5,7 @@ import { EditMetricsModal } from '@/components/dashboard/EditMetricsModal';
 import { EditCanvasserMetricsModal } from '@/components/dashboard/EditCanvasserMetricsModal';
 import { UserStatsModal } from '@/components/dashboard/UserStatsModal';
 import { ReportDateRangeModal } from '@/components/dashboard/ReportDateRangeModal';
-import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3, Settings2 } from 'lucide-react';
+import { DollarSign, Star, Users, Briefcase, UserCheck, Loader2, Pencil, Eye, AlertTriangle, Shield, Target, CheckCircle, Clock, Percent, GitCompare, Download, HelpCircle, TrendingUp, ArrowRight, Trophy, BarChart3, Settings2, HardHat, Wrench } from 'lucide-react';
 import { exportToExcel, exportToPDF, SalesRepData, CanvasserData, CompanySummary, MonthlyProgress } from '@/lib/reportGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,6 +94,27 @@ interface CanvasserDetail {
   role: 'canvasser';
 }
 
+interface ProductionDetail {
+  metricId: string;
+  realUserId: string;
+  name: string;
+  buildsCompleted: number;
+  buildIssues: number;
+  checklistsCompleted: number;
+  buildEfficiency: number;
+  hoursWorked: number;
+  points: number;
+}
+
+interface ProductionAggregates {
+  totalCrew: number;
+  totalBuilds: number;
+  totalIssues: number;
+  totalChecklists: number;
+  totalHoursWorked: number;
+  avgEfficiency: number;
+}
+
 const THRESHOLDS = {
   leadToClosePercent: { green: 60, yellow: 30 },
   avgJobSize: { green: 25000, yellow: 20000 },
@@ -112,6 +133,10 @@ export default function AdminOverview() {
   });
   const [userDetails, setUserDetails] = useState<UserDetail[]>([]);
   const [canvasserDetails, setCanvasserDetails] = useState<CanvasserDetail[]>([]);
+  const [productionAggregates, setProductionAggregates] = useState<ProductionAggregates>({
+    totalCrew: 0, totalBuilds: 0, totalIssues: 0, totalChecklists: 0, totalHoursWorked: 0, avgEfficiency: 0,
+  });
+  const [productionDetails, setProductionDetails] = useState<ProductionDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editCanvasserModalOpen, setEditCanvasserModalOpen] = useState(false);
@@ -464,6 +489,92 @@ export default function AdminOverview() {
       setCanvasserDetails(activeCanvassers.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
+    // ── Production data ──
+    const fiscalStartStr2 = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+
+    // Get production role user IDs
+    const { data: productionRoleRows } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'production');
+
+    const productionUserIds = productionRoleRows?.map(r => r.user_id) || [];
+
+    if (productionUserIds.length > 0) {
+      // Filter to active (non-archived) profiles
+      const { data: prodProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, is_archived')
+        .in('id', productionUserIds);
+
+      const activeProdIds = new Set(prodProfiles?.filter(p => !p.is_archived).map(p => p.id) || []);
+      const prodProfileMap = new Map(prodProfiles?.map(p => [p.id, p.full_name]) || []);
+
+      // Get latest production_metrics per user
+      const { data: prodMetrics } = await supabase
+        .from('production_metrics')
+        .select('id, user_id, display_name, builds_completed, build_issues, checklists_completed, build_efficiency, points, metric_date, updated_at')
+        .in('user_id', Array.from(activeProdIds))
+        .order('metric_date', { ascending: false })
+        .order('updated_at', { ascending: false });
+
+      const latestProdByUser = new Map<string, typeof prodMetrics extends (infer T)[] | null ? T : never>();
+      for (const m of (prodMetrics || [])) {
+        if (!latestProdByUser.has(m.user_id)) latestProdByUser.set(m.user_id, m);
+      }
+
+      // Aggregate hours from daily_production_metric_entries
+      const { data: prodDailyEntries } = await supabase
+        .from('daily_production_metric_entries')
+        .select('user_id, builds_completed_delta, build_issues_delta, checklists_completed_delta')
+        .in('user_id', Array.from(activeProdIds))
+        .gte('entry_date', fiscalStartStr2);
+
+      // Also get hours from production_shifts
+      const { data: prodShifts } = await supabase
+        .from('production_shifts')
+        .select('user_id, hours_worked')
+        .in('user_id', Array.from(activeProdIds))
+        .gte('clock_in_at', FISCAL_YEAR.CURRENT_YEAR_START.toISOString());
+
+      const hoursByUser = new Map<string, number>();
+      for (const s of (prodShifts || [])) {
+        hoursByUser.set(s.user_id, (hoursByUser.get(s.user_id) || 0) + Number((s as any).hours_worked || 0));
+      }
+
+      const prodDetails: ProductionDetail[] = Array.from(activeProdIds).map(userId => {
+        const m = latestProdByUser.get(userId);
+        const hours = hoursByUser.get(userId) || 0;
+        return {
+          metricId: m?.id || userId,
+          realUserId: userId,
+          name: m?.display_name || prodProfileMap.get(userId) || 'Unknown',
+          buildsCompleted: Number(m?.builds_completed) || 0,
+          buildIssues: Number(m?.build_issues) || 0,
+          checklistsCompleted: Number(m?.checklists_completed) || 0,
+          buildEfficiency: Number(m?.build_efficiency) || 0,
+          hoursWorked: Math.round(hours * 10) / 10,
+          points: Number(m?.points) || 0,
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      const totalBuilds = prodDetails.reduce((s, d) => s + d.buildsCompleted, 0);
+      const totalIssues = prodDetails.reduce((s, d) => s + d.buildIssues, 0);
+      const totalChecklists = prodDetails.reduce((s, d) => s + d.checklistsCompleted, 0);
+      const totalProdHours = prodDetails.reduce((s, d) => s + d.hoursWorked, 0);
+      const avgEff = prodDetails.length > 0
+        ? prodDetails.reduce((s, d) => s + d.buildEfficiency, 0) / prodDetails.length
+        : 0;
+
+      setProductionAggregates({
+        totalCrew: prodDetails.length,
+        totalBuilds, totalIssues, totalChecklists,
+        totalHoursWorked: Math.round(totalProdHours * 10) / 10,
+        avgEfficiency: Math.round(avgEff * 10) / 10,
+      });
+      setProductionDetails(prodDetails);
+    }
+
     setLoading(false);
   };
 
@@ -503,6 +614,9 @@ export default function AdminOverview() {
         fetchAdminData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_metrics' }, () => {
+        fetchAdminData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'production_metrics' }, () => {
         fetchAdminData();
       })
       .subscribe();
@@ -985,6 +1099,100 @@ export default function AdminOverview() {
         <SectionCarousel.Item id="supplementers" title="Supplementers" icon={Briefcase}>
           <div className="p-8 text-center">
             <p className="text-muted-foreground">Supplementer data is managed on the Supplementer dashboard.</p>
+          </div>
+        </SectionCarousel.Item>
+
+        {/* Production */}
+        <SectionCarousel.Item id="production" title={`Production (${productionAggregates.totalCrew})`} icon={HardHat}>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <StatsCard title="Total Crew" value={productionAggregates.totalCrew} icon={HardHat} />
+              <StatsCard title="Builds Completed" value={productionAggregates.totalBuilds} icon={CheckCircle} />
+              <StatsCard title="Build Issues" value={productionAggregates.totalIssues} icon={AlertTriangle} />
+              <StatsCard title="Checklists" value={productionAggregates.totalChecklists} icon={Target} />
+              <StatsCard title="Hours Worked" value={productionAggregates.totalHoursWorked} icon={Clock} />
+              <StatsCard title="Avg Efficiency" value={`${productionAggregates.avgEfficiency}%`} icon={Percent} />
+            </div>
+
+            <div className="space-y-3">
+              {isWidgetVisible('production_details') && (
+              <AccordionButton id="production-details" title="Detailed Stats" icon={Eye} isOpen={openSubSection === 'production-details'} onToggle={toggleSubSection}>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  {productionDetails.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">No production data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Builds</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Issues</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Checklists</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Efficiency %</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Hours</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productionDetails.map((member) => (
+                            <tr key={member.metricId} className="border-t border-border transition-colors hover:bg-muted/30">
+                              <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildsCompleted}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildIssues}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.checklistsCompleted}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildEfficiency}%</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.hoursWorked}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.points.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </AccordionButton>
+              )}
+
+              {isWidgetVisible('production_leaderboard') && (
+              <AccordionButton id="production-leaderboard" title="Production Leaderboard" icon={Trophy} isOpen={openSubSection === 'production-leaderboard'} onToggle={toggleSubSection}>
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  {productionDetails.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">No production data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">#</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Name</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Points</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Builds</th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">Efficiency %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...productionDetails].sort((a, b) => b.points - a.points).map((member, idx) => (
+                            <tr key={member.metricId} className="border-t border-border transition-colors hover:bg-muted/30">
+                              <td className="py-3 px-4 text-center text-foreground font-semibold">{idx + 1}</td>
+                              <td className="py-3 px-4 text-foreground font-medium">{member.name}</td>
+                              <td className="py-3 px-4 text-right text-foreground font-semibold">{member.points.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildsCompleted}</td>
+                              <td className="py-3 px-4 text-right text-foreground">{member.buildEfficiency}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </AccordionButton>
+              )}
+            </div>
           </div>
         </SectionCarousel.Item>
 

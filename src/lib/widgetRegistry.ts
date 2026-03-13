@@ -17,6 +17,9 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   { id: 'canvasser_details', label: 'Canvasser Detailed Stats', description: 'Full canvasser metrics table', tab: 'canvassers', defaultVisible: true },
   { id: 'conversion_funnel', label: 'Team Conversion Funnel', description: 'Doors → Leads → Closed pipeline', tab: 'canvassers', defaultVisible: true },
   { id: 'canvasser_leaderboard', label: 'Canvasser Leaderboard', description: 'Canvasser rankings', tab: 'canvassers', defaultVisible: true },
+  // Production tab
+  { id: 'production_details', label: 'Production Detailed Stats', description: 'Full production crew metrics table', tab: 'canvassers', defaultVisible: true },
+  { id: 'production_leaderboard', label: 'Production Leaderboard', description: 'Production crew rankings', tab: 'canvassers', defaultVisible: true },
 ];
 
 export type WidgetConfig = Record<string, boolean>;
