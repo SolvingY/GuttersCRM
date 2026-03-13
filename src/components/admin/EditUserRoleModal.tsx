@@ -100,6 +100,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
           supabase.from('user_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
           supabase.from('canvasser_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
           supabase.from('supplementer_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
+          supabase.from('production_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
         ]);
       }
 

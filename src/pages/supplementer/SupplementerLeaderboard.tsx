@@ -56,9 +56,12 @@ export default function SupplementerLeaderboard() {
 
     const { data: activeProfiles } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, full_name")
       .eq("is_archived", false);
     const activeUserIds = new Set(activeProfiles?.map((p) => p.id) || []);
+    const profileNameMap = new Map<string, string>(
+      activeProfiles?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
+    );
 
     const { data, error } = await supabase
       .from("supplementer_metrics")
@@ -76,7 +79,7 @@ export default function SupplementerLeaderboard() {
       .map((d, i) => ({
         rank: i + 1,
         userId: d.user_id,
-        name: d.display_name || "Anonymous",
+        name: profileNameMap.get(d.user_id) || d.display_name || "Anonymous",
         points: d.points || 0,
         rcvIncreased: Number(d.total_rcv_increased) || 0,
         moneyCollected: Number(d.total_money_collected) || 0,

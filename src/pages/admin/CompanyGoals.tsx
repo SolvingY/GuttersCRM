@@ -279,7 +279,7 @@ export default function CompanyGoals() {
       // Enrich with metadata and clamp values
       leadsByUser.forEach((v, userId) => {
         const meta = metaByUser.get(userId);
-        v.name = meta?.display_name || 'Unknown';
+        v.name = profileNameMap.get(userId) || meta?.display_name || 'Unknown';
         v.yearlyGoal = Number(meta?.yearly_goal) || 0;
         v.leadsClosed = Math.max(0, v.leadsClosed);
         v.income = Math.max(0, v.income);

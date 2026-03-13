@@ -119,7 +119,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
           const ytd = ytdMap.get(userId) || {};
           return {
             userId, ...data,
-            name: String(ytd.display_name || profilesMap.get(userId) || 'Unknown User'),
+            name: String(profilesMap.get(userId) || ytd.display_name || 'Unknown User'),
             salesRank: ytd.sales_rank || 'SR1',
             yearlyGoal: Number(ytd.yearly_goal) || 0,
             contestsWon: contestWinsMap.get(userId) || 0,

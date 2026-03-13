@@ -548,7 +548,7 @@ export default function AdminOverview() {
         return {
           metricId: m?.id || userId,
           realUserId: userId,
-          name: m?.display_name || prodProfileMap.get(userId) || 'Unknown',
+          name: prodProfileMap.get(userId) || m?.display_name || 'Unknown',
           buildsCompleted: Number(m?.builds_completed) || 0,
           buildIssues: Number(m?.build_issues) || 0,
           checklistsCompleted: Number(m?.checklists_completed) || 0,
