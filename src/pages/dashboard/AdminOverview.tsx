@@ -435,7 +435,7 @@ export default function AdminOverview() {
         const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
           metricId: config?.metricId || userId, realUserId: userId,
-          name: config?.displayName || canvasserProfilesMap.get(userId) || 'Unknown Canvasser',
+          name: canvasserProfilesMap.get(userId) || config?.displayName || 'Unknown Canvasser',
           leadsSet: perf.leadsSet, leadsClosed: perf.leadsClosed,
           leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
           conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
