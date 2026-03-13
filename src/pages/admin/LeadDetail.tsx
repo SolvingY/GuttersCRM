@@ -863,6 +863,7 @@ export default function LeadDetail() {
                   if (error) throw error;
                   toast({ title: "Lead permanently deleted" });
                   queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+                  queryClient.invalidateQueries({ queryKey: ["unassigned-canvasser-leads"] });
                   navigate("/admin/leads");
                 } catch (err: any) {
                   toast({ title: "Delete failed", description: err.message, variant: "destructive" });

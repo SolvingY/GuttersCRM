@@ -78,6 +78,7 @@ const CanvasserSettings = lazy(() => import("./pages/canvasser/CanvasserSettings
 const CanvasserPit = lazy(() => import("./pages/canvasser/CanvasserPit"));
 const CanvasserPointsHistory = lazy(() => import("./pages/canvasser/CanvasserPointsHistory"));
 const CreateCanvasserLead = lazy(() => import("./pages/canvasser/CreateCanvasserLead"));
+const CanvasserMyLeads = lazy(() => import("./pages/canvasser/CanvasserMyLeads"));
 
 // Supplementer routes
 const SupplementerLayout = lazy(() => import("./pages/supplementer/SupplementerLayout"));
@@ -201,6 +202,7 @@ const App = () => (
               <Route path="pit" element={<CanvasserPit />} />
               <Route path="points-history" element={<CanvasserPointsHistory />} />
               <Route path="create-lead" element={<CreateCanvasserLead />} />
+              <Route path="my-leads" element={<CanvasserMyLeads />} />
               <Route path="settings" element={<CanvasserSettings />} />
               <Route path="assessment" element={<InternalAssessment />} />
             </Route>

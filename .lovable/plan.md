@@ -1,35 +1,42 @@
 
 
-# Canvasser "My Leads" + Cache Fix + Approved UI Changes
+# Add Edit Button to Shift History
+
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. Fix: Invalidate unassigned canvasser leads cache after deletion
-**`src/pages/admin/LeadDetail.tsx`** (line 865):
-- Add `queryClient.invalidateQueries({ queryKey: ["unassigned-canvasser-leads"] })` after the existing `admin-leads` invalidation so deleted leads disappear immediately from that widget.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-### 2. Add "My Leads" page for canvassers
-Create a new page `src/pages/canvasser/CanvasserMyLeads.tsx` that:
-- Queries `quote_requests` where `canvasser_id = user.id` (leads they SET, not leads assigned to them as a sales rep)
-- Shows lead cards with status, service type, client name, phone, city, and created date
-- Includes a status filter dropdown
-- Links each card to the canvasser lead detail view (read-only, or to `/dashboard/leads/:id` if they have sales access)
-- Header says "My Leads" with subtitle "Leads you've set"
-- No "Create Lead" button here since that already exists in the sidebar nav
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### 3. Add route for canvasser My Leads
-**`src/App.tsx`** (line 204):
-- Add lazy import for `CanvasserMyLeads`
-- Add route `<Route path="my-leads" element={<CanvasserMyLeads />} />` inside the canvasser route group
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### 4. Add sidebar nav item
-**`src/components/canvasser/CanvasserSidebar.tsx`** (line 8, navItems array):
-- Add `{ icon: ClipboardList, label: "My Leads", path: "/canvasser/my-leads" }` after the "Create Lead" item
-- Import `ClipboardList` from lucide-react
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-## Files Changed
-- `src/pages/admin/LeadDetail.tsx` — add cache invalidation for unassigned-canvasser-leads
-- `src/pages/canvasser/CanvasserMyLeads.tsx` — new page querying by `canvasser_id`
-- `src/App.tsx` — add lazy import and route
-- `src/components/canvasser/CanvasserSidebar.tsx` — add nav item
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 
