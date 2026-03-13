@@ -172,7 +172,9 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "Next Generation Roofing <notifications@oknextgen.com>",
         to: recipientEmails,
-        subject: `🏠 New Internet Lead: ${clientName} — ${serviceLabel}`,
+        subject: isCanvasserLead
+          ? `🏠 New Canvasser Lead: ${clientName} — ${serviceLabel}`
+          : `🏠 New Internet Lead: ${clientName} — ${serviceLabel}`,
         html,
       }),
     });
