@@ -94,6 +94,27 @@ interface CanvasserDetail {
   role: 'canvasser';
 }
 
+interface ProductionDetail {
+  metricId: string;
+  realUserId: string;
+  name: string;
+  buildsCompleted: number;
+  buildIssues: number;
+  checklistsCompleted: number;
+  buildEfficiency: number;
+  hoursWorked: number;
+  points: number;
+}
+
+interface ProductionAggregates {
+  totalCrew: number;
+  totalBuilds: number;
+  totalIssues: number;
+  totalChecklists: number;
+  totalHoursWorked: number;
+  avgEfficiency: number;
+}
+
 const THRESHOLDS = {
   leadToClosePercent: { green: 60, yellow: 30 },
   avgJobSize: { green: 25000, yellow: 20000 },
