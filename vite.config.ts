@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "@radix-ui/react-tooltip", "@radix-ui/react-dialog"],
+    include: ["react", "react-dom", "react/jsx-runtime", "@radix-ui/react-tooltip", "@radix-ui/react-dialog"],
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
