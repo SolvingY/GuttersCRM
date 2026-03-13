@@ -489,6 +489,92 @@ export default function AdminOverview() {
       setCanvasserDetails(activeCanvassers.sort((a, b) => a.name.localeCompare(b.name)));
     }
 
+    // ── Production data ──
+    const fiscalStartStr2 = format(FISCAL_YEAR.CURRENT_YEAR_START, 'yyyy-MM-dd');
+
+    // Get production role user IDs
+    const { data: productionRoleRows } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'production');
+
+    const productionUserIds = productionRoleRows?.map(r => r.user_id) || [];
+
+    if (productionUserIds.length > 0) {
+      // Filter to active (non-archived) profiles
+      const { data: prodProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, is_archived')
+        .in('id', productionUserIds);
+
+      const activeProdIds = new Set(prodProfiles?.filter(p => !p.is_archived).map(p => p.id) || []);
+      const prodProfileMap = new Map(prodProfiles?.map(p => [p.id, p.full_name]) || []);
+
+      // Get latest production_metrics per user
+      const { data: prodMetrics } = await supabase
+        .from('production_metrics')
+        .select('id, user_id, display_name, builds_completed, build_issues, checklists_completed, build_efficiency, points, metric_date, updated_at')
+        .in('user_id', Array.from(activeProdIds))
+        .order('metric_date', { ascending: false })
+        .order('updated_at', { ascending: false });
+
+      const latestProdByUser = new Map<string, typeof prodMetrics extends (infer T)[] | null ? T : never>();
+      for (const m of (prodMetrics || [])) {
+        if (!latestProdByUser.has(m.user_id)) latestProdByUser.set(m.user_id, m);
+      }
+
+      // Aggregate hours from daily_production_metric_entries
+      const { data: prodDailyEntries } = await supabase
+        .from('daily_production_metric_entries')
+        .select('user_id, builds_completed_delta, build_issues_delta, checklists_completed_delta')
+        .in('user_id', Array.from(activeProdIds))
+        .gte('entry_date', fiscalStartStr2);
+
+      // Also get hours from production_shifts
+      const { data: prodShifts } = await supabase
+        .from('production_shifts' as any)
+        .select('user_id, hours_worked')
+        .in('user_id', Array.from(activeProdIds))
+        .gte('clock_in_at', FISCAL_YEAR.CURRENT_YEAR_START.toISOString());
+
+      const hoursByUser = new Map<string, number>();
+      for (const s of (prodShifts || [])) {
+        hoursByUser.set(s.user_id, (hoursByUser.get(s.user_id) || 0) + Number(s.hours_worked || 0));
+      }
+
+      const prodDetails: ProductionDetail[] = Array.from(activeProdIds).map(userId => {
+        const m = latestProdByUser.get(userId);
+        const hours = hoursByUser.get(userId) || 0;
+        return {
+          metricId: m?.id || userId,
+          realUserId: userId,
+          name: m?.display_name || prodProfileMap.get(userId) || 'Unknown',
+          buildsCompleted: Number(m?.builds_completed) || 0,
+          buildIssues: Number(m?.build_issues) || 0,
+          checklistsCompleted: Number(m?.checklists_completed) || 0,
+          buildEfficiency: Number(m?.build_efficiency) || 0,
+          hoursWorked: Math.round(hours * 10) / 10,
+          points: Number(m?.points) || 0,
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      const totalBuilds = prodDetails.reduce((s, d) => s + d.buildsCompleted, 0);
+      const totalIssues = prodDetails.reduce((s, d) => s + d.buildIssues, 0);
+      const totalChecklists = prodDetails.reduce((s, d) => s + d.checklistsCompleted, 0);
+      const totalProdHours = prodDetails.reduce((s, d) => s + d.hoursWorked, 0);
+      const avgEff = prodDetails.length > 0
+        ? prodDetails.reduce((s, d) => s + d.buildEfficiency, 0) / prodDetails.length
+        : 0;
+
+      setProductionAggregates({
+        totalCrew: prodDetails.length,
+        totalBuilds, totalIssues, totalChecklists,
+        totalHoursWorked: Math.round(totalProdHours * 10) / 10,
+        avgEfficiency: Math.round(avgEff * 10) / 10,
+      });
+      setProductionDetails(prodDetails);
+    }
+
     setLoading(false);
   };
 
