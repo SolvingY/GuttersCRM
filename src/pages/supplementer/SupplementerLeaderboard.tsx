@@ -129,8 +129,11 @@ export default function SupplementerLeaderboard() {
     const monthStart = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
     const monthEnd = format(endOfMonth(selectedMonth), 'yyyy-MM-dd');
 
-    const { data: activeProfiles } = await supabase.from("profiles").select("id").eq("is_archived", false);
+    const { data: activeProfiles } = await supabase.from("profiles").select("id, full_name").eq("is_archived", false);
     const activeUserIds = new Set(activeProfiles?.map((p) => p.id) || []);
+    const profileNameMap = new Map<string, string>(
+      activeProfiles?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
+    );
 
     const { data } = await supabase
       .from("weekly_supplementer_metrics")
@@ -141,7 +144,7 @@ export default function SupplementerLeaderboard() {
     // Aggregate by user
     const userMap = new Map<string, { name: string; points: number; rcv: number; collected: number; cocDays: number[]; supplements: number }>();
     (data || []).filter(d => activeUserIds.has(d.user_id)).forEach(d => {
-      const existing = userMap.get(d.user_id) || { name: d.display_name || "Anonymous", points: 0, rcv: 0, collected: 0, cocDays: [], supplements: 0 };
+      const existing = userMap.get(d.user_id) || { name: profileNameMap.get(d.user_id) || d.display_name || "Anonymous", points: 0, rcv: 0, collected: 0, cocDays: [], supplements: 0 };
       existing.points += Number(d.points_earned) || 0;
       existing.rcv += Number(d.rcv_increased) || 0;
       existing.collected += Number(d.money_collected) || 0;
