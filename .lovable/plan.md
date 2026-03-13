@@ -1,59 +1,42 @@
 
 
-# Fix: Name Display & Alphabetical Sorting Across Dashboard
+# Add Edit Button to Shift History
 
 ## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
-1. **Stale names**: When names are updated in User Roles (which updates `profiles.full_name` and syncs to metrics tables), the dashboard still shows old names because the name resolution logic prioritizes `display_name` from metrics tables. If the sync partially fails or metrics have multiple rows, stale names persist.
+## Changes
 
-2. **Missing sync for production_metrics**: The `EditUserRoleModal` syncs `display_name` to `user_metrics`, `canvasser_metrics`, and `supplementer_metrics` but **not** `production_metrics`.
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-3. **Alphabetical sorting**: The Sales Reps detailed stats section is already sorted alphabetically. Canvassers and Supplementers sections need the same sorting applied.
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-## Fix
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-### Change 1: `src/components/admin/EditUserRoleModal.tsx`
-Add `production_metrics` to the name sync in the save handler (line ~102):
-```typescript
-supabase.from('production_metrics').update({ display_name: nameToSync }).eq('user_id', user.id),
-```
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### Change 2: `src/pages/dashboard/AdminOverview.tsx`
-Flip the name resolution priority in all three sections to prefer `profiles.full_name` over `display_name`:
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-**Sales Reps** (line ~356):
-```
-name: (data.realUserId ? profilesMap.get(data.realUserId) : null) || data.displayName || 'Unknown User',
-```
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-**Canvassers** (line ~438):
-```
-name: canvasserProfilesMap.get(userId) || config?.displayName || 'Unknown Canvasser',
-```
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-**Production** (line ~551):
-```
-name: prodProfileMap.get(userId) || m?.display_name || 'Unknown',
-```
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
 
-**Canvasser sorting** — add `.sort((a, b) => a.name.localeCompare(b.name))` after the canvassers array is built (around line ~446, before setting state).
+## Summary
 
-### Change 3: `src/components/dashboard/ScoreboardSalesLeaderboard.tsx`
-Flip name priority (line ~122):
-```
-name: String(profilesMap.get(userId) || ytd.display_name || 'Unknown User'),
-```
-
-### Change 4: Other pages using stale `display_name`
-Apply the same fix to:
-- `src/pages/admin/CompanyGoals.tsx` — use profiles lookup instead of metrics `display_name`
-- `src/pages/supplementer/SupplementerLeaderboard.tsx` — use profiles lookup
-- `src/pages/admin/AdminTimeClock.tsx` — already falls back correctly (profileMap)
-
-## Files Changed
-- `src/components/admin/EditUserRoleModal.tsx` — add production_metrics sync
-- `src/pages/dashboard/AdminOverview.tsx` — flip name priority, add canvasser sorting
-- `src/components/dashboard/ScoreboardSalesLeaderboard.tsx` — flip name priority
-- `src/pages/admin/CompanyGoals.tsx` — flip name priority
-- `src/pages/supplementer/SupplementerLeaderboard.tsx` — flip name priority
+| Area | Change |
+|------|--------|
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

@@ -353,7 +353,7 @@ export default function AdminOverview() {
           points: data.points, leads: realLeads, closedDeals: calculatedClosedDeals,
           yearlyGoal: data.yearlyGoal, salesRank: data.salesRank,
           earningsYtd: data.earningsYtd,
-          name: data.displayName || (data.realUserId ? profilesMap.get(data.realUserId) : null) || 'Unknown User',
+          name: (data.realUserId ? profilesMap.get(data.realUserId) : null) || data.displayName || 'Unknown User',
           avgJobSize, leadToClosePercent,
           role: data.realUserId ? (rolesMap.get(data.realUserId) || 'user') : 'user',
           selfGeneratedDeals: data.selfGeneratedDeals,
@@ -435,7 +435,7 @@ export default function AdminOverview() {
         const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
           metricId: config?.metricId || userId, realUserId: userId,
-          name: config?.displayName || canvasserProfilesMap.get(userId) || 'Unknown Canvasser',
+          name: canvasserProfilesMap.get(userId) || config?.displayName || 'Unknown Canvasser',
           leadsSet: perf.leadsSet, leadsClosed: perf.leadsClosed,
           leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
           conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
@@ -548,7 +548,7 @@ export default function AdminOverview() {
         return {
           metricId: m?.id || userId,
           realUserId: userId,
-          name: m?.display_name || prodProfileMap.get(userId) || 'Unknown',
+          name: prodProfileMap.get(userId) || m?.display_name || 'Unknown',
           buildsCompleted: Number(m?.builds_completed) || 0,
           buildIssues: Number(m?.build_issues) || 0,
           checklistsCompleted: Number(m?.checklists_completed) || 0,

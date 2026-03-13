@@ -203,13 +203,22 @@ export default function CompanyGoals() {
             .in('user_id', salesRepIds).order('metric_date', { ascending: false })
         : { data: [] };
 
+      // Fetch profiles for canonical names
+      const allUserIds = [...new Set([...salesRepIds, ...canvasserIds])];
+      const { data: allProfiles } = allUserIds.length > 0
+        ? await supabase.from('profiles').select('id, full_name').in('id', allUserIds)
+        : { data: [] };
+      const profileNameMap = new Map<string, string>(
+        allProfiles?.filter(p => p.full_name).map(p => [p.id, p.full_name as string]) || []
+      );
+
       const salesByUser = new Map<string, any>();
       salesData?.forEach(s => {
         if (!salesByUser.has(s.user_id)) {
           salesByUser.set(s.user_id, {
             approvedRevenue: Number(s.approved_revenue) || 0,
             collections: Number(s.collections) || 0,
-            name: s.display_name || 'Unknown',
+            name: profileNameMap.get(s.user_id) || s.display_name || 'Unknown',
             salesRank: s.sales_rank || 'SR1',
             earningsYtd: Number(s.earnings_ytd) || 0,
             points: Number(s.points) || 0,
@@ -270,7 +279,7 @@ export default function CompanyGoals() {
       // Enrich with metadata and clamp values
       leadsByUser.forEach((v, userId) => {
         const meta = metaByUser.get(userId);
-        v.name = meta?.display_name || 'Unknown';
+        v.name = profileNameMap.get(userId) || meta?.display_name || 'Unknown';
         v.yearlyGoal = Number(meta?.yearly_goal) || 0;
         v.leadsClosed = Math.max(0, v.leadsClosed);
         v.income = Math.max(0, v.income);
