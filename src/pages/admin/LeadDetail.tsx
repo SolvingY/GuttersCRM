@@ -449,10 +449,8 @@ export default function LeadDetail() {
       })()}
 
       <div className="space-y-6">
-          <CollapsibleSection title="Service / Client Details" defaultOpen={false}>
-            {renderFormData()}
-            <div className="border-t border-border my-4" />
-            <div className="space-y-3">
+      <CollapsibleSection title="Service / Client Details" defaultOpen={true}>
+            <div className="space-y-3 mb-4">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-muted-foreground" />
                 <a href={`mailto:${lead.email}`} className="text-sm hover:text-accent">{lead.email}</a>
@@ -479,6 +477,8 @@ export default function LeadDetail() {
               )}
               <p className="text-xs text-muted-foreground">Lead Source: {getLeadSourceLabel((lead as any).lead_source || "internet")}</p>
             </div>
+            <div className="border-t border-border my-4" />
+            {renderFormData()}
           </CollapsibleSection>
 
           {lead.photo_urls?.length > 0 && (
