@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight, Flame, History, Wrench, PlusCircle, ClipboardCheck } from "lucide-react";
+import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight, Flame, History, Wrench, PlusCircle, ClipboardCheck, ClipboardList } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
