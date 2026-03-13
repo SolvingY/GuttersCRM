@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { clientName, clientEmail, clientPhone, serviceType, referenceNumber, streetAddress, city, state, zipCode, leadId, formData, bestContactTime, referralSource } = await req.json();
+    const { clientName, clientEmail, clientPhone, serviceType, referenceNumber, streetAddress, city, state, zipCode, leadId, formData, bestContactTime, referralSource, leadSource, canvasserName } = await req.json();
 
     if (!clientName || !referenceNumber) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -93,15 +93,31 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const isCanvasserLead = leadSource === "canvasser";
+    const notificationType = isCanvasserLead ? "new_canvasser_lead" : "new_lead";
+
     const { data: routes } = await supabaseAdmin
       .from("notification_routing")
       .select("email")
-      .eq("notification_type", "new_lead")
+      .eq("notification_type", notificationType)
       .eq("is_active", true);
 
-    const recipientEmails = routes && routes.length > 0
-      ? routes.map((r: any) => r.email)
-      : FALLBACK_RECIPIENTS;
+    // Fall back to new_lead routes if no canvasser-specific routes exist
+    let recipientEmails: string[];
+    if (routes && routes.length > 0) {
+      recipientEmails = routes.map((r: any) => r.email);
+    } else if (isCanvasserLead) {
+      const { data: fallbackRoutes } = await supabaseAdmin
+        .from("notification_routing")
+        .select("email")
+        .eq("notification_type", "new_lead")
+        .eq("is_active", true);
+      recipientEmails = fallbackRoutes && fallbackRoutes.length > 0
+        ? fallbackRoutes.map((r: any) => r.email)
+        : FALLBACK_RECIPIENTS;
+    } else {
+      recipientEmails = FALLBACK_RECIPIENTS;
+    }
 
     const serviceLabel = serviceLabels[serviceType] || serviceType;
     const adminUrl = leadId
