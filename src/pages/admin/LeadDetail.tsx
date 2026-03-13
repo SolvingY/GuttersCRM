@@ -219,21 +219,51 @@ export default function LeadDetail() {
   const isGutters = lead.service_type === "gutters";
   const appointmentLabel = isGutters ? "Schedule Appointment" : "Schedule Roofing Consultation";
 
+  const formatLabel = (key: string) =>
+    key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+
+  const renderValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined || value === "") return null;
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (Array.isArray(value)) return value.filter(Boolean).join(", ") || null;
+    if (typeof value === "object") {
+      const sub = Object.entries(value).filter(
+        ([, v]) => v !== null && v !== undefined && v !== ""
+      );
+      if (sub.length === 0) return null;
+      return (
+        <div className="pl-4 border-l-2 border-border space-y-1 mt-1">
+          {sub.map(([k, v]) => {
+            const rendered = renderValue(v);
+            if (rendered === null) return null;
+            return (
+              <div key={k} className="flex flex-col sm:flex-row sm:items-start gap-1">
+                <span className="text-xs text-muted-foreground min-w-[120px]">{formatLabel(k)}:</span>
+                <span className="text-sm font-medium">{rendered}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return String(value);
+  };
+
   const renderFormData = () => {
     const entries = Object.entries(formData).filter(([k]) => k !== "photoUrls");
     if (entries.length === 0) return <p className="text-sm text-muted-foreground">No details provided</p>;
     return (
       <div className="space-y-2">
-        {entries.map(([key, value]) => (
-          <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1">
-            <span className="text-xs text-muted-foreground capitalize min-w-[140px]">
-              {key.replace(/([A-Z])/g, " $1").trim()}:
-            </span>
-            <span className="text-sm font-medium">
-              {Array.isArray(value) ? value.join(", ") : String(value)}
-            </span>
-          </div>
-        ))}
+        {entries.map(([key, value]) => {
+          const rendered = renderValue(value);
+          if (rendered === null) return null;
+          return (
+            <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1">
+              <span className="text-xs text-muted-foreground min-w-[140px]">{formatLabel(key)}:</span>
+              <span className="text-sm font-medium">{rendered}</span>
+            </div>
+          );
+        })}
       </div>
     );
   };
