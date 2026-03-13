@@ -357,6 +357,9 @@ export default function LeadDetail() {
               })()}
             </div>
             <p className="text-sm text-muted-foreground">{serviceLabels[lead.service_type]} • {lead.reference_number}</p>
+            {canvasserName && (
+              <p className="text-xs text-purple-600">Set by: {canvasserName}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
