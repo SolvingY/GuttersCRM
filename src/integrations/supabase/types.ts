@@ -3600,6 +3600,7 @@ export type Database = {
         Returns: string
       }
       generate_reference_number: { Args: never; Returns: string }
+      hard_delete_lead: { Args: { p_lead_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
