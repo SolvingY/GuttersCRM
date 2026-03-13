@@ -128,6 +128,15 @@ export default function LeadDetail() {
     },
   });
 
+  const { data: canvasserName } = useQuery({
+    queryKey: ["canvasser-profile", lead?.canvasser_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", lead!.canvasser_id!).single();
+      return data?.full_name || null;
+    },
+    enabled: !!lead?.canvasser_id,
+  });
+
   const { data: leadForms = [] } = useQuery({
     queryKey: ["lead-forms", id],
     queryFn: async () => {

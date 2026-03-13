@@ -254,6 +254,9 @@ export default function CreateCanvasserLead() {
         });
       }
 
+      // Fetch reference number for notification
+      const { data: createdLead } = await supabase.from("quote_requests").select("reference_number").eq("id", leadId).single();
+
       // Log activity
       await supabase.from("lead_activity_log").insert({
         lead_id: leadId,
@@ -265,6 +268,30 @@ export default function CreateCanvasserLead() {
       // Auto-increment canvasser metrics (YTD, weekly, daily)
       if (user?.id) {
         await supabase.rpc("increment_canvasser_lead_set", { p_user_id: user.id });
+      }
+
+      // Send notification email for new canvasser lead
+      try {
+        const { data: canvasserProfile } = await supabase.from("profiles").select("full_name").eq("id", user!.id).single();
+        await supabase.functions.invoke("notify-new-lead", {
+          body: {
+            clientName: customerName,
+            clientEmail: email || null,
+            clientPhone: phone,
+            serviceType: serviceInterest || "gutters",
+            referenceNumber: createdLead?.reference_number || "N/A",
+            streetAddress: address,
+            city: city || "N/A",
+            state,
+            zipCode: zip || "",
+            leadId,
+            formData,
+            leadSource: "canvasser",
+            canvasserName: canvasserProfile?.full_name || "Unknown Canvasser",
+          },
+        });
+      } catch {
+        // Don't block submission if notification fails
       }
 
       // Send email to homeowner if checked

@@ -93,6 +93,20 @@ export default function Leads() {
     },
   });
 
+  // Fetch canvasser names for leads with canvasser_id
+  const canvasserIds = [...new Set(allLeads.filter(l => l.canvasser_id).map(l => l.canvasser_id as string))];
+  const { data: canvasserProfiles = [] } = useQuery({
+    queryKey: ["canvasser-profiles", canvasserIds],
+    queryFn: async () => {
+      if (canvasserIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, full_name").in("id", canvasserIds);
+      return data || [];
+    },
+    enabled: canvasserIds.length > 0,
+  });
+  const canvasserNames: Record<string, string> = {};
+  canvasserProfiles.forEach((p: any) => { if (p.full_name) canvasserNames[p.id] = p.full_name; });
+
   const { data: salesReps = [] } = useQuery({
     queryKey: ["sales-reps-for-filter"],
     queryFn: async () => {
