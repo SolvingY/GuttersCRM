@@ -832,6 +832,8 @@ export default function LeadDetail() {
             </Button>
           </DialogFooter>
         </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
