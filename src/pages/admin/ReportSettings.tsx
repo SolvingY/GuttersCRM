@@ -728,8 +728,6 @@ function CanvasserEODSettingsCard() {
     </>
   );
 }
-  const { toast } = useToast();
-  const [sendHour, setSendHour] = useState("21");
   const [frequency, setFrequency] = useState("daily");
   const [selectedRecipients, setSelectedRecipients] = useState<{ id: string; name: string; email: string }[]>([]);
   const [saving, setSaving] = useState(false);
