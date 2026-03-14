@@ -132,6 +132,9 @@ Deno.serve(async (req) => {
       const leadsClosed = entries.reduce((s: number, e: any) => s + (e.leads_closed_delta || 0), 0);
       const doors = entries.reduce((s: number, e: any) => s + (e.doors_knocked_delta || 0), 0);
       const convos = entries.reduce((s: number, e: any) => s + (e.conversations_had_delta || 0), 0);
+      const notInterested = entries.reduce((s: number, e: any) => s + (e.not_interested_delta || 0), 0);
+      const damaged = entries.reduce((s: number, e: any) => s + (e.leads_with_damage_delta || 0), 0);
+      const notDamaged = entries.reduce((s: number, e: any) => s + (e.leads_without_damage_delta || 0), 0);
       const entryNotes = entries.map((e: any) => e.notes).filter(Boolean).join(" | ");
 
       // Aggregate shift hours
@@ -176,7 +179,7 @@ Deno.serve(async (req) => {
       const allNotes = [shiftNotes, entryNotes].filter(Boolean).join(" | ");
       const truncatedNotes = allNotes.length > 60 ? allNotes.slice(0, 57) + "..." : allNotes;
 
-      canvasserData.push({ name, clockIn, clockOut, hours: totalShiftHours, leadsSet, leadsClosed, doors, convos, notes: truncatedNotes, fullNotes: allNotes });
+      canvasserData.push({ name, clockIn, clockOut, hours: totalShiftHours, leadsSet, leadsClosed, doors, convos, notInterested, damaged, notDamaged, notes: truncatedNotes, fullNotes: allNotes });
     }
 
     canvasserData.sort((a, b) => a.name.localeCompare(b.name));
@@ -187,6 +190,9 @@ Deno.serve(async (req) => {
     const totalClosed = canvasserData.reduce((s, c) => s + c.leadsClosed, 0);
     const totalDoors = canvasserData.reduce((s, c) => s + c.doors, 0);
     const totalConvos = canvasserData.reduce((s, c) => s + c.convos, 0);
+    const totalNI = canvasserData.reduce((s, c) => s + c.notInterested, 0);
+    const totalDmg = canvasserData.reduce((s, c) => s + c.damaged, 0);
+    const totalNoDmg = canvasserData.reduce((s, c) => s + c.notDamaged, 0);
     const closeRate = totalLeadsSet > 0 ? ((totalClosed / totalLeadsSet) * 100).toFixed(1) + "%" : "—";
 
     const inOutHeaders = isRange
@@ -207,12 +213,15 @@ Deno.serve(async (req) => {
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.hours.toFixed(1)}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.doors}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.convos}</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.notInterested}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.leadsSet}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.leadsClosed}</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.damaged}</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.notDamaged}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:12px;">${c.notes || "—"}</td>
         </tr>`;
         }).join("")
-      : `<tr><td colspan="${isRange ? 8 : 9}" style="padding:16px;text-align:center;color:#6b7280;">No canvasser activity recorded for this period.</td></tr>`;
+      : `<tr><td colspan="${isRange ? 11 : 12}" style="padding:16px;text-align:center;color:#6b7280;">No canvasser activity recorded for this period.</td></tr>`;
 
     const flaggedSection = flaggedShifts.length > 0
       ? `<div style="margin-top:24px;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
@@ -231,7 +240,7 @@ Deno.serve(async (req) => {
     const reportTitle = isRange ? "NGR Canvasser Date Range Report" : "NGR Canvasser Daily Report";
 
     const html = `
-    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;">
+    <div style="font-family:sans-serif;max-width:1000px;margin:0 auto;">
       <div style="background:#1e293b;color:white;padding:24px;border-radius:8px 8px 0 0;">
         <h1 style="margin:0;font-size:22px;">${reportTitle}</h1>
         <p style="margin:4px 0 0;opacity:0.8;">${reportDateFormatted}</p>
@@ -245,8 +254,11 @@ Deno.serve(async (req) => {
               <th style="padding:10px 12px;text-align:right;">Hrs</th>
               <th style="padding:10px 12px;text-align:right;">Doors</th>
               <th style="padding:10px 12px;text-align:right;">Convos</th>
+              <th style="padding:10px 12px;text-align:right;">NI</th>
               <th style="padding:10px 12px;text-align:right;">Leads</th>
               <th style="padding:10px 12px;text-align:right;">Closed</th>
+              <th style="padding:10px 12px;text-align:right;">Dmg</th>
+              <th style="padding:10px 12px;text-align:right;">No Dmg</th>
               <th style="padding:10px 12px;text-align:left;">Notes</th>
             </tr>
           </thead>
@@ -260,11 +272,14 @@ Deno.serve(async (req) => {
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Active canvassers:</td><td>${canvasserData.length} of ${canvasserIds.length}</td></tr>
             ${isRange ? `<tr><td style="padding:4px 16px 4px 0;font-weight:600;">Report period:</td><td>${allDates.length} day${allDates.length !== 1 ? "s" : ""}</td></tr>` : ""}
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Total hours:</td><td>${totalHours.toFixed(1)}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Doors knocked:</td><td>${totalDoors}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Conversations:</td><td>${totalConvos}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Not Interested:</td><td>${totalNI}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Leads set:</td><td>${totalLeadsSet}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Leads closed:</td><td>${totalClosed}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Close rate:</td><td>${closeRate}</td></tr>
-            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Doors knocked:</td><td>${totalDoors}</td></tr>
-            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Conversations:</td><td>${totalConvos}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Damaged:</td><td>${totalDmg}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Not Damaged:</td><td>${totalNoDmg}</td></tr>
           </table>
         </div>` : ""}
 

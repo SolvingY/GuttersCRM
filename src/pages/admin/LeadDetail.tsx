@@ -82,7 +82,7 @@ const serviceIcons: Record<string, any> = { commercial: Building2, residential: 
 
 const statusOptions = ["new", "contacted", "quoted", "won", "scheduled", "completed", "lost", "cancelled"];
 const priorityOptions = ["urgent", "high", "normal", "low"];
-const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
+const lostReasons = ["One Leg", "Too Expensive", "Customer Not Home", "Renter", "Not Interested", "Other"];
 const cancelledReasons = ["Customer changed mind", "Financing fell through", "Insurance denied", "Scheduling conflict", "Material unavailable", "Weather delay", "Other"];
 
 export default function LeadDetail() {
@@ -100,6 +100,9 @@ export default function LeadDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmRef, setDeleteConfirmRef] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [lostDamageAnswer, setLostDamageAnswer] = useState<boolean | null>(null);
+  const [lostReasonSelected, setLostReasonSelected] = useState("");
 
   // Check if current user is admin
   const { data: isAdmin = false } = useQuery({
@@ -161,6 +164,73 @@ export default function LeadDetail() {
     previousStatusRef.current = lead.status;
   }
 
+  // Helper to update canvasser damage metrics across 3 tiers
+  const updateCanvasserDamageMetrics = useCallback(async (canvasserId: string, isDamaged: boolean) => {
+    const today = new Date().toLocaleDateString("en-CA");
+    const dayOfWeek = new Date().getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartStr = weekStart.toLocaleDateString("en-CA");
+    const weekEndStr = weekEnd.toLocaleDateString("en-CA");
+
+    // 1. YTD canvasser_metrics
+    const { data: ytdRow } = await supabase.from("canvasser_metrics").select("*").eq("user_id", canvasserId).single();
+    if (ytdRow) {
+      const updateObj: any = { updated_at: new Date().toISOString() };
+      if (isDamaged) {
+        updateObj.leads_with_damage = ((ytdRow as any).leads_with_damage || 0) + 1;
+      } else {
+        updateObj.leads_without_damage = ((ytdRow as any).leads_without_damage || 0) + 1;
+      }
+      await supabase.from("canvasser_metrics").update(updateObj).eq("user_id", canvasserId);
+    }
+
+    // 2. Daily
+    const { data: existingDaily } = await supabase.from("daily_canvasser_metric_entries")
+      .select("*").eq("user_id", canvasserId).eq("entry_date", today).maybeSingle();
+    if (existingDaily) {
+      const updateObj: any = { updated_at: new Date().toISOString() };
+      if (isDamaged) {
+        updateObj.leads_with_damage_delta = ((existingDaily as any).leads_with_damage_delta || 0) + 1;
+      } else {
+        updateObj.leads_without_damage_delta = ((existingDaily as any).leads_without_damage_delta || 0) + 1;
+      }
+      await supabase.from("daily_canvasser_metric_entries").update(updateObj).eq("id", (existingDaily as any).id);
+    } else {
+      const insertObj: any = { user_id: canvasserId, entry_date: today };
+      if (isDamaged) {
+        insertObj.leads_with_damage_delta = 1;
+      } else {
+        insertObj.leads_without_damage_delta = 1;
+      }
+      await supabase.from("daily_canvasser_metric_entries").insert(insertObj);
+    }
+
+    // 3. Weekly
+    const { data: existingWeekly } = await supabase.from("weekly_canvasser_metrics")
+      .select("*").eq("user_id", canvasserId).eq("week_start", weekStartStr).maybeSingle();
+    if (existingWeekly) {
+      const updateObj: any = { updated_at: new Date().toISOString() };
+      if (isDamaged) {
+        updateObj.leads_with_damage = ((existingWeekly as any).leads_with_damage || 0) + 1;
+      } else {
+        updateObj.leads_without_damage = ((existingWeekly as any).leads_without_damage || 0) + 1;
+      }
+      await supabase.from("weekly_canvasser_metrics").update(updateObj).eq("id", (existingWeekly as any).id);
+    } else {
+      const insertObj: any = { user_id: canvasserId, week_start: weekStartStr, week_end: weekEndStr };
+      if (isDamaged) {
+        insertObj.leads_with_damage = 1;
+      } else {
+        insertObj.leads_without_damage = 1;
+      }
+      await supabase.from("weekly_canvasser_metrics").insert(insertObj);
+    }
+  }, []);
+
   const fireStatusNotification = useCallback(async (newStatus: string, updates: Record<string, any>) => {
     if (!lead) return;
     const prevStatus = previousStatusRef.current;
@@ -195,6 +265,7 @@ export default function LeadDetail() {
             repName,
             lostReason: updates.lost_reason || lead.lost_reason || "Not specified",
             leadSource: (lead as any).lead_source || "internet",
+            wasDamaged: updates.was_damaged ?? null,
           },
         });
       }
@@ -558,12 +629,20 @@ export default function LeadDetail() {
 
           <CollapsibleSection title="Outcome" defaultOpen={false}>
             {["won", "scheduled", "completed"].includes(lead.status) && lead.won_at && (
-              <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
+              <div>
+                <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
+                {(lead as any).was_damaged !== null && (
+                  <p className="text-xs text-muted-foreground mt-1">Damage: {(lead as any).was_damaged ? "Yes" : "No"}</p>
+                )}
+              </div>
             )}
             {lead.status === "lost" && lead.lost_at && (
               <div>
                 <p className="text-sm text-destructive font-medium">Lost on {new Date(lead.lost_at).toLocaleDateString()}</p>
                 {lead.lost_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {lead.lost_reason}</p>}
+                {(lead as any).was_damaged !== null && (
+                  <p className="text-xs text-muted-foreground mt-1">Damage: {(lead as any).was_damaged ? "Yes" : "No"}</p>
+                )}
               </div>
             )}
             {lead.status === "cancelled" && (lead as any).cancelled_at && (
@@ -576,16 +655,19 @@ export default function LeadDetail() {
               <>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
-                    onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
+                    onClick={async () => {
+                      updateLead.mutate({ status: "won", won_at: new Date().toISOString(), was_damaged: true } as any);
+                      if ((lead as any).canvasser_id) {
+                        await updateCanvasserDamageMetrics((lead as any).canvasser_id, true);
+                      }
+                    }}>
                     <CheckCircle className="w-3 h-3" /> Won
                   </Button>
                   <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
                     onClick={() => {
-                      if (!lostReason) {
-                        toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
-                        return;
-                      }
-                      updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
+                      setLostDamageAnswer(null);
+                      setLostReasonSelected("");
+                      setLostDialogOpen(true);
                     }}>
                     <XCircle className="w-3 h-3" /> Lost
                   </Button>
@@ -600,13 +682,7 @@ export default function LeadDetail() {
                     <Ban className="w-3 h-3" /> Cancelled
                   </Button>
                 </div>
-                <div className="mt-3 space-y-2">
-                  <Select value={lostReason} onValueChange={setLostReason}>
-                    <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
-                    <SelectContent>
-                      {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="mt-3">
                   <Select value={cancelledReason} onValueChange={setCancelledReason}>
                     <SelectTrigger className="text-xs"><SelectValue placeholder="Cancellation reason (if cancelled)" /></SelectTrigger>
                     <SelectContent>
@@ -783,6 +859,73 @@ export default function LeadDetail() {
             </Button>
           </CollapsibleSection>
       </div>
+
+      {/* Lost Lead Dialog */}
+      <Dialog open={lostDialogOpen} onOpenChange={setLostDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Lead as Lost</DialogTitle>
+            <DialogDescription>Please provide details about this lost lead.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <p className="text-sm font-medium mb-2">Was there damage?</p>
+              <div className="flex gap-2">
+                <Button
+                  variant={lostDamageAnswer === true ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setLostDamageAnswer(true)}
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={lostDamageAnswer === false ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setLostDamageAnswer(false)}
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Why was it lost?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {lostReasons.map((r) => (
+                  <Button
+                    key={r}
+                    variant={lostReasonSelected === r ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLostReasonSelected(r)}
+                  >
+                    {r}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLostDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={lostDamageAnswer === null || !lostReasonSelected}
+              onClick={async () => {
+                updateLead.mutate({
+                  status: "lost",
+                  lost_at: new Date().toISOString(),
+                  lost_reason: lostReasonSelected,
+                  was_damaged: lostDamageAnswer,
+                } as any);
+                if ((lead as any).canvasser_id && lostDamageAnswer !== null) {
+                  await updateCanvasserDamageMetrics((lead as any).canvasser_id, lostDamageAnswer);
+                }
+                setLostDialogOpen(false);
+              }}
+            >
+              Confirm Lost
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Archive Dialog */}
       <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
