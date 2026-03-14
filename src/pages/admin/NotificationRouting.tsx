@@ -488,9 +488,12 @@ function CanvasserEODCard() {
             </Select>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={handleSave} disabled={saving} size="sm">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}Save EOD Settings</Button>
-          <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">{sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}Send Test Report</Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleSave} disabled={saving} size="sm">{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}Save EOD Settings</Button>
+            <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">{sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}Send Test Report</Button>
+          </div>
+          <CanvasserDateRangeButton />
         </div>
       </CardContent>
     </Card>
