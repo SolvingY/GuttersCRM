@@ -279,6 +279,7 @@ const App = () => (
               <Route path="notifications" element={<NotificationRouting />} />
               <Route path="presets" element={<AdminPresets />} />
               <Route path="sent-reports" element={<SentReports />} />
+              <Route path="estimates" element={<AllEstimates />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
