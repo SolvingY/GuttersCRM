@@ -265,7 +265,6 @@ Deno.serve(async (req) => {
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Close rate:</td><td>${closeRate}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Doors knocked:</td><td>${totalDoors}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Conversations:</td><td>${totalConvos}</td></tr>
-            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Contracts:</td><td>${totalContracts}</td></tr>
           </table>
         </div>` : ""}
 
