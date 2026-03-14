@@ -43,6 +43,49 @@ function CollapsibleSection({ title, defaultOpen = true, children, className }: 
   );
 }
 
+function ProfitSummaryCard({ estimateId, isAdmin, hasEstimates }: { estimateId?: string; isAdmin: boolean; hasEstimates: boolean }) {
+  const { data: profitData } = useQuery({
+    queryKey: ["job-profitability-summary", estimateId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("job_profitability") as any)
+        .select("gross_profit, profit_margin_pct, quoted_price, material_cost, labor_cost, other_costs, commission_paid")
+        .eq("estimate_id", estimateId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!estimateId && isAdmin && hasEstimates,
+  });
+
+  if (!profitData || !isAdmin || !hasEstimates) return null;
+
+  const grossProfit = Number(profitData.quoted_price || 0) - Number(profitData.commission_paid || 0) - Number(profitData.material_cost || 0) - Number(profitData.labor_cost || 0) - Number(profitData.other_costs || 0);
+  const marginPct = Number(profitData.quoted_price) > 0 ? Math.round((grossProfit / Number(profitData.quoted_price)) * 10000) / 100 : 0;
+  const isPositive = grossProfit >= 0;
+
+  return (
+    <div className={cn(
+      "rounded-lg border p-4 flex items-center justify-between",
+      isPositive ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"
+    )}>
+      <div className="flex items-center gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Profit</p>
+          <p className={cn("text-lg font-bold font-mono", isPositive ? "text-green-600" : "text-destructive")}>
+            ${grossProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Margin</p>
+          <p className={cn("text-lg font-bold font-mono", isPositive ? "text-green-600" : "text-destructive")}>
+            {marginPct}%
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminEstimatesSection({ leadId }: { leadId: string }) {
   const { data: estimates = [] } = useRQQuery({
     queryKey: ["admin-lead-estimates", leadId],

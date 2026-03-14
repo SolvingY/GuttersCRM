@@ -44,28 +44,34 @@ serve(async (req) => {
       customer_name, job_number, city, state,
       quoted_price, commission_paid, material_cost, labor_cost, other_costs,
       other_costs_description, gross_profit, profit_margin_pct, notes, entered_by_name,
+      recipient_emails,
     } = body;
 
-    // Get all admin emails
-    const { data: adminRoles } = await adminClient.from("user_roles").select("user_id").eq("role", "admin");
-    if (!adminRoles?.length) {
-      return new Response(JSON.stringify({ ok: true, skipped: "no admins" }), { headers: corsHeaders });
-    }
+    let emails: string[] = [];
 
-    const adminIds = adminRoles.map((r: any) => r.user_id);
+    if (recipient_emails && Array.isArray(recipient_emails) && recipient_emails.length > 0) {
+      // Use custom recipient list
+      emails = recipient_emails;
+    } else {
+      // Get all admin emails
+      const { data: adminRoles } = await adminClient.from("user_roles").select("user_id").eq("role", "admin");
+      if (!adminRoles?.length) {
+        return new Response(JSON.stringify({ ok: true, skipped: "no admins" }), { headers: corsHeaders });
+      }
 
-    // Check profiles for archived status
-    const { data: profiles } = await adminClient.from("profiles").select("id").in("id", adminIds).eq("is_archived", false);
-    const activeIds = (profiles || []).map((p: any) => p.id);
-    if (!activeIds.length) {
-      return new Response(JSON.stringify({ ok: true, skipped: "no active admins" }), { headers: corsHeaders });
-    }
+      const adminIds = adminRoles.map((r: any) => r.user_id);
 
-    // Get emails from auth.users
-    const emails: string[] = [];
-    for (const uid of activeIds) {
-      const { data: { user } } = await adminClient.auth.admin.getUserById(uid);
-      if (user?.email) emails.push(user.email);
+      // Check profiles for archived status
+      const { data: profiles } = await adminClient.from("profiles").select("id").in("id", adminIds).eq("is_archived", false);
+      const activeIds = (profiles || []).map((p: any) => p.id);
+      if (!activeIds.length) {
+        return new Response(JSON.stringify({ ok: true, skipped: "no active admins" }), { headers: corsHeaders });
+      }
+
+      for (const uid of activeIds) {
+        const { data: { user } } = await adminClient.auth.admin.getUserById(uid);
+        if (user?.email) emails.push(user.email);
+      }
     }
 
     if (!emails.length || !resendApiKey) {

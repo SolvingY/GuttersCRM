@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Lock, Upload, FileText, ImageIcon, X, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Lock, Upload, FileText, ImageIcon, X, Loader2, Send, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface JobProfitabilityPanelProps {
   estimateId: string;
@@ -37,6 +39,12 @@ export default function JobProfitabilityPanel({
   const [invoiceUrls, setInvoiceUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Email dialog state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["job-profitability", estimateId],
@@ -96,6 +104,27 @@ export default function JobProfitabilityPanel({
     setInvoiceUrls(prev => prev.filter(u => u !== path));
   };
 
+  const buildEmailPayload = async () => {
+    const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user!.id).single();
+    return {
+      estimate_id: estimateId,
+      customer_name: customerName || "N/A",
+      job_number: jobNumber || "N/A",
+      city: city || "",
+      state: state || "",
+      quoted_price: quotedPrice,
+      commission_paid: commission,
+      material_cost: materialCost,
+      labor_cost: laborCost,
+      other_costs: otherCosts,
+      other_costs_description: otherCosts > 0 ? otherCostsDescription : null,
+      gross_profit: grossProfit,
+      profit_margin_pct: marginPct,
+      notes: notes || null,
+      entered_by_name: profile?.full_name || "Unknown",
+    };
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -120,33 +149,51 @@ export default function JobProfitabilityPanel({
 
       toast({ title: "Profitability saved" });
       queryClient.invalidateQueries({ queryKey: ["job-profitability", estimateId] });
+      queryClient.invalidateQueries({ queryKey: ["job-profitability-summary", estimateId] });
 
-      // Get entered_by name for email
-      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user!.id).single();
-
-      supabase.functions.invoke("send-profitability-summary", {
-        body: {
-          estimate_id: estimateId,
-          customer_name: customerName || "N/A",
-          job_number: jobNumber || "N/A",
-          city: city || "",
-          state: state || "",
-          quoted_price: quotedPrice,
-          commission_paid: commission,
-          material_cost: materialCost,
-          labor_cost: laborCost,
-          other_costs: otherCosts,
-          other_costs_description: otherCosts > 0 ? otherCostsDescription : null,
-          gross_profit: grossProfit,
-          profit_margin_pct: marginPct,
-          notes: notes || null,
-          entered_by_name: profile?.full_name || "Unknown",
-        },
-      });
+      // Send to admins automatically
+      const emailPayload = await buildEmailPayload();
+      supabase.functions.invoke("send-profitability-summary", { body: emailPayload });
     } catch (err: any) {
       toast({ title: "Save failed", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddEmail = () => {
+    const email = emailInput.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid email", variant: "destructive" });
+      return;
+    }
+    if (recipientEmails.includes(email)) {
+      toast({ title: "Email already added", variant: "destructive" });
+      return;
+    }
+    setRecipientEmails(prev => [...prev, email]);
+    setEmailInput("");
+  };
+
+  const handleSendReport = async () => {
+    if (recipientEmails.length === 0) {
+      toast({ title: "Add at least one recipient", variant: "destructive" });
+      return;
+    }
+    setSending(true);
+    try {
+      const emailPayload = await buildEmailPayload();
+      const { error } = await supabase.functions.invoke("send-profitability-summary", {
+        body: { ...emailPayload, recipient_emails: recipientEmails },
+      });
+      if (error) throw error;
+      toast({ title: `Report sent to ${recipientEmails.length} recipient(s)` });
+      setEmailDialogOpen(false);
+      setRecipientEmails([]);
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -250,6 +297,51 @@ export default function JobProfitabilityPanel({
       <Button onClick={handleSave} disabled={saving} className="w-full">
         {saving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving…</> : "Save Profitability"}
       </Button>
+
+      <Button variant="outline" onClick={() => setEmailDialogOpen(true)} className="w-full gap-2">
+        <Send className="w-4 h-4" /> Send Profitability Report
+      </Button>
+
+      {/* Email Report Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Profitability Report</DialogTitle>
+            <DialogDescription>Add recipient email addresses to send the profitability summary.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="email@example.com"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddEmail(); } }}
+              />
+              <Button variant="outline" size="icon" onClick={handleAddEmail}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            {recipientEmails.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {recipientEmails.map(email => (
+                  <Badge key={email} variant="secondary" className="gap-1 pr-1">
+                    {email}
+                    <button onClick={() => setRecipientEmails(prev => prev.filter(e => e !== email))} className="ml-1 hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSendReport} disabled={sending || recipientEmails.length === 0}>
+              {sending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Sending…</> : `Send to ${recipientEmails.length} recipient(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
