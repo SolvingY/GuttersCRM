@@ -21,6 +21,7 @@ import { useQuery as useRQQuery } from "@tanstack/react-query";
 import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import JobProfitabilityPanel from "@/components/admin/JobProfitabilityPanel";
+import { Progress } from "@/components/ui/progress";
 
 function CollapsibleSection({ title, defaultOpen = true, children, className }: { title: string; defaultOpen?: boolean; children: React.ReactNode; className?: string }) {
   const [open, setOpen] = useState(defaultOpen);
