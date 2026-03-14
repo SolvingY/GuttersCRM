@@ -860,6 +860,73 @@ export default function LeadDetail() {
           </CollapsibleSection>
       </div>
 
+      {/* Lost Lead Dialog */}
+      <Dialog open={lostDialogOpen} onOpenChange={setLostDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Lead as Lost</DialogTitle>
+            <DialogDescription>Please provide details about this lost lead.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <p className="text-sm font-medium mb-2">Was there damage?</p>
+              <div className="flex gap-2">
+                <Button
+                  variant={lostDamageAnswer === true ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setLostDamageAnswer(true)}
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={lostDamageAnswer === false ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setLostDamageAnswer(false)}
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Why was it lost?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {lostReasons.map((r) => (
+                  <Button
+                    key={r}
+                    variant={lostReasonSelected === r ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLostReasonSelected(r)}
+                  >
+                    {r}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLostDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={lostDamageAnswer === null || !lostReasonSelected}
+              onClick={async () => {
+                updateLead.mutate({
+                  status: "lost",
+                  lost_at: new Date().toISOString(),
+                  lost_reason: lostReasonSelected,
+                  was_damaged: lostDamageAnswer,
+                } as any);
+                if ((lead as any).canvasser_id && lostDamageAnswer !== null) {
+                  await updateCanvasserDamageMetrics((lead as any).canvasser_id, lostDamageAnswer);
+                }
+                setLostDialogOpen(false);
+              }}
+            >
+              Confirm Lost
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Archive Dialog */}
       <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
         <DialogContent>
