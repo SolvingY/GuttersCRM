@@ -132,7 +132,6 @@ Deno.serve(async (req) => {
       const leadsClosed = entries.reduce((s: number, e: any) => s + (e.leads_closed_delta || 0), 0);
       const doors = entries.reduce((s: number, e: any) => s + (e.doors_knocked_delta || 0), 0);
       const convos = entries.reduce((s: number, e: any) => s + (e.conversations_had_delta || 0), 0);
-      const contracts = entries.reduce((s: number, e: any) => s + (e.contracts_delta || 0), 0);
       const entryNotes = entries.map((e: any) => e.notes).filter(Boolean).join(" | ");
 
       // Aggregate shift hours
