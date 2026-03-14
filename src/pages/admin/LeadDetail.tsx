@@ -43,6 +43,49 @@ function CollapsibleSection({ title, defaultOpen = true, children, className }: 
   );
 }
 
+function ProfitSummaryCard({ estimateId, isAdmin, hasEstimates }: { estimateId?: string; isAdmin: boolean; hasEstimates: boolean }) {
+  const { data: profitData } = useQuery({
+    queryKey: ["job-profitability-summary", estimateId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("job_profitability") as any)
+        .select("gross_profit, profit_margin_pct, quoted_price, material_cost, labor_cost, other_costs, commission_paid")
+        .eq("estimate_id", estimateId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!estimateId && isAdmin && hasEstimates,
+  });
+
+  if (!profitData || !isAdmin || !hasEstimates) return null;
+
+  const grossProfit = Number(profitData.quoted_price || 0) - Number(profitData.commission_paid || 0) - Number(profitData.material_cost || 0) - Number(profitData.labor_cost || 0) - Number(profitData.other_costs || 0);
+  const marginPct = Number(profitData.quoted_price) > 0 ? Math.round((grossProfit / Number(profitData.quoted_price)) * 10000) / 100 : 0;
+  const isPositive = grossProfit >= 0;
+
+  return (
+    <div className={cn(
+      "rounded-lg border p-4 flex items-center justify-between",
+      isPositive ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"
+    )}>
+      <div className="flex items-center gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Gross Profit</p>
+          <p className={cn("text-lg font-bold font-mono", isPositive ? "text-green-600" : "text-destructive")}>
+            ${grossProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Margin</p>
+          <p className={cn("text-lg font-bold font-mono", isPositive ? "text-green-600" : "text-destructive")}>
+            {marginPct}%
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminEstimatesSection({ leadId }: { leadId: string }) {
   const { data: estimates = [] } = useRQQuery({
     queryKey: ["admin-lead-estimates", leadId],
@@ -733,24 +776,12 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
+          {/* Top Profit Summary Card */}
+          <ProfitSummaryCard estimateId={(leadEstimates as any[])?.[0]?.id} isAdmin={isAdmin} hasEstimates={(leadEstimates as any[]).length > 0} />
+
           <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
             <AdminEstimatesSection leadId={lead.id} />
           </CollapsibleSection>
-
-          {isAdmin && (leadEstimates as any[]).length > 0 && (
-            <CollapsibleSection title="Job Profitability" defaultOpen={false}>
-              <JobProfitabilityPanel
-                estimateId={(leadEstimates as any[])[0].id}
-                leadId={lead.id}
-                quotedPrice={Number((leadEstimates as any[])[0].quoted_price || 0)}
-                commission={Number((leadEstimates as any[])[0].commission || 0)}
-                customerName={lead.full_name}
-                jobNumber={(leadEstimates as any[])[0].job_number || lead.reference_number}
-                city={lead.city}
-                state={lead.state}
-              />
-            </CollapsibleSection>
-          )}
 
           <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
             <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
@@ -819,6 +850,43 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
+          <CollapsibleSection title="Activity Log" defaultOpen={false}>
+            <LeadActivityLog leadId={lead.id} />
+          </CollapsibleSection>
+
+          {isAdmin && (leadEstimates as any[]).length > 0 && (
+            <CollapsibleSection title="Job Profitability" defaultOpen={false}>
+              <JobProfitabilityPanel
+                estimateId={(leadEstimates as any[])[0].id}
+                leadId={lead.id}
+                quotedPrice={Number((leadEstimates as any[])[0].quoted_price || 0)}
+                commission={Number((leadEstimates as any[])[0].commission || 0)}
+                customerName={lead.full_name}
+                jobNumber={(leadEstimates as any[])[0].job_number || lead.reference_number}
+                city={lead.city}
+                state={lead.state}
+              />
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection title="Admin Notes" defaultOpen={false}>
+            <Textarea
+              value={currentNotes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes..."
+              className="min-h-[120px]"
+            />
+            <Button
+              size="sm"
+              className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => updateLead.mutate({ admin_notes: currentNotes })}
+              disabled={updateLead.isPending}
+            >
+              {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              Save Notes
+            </Button>
+          </CollapsibleSection>
+
           {isAdmin && lead.status !== 'archived' && (
             <CollapsibleSection title="Archive Lead" defaultOpen={false} className="border-destructive/20">
               <p className="text-sm text-muted-foreground mb-3">
@@ -862,28 +930,6 @@ export default function LeadDetail() {
               )}
             </div>
           )}
-
-          <CollapsibleSection title="Activity Log" defaultOpen={false}>
-            <LeadActivityLog leadId={lead.id} />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Admin Notes" defaultOpen={false}>
-            <Textarea
-              value={currentNotes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Internal notes..."
-              className="min-h-[120px]"
-            />
-            <Button
-              size="sm"
-              className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={() => updateLead.mutate({ admin_notes: currentNotes })}
-              disabled={updateLead.isPending}
-            >
-              {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-              Save Notes
-            </Button>
-          </CollapsibleSection>
       </div>
 
       {/* Lost Lead Dialog */}
