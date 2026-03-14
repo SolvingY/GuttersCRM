@@ -629,12 +629,20 @@ export default function LeadDetail() {
 
           <CollapsibleSection title="Outcome" defaultOpen={false}>
             {["won", "scheduled", "completed"].includes(lead.status) && lead.won_at && (
-              <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
+              <div>
+                <p className="text-sm text-green-600 font-medium">Won on {new Date(lead.won_at).toLocaleDateString()}</p>
+                {(lead as any).was_damaged !== null && (
+                  <p className="text-xs text-muted-foreground mt-1">Damage: {(lead as any).was_damaged ? "Yes" : "No"}</p>
+                )}
+              </div>
             )}
             {lead.status === "lost" && lead.lost_at && (
               <div>
                 <p className="text-sm text-destructive font-medium">Lost on {new Date(lead.lost_at).toLocaleDateString()}</p>
                 {lead.lost_reason && <p className="text-xs text-muted-foreground mt-1">Reason: {lead.lost_reason}</p>}
+                {(lead as any).was_damaged !== null && (
+                  <p className="text-xs text-muted-foreground mt-1">Damage: {(lead as any).was_damaged ? "Yes" : "No"}</p>
+                )}
               </div>
             )}
             {lead.status === "cancelled" && (lead as any).cancelled_at && (
@@ -647,16 +655,19 @@ export default function LeadDetail() {
               <>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="flex-1 gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
-                    onClick={() => updateLead.mutate({ status: "won", won_at: new Date().toISOString() })}>
+                    onClick={async () => {
+                      updateLead.mutate({ status: "won", won_at: new Date().toISOString(), was_damaged: true } as any);
+                      if ((lead as any).canvasser_id) {
+                        await updateCanvasserDamageMetrics((lead as any).canvasser_id, true);
+                      }
+                    }}>
                     <CheckCircle className="w-3 h-3" /> Won
                   </Button>
                   <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
                     onClick={() => {
-                      if (!lostReason) {
-                        toast({ title: "Select a reason", description: "Please select a loss reason first", variant: "destructive" });
-                        return;
-                      }
-                      updateLead.mutate({ status: "lost", lost_at: new Date().toISOString(), lost_reason: lostReason });
+                      setLostDamageAnswer(null);
+                      setLostReasonSelected("");
+                      setLostDialogOpen(true);
                     }}>
                     <XCircle className="w-3 h-3" /> Lost
                   </Button>
@@ -671,13 +682,7 @@ export default function LeadDetail() {
                     <Ban className="w-3 h-3" /> Cancelled
                   </Button>
                 </div>
-                <div className="mt-3 space-y-2">
-                  <Select value={lostReason} onValueChange={setLostReason}>
-                    <SelectTrigger className="text-xs"><SelectValue placeholder="Loss reason (if lost)" /></SelectTrigger>
-                    <SelectContent>
-                      {lostReasons.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="mt-3">
                   <Select value={cancelledReason} onValueChange={setCancelledReason}>
                     <SelectTrigger className="text-xs"><SelectValue placeholder="Cancellation reason (if cancelled)" /></SelectTrigger>
                     <SelectContent>
