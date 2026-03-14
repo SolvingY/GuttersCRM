@@ -442,6 +442,7 @@ export default function ReportSettings() {
 
       <CalendarSettingsCard />
       <CanvasserEODSettingsCard />
+      <ProductionEODSettingsCard />
 
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
