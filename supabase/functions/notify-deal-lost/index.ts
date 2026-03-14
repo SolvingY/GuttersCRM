@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
       <p style="margin: 4px 0;"><strong>Amount:</strong> ${formattedAmount}</p>
       <p style="margin: 4px 0;"><strong>Rep:</strong> ${repName || "N/A"}</p>
       <p style="margin: 4px 0;"><strong>Loss Reason:</strong> ${reason}</p>
+      <p style="margin: 4px 0;"><strong>Damage Found:</strong> ${wasDamaged === true ? "Yes ✅" : wasDamaged === false ? "No ❌" : "Not specified"}</p>
       <p style="margin: 4px 0;"><strong>Lead Source:</strong> ${leadSource || "N/A"}</p>
     </div>
 
