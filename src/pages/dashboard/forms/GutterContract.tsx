@@ -347,7 +347,8 @@ export default function GutterContract({
       queryClient.invalidateQueries({ queryKey: ["lead-forms", leadId] });
       queryClient.invalidateQueries({ queryKey: ["lead-detail", leadId] });
       toast({ title: "Contract recalled — you can now edit and resend" });
-      navigate(`/dashboard/leads/${leadId}`);
+      const isAdminRoute = location.pathname.startsWith("/admin");
+      navigate(isAdminRoute ? `/admin/leads/${leadId}` : `/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Failed to recall contract", description: err.message, variant: "destructive" });
     } finally {
