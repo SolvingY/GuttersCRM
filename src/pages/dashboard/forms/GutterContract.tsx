@@ -319,7 +319,8 @@ export default function GutterContract({
       }
 
       toast({ title: isFinalizing ? "Contract saved successfully" : "Contract draft updated" });
-      navigate(`/dashboard/leads/${leadId}`);
+      const isAdminRoute = location.pathname.startsWith("/admin");
+      navigate(isAdminRoute ? `/admin/leads/${leadId}` : `/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
