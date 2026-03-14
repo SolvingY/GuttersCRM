@@ -1,5 +1,8 @@
 project_id = "xuxvqvzkkjgbsqiwjzke"
 
+[functions.send-profitability-summary]
+verify_jwt = false
+
 [functions.sync-metrics]
 verify_jwt = false
 

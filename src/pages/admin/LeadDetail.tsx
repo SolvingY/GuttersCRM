@@ -20,6 +20,7 @@ import { getLeadSourceIcon, getLeadSourceLabel } from "@/lib/leadSourceConfig";
 import { useQuery as useRQQuery } from "@tanstack/react-query";
 import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import JobProfitabilityPanel from "@/components/admin/JobProfitabilityPanel";
 
 function CollapsibleSection({ title, defaultOpen = true, children, className }: { title: string; defaultOpen?: boolean; children: React.ReactNode; className?: string }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -118,6 +119,16 @@ export default function LeadDetail() {
     queryKey: ["lead-detail", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("quote_requests").select("*").eq("id", id).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: leadEstimates = [] } = useQuery({
+    queryKey: ["admin-lead-estimates", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("gutter_estimates").select("*").eq("lead_id", id!).order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -725,6 +736,21 @@ export default function LeadDetail() {
           <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
             <AdminEstimatesSection leadId={lead.id} />
           </CollapsibleSection>
+
+          {isAdmin && (leadEstimates as any[]).length > 0 && (
+            <CollapsibleSection title="Job Profitability" defaultOpen={false}>
+              <JobProfitabilityPanel
+                estimateId={(leadEstimates as any[])[0].id}
+                leadId={lead.id}
+                quotedPrice={Number((leadEstimates as any[])[0].quoted_price || 0)}
+                commission={Number((leadEstimates as any[])[0].commission || 0)}
+                customerName={lead.full_name}
+                jobNumber={(leadEstimates as any[])[0].job_number || lead.reference_number}
+                city={lead.city}
+                state={lead.state}
+              />
+            </CollapsibleSection>
+          )}
 
           <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
             <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
