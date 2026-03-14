@@ -727,6 +727,21 @@ export default function LeadDetail() {
             <AdminEstimatesSection leadId={lead.id} />
           </CollapsibleSection>
 
+          {isAdmin && (estimates as any[]).length > 0 && (
+            <CollapsibleSection title="Job Profitability" defaultOpen={false}>
+              <JobProfitabilityPanel
+                estimateId={(estimates as any[])[0].id}
+                leadId={lead.id}
+                quotedPrice={Number((estimates as any[])[0].quoted_price || 0)}
+                commission={Number((estimates as any[])[0].commission || 0)}
+                customerName={lead.full_name}
+                jobNumber={(estimates as any[])[0].job_number || lead.reference_number}
+                city={lead.city}
+                state={lead.state}
+              />
+            </CollapsibleSection>
+          )}
+
           <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
             <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
               queryClient.invalidateQueries({ queryKey: ["lead-detail", id] });
