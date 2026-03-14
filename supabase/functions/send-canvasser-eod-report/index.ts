@@ -187,7 +187,6 @@ Deno.serve(async (req) => {
     const totalClosed = canvasserData.reduce((s, c) => s + c.leadsClosed, 0);
     const totalDoors = canvasserData.reduce((s, c) => s + c.doors, 0);
     const totalConvos = canvasserData.reduce((s, c) => s + c.convos, 0);
-    const totalContracts = canvasserData.reduce((s, c) => s + c.contracts, 0);
     const closeRate = totalLeadsSet > 0 ? ((totalClosed / totalLeadsSet) * 100).toFixed(1) + "%" : "—";
 
     const inOutHeaders = isRange
