@@ -209,7 +209,6 @@ Deno.serve(async (req) => {
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.convos}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.leadsSet}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.leadsClosed}</td>
-          <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.contracts}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:12px;">${c.notes || "—"}</td>
         </tr>`;
         }).join("")
