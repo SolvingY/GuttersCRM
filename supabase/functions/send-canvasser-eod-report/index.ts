@@ -10,6 +10,27 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+function formatDateForDisplay(dateStr: string, timeZone = "America/Chicago"): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone });
+}
+
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "America/Chicago" });
+}
+
+function getDatesInRange(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  while (current <= end) {
+    dates.push(current.toLocaleDateString("en-CA", { timeZone: "America/Chicago" }));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -18,10 +39,38 @@ Deno.serve(async (req) => {
     const testEmail: string | null = body.test_email || null;
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // Get today's date in Chicago timezone
     const now = new Date();
     const todayStr = now.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
-    const reportDateFormatted = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Chicago" });
+
+    // Determine date range
+    let startDate: string;
+    let endDate: string;
+    let isRange = false;
+
+    if (body.start_date && body.end_date) {
+      startDate = body.start_date;
+      endDate = body.end_date;
+      isRange = startDate !== endDate;
+    } else if (body.report_date) {
+      startDate = body.report_date;
+      endDate = body.report_date;
+    } else {
+      startDate = todayStr;
+      endDate = todayStr;
+    }
+
+    const allDates = getDatesInRange(startDate, endDate);
+
+    // Build display header
+    let reportDateFormatted: string;
+    let subjectDateStr: string;
+    if (isRange) {
+      reportDateFormatted = `${formatShortDate(startDate)} – ${formatShortDate(endDate)}, ${new Date(endDate + "T12:00:00").getFullYear()}`;
+      subjectDateStr = reportDateFormatted;
+    } else {
+      reportDateFormatted = formatDateForDisplay(startDate);
+      subjectDateStr = reportDateFormatted;
+    }
 
     // Get all canvassers
     const { data: canvasserRoles } = await supabase
@@ -44,26 +93,27 @@ Deno.serve(async (req) => {
       ? await supabase.from("canvasser_metrics").select("user_id, display_name").in("user_id", canvasserIds)
       : { data: [] };
 
-    // Get shifts for today
+    // Get shifts for date range
     const { data: shifts } = canvasserIds.length > 0
       ? await supabase
           .from("canvasser_shifts")
           .select("*")
           .in("canvasser_id", canvasserIds)
-          .gte("clock_in_at", `${todayStr}T00:00:00-06:00`)
-          .lt("clock_in_at", `${todayStr}T23:59:59-06:00`)
+          .gte("clock_in_at", `${startDate}T00:00:00-06:00`)
+          .lt("clock_in_at", `${endDate}T23:59:59-06:00`)
       : { data: [] };
 
-    // Get daily metric entries for today
+    // Get daily metric entries for date range
     const { data: dailyEntries } = canvasserIds.length > 0
       ? await supabase
           .from("daily_canvasser_metric_entries")
           .select("*")
           .in("user_id", canvasserIds)
-          .eq("entry_date", todayStr)
+          .gte("entry_date", startDate)
+          .lte("entry_date", endDate)
       : { data: [] };
 
-    // Build canvasser rows
+    // Build canvasser rows (aggregate across all dates)
     const canvasserData: any[] = [];
     const flaggedShifts: any[] = [];
 
@@ -71,10 +121,10 @@ Deno.serve(async (req) => {
       const profile = activeProfiles.find((p: any) => p.id === cId);
       const metric = (canvasserMetrics || []).find((m: any) => m.user_id === cId);
       const name = metric?.display_name || profile?.full_name || "Unknown";
-      const shift = (shifts || []).find((s: any) => s.canvasser_id === cId);
+      const cShifts = (shifts || []).filter((s: any) => s.canvasser_id === cId);
       const entries = (dailyEntries || []).filter((e: any) => e.user_id === cId);
 
-      const hasActivity = shift || entries.length > 0;
+      const hasActivity = cShifts.length > 0 || entries.length > 0;
       if (!hasActivity) continue;
 
       // Sum daily entries
@@ -85,39 +135,49 @@ Deno.serve(async (req) => {
       const contracts = entries.reduce((s: number, e: any) => s + (e.contracts_delta || 0), 0);
       const entryNotes = entries.map((e: any) => e.notes).filter(Boolean).join(" | ");
 
-      // Clock times in CT
+      // Aggregate shift hours
+      let totalShiftHours = 0;
       let clockIn = "—";
       let clockOut = "—";
-      let shiftHours = 0;
       let shiftNotes = "";
 
-      if (shift) {
+      for (const shift of cShifts) {
         const inTime = new Date(shift.clock_in_at);
-        clockIn = inTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
+        if (cShifts.length === 1) {
+          clockIn = inTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
+          if (shift.clock_out_at) {
+            const outTime = new Date(shift.clock_out_at);
+            clockOut = outTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
+          } else {
+            clockOut = "Open";
+          }
+        }
 
         if (shift.clock_out_at) {
-          const outTime = new Date(shift.clock_out_at);
-          clockOut = outTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
-          shiftHours = shift.hours_worked || 0;
+          totalShiftHours += shift.hours_worked || 0;
         } else {
-          clockOut = "Open";
-          shiftHours = Math.round(((Date.now() - inTime.getTime()) / 3600000) * 10) / 10;
+          totalShiftHours += Math.round(((Date.now() - inTime.getTime()) / 3600000) * 10) / 10;
         }
-        shiftNotes = shift.notes || "";
+
+        if (shift.notes) shiftNotes += (shiftNotes ? " | " : "") + shift.notes;
 
         if (shift.status === "flagged" || shift.flagged_reason) {
           flaggedShifts.push({ name, reason: shift.flagged_reason || "Unknown reason" });
         }
       }
 
-      // Skip canvassers with 0 hours (e.g. admin removed their hours)
-      if (shiftHours === 0 && !shift) continue;
-      if (shiftHours <= 0 && shift && shift.clock_out_at) continue;
+      if (isRange) {
+        clockIn = `${cShifts.length} shift${cShifts.length !== 1 ? "s" : ""}`;
+        clockOut = "—";
+      }
+
+      if (totalShiftHours <= 0 && cShifts.length > 0) continue;
+      if (totalShiftHours === 0 && cShifts.length === 0) continue;
 
       const allNotes = [shiftNotes, entryNotes].filter(Boolean).join(" | ");
       const truncatedNotes = allNotes.length > 60 ? allNotes.slice(0, 57) + "..." : allNotes;
 
-      canvasserData.push({ name, clockIn, clockOut, hours: shiftHours, leadsSet, leadsClosed, doors, convos, contracts, notes: truncatedNotes, fullNotes: allNotes });
+      canvasserData.push({ name, clockIn, clockOut, hours: totalShiftHours, leadsSet, leadsClosed, doors, convos, contracts, notes: truncatedNotes, fullNotes: allNotes });
     }
 
     canvasserData.sort((a, b) => a.name.localeCompare(b.name));
@@ -131,13 +191,21 @@ Deno.serve(async (req) => {
     const totalContracts = canvasserData.reduce((s, c) => s + c.contracts, 0);
     const closeRate = totalLeadsSet > 0 ? ((totalClosed / totalLeadsSet) * 100).toFixed(1) + "%" : "—";
 
+    const inOutHeaders = isRange
+      ? `<th style="padding:10px 12px;text-align:center;">Shifts</th>`
+      : `<th style="padding:10px 12px;text-align:center;">In</th><th style="padding:10px 12px;text-align:center;">Out</th>`;
+
     // Build HTML
     const tableRows = canvasserData.length > 0
-      ? canvasserData.map((c) => `
+      ? canvasserData.map((c) => {
+          const inOutCells = isRange
+            ? `<td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${c.clockIn}</td>`
+            : `<td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${c.clockIn}</td>
+               <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${c.clockOut}</td>`;
+          return `
         <tr>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;">${c.name}</td>
-          <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${c.clockIn}</td>
-          <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${c.clockOut}</td>
+          ${inOutCells}
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.hours.toFixed(1)}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.doors}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.convos}</td>
@@ -145,8 +213,9 @@ Deno.serve(async (req) => {
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.leadsClosed}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;">${c.contracts}</td>
           <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:12px;">${c.notes || "—"}</td>
-        </tr>`).join("")
-      : `<tr><td colspan="10" style="padding:16px;text-align:center;color:#6b7280;">No canvasser activity recorded today.</td></tr>`;
+        </tr>`;
+        }).join("")
+      : `<tr><td colspan="${isRange ? 9 : 10}" style="padding:16px;text-align:center;color:#6b7280;">No canvasser activity recorded for this period.</td></tr>`;
 
     const flaggedSection = flaggedShifts.length > 0
       ? `<div style="margin-top:24px;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
@@ -162,10 +231,12 @@ Deno.serve(async (req) => {
         </div>`
       : "";
 
+    const reportTitle = isRange ? "NGR Canvasser Date Range Report" : "NGR Canvasser Daily Report";
+
     const html = `
     <div style="font-family:sans-serif;max-width:900px;margin:0 auto;">
       <div style="background:#1e293b;color:white;padding:24px;border-radius:8px 8px 0 0;">
-        <h1 style="margin:0;font-size:22px;">NGR Canvasser Daily Report</h1>
+        <h1 style="margin:0;font-size:22px;">${reportTitle}</h1>
         <p style="margin:4px 0 0;opacity:0.8;">${reportDateFormatted}</p>
       </div>
       <div style="padding:24px;background:#f9fafb;border-radius:0 0 8px 8px;">
@@ -173,8 +244,7 @@ Deno.serve(async (req) => {
           <thead>
             <tr style="background:#334155;color:white;">
               <th style="padding:10px 12px;text-align:left;">Name</th>
-              <th style="padding:10px 12px;text-align:center;">In</th>
-              <th style="padding:10px 12px;text-align:center;">Out</th>
+              ${inOutHeaders}
               <th style="padding:10px 12px;text-align:right;">Hrs</th>
               <th style="padding:10px 12px;text-align:right;">Doors</th>
               <th style="padding:10px 12px;text-align:right;">Convos</th>
@@ -191,7 +261,8 @@ Deno.serve(async (req) => {
         <div style="margin-top:24px;padding:16px;background:white;border:1px solid #e5e7eb;border-radius:8px;">
           <h3 style="margin:0 0 12px;color:#1e293b;">Team Totals</h3>
           <table style="font-size:14px;">
-            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Active today:</td><td>${canvasserData.length} of ${canvasserIds.length} canvassers</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Active canvassers:</td><td>${canvasserData.length} of ${canvasserIds.length}</td></tr>
+            ${isRange ? `<tr><td style="padding:4px 16px 4px 0;font-weight:600;">Report period:</td><td>${allDates.length} day${allDates.length !== 1 ? "s" : ""}</td></tr>` : ""}
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Total hours:</td><td>${totalHours.toFixed(1)}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Leads set:</td><td>${totalLeadsSet}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;font-weight:600;">Leads closed:</td><td>${totalClosed}</td></tr>
@@ -232,7 +303,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: "NGR Reports <reports@oknextgen.com>",
           to: recipientEmails,
-          subject: `NGR Canvasser Daily Report — ${reportDateFormatted}`,
+          subject: `${reportTitle} — ${subjectDateStr}`,
           html,
         }),
       });
@@ -248,7 +319,7 @@ Deno.serve(async (req) => {
 
     // Log to canvasser_eod_report_log
     await supabase.from("canvasser_eod_report_log").insert({
-      report_date: todayStr,
+      report_date: startDate,
       canvassers_included: canvasserData.length,
       recipients: recipientEmails.map((e: string) => ({ email: e })),
       email_sent_at: new Date().toISOString(),
@@ -256,7 +327,7 @@ Deno.serve(async (req) => {
     } as any);
 
     return new Response(
-      JSON.stringify({ success: true, canvassers: canvasserData.length, recipients: recipientEmails.length }),
+      JSON.stringify({ success: true, canvassers: canvasserData.length, recipients: recipientEmails.length, date_range: isRange ? `${startDate} to ${endDate}` : startDate }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
