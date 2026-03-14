@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
           <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:12px;">${c.notes || "—"}</td>
         </tr>`;
         }).join("")
-      : `<tr><td colspan="${isRange ? 9 : 10}" style="padding:16px;text-align:center;color:#6b7280;">No canvasser activity recorded for this period.</td></tr>`;
+      : `<tr><td colspan="${isRange ? 8 : 9}" style="padding:16px;text-align:center;color:#6b7280;">No canvasser activity recorded for this period.</td></tr>`;
 
     const flaggedSection = flaggedShifts.length > 0
       ? `<div style="margin-top:24px;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
