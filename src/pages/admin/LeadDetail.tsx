@@ -100,6 +100,9 @@ export default function LeadDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmRef, setDeleteConfirmRef] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [lostDamageAnswer, setLostDamageAnswer] = useState<boolean | null>(null);
+  const [lostReasonSelected, setLostReasonSelected] = useState("");
 
   // Check if current user is admin
   const { data: isAdmin = false } = useQuery({
