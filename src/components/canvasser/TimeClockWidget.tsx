@@ -188,6 +188,19 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
   const performClockIn = async (loc: { lat: number; lng: number } | null) => {
     if (!user) return;
     try {
+      // Safety check — DB index is the real guard, this is a UX safeguard
+      const { data: existingShift } = await supabase
+        .from('canvasser_shifts')
+        .select('id')
+        .eq('canvasser_id', user.id)
+        .is('clock_out_at', null)
+        .maybeSingle();
+
+      if (existingShift) {
+        toast.error('You already have an active shift. Please clock out first.');
+        return;
+      }
+
       const { data, error } = await supabase
         .from("canvasser_shifts")
         .insert({
