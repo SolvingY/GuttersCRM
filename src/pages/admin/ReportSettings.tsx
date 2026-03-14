@@ -480,6 +480,261 @@ function CanvasserEODSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [rangeDialogOpen, setRangeDialogOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState<Date | undefined>(undefined);
+  const [rangeEnd, setRangeEnd] = useState<Date | undefined>(undefined);
+  const [sendingRange, setSendingRange] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const { data } = await supabase
+        .from('report_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['canvasser_eod_send_hour', 'canvasser_eod_frequency', 'canvasser_eod_recipient_ids']);
+
+      if (data) {
+        data.forEach((row) => {
+          const val = String(row.setting_value || '');
+          if (row.setting_key === 'canvasser_eod_send_hour') setSendHour(val || '21');
+          if (row.setting_key === 'canvasser_eod_frequency') setFrequency(val || 'daily');
+          if (row.setting_key === 'canvasser_eod_recipient_ids') {
+            try {
+              const ids = JSON.parse(val);
+              if (Array.isArray(ids)) {
+                supabase.from('report_recipients' as any).select('id, name, email').in('id', ids).then(({ data: recs }) => {
+                  if (recs) setSelectedRecipients(recs as any[]);
+                });
+              }
+            } catch {}
+          }
+        });
+      }
+      setLoaded(true);
+    };
+    loadSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updates = [
+        { setting_key: 'canvasser_eod_send_hour', setting_value: sendHour, updated_at: new Date().toISOString() },
+        { setting_key: 'canvasser_eod_frequency', setting_value: frequency, updated_at: new Date().toISOString() },
+        { setting_key: 'canvasser_eod_recipient_ids', setting_value: JSON.stringify(selectedRecipients.map(r => r.id)), updated_at: new Date().toISOString() },
+      ];
+      for (const u of updates) {
+        const { error } = await supabase.from('report_settings').upsert(u, { onConflict: 'setting_key' });
+        if (error) throw error;
+      }
+      toast({ title: 'Canvasser EOD settings saved' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    setSendingTest(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-canvasser-eod-report');
+      if (error) throw error;
+      toast({ title: 'Test report sent', description: 'Check your inbox for the canvasser EOD report.' });
+    } catch (err: any) {
+      toast({ title: 'Error sending test', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const handleSendDateRange = async () => {
+    if (!rangeStart || !rangeEnd) {
+      toast({ title: 'Select both dates', variant: 'destructive' });
+      return;
+    }
+    setSendingRange(true);
+    try {
+      const startStr = format(rangeStart, 'yyyy-MM-dd');
+      const endStr = format(rangeEnd, 'yyyy-MM-dd');
+      const { data, error } = await supabase.functions.invoke('send-canvasser-eod-report', {
+        body: { start_date: startStr, end_date: endStr },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Date range report sent',
+        description: `Report for ${format(rangeStart, 'MMM d')} – ${format(rangeEnd, 'MMM d')} sent to ${data?.recipients || 0} recipient(s) with ${data?.canvassers || 0} canvasser(s).`,
+      });
+      setRangeDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: 'Error sending report', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingRange(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-accent" />
+            Canvasser EOD Report Settings
+          </CardTitle>
+          <CardDescription>
+            Configure the daily canvasser end-of-day summary email
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Send Time (CT)
+              </Label>
+              <Select value={sendHour} onValueChange={setSendHour}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const label = i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`;
+                    return <SelectItem key={i} value={String(i)}>{label}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Note: Update cron schedule in November when clocks fall back.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Frequency
+              </Label>
+              <Select value={frequency} onValueChange={setFrequency}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekdays">Weekdays Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Recipients</Label>
+            <p className="text-xs text-muted-foreground mb-2">Select who receives the daily canvasser EOD report</p>
+            <ReportRecipientsSelector
+              selected={selectedRecipients}
+              onChange={setSelectedRecipients}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save EOD Settings
+            </Button>
+            <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">
+              {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Test Report
+            </Button>
+            <Button variant="outline" onClick={() => setRangeDialogOpen(true)} size="sm">
+              <CalendarRange className="h-4 w-4 mr-2" />
+              Send Date Range Report
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={rangeDialogOpen} onOpenChange={setRangeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Canvasser Date Range Report</DialogTitle>
+            <DialogDescription>
+              Select a start and end date to generate and send an aggregated canvasser report
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm">Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !rangeStart && 'text-muted-foreground')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {rangeStart ? format(rangeStart, 'MMM d, yyyy') : 'Pick start'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rangeStart}
+                      onSelect={setRangeStart}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm">End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !rangeEnd && 'text-muted-foreground')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {rangeEnd ? format(rangeEnd, 'MMM d, yyyy') : 'Pick end'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rangeEnd}
+                      onSelect={setRangeEnd}
+                      disabled={(date) => date > new Date() || (rangeStart ? date < rangeStart : false)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {rangeStart && rangeEnd && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">Selected Range:</p>
+                <p className="font-medium text-foreground">
+                  {format(rangeStart, 'MMM d, yyyy')} – {format(rangeEnd, 'MMM d, yyyy')}
+                </p>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              onClick={handleSendDateRange}
+              disabled={sendingRange || !rangeStart || !rangeEnd}
+            >
+              {sendingRange ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Report
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+  const { toast } = useToast();
+  const [sendHour, setSendHour] = useState("21");
+  const [frequency, setFrequency] = useState("daily");
+  const [selectedRecipients, setSelectedRecipients] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
