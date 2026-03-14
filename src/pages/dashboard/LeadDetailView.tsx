@@ -116,6 +116,61 @@ export default function LeadDetailView() {
     previousStatusRef.current = lead.status;
   }
 
+  // Helper to update canvasser damage metrics across 3 tiers
+  const updateCanvasserDamageMetrics = useCallback(async (canvasserId: string, isDamaged: boolean) => {
+    const today = new Date().toLocaleDateString("en-CA");
+    const dayOfWeek = new Date().getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartStr = weekStart.toLocaleDateString("en-CA");
+    const weekEndStr = weekEnd.toLocaleDateString("en-CA");
+
+    const damageCol = isDamaged ? "leads_with_damage" : "leads_without_damage";
+    const damageDeltaCol = isDamaged ? "leads_with_damage_delta" : "leads_without_damage_delta";
+
+    // 1. YTD canvasser_metrics
+    await supabase.from("canvasser_metrics").update({
+      [damageCol]: (await supabase.from("canvasser_metrics").select(damageCol).eq("user_id", canvasserId).single()).data?.[damageCol] + 1 || 1,
+      updated_at: new Date().toISOString(),
+    } as any).eq("user_id", canvasserId);
+
+    // 2. Daily
+    const { data: existingDaily } = await supabase.from("daily_canvasser_metric_entries")
+      .select("id, " + damageDeltaCol).eq("user_id", canvasserId).eq("entry_date", today).single();
+    if (existingDaily) {
+      await supabase.from("daily_canvasser_metric_entries").update({
+        [damageDeltaCol]: ((existingDaily as any)[damageDeltaCol] || 0) + 1,
+        updated_at: new Date().toISOString(),
+      } as any).eq("id", existingDaily.id);
+    } else {
+      await supabase.from("daily_canvasser_metric_entries").insert({
+        user_id: canvasserId,
+        entry_date: today,
+        [damageDeltaCol]: 1,
+      } as any);
+    }
+
+    // 3. Weekly
+    const { data: existingWeekly } = await supabase.from("weekly_canvasser_metrics")
+      .select("id, " + damageCol).eq("user_id", canvasserId).eq("week_start", weekStartStr).single();
+    if (existingWeekly) {
+      await supabase.from("weekly_canvasser_metrics").update({
+        [damageCol]: ((existingWeekly as any)[damageCol] || 0) + 1,
+        updated_at: new Date().toISOString(),
+      } as any).eq("id", existingWeekly.id);
+    } else {
+      await supabase.from("weekly_canvasser_metrics").insert({
+        user_id: canvasserId,
+        week_start: weekStartStr,
+        week_end: weekEndStr,
+        [damageCol]: 1,
+      } as any);
+    }
+  }, []);
+
   const fireStatusNotification = useCallback(async (newStatus: string, updates: Record<string, any>) => {
     if (!lead) return;
     const prevStatus = previousStatusRef.current;
@@ -152,13 +207,14 @@ export default function LeadDetailView() {
             repName,
             lostReason: updates.lost_reason || lead.lost_reason || "Not specified",
             leadSource: (lead as any).lead_source || "internet",
+            wasDamaged: updates.was_damaged ?? null,
           },
         });
       }
     } catch (err) {
       console.error("Failed to send status notification:", err);
     }
-  }, [lead, user]);
+  }, [lead, user, updateCanvasserDamageMetrics]);
 
   const updateLead = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
