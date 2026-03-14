@@ -100,7 +100,8 @@ export default function AppointmentSheet() {
       });
 
       toast({ title: "Appointment saved successfully" });
-      navigate(`/dashboard/leads/${id}`);
+      const isAdminRoute = location.pathname.startsWith("/admin");
+      navigate(isAdminRoute ? `/admin/leads/${id}` : `/dashboard/leads/${id}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
