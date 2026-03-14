@@ -125,6 +125,16 @@ export default function LeadDetail() {
     enabled: !!id,
   });
 
+  const { data: leadEstimates = [] } = useQuery({
+    queryKey: ["admin-lead-estimates", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("gutter_estimates").select("*").eq("lead_id", id!).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
   const { data: salesReps = [] } = useQuery({
     queryKey: ["sales-reps-for-assignment"],
     queryFn: async () => {
