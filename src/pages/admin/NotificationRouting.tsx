@@ -500,6 +500,68 @@ function CanvasserEODCard() {
   );
 }
 
+function CanvasserDateRangeButton() {
+  const { toast: toastUI } = useToast();
+  const [open, setOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState<Date>();
+  const [rangeEnd, setRangeEnd] = useState<Date>();
+  const [activeCalendar, setActiveCalendar] = useState<'start' | 'end'>('start');
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!rangeStart || !rangeEnd) { toast.error('Please select both start and end dates'); return; }
+    setSending(true);
+    try {
+      const body = {
+        start_date: format(rangeStart, 'yyyy-MM-dd'),
+        end_date: format(rangeEnd, 'yyyy-MM-dd'),
+      };
+      const { data, error } = await supabase.functions.invoke('send-canvasser-eod-report', { body });
+      if (error) throw error;
+      toastUI({ title: 'Date Range Report Sent', description: `Sent to ${data?.recipients || 0} recipient(s) for ${data?.canvassers || 0} canvassers.` });
+      setOpen(false);
+    } catch (err: any) { toastUI({ title: 'Error', description: err.message, variant: 'destructive' }); }
+    setSending(false);
+  };
+
+  return (
+    <>
+      <Button variant="outline" className="w-full" size="sm" onClick={() => setOpen(true)}>
+        <CalendarRange className="h-4 w-4 mr-2" />Send Date Range Report
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Send Date Range Report</DialogTitle>
+            <DialogDescription>Select start and end dates for the canvasser EOD report.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mb-2">
+            <Button variant={activeCalendar === 'start' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setActiveCalendar('start')}>
+              {rangeStart ? format(rangeStart, 'MMM d, yyyy') : 'Start Date'}
+            </Button>
+            <Button variant={activeCalendar === 'end' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setActiveCalendar('end')}>
+              {rangeEnd ? format(rangeEnd, 'MMM d, yyyy') : 'End Date'}
+            </Button>
+          </div>
+          <CalendarWidget
+            mode="single"
+            selected={activeCalendar === 'start' ? rangeStart : rangeEnd}
+            onSelect={(date) => {
+              if (activeCalendar === 'start') { setRangeStart(date); setActiveCalendar('end'); }
+              else { setRangeEnd(date); }
+            }}
+            disabled={(date) => date > new Date()}
+            className={cn("p-3 pointer-events-auto rounded-md border mx-auto")}
+          />
+          <Button onClick={handleSend} disabled={sending || !rangeStart || !rangeEnd} className="w-full">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}Send Report
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ── Team Calendar Card ──────────────────────────────────────────────────
 
 function CalendarCard() {
