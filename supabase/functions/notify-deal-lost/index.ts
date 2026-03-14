@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { leadId, customerName, quoteAmount, repName, lostReason, leadSource } = await req.json();
+    const { leadId, customerName, quoteAmount, repName, lostReason, leadSource, wasDamaged } = await req.json();
 
     if (!leadId || !customerName) {
       return new Response(
