@@ -716,3 +716,139 @@ function CanvasserEODSettingsCard() {
     </>
   );
 }
+
+function ProductionEODSettingsCard() {
+  const { toast } = useToast();
+  const [rangeDialogOpen, setRangeDialogOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState<Date | undefined>(undefined);
+  const [rangeEnd, setRangeEnd] = useState<Date | undefined>(undefined);
+  const [sendingRange, setSendingRange] = useState(false);
+
+  const handleSendDateRange = async () => {
+    if (!rangeStart || !rangeEnd) {
+      toast({ title: 'Select both dates', variant: 'destructive' });
+      return;
+    }
+    setSendingRange(true);
+    try {
+      const startStr = format(rangeStart, 'yyyy-MM-dd');
+      const endStr = format(rangeEnd, 'yyyy-MM-dd');
+      const { data, error } = await supabase.functions.invoke('send-production-eod-summary', {
+        body: { start_date: startStr, end_date: endStr },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Production report sent',
+        description: `Report for ${format(rangeStart, 'MMM d')} – ${format(rangeEnd, 'MMM d')} sent with ${data?.contractors || 0} contractor(s).`,
+      });
+      setRangeDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: 'Error sending report', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingRange(false);
+    }
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-accent" />
+            Production EOD Report
+          </CardTitle>
+          <CardDescription>
+            Send a manual production daily summary for a specific date range
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={() => setRangeDialogOpen(true)} size="sm">
+            <CalendarRange className="h-4 w-4 mr-2" />
+            Send Date Range Report
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={rangeDialogOpen} onOpenChange={setRangeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Production Date Range Report</DialogTitle>
+            <DialogDescription>
+              Select a start and end date to generate and send an aggregated production summary
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm">Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !rangeStart && 'text-muted-foreground')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {rangeStart ? format(rangeStart, 'MMM d, yyyy') : 'Pick start'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rangeStart}
+                      onSelect={setRangeStart}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm">End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !rangeEnd && 'text-muted-foreground')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {rangeEnd ? format(rangeEnd, 'MMM d, yyyy') : 'Pick end'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rangeEnd}
+                      onSelect={setRangeEnd}
+                      disabled={(date) => date > new Date() || (rangeStart ? date < rangeStart : false)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {rangeStart && rangeEnd && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">Selected Range:</p>
+                <p className="font-medium text-foreground">
+                  {format(rangeStart, 'MMM d, yyyy')} – {format(rangeEnd, 'MMM d, yyyy')}
+                </p>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              onClick={handleSendDateRange}
+              disabled={sendingRange || !rangeStart || !rangeEnd}
+            >
+              {sendingRange ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Report
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
