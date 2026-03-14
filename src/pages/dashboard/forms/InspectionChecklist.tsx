@@ -136,7 +136,8 @@ export default function InspectionChecklist() {
 
       localStorage.removeItem(DRAFT_KEY);
       toast({ title: "Checklist saved successfully" });
-      navigate(`/dashboard/leads/${id}`);
+      const isAdminRoute = location.pathname.startsWith("/admin");
+      navigate(isAdminRoute ? `/admin/leads/${id}` : `/dashboard/leads/${id}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -146,7 +147,10 @@ export default function InspectionChecklist() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Button variant="ghost" onClick={() => navigate(`/dashboard/leads/${id}`)} className="gap-2 -ml-2">
+      <Button variant="ghost" onClick={() => {
+        const isAdminRoute = location.pathname.startsWith("/admin");
+        navigate(isAdminRoute ? `/admin/leads/${id}` : `/dashboard/leads/${id}`);
+      }} className="gap-2 -ml-2">
         <ArrowLeft className="w-4 h-4" /> Back to Lead
       </Button>
       <h1 className="font-heading text-2xl uppercase">20-Point Inspection Checklist</h1>

@@ -28,6 +28,7 @@ export default function GutterContract({
   existingForm: propExistingForm,
   readOnly = false,
   signingMode = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onCustomerSign,
 }: GutterContractProps) {
   const { id } = useParams();
@@ -318,7 +319,8 @@ export default function GutterContract({
       }
 
       toast({ title: isFinalizing ? "Contract saved successfully" : "Contract draft updated" });
-      navigate(`/dashboard/leads/${leadId}`);
+      const isAdminRoute = location.pathname.startsWith("/admin");
+      navigate(isAdminRoute ? `/admin/leads/${leadId}` : `/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -345,7 +347,8 @@ export default function GutterContract({
       queryClient.invalidateQueries({ queryKey: ["lead-forms", leadId] });
       queryClient.invalidateQueries({ queryKey: ["lead-detail", leadId] });
       toast({ title: "Contract recalled — you can now edit and resend" });
-      navigate(`/dashboard/leads/${leadId}`);
+      const isAdminRoute = location.pathname.startsWith("/admin");
+      navigate(isAdminRoute ? `/admin/leads/${leadId}` : `/dashboard/leads/${leadId}`);
     } catch (err: any) {
       toast({ title: "Failed to recall contract", description: err.message, variant: "destructive" });
     } finally {
@@ -483,7 +486,10 @@ export default function GutterContract({
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {isRouteBased && !signingMode && (
-        <Button variant="ghost" onClick={() => navigate(`/dashboard/leads/${id}`)} className="gap-2 -ml-2">
+        <Button variant="ghost" onClick={() => {
+          const isAdminRoute = location.pathname.startsWith("/admin");
+          navigate(isAdminRoute ? `/admin/leads/${id}` : `/dashboard/leads/${id}`);
+        }} className="gap-2 -ml-2">
           <ArrowLeft className="w-4 h-4" /> Back to Lead
         </Button>
       )}

@@ -555,8 +555,11 @@ export default function LeadDetail() {
         const statusWeight = ["new", "contacted", "quoted", "won", "scheduled", "completed"].indexOf(lead.status);
         const statusPct = statusWeight >= 0 ? Math.round(((statusWeight + 1) / 6) * 40) : 0;
 
-        const docCount = [hasAppointment, hasInspection, hasContract, hasWarranty].filter(Boolean).length;
-        const docPct = Math.round((docCount / 4) * 30);
+        const relevantDocs = isGutters
+          ? [hasAppointment, hasInspection, hasContract, hasWarranty]
+          : [hasAppointment, hasWarranty];
+        const docCount = relevantDocs.filter(Boolean).length;
+        const docPct = Math.round((docCount / relevantDocs.length) * 30);
         const estimatePct = hasEstimate ? 15 : 0;
         const profitPct = isAdmin && hasEstimate ? 15 : (isAdmin ? 0 : 15);
 
@@ -574,8 +577,10 @@ export default function LeadDetail() {
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { key: "appointment", label: "Appointment", done: hasAppointment },
-                { key: "inspection", label: "Inspection", done: hasInspection },
-                { key: "contract", label: "Contract", done: hasContract },
+                ...(isGutters ? [
+                  { key: "inspection", label: "Inspection", done: hasInspection },
+                  { key: "contract", label: "Contract", done: hasContract },
+                ] : []),
                 { key: "warranty", label: "Warranty", done: hasWarranty },
                 { key: "estimate", label: "Estimate", done: hasEstimate },
               ].map(item => (
@@ -602,8 +607,8 @@ export default function LeadDetail() {
         const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
         const inspectionForm = (leadForms as any[]).find((f: any) => f.form_type === "inspection");
         const appointmentForm = (leadForms as any[]).find((f: any) => f.form_type === "appointment");
-        const showContract = ["won", "approved", "scheduled"].includes(lead.status);
-        const showFlex = ["won", "scheduled"].includes(lead.status);
+        const showContract = isGutters && ["won", "approved", "scheduled"].includes(lead.status);
+        const showFlex = isGutters && ["won", "scheduled"].includes(lead.status);
         const showWarranty = lead.status === "completed";
         const showInspection = isGutters;
         const showAppointment = true;
