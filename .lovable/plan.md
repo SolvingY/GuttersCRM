@@ -1,42 +1,45 @@
 
 
-# Add Edit Button to Shift History
-
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+# Profitability Panel: Reorder, Top Summary, Email Feature
 
 ## Changes
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+### 1. `src/pages/admin/LeadDetail.tsx` — Reorder sections + add profit summary at top
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**Reorder** the collapsible sections to this order:
+1. Saved Estimates
+2. Scheduling / Payments
+3. Quote Approval
+4. Files
+5. Timeline
+6. Activity Log
+7. **Job Profitability** (moved down, just above Admin Notes)
+8. Admin Notes
+9. Archive Lead (moved to very bottom)
+10. Permanently Delete (moved to very bottom)
+11. Archived info block
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**Add a compact profit summary card at the very top** of the right column (above all collapsible sections), visible only to admins when estimates exist and a profitability record has been saved. This will query `job_profitability` by estimate ID and display:
+- Gross Profit (green/red) and Margin % in a small highlighted card
+- This is read-only, non-collapsible, always visible — a quick glance widget
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+### 2. `src/components/admin/JobProfitabilityPanel.tsx` — Add "Email Report" feature
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+Below the "Save Profitability" button, add a "Send Profitability Report" button that opens a dialog:
+- Text input to type an email address + "Add" button
+- List of added emails as removable chips
+- "Send" button that invokes `send-profitability-summary` with `recipient_emails` array
+- The dialog reuses the same payload structure as the auto-save email
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+### 3. `supabase/functions/send-profitability-summary/index.ts` — Support custom recipients
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+Accept optional `recipient_emails: string[]` in the request body. If provided and non-empty, send to those addresses instead of querying admin emails. All other logic (auth check, HTML template) stays the same.
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+## Files Changed
 
-## Summary
-
-| Area | Change |
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `src/pages/admin/LeadDetail.tsx` | Reorder sections, add top profit summary |
+| `src/components/admin/JobProfitabilityPanel.tsx` | Add email dialog with custom recipients |
+| `supabase/functions/send-profitability-summary/index.ts` | Support `recipient_emails` override |
 
