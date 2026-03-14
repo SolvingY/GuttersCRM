@@ -617,16 +617,18 @@ function CanvasserEODSettingsCard() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={handleSave} disabled={saving} size="sm">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Save EOD Settings
-            </Button>
-            <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">
-              {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-              Send Test Report
-            </Button>
-            <Button variant="outline" onClick={() => setRangeDialogOpen(true)} size="sm">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleSave} disabled={saving} size="sm">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save EOD Settings
+              </Button>
+              <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">
+                {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Send Test Report
+              </Button>
+            </div>
+            <Button variant="outline" onClick={() => setRangeDialogOpen(true)} size="sm" className="w-full">
               <CalendarRange className="h-4 w-4 mr-2" />
               Send Date Range Report
             </Button>
