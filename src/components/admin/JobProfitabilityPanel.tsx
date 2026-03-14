@@ -151,9 +151,26 @@ export default function JobProfitabilityPanel({
       queryClient.invalidateQueries({ queryKey: ["job-profitability", estimateId] });
       queryClient.invalidateQueries({ queryKey: ["job-profitability-summary", estimateId] });
 
-      // Send to admins automatically
-      const emailPayload = await buildEmailPayload();
-      supabase.functions.invoke("send-profitability-summary", { body: emailPayload });
+      // Send to configured recipients only
+      const { data: recipientSetting } = await (supabase.from("report_settings") as any)
+        .select("setting_value")
+        .eq("setting_key", "profitability_report_recipients")
+        .maybeSingle();
+      
+      let recipientList: string[] = [];
+      if (recipientSetting?.setting_value) {
+        const parsed = typeof recipientSetting.setting_value === "string"
+          ? JSON.parse(recipientSetting.setting_value)
+          : recipientSetting.setting_value;
+        if (Array.isArray(parsed)) recipientList = parsed;
+      }
+
+      if (recipientList.length > 0) {
+        const emailPayload = await buildEmailPayload();
+        supabase.functions.invoke("send-profitability-summary", {
+          body: { ...emailPayload, recipient_emails: recipientList },
+        });
+      }
     } catch (err: any) {
       toast({ title: "Save failed", description: err.message, variant: "destructive" });
     } finally {
