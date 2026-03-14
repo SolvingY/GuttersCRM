@@ -72,6 +72,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { icon: ClipboardList, label: 'Lead Management', path: '/admin/leads' },
       { icon: TrendingUp, label: 'Lead Analytics', path: '/admin/leadflow' },
+      { icon: FileText, label: 'All Estimates', path: '/admin/estimates' },
     ],
   },
   {

@@ -68,6 +68,7 @@ const NotificationRouting = lazy(() => import("./pages/admin/NotificationRouting
 const AdminPresets = lazy(() => import("./pages/admin/AdminPresets"));
 const SentReports = lazy(() => import("./pages/admin/SentReports"));
 const AdminHome = lazy(() => import("./pages/admin/AdminHome"));
+const AllEstimates = lazy(() => import("./pages/admin/AllEstimates"));
 
 // Canvasser routes
 const CanvasserLayout = lazy(() => import("./pages/canvasser/CanvasserLayout"));
