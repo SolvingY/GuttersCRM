@@ -776,24 +776,12 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
+          {/* Top Profit Summary Card */}
+          <ProfitSummaryCard estimateId={(leadEstimates as any[])?.[0]?.id} isAdmin={isAdmin} hasEstimates={(leadEstimates as any[]).length > 0} />
+
           <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
             <AdminEstimatesSection leadId={lead.id} />
           </CollapsibleSection>
-
-          {isAdmin && (leadEstimates as any[]).length > 0 && (
-            <CollapsibleSection title="Job Profitability" defaultOpen={false}>
-              <JobProfitabilityPanel
-                estimateId={(leadEstimates as any[])[0].id}
-                leadId={lead.id}
-                quotedPrice={Number((leadEstimates as any[])[0].quoted_price || 0)}
-                commission={Number((leadEstimates as any[])[0].commission || 0)}
-                customerName={lead.full_name}
-                jobNumber={(leadEstimates as any[])[0].job_number || lead.reference_number}
-                city={lead.city}
-                state={lead.state}
-              />
-            </CollapsibleSection>
-          )}
 
           <CollapsibleSection title="Scheduling / Payments" defaultOpen={false}>
             <LeadSchedulingPayments lead={lead} onLeadUpdate={() => {
@@ -862,6 +850,43 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
+          <CollapsibleSection title="Activity Log" defaultOpen={false}>
+            <LeadActivityLog leadId={lead.id} />
+          </CollapsibleSection>
+
+          {isAdmin && (leadEstimates as any[]).length > 0 && (
+            <CollapsibleSection title="Job Profitability" defaultOpen={false}>
+              <JobProfitabilityPanel
+                estimateId={(leadEstimates as any[])[0].id}
+                leadId={lead.id}
+                quotedPrice={Number((leadEstimates as any[])[0].quoted_price || 0)}
+                commission={Number((leadEstimates as any[])[0].commission || 0)}
+                customerName={lead.full_name}
+                jobNumber={(leadEstimates as any[])[0].job_number || lead.reference_number}
+                city={lead.city}
+                state={lead.state}
+              />
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection title="Admin Notes" defaultOpen={false}>
+            <Textarea
+              value={currentNotes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes..."
+              className="min-h-[120px]"
+            />
+            <Button
+              size="sm"
+              className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => updateLead.mutate({ admin_notes: currentNotes })}
+              disabled={updateLead.isPending}
+            >
+              {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              Save Notes
+            </Button>
+          </CollapsibleSection>
+
           {isAdmin && lead.status !== 'archived' && (
             <CollapsibleSection title="Archive Lead" defaultOpen={false} className="border-destructive/20">
               <p className="text-sm text-muted-foreground mb-3">
@@ -905,28 +930,6 @@ export default function LeadDetail() {
               )}
             </div>
           )}
-
-          <CollapsibleSection title="Activity Log" defaultOpen={false}>
-            <LeadActivityLog leadId={lead.id} />
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Admin Notes" defaultOpen={false}>
-            <Textarea
-              value={currentNotes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Internal notes..."
-              className="min-h-[120px]"
-            />
-            <Button
-              size="sm"
-              className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={() => updateLead.mutate({ admin_notes: currentNotes })}
-              disabled={updateLead.isPending}
-            >
-              {updateLead.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-              Save Notes
-            </Button>
-          </CollapsibleSection>
       </div>
 
       {/* Lost Lead Dialog */}
