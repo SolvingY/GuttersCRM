@@ -82,7 +82,7 @@ const serviceIcons: Record<string, any> = { commercial: Building2, residential: 
 
 const statusOptions = ["new", "contacted", "quoted", "won", "scheduled", "completed", "lost", "cancelled"];
 const priorityOptions = ["urgent", "high", "normal", "low"];
-const lostReasons = ["Price too high", "Chose competitor", "Project cancelled", "No response", "Timeline didn't work", "Other"];
+const lostReasons = ["One Leg", "Too Expensive", "Customer Not Home", "Renter", "Not Interested", "Other"];
 const cancelledReasons = ["Customer changed mind", "Financing fell through", "Insurance denied", "Scheduling conflict", "Material unavailable", "Weather delay", "Other"];
 
 export default function LeadDetail() {
