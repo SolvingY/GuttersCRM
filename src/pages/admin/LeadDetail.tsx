@@ -831,8 +831,6 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
-          {/* Top Profit Summary Card */}
-          <ProfitSummaryCard estimateId={(leadEstimates as any[])?.[0]?.id} isAdmin={isAdmin} hasEstimates={(leadEstimates as any[]).length > 0} />
 
           <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
             <AdminEstimatesSection leadId={lead.id} />
