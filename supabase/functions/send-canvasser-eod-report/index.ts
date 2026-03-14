@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       const allNotes = [shiftNotes, entryNotes].filter(Boolean).join(" | ");
       const truncatedNotes = allNotes.length > 60 ? allNotes.slice(0, 57) + "..." : allNotes;
 
-      canvasserData.push({ name, clockIn, clockOut, hours: totalShiftHours, leadsSet, leadsClosed, doors, convos, contracts, notes: truncatedNotes, fullNotes: allNotes });
+      canvasserData.push({ name, clockIn, clockOut, hours: totalShiftHours, leadsSet, leadsClosed, doors, convos, notes: truncatedNotes, fullNotes: allNotes });
     }
 
     canvasserData.sort((a, b) => a.name.localeCompare(b.name));
