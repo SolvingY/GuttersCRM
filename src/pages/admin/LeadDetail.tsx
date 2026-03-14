@@ -577,8 +577,10 @@ export default function LeadDetail() {
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { key: "appointment", label: "Appointment", done: hasAppointment },
-                { key: "inspection", label: "Inspection", done: hasInspection },
-                { key: "contract", label: "Contract", done: hasContract },
+                ...(isGutters ? [
+                  { key: "inspection", label: "Inspection", done: hasInspection },
+                  { key: "contract", label: "Contract", done: hasContract },
+                ] : []),
                 { key: "warranty", label: "Warranty", done: hasWarranty },
                 { key: "estimate", label: "Estimate", done: hasEstimate },
               ].map(item => (
