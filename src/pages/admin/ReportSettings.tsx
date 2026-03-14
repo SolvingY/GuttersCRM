@@ -440,6 +440,7 @@ export default function ReportSettings() {
         </Button>
       </div>
 
+      <ProfitabilityRecipientsCard />
       <CalendarSettingsCard />
       <CanvasserEODSettingsCard />
       <ProductionEODSettingsCard />
