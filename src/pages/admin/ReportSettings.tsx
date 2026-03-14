@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -8,8 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Mail, Calendar, Clock, Send, FileText, X, Globe, BarChart3 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Loader2, Save, Mail, Calendar, Clock, Send, FileText, X, Globe, BarChart3, CalendarRange } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import ReportRecipientsSelector from '@/components/shared/ReportRecipientsSelector';
 
 function CalendarSettingsCard() {
@@ -130,16 +135,13 @@ export default function ReportSettings() {
           const key = row.setting_key as keyof ReportSettings;
           let value = row.setting_value;
           
-          // Parse JSON strings
           if (typeof value === 'string') {
             try {
               value = JSON.parse(value);
             } catch {
-              // Keep as string if not valid JSON
             }
           }
           
-          // Convert string booleans
           if (value === 'true') value = true;
           if (value === 'false') value = false;
           
@@ -252,7 +254,6 @@ export default function ReportSettings() {
         </p>
       </div>
 
-      {/* Scheduled Reports Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -264,7 +265,6 @@ export default function ReportSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Enable Toggle */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Enable Scheduled Reports</Label>
@@ -280,7 +280,6 @@ export default function ReportSettings() {
 
           {settings.scheduled_report_enabled && (
             <>
-              {/* Frequency */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
@@ -334,7 +333,6 @@ export default function ReportSettings() {
                 </div>
               </div>
 
-              {/* Additional Recipients */}
               <div className="space-y-2">
                 <Label>Additional Recipients</Label>
                 <p className="text-sm text-muted-foreground mb-2">
@@ -373,7 +371,6 @@ export default function ReportSettings() {
         </CardContent>
       </Card>
 
-      {/* Report Content Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -420,7 +417,6 @@ export default function ReportSettings() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
@@ -444,13 +440,9 @@ export default function ReportSettings() {
         </Button>
       </div>
 
-      {/* Team Calendar Card */}
       <CalendarSettingsCard />
-
-      {/* Canvasser EOD Report Settings Card */}
       <CanvasserEODSettingsCard />
 
-      {/* Info Card */}
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
           <h4 className="font-semibold text-foreground mb-2">How Scheduled Reports Work</h4>
@@ -475,6 +467,10 @@ function CanvasserEODSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [rangeDialogOpen, setRangeDialogOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState<Date | undefined>(undefined);
+  const [rangeEnd, setRangeEnd] = useState<Date | undefined>(undefined);
+  const [sendingRange, setSendingRange] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -538,72 +534,184 @@ function CanvasserEODSettingsCard() {
     }
   };
 
+  const handleSendDateRange = async () => {
+    if (!rangeStart || !rangeEnd) {
+      toast({ title: 'Select both dates', variant: 'destructive' });
+      return;
+    }
+    setSendingRange(true);
+    try {
+      const startStr = format(rangeStart, 'yyyy-MM-dd');
+      const endStr = format(rangeEnd, 'yyyy-MM-dd');
+      const { data, error } = await supabase.functions.invoke('send-canvasser-eod-report', {
+        body: { start_date: startStr, end_date: endStr },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Date range report sent',
+        description: `Report for ${format(rangeStart, 'MMM d')} – ${format(rangeEnd, 'MMM d')} sent to ${data?.recipients || 0} recipient(s) with ${data?.canvassers || 0} canvasser(s).`,
+      });
+      setRangeDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: 'Error sending report', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingRange(false);
+    }
+  };
+
   if (!loaded) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-accent" />
-          Canvasser EOD Report Settings
-        </CardTitle>
-        <CardDescription>
-          Configure the daily canvasser end-of-day summary email
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Send Time (CT)
-            </Label>
-            <Select value={sendHour} onValueChange={setSendHour}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 24 }, (_, i) => {
-                  const label = i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`;
-                  return <SelectItem key={i} value={String(i)}>{label}</SelectItem>;
-                })}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Note: Update cron schedule in November when clocks fall back.</p>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-accent" />
+            Canvasser EOD Report Settings
+          </CardTitle>
+          <CardDescription>
+            Configure the daily canvasser end-of-day summary email
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Send Time (CT)
+              </Label>
+              <Select value={sendHour} onValueChange={setSendHour}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const label = i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`;
+                    return <SelectItem key={i} value={String(i)}>{label}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Note: Update cron schedule in November when clocks fall back.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Frequency
+              </Label>
+              <Select value={frequency} onValueChange={setFrequency}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekdays">Weekdays Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Frequency
-            </Label>
-            <Select value={frequency} onValueChange={setFrequency}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekdays">Weekdays Only</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Recipients</Label>
+            <p className="text-xs text-muted-foreground mb-2">Select who receives the daily canvasser EOD report</p>
+            <ReportRecipientsSelector
+              selected={selectedRecipients}
+              onChange={setSelectedRecipients}
+            />
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label>Recipients</Label>
-          <p className="text-xs text-muted-foreground mb-2">Select who receives the daily canvasser EOD report</p>
-          <ReportRecipientsSelector
-            selected={selectedRecipients}
-            onChange={setSelectedRecipients}
-          />
-        </div>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save EOD Settings
+            </Button>
+            <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">
+              {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Test Report
+            </Button>
+            <Button variant="outline" onClick={() => setRangeDialogOpen(true)} size="sm">
+              <CalendarRange className="h-4 w-4 mr-2" />
+              Send Date Range Report
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-        <div className="flex gap-3">
-          <Button onClick={handleSave} disabled={saving} size="sm">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save EOD Settings
-          </Button>
-          <Button variant="outline" onClick={handleSendTest} disabled={sendingTest} size="sm">
-            {sendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-            Send Test Report
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <Dialog open={rangeDialogOpen} onOpenChange={setRangeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Canvasser Date Range Report</DialogTitle>
+            <DialogDescription>
+              Select a start and end date to generate and send an aggregated canvasser report
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm">Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !rangeStart && 'text-muted-foreground')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {rangeStart ? format(rangeStart, 'MMM d, yyyy') : 'Pick start'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rangeStart}
+                      onSelect={setRangeStart}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-sm">End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !rangeEnd && 'text-muted-foreground')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {rangeEnd ? format(rangeEnd, 'MMM d, yyyy') : 'Pick end'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={rangeEnd}
+                      onSelect={setRangeEnd}
+                      disabled={(date) => date > new Date() || (rangeStart ? date < rangeStart : false)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {rangeStart && rangeEnd && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">Selected Range:</p>
+                <p className="font-medium text-foreground">
+                  {format(rangeStart, 'MMM d, yyyy')} – {format(rangeEnd, 'MMM d, yyyy')}
+                </p>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              onClick={handleSendDateRange}
+              disabled={sendingRange || !rangeStart || !rangeEnd}
+            >
+              {sendingRange ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Report
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
