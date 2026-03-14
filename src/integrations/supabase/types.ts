@@ -2560,6 +2560,7 @@ export type Database = {
           street_address: string
           updated_at: string
           validity_days: number | null
+          was_damaged: boolean | null
           won_at: string | null
           zip_code: string
         }
@@ -2620,6 +2621,7 @@ export type Database = {
           street_address: string
           updated_at?: string
           validity_days?: number | null
+          was_damaged?: boolean | null
           won_at?: string | null
           zip_code: string
         }
@@ -2680,6 +2682,7 @@ export type Database = {
           street_address?: string
           updated_at?: string
           validity_days?: number | null
+          was_damaged?: boolean | null
           won_at?: string | null
           zip_code?: string
         }
