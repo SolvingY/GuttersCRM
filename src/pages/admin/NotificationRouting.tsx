@@ -8,9 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, X, Mail, Globe, BarChart3, Calendar, Clock, Save, Send, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calendar as CalendarWidget } from '@/components/ui/calendar';
+import { Loader2, Plus, X, Mail, Globe, BarChart3, Calendar, Clock, Save, Send, FileText, CalendarRange } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 const NOTIFICATION_TYPES: { key: string; label: string; description: string }[] = [
