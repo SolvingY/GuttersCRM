@@ -1331,6 +1331,85 @@ export type Database = {
         }
         Relationships: []
       }
+      job_profitability: {
+        Row: {
+          commission_paid: number
+          created_at: string
+          entered_by: string | null
+          estimate_id: string
+          gross_profit: number | null
+          id: string
+          invoice_urls: string[]
+          labor_cost: number
+          lead_id: string | null
+          material_cost: number
+          notes: string | null
+          other_costs: number
+          other_costs_description: string | null
+          profit_margin_pct: number | null
+          quoted_price: number
+          updated_at: string
+        }
+        Insert: {
+          commission_paid?: number
+          created_at?: string
+          entered_by?: string | null
+          estimate_id: string
+          gross_profit?: number | null
+          id?: string
+          invoice_urls?: string[]
+          labor_cost?: number
+          lead_id?: string | null
+          material_cost?: number
+          notes?: string | null
+          other_costs?: number
+          other_costs_description?: string | null
+          profit_margin_pct?: number | null
+          quoted_price?: number
+          updated_at?: string
+        }
+        Update: {
+          commission_paid?: number
+          created_at?: string
+          entered_by?: string | null
+          estimate_id?: string
+          gross_profit?: number | null
+          id?: string
+          invoice_urls?: string[]
+          labor_cost?: number
+          lead_id?: string | null
+          material_cost?: number
+          notes?: string | null
+          other_costs?: number
+          other_costs_description?: string | null
+          profit_margin_pct?: number | null
+          quoted_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_profitability_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_profitability_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: true
+            referencedRelation: "gutter_estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_profitability_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_activity_log: {
         Row: {
           activity_type: string
