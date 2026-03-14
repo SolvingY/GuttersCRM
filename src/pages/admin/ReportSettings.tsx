@@ -729,7 +729,7 @@ function CanvasserEODSettingsCard() {
   );
 }
 
-  const [saving, setSaving] = useState(false);
+
   const [sendingTest, setSendingTest] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
