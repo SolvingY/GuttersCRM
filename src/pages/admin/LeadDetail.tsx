@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import { useQuery as useRQQuery } from "@tanstack/react-query";
 import { LeadSchedulingPayments } from "@/components/lead/LeadSchedulingPayments";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import JobProfitabilityPanel from "@/components/admin/JobProfitabilityPanel";
+import { Progress } from "@/components/ui/progress";
 
 function CollapsibleSection({ title, defaultOpen = true, children, className }: { title: string; defaultOpen?: boolean; children: React.ReactNode; className?: string }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -540,8 +541,62 @@ export default function LeadDetail() {
         </div>
       </div>
 
+      {/* Profit Summary in Header */}
+      <ProfitSummaryCard estimateId={(leadEstimates as any[])?.[0]?.id} isAdmin={isAdmin} hasEstimates={(leadEstimates as any[]).length > 0} />
+
+      {/* Progress Bar */}
+      {(() => {
+        const formTypes = (leadForms as any[]).map((f: any) => f.form_type);
+        const hasAppointment = formTypes.includes("appointment");
+        const hasInspection = formTypes.includes("inspection");
+        const hasContract = formTypes.includes("contract");
+        const hasWarranty = formTypes.includes("warranty");
+        const hasEstimate = (leadEstimates as any[]).length > 0;
+        const statusWeight = ["new", "contacted", "quoted", "won", "scheduled", "completed"].indexOf(lead.status);
+        const statusPct = statusWeight >= 0 ? Math.round(((statusWeight + 1) / 6) * 40) : 0;
+
+        const docCount = [hasAppointment, hasInspection, hasContract, hasWarranty].filter(Boolean).length;
+        const docPct = Math.round((docCount / 4) * 30);
+        const estimatePct = hasEstimate ? 15 : 0;
+        const profitPct = isAdmin && hasEstimate ? 15 : (isAdmin ? 0 : 15);
+
+        const totalPct = Math.min(statusPct + docPct + estimatePct + profitPct, 100);
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Lead Progress</span>
+              <span className="font-medium">{totalPct}%</span>
+            </div>
+            <Progress value={totalPct} className="h-2" />
+
+            {/* Completed Documents Summary */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[
+                { key: "appointment", label: "Appointment", done: hasAppointment },
+                { key: "inspection", label: "Inspection", done: hasInspection },
+                { key: "contract", label: "Contract", done: hasContract },
+                { key: "warranty", label: "Warranty", done: hasWarranty },
+                { key: "estimate", label: "Estimate", done: hasEstimate },
+              ].map(item => (
+                <Badge key={item.key} variant="outline" className={cn(
+                  "text-[10px] gap-1",
+                  item.done
+                    ? "bg-green-500/10 text-green-600 border-green-500/30"
+                    : "bg-muted text-muted-foreground border-border"
+                )}>
+                  {item.done ? <CheckCircle className="w-3 h-3" /> : null}
+                  {item.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Document Action Buttons */}
       {(() => {
+        const formBasePath = isAdmin ? `/admin/leads/${lead.id}` : `/dashboard/leads/${lead.id}`;
         const contractForm = (leadForms as any[]).find((f: any) => f.form_type === "contract");
         const flexForm = (leadForms as any[]).find((f: any) => f.form_type === "flex_schedule");
         const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
@@ -556,31 +611,31 @@ export default function LeadDetail() {
         return (
           <div className="flex flex-wrap gap-2">
             {showAppointment && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/appointment`, { state: { lead, existingForm: appointmentForm || null, serviceType: lead.service_type } })}>
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`${formBasePath}/appointment`, { state: { lead, existingForm: appointmentForm || null, serviceType: lead.service_type } })}>
                 <CalendarDays className="w-4 h-4" /> {appointmentForm ? "📅 View Appointment" : `📅 ${appointmentLabel}`}
                 {appointmentForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", appointmentForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{appointmentForm.status}</Badge>}
               </Button>
             )}
             {showInspection && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/inspection`, { state: { lead, existingForm: inspectionForm || null } })}>
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`${formBasePath}/inspection`, { state: { lead, existingForm: inspectionForm || null } })}>
                 <CheckCircle className="w-4 h-4" /> {inspectionForm ? "✅ View Checklist" : "✅ 20-Point Checklist"}
                 {inspectionForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", inspectionForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{inspectionForm.status}</Badge>}
               </Button>
             )}
             {showContract && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/contract`, { state: { lead, existingForm: contractForm || null } })}>
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`${formBasePath}/contract`, { state: { lead, existingForm: contractForm || null } })}>
                 <FileText className="w-4 h-4" /> {contractForm ? "📋 View Contract" : "📋 Create Contract"}
                 {contractForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", contractForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{contractForm.status}</Badge>}
               </Button>
             )}
             {showFlex && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/flex-schedule`, { state: { lead, existingForm: flexForm || null } })}>
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`${formBasePath}/flex-schedule`, { state: { lead, existingForm: flexForm || null } })}>
                 <CalendarDays className="w-4 h-4" /> {flexForm ? "📆 View Flex Schedule" : "📆 Flex Schedule Form"}
                 {flexForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", flexForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{flexForm.status}</Badge>}
               </Button>
             )}
             {showWarranty && (
-              <Button variant="outline" className="gap-2" onClick={() => navigate(`/dashboard/leads/${lead.id}/warranty`, { state: { lead, existingForm: warrantyForm || null } })}>
+              <Button variant="outline" className="gap-2" onClick={() => navigate(`${formBasePath}/warranty`, { state: { lead, existingForm: warrantyForm || null } })}>
                 <Shield className="w-4 h-4" /> {warrantyForm ? "📄 View Warranty" : "📄 Warranty Document"}
                 {warrantyForm && <Badge variant="outline" className={cn("ml-1 text-[10px]", warrantyForm.status === "signed" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600")}>{warrantyForm.status}</Badge>}
               </Button>
@@ -776,8 +831,6 @@ export default function LeadDetail() {
             </div>
           </CollapsibleSection>
 
-          {/* Top Profit Summary Card */}
-          <ProfitSummaryCard estimateId={(leadEstimates as any[])?.[0]?.id} isAdmin={isAdmin} hasEstimates={(leadEstimates as any[]).length > 0} />
 
           <CollapsibleSection title="Saved Estimates" defaultOpen={false}>
             <AdminEstimatesSection leadId={lead.id} />

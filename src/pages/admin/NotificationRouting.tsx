@@ -608,6 +608,112 @@ function CalendarCard() {
   );
 }
 
+// ── Profitability Report Recipients Card ─────────────────────────────────
+
+function ProfitabilityRecipientsCard() {
+  const { toast: toastUI } = useToast();
+  const [emails, setEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('report_settings')
+      .select('setting_value')
+      .eq('setting_key', 'profitability_report_recipients')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.setting_value) {
+          const parsed = typeof data.setting_value === 'string'
+            ? JSON.parse(data.setting_value)
+            : data.setting_value;
+          if (Array.isArray(parsed)) setEmails(parsed);
+        }
+        setLoaded(true);
+      });
+  }, []);
+
+  const addEmail = () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toastUI({ title: 'Invalid email', variant: 'destructive' });
+      return;
+    }
+    if (emails.includes(email)) {
+      toastUI({ title: 'Already added', variant: 'destructive' });
+      return;
+    }
+    setEmails(prev => [...prev, email]);
+    setNewEmail('');
+  };
+
+  const removeEmail = (email: string) => {
+    setEmails(prev => prev.filter(e => e !== email));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('report_settings')
+        .upsert({
+          setting_key: 'profitability_report_recipients',
+          setting_value: JSON.stringify(emails),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'setting_key' });
+      if (error) throw error;
+      toastUI({ title: 'Saved', description: 'Profitability report recipients updated.' });
+    } catch (e: any) {
+      toastUI({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-accent" />Profitability Report Recipients</CardTitle>
+          <CardDescription className="text-xs mt-1">When a profitability report is saved, it auto-sends only to these email addresses.</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="email@example.com"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEmail(); } }}
+            className="flex-1"
+          />
+          <Button variant="secondary" size="sm" onClick={addEmail}>Add</Button>
+        </div>
+        {emails.length > 0 ? (
+          <div className="space-y-2">
+            {emails.map(email => (
+              <div key={email} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-muted/50">
+                <span className="text-sm">{email}</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeEmail(email)}><X className="h-3.5 w-3.5" /></Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">No recipients configured — auto-send will be skipped.</p>
+        )}
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          Save Recipients
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────────────────────
 
 export default function NotificationRouting() {
@@ -623,6 +729,9 @@ export default function NotificationRouting() {
 
       {/* Canvasser EOD Report — right after notifications */}
       <CanvasserEODCard />
+
+      {/* Profitability Report Recipients */}
+      <ProfitabilityRecipientsCard />
 
       {/* Other report settings */}
       <ScheduledReportCard />
