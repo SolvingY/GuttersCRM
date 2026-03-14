@@ -158,6 +158,18 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
   const performClockIn = async (loc: { lat: number; lng: number } | null) => {
     if (!user) return;
     try {
+      // Safety check — DB index is the real guard, this is a UX safeguard
+      const { data: existingShift } = await (supabase.from("production_shifts") as any)
+        .select('id')
+        .eq('user_id', user.id)
+        .is('clock_out_at', null)
+        .maybeSingle();
+
+      if (existingShift) {
+        toast.error('You already have an active shift. Please clock out first.');
+        return;
+      }
+
       const { data, error } = await (supabase.from("production_shifts") as any)
         .insert({
           user_id: user.id,
