@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad } from "@/components/SignaturePad";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronDown, ChevronRight, Mail } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 export default function WarrantyDocument() {
   const { id } = useParams();
@@ -17,8 +18,14 @@ export default function WarrantyDocument() {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const backPath = isAdminRoute ? `/admin/leads/${id}` : `/dashboard/leads/${id}`;
 
   const lead = (location.state as any)?.lead;
   const existingForm = (location.state as any)?.existingForm;
@@ -80,6 +87,37 @@ export default function WarrantyDocument() {
     }
   }, [lead, existingForm]);
 
+  const handleSendWarrantyEmail = async () => {
+    if (!lead?.email) {
+      toast({ title: "No email on file", variant: "destructive" });
+      setEmailPromptOpen(false);
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const protectionProduct = estimate?.protection_product || "Standard";
+      await supabase.functions.invoke("send-warranty-email", {
+        body: {
+          clientName: homeownerName,
+          clientEmail: lead.email,
+          quoteAmount: Number(quoteAmount),
+          referenceNumber: lead.reference_number || "",
+          installDate,
+          completedAt: lead.completed_at || new Date().toISOString(),
+          protectionProduct,
+        },
+      });
+      toast({ title: "Warranty email sent to homeowner" });
+    } catch (err: any) {
+      console.error("Warranty email failed:", err);
+      toast({ title: "Failed to send email", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingEmail(false);
+      setEmailPromptOpen(false);
+      navigate(backPath);
+    }
+  };
+
   const handleSave = async () => {
     if (!homeownerSignature || !repSignature) {
       toast({ title: "Both signatures required", variant: "destructive" });
@@ -113,25 +151,13 @@ export default function WarrantyDocument() {
         content: `Warranty document signed by ${homeownerName}`,
       });
 
-      // Fire warranty email
-      try {
-        const protectionProduct = estimate?.protection_product || "Standard";
-        await supabase.functions.invoke("send-warranty-email", {
-          body: {
-            leadId: id,
-            customerName: homeownerName,
-            customerEmail: lead?.email,
-            installDate,
-            protectionProduct,
-            propertyAddress: `${propertyAddress}, ${cityField}, ${stateField} ${zipField}`,
-          },
-        });
-      } catch (emailErr) {
-        console.error("Warranty email failed:", emailErr);
-      }
+      // Invalidate lead-forms query so lead card refreshes
+      queryClient.invalidateQueries({ queryKey: ["lead-forms", id] });
 
       toast({ title: "Warranty document saved" });
-      navigate(`/dashboard/leads/${id}`);
+
+      // Show email prompt instead of navigating immediately
+      setEmailPromptOpen(true);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -141,7 +167,7 @@ export default function WarrantyDocument() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Button variant="ghost" onClick={() => navigate(`/dashboard/leads/${id}`)} className="gap-2 -ml-2">
+      <Button variant="ghost" onClick={() => navigate(backPath)} className="gap-2 -ml-2">
         <ArrowLeft className="w-4 h-4" /> Back to Lead
       </Button>
       <h1 className="font-heading text-2xl uppercase">Warranty Document</h1>
@@ -242,6 +268,32 @@ export default function WarrantyDocument() {
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         {existingForm ? "Update Warranty" : "Sign & Save Warranty"}
       </Button>
+
+      {/* Email Prompt Dialog */}
+      <Dialog open={emailPromptOpen} onOpenChange={(open) => {
+        if (!open) {
+          setEmailPromptOpen(false);
+          navigate(backPath);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Mail className="w-5 h-5" /> Send Warranty to Homeowner?</DialogTitle>
+            <DialogDescription>
+              Would you like to email the warranty documents to {lead?.email || "the homeowner"}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setEmailPromptOpen(false); navigate(backPath); }}>
+              Skip
+            </Button>
+            <Button onClick={handleSendWarrantyEmail} disabled={sendingEmail} className="gap-2">
+              {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

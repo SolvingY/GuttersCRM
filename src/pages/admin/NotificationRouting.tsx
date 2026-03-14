@@ -624,6 +624,9 @@ export default function NotificationRouting() {
       {/* Canvasser EOD Report — right after notifications */}
       <CanvasserEODCard />
 
+      {/* Profitability Report Recipients */}
+      <ProfitabilityRecipientsCard />
+
       {/* Other report settings */}
       <ScheduledReportCard />
       <CalendarCard />

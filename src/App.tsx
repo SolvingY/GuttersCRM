@@ -272,6 +272,11 @@ const App = () => (
               <Route path="applicants/:id" element={<ApplicantDetail />} />
               <Route path="leads" element={<Leads />} />
               <Route path="leads/:id" element={<LeadDetail />} />
+              <Route path="leads/:id/contract" element={<GutterContract />} />
+              <Route path="leads/:id/flex-schedule" element={<FlexSchedule />} />
+              <Route path="leads/:id/warranty" element={<WarrantyDocument />} />
+              <Route path="leads/:id/inspection" element={<InspectionChecklist />} />
+              <Route path="leads/:id/appointment" element={<AppointmentSheet />} />
               <Route path="leadflow" element={<LeadflowStatistics />} />
               <Route path="sales-performance" element={<SalesPerformance />} />
               <Route path="team" element={<ContractorManagement />} />
