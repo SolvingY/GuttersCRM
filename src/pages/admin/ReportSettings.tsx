@@ -714,6 +714,7 @@ function ProductionEODSettingsCard() {
   const [rangeStart, setRangeStart] = useState<Date | undefined>(undefined);
   const [rangeEnd, setRangeEnd] = useState<Date | undefined>(undefined);
   const [sendingRange, setSendingRange] = useState(false);
+  const [activeCalendar, setActiveCalendar] = useState<'start' | 'end'>('start');
 
   const handleSendDateRange = async () => {
     if (!rangeStart || !rangeEnd) {
