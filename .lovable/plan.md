@@ -1,42 +1,42 @@
 
+Root cause identified:
+- The updates were made in `src/pages/admin/ReportSettings.tsx`, but the actual Admin → Reports screen uses `src/pages/admin/NotificationRouting.tsx` via route `/admin/notifications`.
+- That is why you still don’t see “Send Date Range Report” in the Canvasser EOD card on the live Reports page.
 
-# Add Edit Button to Shift History
+Plan to fix (in the correct file):
+1. Update `CanvasserEODCard` in `src/pages/admin/NotificationRouting.tsx`
+   - Add a visible “Send Date Range Report” button directly in this card (full-width row for mobile).
+   - Add date-range dialog state (`rangeDialogOpen`, `rangeStart`, `rangeEnd`, `activeCalendar`, `sendingRange`).
+   - Add inline calendar date selection (no nested popover) and keep calendar interactive with `pointer-events-auto`.
+   - On submit, invoke `send-canvasser-eod-report` with `{ start_date, end_date }`.
+   - Keep the existing Save/Test buttons unchanged.
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+2. Ensure mobile visibility and usability
+   - Keep action area stacked for small screens so the date-range action cannot be hidden/wrapped off-screen.
+   - Use the same inline start/end toggle pattern already proven in your other implementation.
 
-## Changes
+3. (Consistency cleanup) Add Production date-range action to Reports page too
+   - Add a `ProductionEODCard` in `NotificationRouting.tsx` (or port existing logic) so both Canvasser and Production range reports live on the same Reports screen.
+   - Reuse the same dialog/calendar interaction pattern.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+4. Keep existing backend behavior
+   - No backend migration required.
+   - Reuse existing report functions (`send-canvasser-eod-report`, `send-production-eod-summary`) that already support date ranges.
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+Technical details:
+- Files to update:
+  - `src/pages/admin/NotificationRouting.tsx` (primary fix)
+- Imports likely needed:
+  - `format` from `date-fns`
+  - `Dialog` components
+  - `Calendar` UI component
+  - `CalendarRange` icon
+  - `cn` utility (if styling class composition is used)
+- No database schema/RLS/auth changes.
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
-
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
-
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
-
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
-|------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
-
+Verification steps after implementation:
+1. Open Admin → Reports (`/admin/notifications`) on mobile width.
+2. Scroll to Canvasser EOD card and confirm “Send Date Range Report” is visible.
+3. Open dialog, select start/end dates, and send.
+4. Confirm success toast and recipient count response.
+5. Repeat for Production date range card on same page.
