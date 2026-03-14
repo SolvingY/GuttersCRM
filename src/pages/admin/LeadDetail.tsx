@@ -602,8 +602,8 @@ export default function LeadDetail() {
         const warrantyForm = (leadForms as any[]).find((f: any) => f.form_type === "warranty");
         const inspectionForm = (leadForms as any[]).find((f: any) => f.form_type === "inspection");
         const appointmentForm = (leadForms as any[]).find((f: any) => f.form_type === "appointment");
-        const showContract = ["won", "approved", "scheduled"].includes(lead.status);
-        const showFlex = ["won", "scheduled"].includes(lead.status);
+        const showContract = isGutters && ["won", "approved", "scheduled"].includes(lead.status);
+        const showFlex = isGutters && ["won", "scheduled"].includes(lead.status);
         const showWarranty = lead.status === "completed";
         const showInspection = isGutters;
         const showAppointment = true;
