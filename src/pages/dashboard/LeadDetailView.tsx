@@ -62,6 +62,9 @@ export default function LeadDetailView() {
   const [cancelledReason, setCancelledReason] = useState("");
   const [showCalculator, setShowCalculator] = useState(false);
   const [editingEstimate, setEditingEstimate] = useState<any>(null);
+  const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [lostDamageAnswer, setLostDamageAnswer] = useState<boolean | null>(null);
+  const [lostReasonSelected, setLostReasonSelected] = useState("");
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead-detail", id],
