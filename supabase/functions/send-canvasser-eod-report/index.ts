@@ -248,7 +248,6 @@ Deno.serve(async (req) => {
               <th style="padding:10px 12px;text-align:right;">Convos</th>
               <th style="padding:10px 12px;text-align:right;">Leads</th>
               <th style="padding:10px 12px;text-align:right;">Closed</th>
-              <th style="padding:10px 12px;text-align:right;">Contracts</th>
               <th style="padding:10px 12px;text-align:left;">Notes</th>
             </tr>
           </thead>
