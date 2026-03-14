@@ -28,6 +28,7 @@ export default function GutterContract({
   existingForm: propExistingForm,
   readOnly = false,
   signingMode = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onCustomerSign,
 }: GutterContractProps) {
   const { id } = useParams();
