@@ -1,36 +1,42 @@
 
 
-# Profitability Report — Configurable Auto-Send Recipients
+# Add Edit Button to Shift History
 
 ## Problem
-When saving profitability data, line 156 of `JobProfitabilityPanel.tsx` calls `send-profitability-summary` without a `recipient_emails` list, so the edge function falls back to emailing **all active admins** (6 people). You only want 3 specific people to receive it.
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. `src/pages/admin/ReportSettings.tsx` — Add "Profitability Report Recipients" section
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-Add a new Card section (similar to existing report recipient management) with:
-- A list of email addresses with toggle switches (on/off)
-- An input to add new email addresses
-- Pre-populated with the 3 target emails: `r.baker@oknextgen.com`, `k.jameson@oknextgen.com`, `adam@grateful-services.com`
-- Stored in `report_settings` table under a key like `profitability_report_recipients` (JSON array of emails)
-- Save button persists the list
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### 2. `src/components/admin/JobProfitabilityPanel.tsx` — Use configured recipients for auto-send
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-Update the auto-send on save (line 154-156) to:
-- Fetch the `profitability_report_recipients` setting from `report_settings` before sending
-- Pass those emails as `recipient_emails` in the edge function call
-- If no recipients configured, skip the auto-send entirely (don't fall back to all admins)
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### 3. Edge function — No changes needed
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-The `send-profitability-summary` function already supports `recipient_emails` array. When provided, it sends only to those addresses.
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-## Files Changed
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-| File | Change |
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
 |------|--------|
-| `src/pages/admin/ReportSettings.tsx` | Add Profitability Report Recipients config card |
-| `src/components/admin/JobProfitabilityPanel.tsx` | Fetch configured recipients before auto-send |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

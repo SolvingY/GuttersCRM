@@ -440,6 +440,7 @@ export default function ReportSettings() {
         </Button>
       </div>
 
+      <ProfitabilityRecipientsCard />
       <CalendarSettingsCard />
       <CanvasserEODSettingsCard />
       <ProductionEODSettingsCard />
@@ -457,6 +458,115 @@ export default function ReportSettings() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ProfitabilityRecipientsCard() {
+  const { toast } = useToast();
+  const [emails, setEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('report_settings')
+      .select('setting_value')
+      .eq('setting_key', 'profitability_report_recipients')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.setting_value) {
+          const parsed = typeof data.setting_value === 'string'
+            ? JSON.parse(data.setting_value)
+            : data.setting_value;
+          if (Array.isArray(parsed)) setEmails(parsed);
+        }
+        setLoaded(true);
+      });
+  }, []);
+
+  const addEmail = () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: 'Invalid email', variant: 'destructive' });
+      return;
+    }
+    if (emails.includes(email)) {
+      toast({ title: 'Already added', variant: 'destructive' });
+      return;
+    }
+    setEmails(prev => [...prev, email]);
+    setNewEmail('');
+  };
+
+  const removeEmail = (email: string) => {
+    setEmails(prev => prev.filter(e => e !== email));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('report_settings')
+        .upsert({
+          setting_key: 'profitability_report_recipients',
+          setting_value: JSON.stringify(emails),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'setting_key' });
+      if (error) throw error;
+      toast({ title: 'Saved', description: 'Profitability report recipients updated.' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-accent" />
+          Profitability Report Recipients
+        </CardTitle>
+        <CardDescription>
+          When a profitability report is saved, it auto-sends only to these email addresses.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="email@example.com"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEmail(); } }}
+          />
+          <Button variant="secondary" onClick={addEmail}>Add</Button>
+        </div>
+        {emails.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {emails.map(email => (
+              <Badge key={email} variant="secondary" className="flex items-center gap-1">
+                {email}
+                <button onClick={() => removeEmail(email)} className="ml-1 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+        {emails.length === 0 && (
+          <p className="text-sm text-muted-foreground">No recipients configured — auto-send will be skipped.</p>
+        )}
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          Save Recipients
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
