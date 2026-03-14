@@ -466,6 +466,7 @@ function CanvasserEODSettingsCard() {
   const [frequency, setFrequency] = useState("daily");
   const [selectedRecipients, setSelectedRecipients] = useState<{ id: string; name: string; email: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [activeCalendar, setActiveCalendar] = useState<'start' | 'end'>('start');
   const [sendingTest, setSendingTest] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [rangeDialogOpen, setRangeDialogOpen] = useState(false);
@@ -642,55 +643,45 @@ function CanvasserEODSettingsCard() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 space-y-1">
-                <Label className="text-sm">Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn('w-full justify-start text-left font-normal', !rangeStart && 'text-muted-foreground')}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {rangeStart ? format(rangeStart, 'MMM d, yyyy') : 'Pick start'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={rangeStart}
-                      onSelect={setRangeStart}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="flex-1 space-y-1">
-                <Label className="text-sm">End Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn('w-full justify-start text-left font-normal', !rangeEnd && 'text-muted-foreground')}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {rangeEnd ? format(rangeEnd, 'MMM d, yyyy') : 'Pick end'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={rangeEnd}
-                      onSelect={setRangeEnd}
-                      disabled={(date) => date > new Date() || (rangeStart ? date < rangeStart : false)}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={activeCalendar === 'start' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveCalendar('start')}
+                className="w-full"
+              >
+                <Calendar className="mr-1.5 h-4 w-4" />
+                {rangeStart ? format(rangeStart, 'MMM d') : 'Start Date'}
+              </Button>
+              <Button
+                variant={activeCalendar === 'end' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveCalendar('end')}
+                className="w-full"
+              >
+                <Calendar className="mr-1.5 h-4 w-4" />
+                {rangeEnd ? format(rangeEnd, 'MMM d') : 'End Date'}
+              </Button>
+            </div>
+
+            <div className="flex justify-center">
+              <CalendarComponent
+                mode="single"
+                selected={activeCalendar === 'start' ? rangeStart : rangeEnd}
+                onSelect={(date) => {
+                  if (activeCalendar === 'start') {
+                    setRangeStart(date);
+                    setActiveCalendar('end');
+                  } else {
+                    setRangeEnd(date);
+                  }
+                }}
+                disabled={(date) =>
+                  date > new Date() ||
+                  (activeCalendar === 'end' && rangeStart ? date < rangeStart : false)
+                }
+                className={cn("p-3 pointer-events-auto rounded-md border")}
+              />
             </div>
 
             {rangeStart && rangeEnd && (
@@ -723,6 +714,7 @@ function ProductionEODSettingsCard() {
   const [rangeStart, setRangeStart] = useState<Date | undefined>(undefined);
   const [rangeEnd, setRangeEnd] = useState<Date | undefined>(undefined);
   const [sendingRange, setSendingRange] = useState(false);
+  const [activeCalendar, setActiveCalendar] = useState<'start' | 'end'>('start');
 
   const handleSendDateRange = async () => {
     if (!rangeStart || !rangeEnd) {
@@ -778,55 +770,45 @@ function ProductionEODSettingsCard() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 space-y-1">
-                <Label className="text-sm">Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn('w-full justify-start text-left font-normal', !rangeStart && 'text-muted-foreground')}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {rangeStart ? format(rangeStart, 'MMM d, yyyy') : 'Pick start'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={rangeStart}
-                      onSelect={setRangeStart}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="flex-1 space-y-1">
-                <Label className="text-sm">End Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn('w-full justify-start text-left font-normal', !rangeEnd && 'text-muted-foreground')}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {rangeEnd ? format(rangeEnd, 'MMM d, yyyy') : 'Pick end'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={rangeEnd}
-                      onSelect={setRangeEnd}
-                      disabled={(date) => date > new Date() || (rangeStart ? date < rangeStart : false)}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={activeCalendar === 'start' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveCalendar('start')}
+                className="w-full"
+              >
+                <Calendar className="mr-1.5 h-4 w-4" />
+                {rangeStart ? format(rangeStart, 'MMM d') : 'Start Date'}
+              </Button>
+              <Button
+                variant={activeCalendar === 'end' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveCalendar('end')}
+                className="w-full"
+              >
+                <Calendar className="mr-1.5 h-4 w-4" />
+                {rangeEnd ? format(rangeEnd, 'MMM d') : 'End Date'}
+              </Button>
+            </div>
+
+            <div className="flex justify-center">
+              <CalendarComponent
+                mode="single"
+                selected={activeCalendar === 'start' ? rangeStart : rangeEnd}
+                onSelect={(date) => {
+                  if (activeCalendar === 'start') {
+                    setRangeStart(date);
+                    setActiveCalendar('end');
+                  } else {
+                    setRangeEnd(date);
+                  }
+                }}
+                disabled={(date) =>
+                  date > new Date() ||
+                  (activeCalendar === 'end' && rangeStart ? date < rangeStart : false)
+                }
+                className={cn("p-3 pointer-events-auto rounded-md border")}
+              />
             </div>
 
             {rangeStart && rangeEnd && (
