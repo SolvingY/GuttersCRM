@@ -555,8 +555,11 @@ export default function LeadDetail() {
         const statusWeight = ["new", "contacted", "quoted", "won", "scheduled", "completed"].indexOf(lead.status);
         const statusPct = statusWeight >= 0 ? Math.round(((statusWeight + 1) / 6) * 40) : 0;
 
-        const docCount = [hasAppointment, hasInspection, hasContract, hasWarranty].filter(Boolean).length;
-        const docPct = Math.round((docCount / 4) * 30);
+        const relevantDocs = isGutters
+          ? [hasAppointment, hasInspection, hasContract, hasWarranty]
+          : [hasAppointment, hasWarranty];
+        const docCount = relevantDocs.filter(Boolean).length;
+        const docPct = Math.round((docCount / relevantDocs.length) * 30);
         const estimatePct = hasEstimate ? 15 : 0;
         const profitPct = isAdmin && hasEstimate ? 15 : (isAdmin ? 0 : 15);
 
