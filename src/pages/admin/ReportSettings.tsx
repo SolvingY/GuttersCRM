@@ -466,6 +466,7 @@ function CanvasserEODSettingsCard() {
   const [frequency, setFrequency] = useState("daily");
   const [selectedRecipients, setSelectedRecipients] = useState<{ id: string; name: string; email: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [activeCalendar, setActiveCalendar] = useState<'start' | 'end'>('start');
   const [sendingTest, setSendingTest] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [rangeDialogOpen, setRangeDialogOpen] = useState(false);
