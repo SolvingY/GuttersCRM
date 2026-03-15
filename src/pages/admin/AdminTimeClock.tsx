@@ -340,7 +340,12 @@ export default function AdminTimeClock() {
       const hours = shift.clock_out_at ? Math.round(((new Date(shift.clock_out_at).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4 : 0;
       await supabase.from('canvasser_shifts').delete().eq('id', shift.id);
       if (hours > 0 || Number(shift.doors_knocked) > 0 || Number(shift.conversations_had) > 0 || Number(shift.not_interested) > 0 || Number(shift.leads_set) > 0) {
-        await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), -hours, -(Number(shift.doors_knocked) || 0), -(Number(shift.conversations_had) || 0), -(Number(shift.not_interested) || 0), -(Number(shift.leads_set) || 0));
+        try {
+          await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), -hours, -(Number(shift.doors_knocked) || 0), -(Number(shift.conversations_had) || 0), -(Number(shift.not_interested) || 0), -(Number(shift.leads_set) || 0));
+        } catch (metricsErr: any) {
+          console.error('Metrics reversal failed:', metricsErr);
+          toast.warning('Shift deleted but metrics reversal failed: ' + metricsErr.message);
+        }
       }
       toast.success('Shift deleted and metrics reversed');
       fetchShifts(); fetchShiftHistory();
