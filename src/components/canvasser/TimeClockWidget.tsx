@@ -296,15 +296,21 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
 
       if (error) throw error;
 
-      await updateCanvasserHours(
-        user.id,
-        new Date(activeShift.clock_in_at),
-        finalHours,
-        doors,
-        convos,
-        ni,
-        ls
-      );
+      // Metrics update is separate — shift is already saved above
+      try {
+        await updateCanvasserHours(
+          user.id,
+          new Date(activeShift.clock_in_at),
+          finalHours,
+          doors,
+          convos,
+          ni,
+          ls
+        );
+      } catch (metricsErr: any) {
+        console.error('Metrics update failed:', metricsErr);
+        toast.warning("Shift saved but hours tracking failed — contact your admin");
+      }
 
       toast.success(`Shift recorded: ${finalHours}h`);
       setClockOutModalOpen(false);
