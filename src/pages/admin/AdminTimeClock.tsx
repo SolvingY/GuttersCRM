@@ -403,7 +403,12 @@ export default function AdminTimeClock() {
     try {
       const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
       await supabase.from('canvasser_shifts').update({ clock_out_at: new Date(clockOut).toISOString(), status: 'completed', edited_at: new Date().toISOString() }).eq('id', shift.id);
-      await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
+      try {
+        await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
+      } catch (metricsErr: any) {
+        console.error('Metrics update failed:', metricsErr);
+        toast.warning('Shift dismissed but metrics sync failed: ' + metricsErr.message);
+      }
       toast.success('Shift dismissed');
       fetchShifts(); fetchShiftHistory();
     } catch (err: any) { toast.error('Failed: ' + err.message); }
