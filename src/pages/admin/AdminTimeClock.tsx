@@ -369,7 +369,12 @@ export default function AdminTimeClock() {
         not_interested: notInt || null, leads_set: leads || null,
         notes: shiftNotes || null, status: 'completed',
       });
-      await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
+      try {
+        await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
+      } catch (metricsErr: any) {
+        console.error('Metrics update failed:', metricsErr);
+        toast.warning('Shift added but metrics sync failed: ' + metricsErr.message);
+      }
       toast.success(`Manual shift added: ${shiftHours}h`);
 
       const savedCanvasserId = shiftCanvasserId;
