@@ -1,38 +1,42 @@
 
 
-# Fix Silent Metric Update Failures in Clock-Out Flow
+# Add Edit Button to Shift History
 
-## Root Cause
-
-Sean's first shift on Mar 14 (1:03–1:50 PM) completed successfully — the `canvasser_shifts` row was updated to "completed" — but the `updateCanvasserHours` call that writes to `daily_canvasser_metric_entries` **failed silently**. The daily metric entry wasn't created until 10:57 PM when the admin manually added a second shift.
-
-The core bug: `updateCanvasserHours` in `src/lib/updateCanvasserHours.ts` performs 3 database operations (daily entry upsert, YTD update) but **never checks for errors** on any of them. Each `await supabase.from(...).insert/update(...)` returns `{ data, error }`, but `error` is ignored. If an insert fails (e.g., RLS denial, constraint violation, network blip), it fails silently and the shift is recorded as "completed" with no metrics written.
+## Problem
+Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
 
 ## Changes
 
-### 1. `src/lib/updateCanvasserHours.ts` — Add error handling to all DB operations
+### File: `src/pages/admin/AdminTimeClock.tsx`
 
-- Check the `error` property on every Supabase call (select, insert, update)
-- Throw descriptive errors so callers can catch and surface them
-- This is the single most critical fix — all consumers (clock-out, admin edit, admin manual shift, admin dismiss) will benefit
+**1. Add state for extra shift fields**
+Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
 
-### 2. `src/components/canvasser/TimeClockWidget.tsx` — Improve error reporting
+**2. Update `handleEditShift` to populate all fields**
+When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
 
-- The `handleClockOut` try/catch already exists, but currently if `updateCanvasserHours` fails silently, the shift shows as "completed" with a success toast
-- After the fix in #1, errors will now properly throw and be caught
-- Add a more specific error message: "Shift saved but hours tracking failed — contact your admin"
-- Separate the shift update from the metrics update so the shift is still saved even if metrics fail, but the user is warned
+**3. Update `handleSaveEditShift` to handle all metric deltas**
+Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
 
-### 3. `src/pages/admin/AdminTimeClock.tsx` — Add error handling to admin flows
+**4. Add an "Actions" column to the Shift History table**
+- Add a new `<th>` header for "Actions" (line ~668)
+- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
 
-- In `handleSaveEditShift`, `handleDeleteShift`, `handleAddManualShift`, and `handleDismissShift`: wrap `updateCanvasserHours` calls with try/catch and surface errors via toast
-- Currently these also silently swallow metric update failures
+**5. Expand the Edit Shift Modal**
+Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
 
-## Files Changed
+**6. Reset new state fields**
+Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
 
-| File | Change |
+**7. Update Add Manual Shift flow**
+Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+
+## Summary
+
+| Area | Change |
 |------|--------|
-| `src/lib/updateCanvasserHours.ts` | Add error checking on all 3 DB operations, throw on failure |
-| `src/components/canvasser/TimeClockWidget.tsx` | Separate shift save from metric update, warn user on partial failure |
-| `src/pages/admin/AdminTimeClock.tsx` | Add error handling around updateCanvasserHours calls in all admin flows |
+| Shift History table | Add "Actions" column with Edit button per row |
+| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
+| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
+| Add Manual Shift modal | Add same extra fields for consistency |
 

@@ -313,7 +313,12 @@ export default function AdminTimeClock() {
       }).eq('id', selectedShift.id);
 
       if (hoursDelta !== 0 || doorsDelta !== 0 || convosDelta !== 0 || notInterestedDelta !== 0 || leadsSetDelta !== 0) {
-        await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
+        try {
+          await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
+        } catch (metricsErr: any) {
+          console.error('Metrics update failed:', metricsErr);
+          toast.warning('Shift saved but metrics sync failed: ' + metricsErr.message);
+        }
       }
       toast.success('Shift updated');
       setEditShiftModalOpen(false);
@@ -335,7 +340,12 @@ export default function AdminTimeClock() {
       const hours = shift.clock_out_at ? Math.round(((new Date(shift.clock_out_at).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4 : 0;
       await supabase.from('canvasser_shifts').delete().eq('id', shift.id);
       if (hours > 0 || Number(shift.doors_knocked) > 0 || Number(shift.conversations_had) > 0 || Number(shift.not_interested) > 0 || Number(shift.leads_set) > 0) {
-        await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), -hours, -(Number(shift.doors_knocked) || 0), -(Number(shift.conversations_had) || 0), -(Number(shift.not_interested) || 0), -(Number(shift.leads_set) || 0));
+        try {
+          await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), -hours, -(Number(shift.doors_knocked) || 0), -(Number(shift.conversations_had) || 0), -(Number(shift.not_interested) || 0), -(Number(shift.leads_set) || 0));
+        } catch (metricsErr: any) {
+          console.error('Metrics reversal failed:', metricsErr);
+          toast.warning('Shift deleted but metrics reversal failed: ' + metricsErr.message);
+        }
       }
       toast.success('Shift deleted and metrics reversed');
       fetchShifts(); fetchShiftHistory();
@@ -359,7 +369,12 @@ export default function AdminTimeClock() {
         not_interested: notInt || null, leads_set: leads || null,
         notes: shiftNotes || null, status: 'completed',
       });
-      await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
+      try {
+        await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
+      } catch (metricsErr: any) {
+        console.error('Metrics update failed:', metricsErr);
+        toast.warning('Shift added but metrics sync failed: ' + metricsErr.message);
+      }
       toast.success(`Manual shift added: ${shiftHours}h`);
 
       const savedCanvasserId = shiftCanvasserId;
@@ -388,7 +403,12 @@ export default function AdminTimeClock() {
     try {
       const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
       await supabase.from('canvasser_shifts').update({ clock_out_at: new Date(clockOut).toISOString(), status: 'completed', edited_at: new Date().toISOString() }).eq('id', shift.id);
-      await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
+      try {
+        await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
+      } catch (metricsErr: any) {
+        console.error('Metrics update failed:', metricsErr);
+        toast.warning('Shift dismissed but metrics sync failed: ' + metricsErr.message);
+      }
       toast.success('Shift dismissed');
       fetchShifts(); fetchShiftHistory();
     } catch (err: any) { toast.error('Failed: ' + err.message); }
