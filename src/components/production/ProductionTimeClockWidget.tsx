@@ -251,13 +251,19 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
 
       if (error) throw error;
 
-      // Upsert hours to daily log
-      const today = new Date().toISOString().split("T")[0];
-      await (supabase.from("production_daily_logs") as any)
-        .upsert(
-          { user_id: user.id, log_date: today, hours_worked: finalHours },
-          { onConflict: "user_id,log_date" }
-        );
+      // Upsert hours to daily log — separate try/catch so shift is still saved
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const { error: logError } = await (supabase.from("production_daily_logs") as any)
+          .upsert(
+            { user_id: user.id, log_date: today, hours_worked: finalHours },
+            { onConflict: "user_id,log_date" }
+          );
+        if (logError) throw logError;
+      } catch (logErr: any) {
+        console.error('Daily log update failed:', logErr);
+        toast.warning("Shift saved but hours tracking failed — contact your admin");
+      }
 
       toast.success(`Shift recorded: ${finalHours}h`);
       setClockOutModalOpen(false);
