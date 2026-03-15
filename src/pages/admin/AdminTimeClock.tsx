@@ -313,7 +313,12 @@ export default function AdminTimeClock() {
       }).eq('id', selectedShift.id);
 
       if (hoursDelta !== 0 || doorsDelta !== 0 || convosDelta !== 0 || notInterestedDelta !== 0 || leadsSetDelta !== 0) {
-        await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
+        try {
+          await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
+        } catch (metricsErr: any) {
+          console.error('Metrics update failed:', metricsErr);
+          toast.warning('Shift saved but metrics sync failed: ' + metricsErr.message);
+        }
       }
       toast.success('Shift updated');
       setEditShiftModalOpen(false);
