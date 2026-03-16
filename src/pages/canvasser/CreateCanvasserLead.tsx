@@ -197,6 +197,14 @@ export default function CreateCanvasserLead() {
       if (leadError) throw leadError;
       const leadId = leadData.id;
 
+      // Link back to prospect pin if created from map
+      if (pinState?.pinId) {
+        await supabase
+          .from("prospect_pins")
+          .update({ quote_request_id: leadId } as any)
+          .eq("id", pinState.pinId);
+      }
+
       // Save inspection checklist if touched
       if (isChecklistTouched()) {
         await supabase.from("lead_forms").insert({
