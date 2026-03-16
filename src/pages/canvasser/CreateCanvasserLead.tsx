@@ -77,16 +77,26 @@ const roofingWhyChoose = [
 
 export default function CreateCanvasserLead() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
+  const pinState = location.state as {
+    fromPin?: boolean;
+    pinId?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  } | null;
+
   // Lead info
   const [customerName, setCustomerName] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("Oklahoma");
-  const [zip, setZip] = useState("");
+  const [address, setAddress] = useState(pinState?.address ?? "");
+  const [city, setCity] = useState(pinState?.city ?? "");
+  const [state, setState] = useState(pinState?.state ?? "Oklahoma");
+  const [zip, setZip] = useState(pinState?.zip ?? "");
   const [phone, setPhone] = useState("");
   const [altPhone, setAltPhone] = useState("");
   const [email, setEmail] = useState("");

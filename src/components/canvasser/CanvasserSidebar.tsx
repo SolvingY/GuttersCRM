@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: BarChart3, label: "My Stats", path: "/canvasser/stats" },
+  { icon: MapPin, label: "Prospect Map", path: "/canvasser/map" },
   { icon: ClipboardCheck, label: "Onboarding", path: "/onboarding" },
   { icon: PlusCircle, label: "Create Lead", path: "/canvasser/create-lead" },
   { icon: ClipboardList, label: "My Leads", path: "/canvasser/my-leads" },

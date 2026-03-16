@@ -199,6 +199,7 @@ const App = () => (
             >
               <Route index element={<Navigate to="/canvasser/stats" replace />} />
               <Route path="stats" element={<CanvasserStats />} />
+              <Route path="map" element={<CanvasserMap />} />
               <Route path="leaderboard" element={<CanvasserLeaderboard />} />
               <Route path="contests" element={<CanvasserContests />} />
               <Route path="pit" element={<CanvasserPit />} />
