@@ -80,6 +80,7 @@ const CanvasserPit = lazy(() => import("./pages/canvasser/CanvasserPit"));
 const CanvasserPointsHistory = lazy(() => import("./pages/canvasser/CanvasserPointsHistory"));
 const CreateCanvasserLead = lazy(() => import("./pages/canvasser/CreateCanvasserLead"));
 const CanvasserMyLeads = lazy(() => import("./pages/canvasser/CanvasserMyLeads"));
+const CanvasserMap = lazy(() => import("./pages/canvasser/CanvasserMap"));
 
 // Supplementer routes
 const SupplementerLayout = lazy(() => import("./pages/supplementer/SupplementerLayout"));
