@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight, Flame, History, Wrench, PlusCircle, ClipboardCheck, ClipboardList } from "lucide-react";
+import { BarChart3, Trophy, Award, Settings, X, ChevronLeft, ChevronRight, Flame, History, Wrench, PlusCircle, ClipboardCheck, ClipboardList, MapPin } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: BarChart3, label: "My Stats", path: "/canvasser/stats" },
+  { icon: MapPin, label: "Prospect Map", path: "/canvasser/map" },
   { icon: ClipboardCheck, label: "Onboarding", path: "/onboarding" },
   { icon: PlusCircle, label: "Create Lead", path: "/canvasser/create-lead" },
   { icon: ClipboardList, label: "My Leads", path: "/canvasser/my-leads" },

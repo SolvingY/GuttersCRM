@@ -2581,6 +2581,75 @@ export type Database = {
           },
         ]
       }
+      prospect_pins: {
+        Row: {
+          address: string | null
+          canvasser_id: string
+          city: string | null
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          notes: string | null
+          photo_urls: string[] | null
+          pinned_at: string
+          quote_request_id: string | null
+          state: string | null
+          status: string
+          updated_at: string
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          canvasser_id: string
+          city?: string | null
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          notes?: string | null
+          photo_urls?: string[] | null
+          pinned_at?: string
+          quote_request_id?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          canvasser_id?: string
+          city?: string | null
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          notes?: string | null
+          photo_urls?: string[] | null
+          pinned_at?: string
+          quote_request_id?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_pins_canvasser_id_fkey"
+            columns: ["canvasser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_pins_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_requests: {
         Row: {
           admin_notes: string | null

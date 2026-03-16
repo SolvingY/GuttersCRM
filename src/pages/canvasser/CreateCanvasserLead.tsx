@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -77,16 +77,26 @@ const roofingWhyChoose = [
 
 export default function CreateCanvasserLead() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
+  const pinState = location.state as {
+    fromPin?: boolean;
+    pinId?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  } | null;
+
   // Lead info
   const [customerName, setCustomerName] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("Oklahoma");
-  const [zip, setZip] = useState("");
+  const [address, setAddress] = useState(pinState?.address ?? "");
+  const [city, setCity] = useState(pinState?.city ?? "");
+  const [state, setState] = useState(pinState?.state ?? "Oklahoma");
+  const [zip, setZip] = useState(pinState?.zip ?? "");
   const [phone, setPhone] = useState("");
   const [altPhone, setAltPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -186,6 +196,14 @@ export default function CreateCanvasserLead() {
 
       if (leadError) throw leadError;
       const leadId = leadData.id;
+
+      // Link back to prospect pin if created from map
+      if (pinState?.pinId) {
+        await supabase
+          .from("prospect_pins")
+          .update({ quote_request_id: leadId } as any)
+          .eq("id", pinState.pinId);
+      }
 
       // Save inspection checklist if touched
       if (isChecklistTouched()) {
