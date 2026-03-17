@@ -100,6 +100,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Indiv. Rep Goals</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Total Contracts</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Close %</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
