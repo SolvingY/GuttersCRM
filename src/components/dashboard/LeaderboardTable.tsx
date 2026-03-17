@@ -171,13 +171,18 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
+                    <span className="font-medium">
+                      {entry.leads || 0}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
                     <span className="font-bold">
                       {entry.closedDeals}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className="font-medium">
-                      {(entry.leads || 0) > 0 ? `${(((entry.closedDeals) / (entry.leads || 1)) * 100).toFixed(1)}%` : '—'}
+                      {(entry.leads || 0) > 0 ? `${(((entry.closedDeals - (entry.selfGeneratedDeals || 0)) / (entry.leads || 1)) * 100).toFixed(1)}%` : '—'}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
