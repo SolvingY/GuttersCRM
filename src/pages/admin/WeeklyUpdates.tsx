@@ -813,7 +813,7 @@ export default function WeeklyUpdates() {
           leads_without_damage_delta: weeklyLeadsWithoutDamage, conversations_had_delta: weeklyConversationsHad,
           not_interested_delta: weeklyNotInterested, cancelled_leads_delta: weeklyCancelledLeads,
           doors_knocked_delta: weeklyDoorsKnocked, income_delta: weeklyIncome,
-          points_earned: canvasserPoints,
+          points_earned: (weeklyLeadsClosed * 10) + (weeklyLeadsWithDamage * 5) + weeklyLeadsSet,
           entered_by: authUser.user?.id, updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id,entry_date' });
 

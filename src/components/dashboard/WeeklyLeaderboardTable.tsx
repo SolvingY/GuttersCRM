@@ -82,7 +82,7 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
             {entries.map((entry) => {
               const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
-              const closePercent = entry.leads > 0 ? (entry.closedDeals / entry.leads) * 100 : 0;
+              const closePercent = entry.leads > 0 ? ((entry.closedDeals - (entry.selfGeneratedDeals || 0)) / entry.leads) * 100 : 0;
               
               return (
                 <tr

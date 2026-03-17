@@ -230,9 +230,10 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
           </tbody>
           <tfoot className="bg-slate-700 text-white font-bold">
             <tr>
-              <td colSpan={4} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td colSpan={5} className="py-3 px-4 text-left">TEAM TOTALS</td>
               <td className="py-3 px-4 text-right">{formatCurrency(totals.totalRevenue)}</td>
               <td className="py-3 px-4 text-right">{formatCurrency(totals.totalCollections)}</td>
+              <td className="py-3 px-4 text-right">{totals.totalLeads}</td>
               <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
               <td className="py-3 px-4 text-right">
                 {totals.totalLeads > 0 ? (

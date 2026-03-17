@@ -129,7 +129,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
         })
         .filter(e => e.approvedRevenue > 0 || e.collections > 0 || e.leads > 0 || e.closedDeals > 0 || e.points > 0)
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
-        .map((e, i) => ({ ...e, rank: i + 1 }));
+        .map((e, i) => ({ ...e, rank: i + 1, selfGeneratedDeals: e.selfGeneratedDeals || 0 }));
 
       setWeeklyEntries(sorted);
       setLoading(false);
