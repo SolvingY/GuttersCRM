@@ -14,6 +14,7 @@ interface WeeklyLeaderboardEntry {
   pointsEarned: number;
   contestPoints?: number;
   wagerPoints?: number;
+  selfGeneratedDeals?: number;
 }
 
 interface WeeklyLeaderboardTableProps {
