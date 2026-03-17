@@ -17,6 +17,7 @@ interface LeaderboardEntry {
   contestPoints?: number;
   wagerPoints?: number;
   leads?: number;
+  selfGeneratedDeals?: number;
 }
 
 interface LeaderboardTableProps {
