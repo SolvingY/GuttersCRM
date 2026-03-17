@@ -240,12 +240,12 @@ export default function AdminOverview() {
     const dailySumsByUser = new Map<string, {
       leadsSet: number; leadsClosed: number; leadsWithDamage: number;
       leadsWithoutDamage: number; conversationsHad: number; notInterested: number;
-      hoursWorked: number; doorsKnocked: number; income: number;
+      cancelledLeads: number; hoursWorked: number; doorsKnocked: number; income: number;
     }>();
     for (const e of (dailyCanvasserEntries || [])) {
       const existing = dailySumsByUser.get(e.user_id) || {
         leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
-        conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
+        conversationsHad: 0, notInterested: 0, cancelledLeads: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
       };
       existing.leadsSet += e.leads_set_delta || 0;
       existing.leadsClosed += e.leads_closed_delta || 0;
@@ -253,6 +253,7 @@ export default function AdminOverview() {
       existing.leadsWithoutDamage += e.leads_without_damage_delta || 0;
       existing.conversationsHad += e.conversations_had_delta || 0;
       existing.notInterested += e.not_interested_delta || 0;
+      existing.cancelledLeads += e.cancelled_leads_delta || 0;
       existing.hoursWorked += Number(e.hours_worked_delta || 0);
       existing.doorsKnocked += e.doors_knocked_delta || 0;
       existing.income += Number(e.income_delta || 0);
