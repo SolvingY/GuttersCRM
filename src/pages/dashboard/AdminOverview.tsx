@@ -432,7 +432,7 @@ export default function AdminOverview() {
         const config = latestConfigByCanvasser.get(userId);
         const perf = dailySumsByUser.get(userId) || {
           leadsSet: 0, leadsClosed: 0, leadsWithDamage: 0, leadsWithoutDamage: 0,
-          conversationsHad: 0, notInterested: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
+          conversationsHad: 0, notInterested: 0, cancelledLeads: 0, hoursWorked: 0, doorsKnocked: 0, income: 0,
         };
         const conversionRate = perf.leadsSet > 0 ? (perf.leadsClosed / perf.leadsSet) * 100 : 0;
         return {
@@ -441,6 +441,7 @@ export default function AdminOverview() {
           leadsSet: perf.leadsSet, leadsClosed: perf.leadsClosed,
           leadsWithDamage: perf.leadsWithDamage, leadsWithoutDamage: perf.leadsWithoutDamage,
           conversationsHad: perf.conversationsHad, notInterested: perf.notInterested,
+          cancelledLeads: perf.cancelledLeads,
           hoursWorked: perf.hoursWorked, doorsKnocked: perf.doorsKnocked,
           points: config?.points || 0, income: Math.max(0, perf.income), yearlyGoal: config?.yearlyGoal || 0,
           conversionRate, revenue: 0, role: 'canvasser' as const,

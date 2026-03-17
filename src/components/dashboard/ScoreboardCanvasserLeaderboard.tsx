@@ -52,6 +52,7 @@ export function ScoreboardCanvasserLeaderboard({ ytdCanvasserDetails }: Scoreboa
       leadsClosed: c.leadsClosed,
       conversationsHad: c.conversationsHad,
       notInterested: c.notInterested,
+      cancelledLeads: c.cancelledLeads,
       hoursWorked: c.hoursWorked,
       doorsKnocked: c.doorsKnocked,
       pointsEarned: c.points,
