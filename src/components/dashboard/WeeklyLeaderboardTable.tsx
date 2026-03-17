@@ -47,7 +47,8 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
     const totalCollections = entries.reduce((sum, e) => sum + (e.collections || 0), 0);
     const totalContracts = entries.reduce((sum, e) => sum + e.closedDeals, 0);
     const totalLeads = entries.reduce((sum, e) => sum + (e.leads || 0), 0);
-    const closePercent = totalLeads > 0 ? (totalContracts / totalLeads) * 100 : 0;
+    const totalSelfGen = entries.reduce((sum, e) => sum + (e.selfGeneratedDeals || 0), 0);
+    const closePercent = totalLeads > 0 ? ((totalContracts - totalSelfGen) / totalLeads) * 100 : 0;
     
     return { totalRevenue, totalCollections, totalContracts, totalLeads, closePercent };
   }, [entries]);
