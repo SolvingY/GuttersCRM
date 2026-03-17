@@ -14,6 +14,7 @@ interface WeeklyLeaderboardEntry {
   pointsEarned: number;
   contestPoints?: number;
   wagerPoints?: number;
+  selfGeneratedDeals?: number;
 }
 
 interface WeeklyLeaderboardTableProps {
@@ -46,7 +47,8 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
     const totalCollections = entries.reduce((sum, e) => sum + (e.collections || 0), 0);
     const totalContracts = entries.reduce((sum, e) => sum + e.closedDeals, 0);
     const totalLeads = entries.reduce((sum, e) => sum + (e.leads || 0), 0);
-    const closePercent = totalLeads > 0 ? (totalContracts / totalLeads) * 100 : 0;
+    const totalSelfGen = entries.reduce((sum, e) => sum + (e.selfGeneratedDeals || 0), 0);
+    const closePercent = totalLeads > 0 ? ((totalContracts - totalSelfGen) / totalLeads) * 100 : 0;
     
     return { totalRevenue, totalCollections, totalContracts, totalLeads, closePercent };
   }, [entries]);
@@ -80,7 +82,7 @@ export function WeeklyLeaderboardTable({ entries, currentUserId }: WeeklyLeaderb
             {entries.map((entry) => {
               const rowColor = getRowColor(entry.rank);
               const isCurrentUser = entry.userId === currentUserId;
-              const closePercent = entry.leads > 0 ? (entry.closedDeals / entry.leads) * 100 : 0;
+              const closePercent = entry.leads > 0 ? ((entry.closedDeals - (entry.selfGeneratedDeals || 0)) / entry.leads) * 100 : 0;
               
               return (
                 <tr

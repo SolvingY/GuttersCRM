@@ -17,6 +17,7 @@ interface LeaderboardEntry {
   contestPoints?: number;
   wagerPoints?: number;
   leads?: number;
+  selfGeneratedDeals?: number;
 }
 
 interface LeaderboardTableProps {
@@ -73,7 +74,8 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
     const totalCollections = entries.reduce((sum, e) => sum + (e.collections || 0), 0);
     const totalContracts = entries.reduce((sum, e) => sum + e.closedDeals, 0);
     const totalLeads = entries.reduce((sum, e) => sum + (e.leads || 0), 0);
-    const closePercent = totalLeads > 0 ? (totalContracts / totalLeads) * 100 : 0;
+    const totalSelfGen = entries.reduce((sum, e) => sum + (e.selfGeneratedDeals || 0), 0);
+    const closePercent = totalLeads > 0 ? ((totalContracts - totalSelfGen) / totalLeads) * 100 : 0;
     
     return { totalRevenue, totalCollections, totalContracts, totalLeads, closePercent };
   }, [entries]);
@@ -98,6 +100,7 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Indiv. Rep Goals</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">YTD Approved Rev</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Collections</th>
+              <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Leads</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Total Contracts</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Close %</th>
               <th className="text-right py-3 px-4 text-sm font-bold whitespace-nowrap">Amount Until Goal</th>
@@ -168,13 +171,18 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
+                    <span className="font-medium">
+                      {entry.leads || 0}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
                     <span className="font-bold">
                       {entry.closedDeals}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className="font-medium">
-                      {(entry.leads || 0) > 0 ? `${(((entry.closedDeals) / (entry.leads || 1)) * 100).toFixed(1)}%` : '—'}
+                      {(entry.leads || 0) > 0 ? `${(((entry.closedDeals - (entry.selfGeneratedDeals || 0)) / (entry.leads || 1)) * 100).toFixed(1)}%` : '—'}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -222,9 +230,10 @@ export function LeaderboardTable({ entries, currentUserId }: LeaderboardTablePro
           </tbody>
           <tfoot className="bg-slate-700 text-white font-bold">
             <tr>
-              <td colSpan={4} className="py-3 px-4 text-left">TEAM TOTALS</td>
+              <td colSpan={5} className="py-3 px-4 text-left">TEAM TOTALS</td>
               <td className="py-3 px-4 text-right">{formatCurrency(totals.totalRevenue)}</td>
               <td className="py-3 px-4 text-right">{formatCurrency(totals.totalCollections)}</td>
+              <td className="py-3 px-4 text-right">{totals.totalLeads}</td>
               <td className="py-3 px-4 text-right">{totals.totalContracts}</td>
               <td className="py-3 px-4 text-right">
                 {totals.totalLeads > 0 ? (

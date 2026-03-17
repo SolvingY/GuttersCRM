@@ -55,6 +55,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
       contestsWon: 0,
       collections: u.collections,
       leads: u.leads,
+      selfGeneratedDeals: u.selfGeneratedDeals,
     }));
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
 
       const query = supabase
         .from('weekly_user_metrics')
-        .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned');
+        .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, canvass_leads, self_generated_deals, internet_leads_closed, points_earned');
 
       if (timeFrame === 'weekly') {
         query.eq('week_start', queryStart);
@@ -88,16 +89,17 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
       if (!weeklyData || weeklyData.length === 0) { setWeeklyEntries([]); setLoading(false); return; }
 
       // Aggregate by user
-      const aggregated = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; points: number }>();
+      const aggregated = new Map<string, { approvedRevenue: number; collections: number; leads: number; closedDeals: number; points: number; selfGeneratedDeals: number }>();
       weeklyData.forEach(w => {
         if (!eligibleUserIds.has(w.user_id) || hiddenUserIds.has(w.user_id)) return;
-        const e = aggregated.get(w.user_id) || { approvedRevenue: 0, collections: 0, leads: 0, closedDeals: 0, points: 0 };
+        const e = aggregated.get(w.user_id) || { approvedRevenue: 0, collections: 0, leads: 0, closedDeals: 0, points: 0, selfGeneratedDeals: 0 };
         aggregated.set(w.user_id, {
           approvedRevenue: e.approvedRevenue + (Number(w.approved_revenue) || 0),
           collections: e.collections + (Number(w.collections) || 0),
-          leads: e.leads + (Number(w.leads) || 0),
-          closedDeals: e.closedDeals + (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0),
+          leads: e.leads + (Number(w.leads) || 0) + (Number((w as any).canvass_leads) || 0),
+          closedDeals: e.closedDeals + (Number(w.closed_deals) || 0) + (Number(w.canvass_deals_closed) || 0) + (Number((w as any).self_generated_deals) || 0),
           points: e.points + (Number(w.points_earned) || 0),
+          selfGeneratedDeals: e.selfGeneratedDeals + (Number((w as any).self_generated_deals) || 0),
         });
       });
 
@@ -127,7 +129,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
         })
         .filter(e => e.approvedRevenue > 0 || e.collections > 0 || e.leads > 0 || e.closedDeals > 0 || e.points > 0)
         .sort((a, b) => b.approvedRevenue - a.approvedRevenue)
-        .map((e, i) => ({ ...e, rank: i + 1 }));
+        .map((e, i) => ({ ...e, rank: i + 1, selfGeneratedDeals: e.selfGeneratedDeals || 0 }));
 
       setWeeklyEntries(sorted);
       setLoading(false);
