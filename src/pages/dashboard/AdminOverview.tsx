@@ -84,6 +84,7 @@ interface CanvasserDetail {
   leadsWithoutDamage: number;
   conversationsHad: number;
   notInterested: number;
+  cancelledLeads: number;
   hoursWorked: number;
   doorsKnocked: number;
   points: number;
