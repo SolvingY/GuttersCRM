@@ -76,7 +76,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
 
       const query = supabase
         .from('weekly_user_metrics')
-        .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, points_earned');
+        .select('user_id, approved_revenue, collections, leads, closed_deals, canvass_deals_closed, canvass_leads, self_generated_deals, internet_leads_closed, points_earned');
 
       if (timeFrame === 'weekly') {
         query.eq('week_start', queryStart);
