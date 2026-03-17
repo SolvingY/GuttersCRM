@@ -384,8 +384,8 @@ export default function WeeklyUpdates() {
           weeklyClosedDeals: '',
           weeklyEarnings: '',
           weeklySelfGeneratedDeals: '',
-          weeklyCanvassLeads: weeklyCanvass > 0 ? String(weeklyCanvass) : '',
-          weeklyCanvassDealsClose: weeklyCanvassDeals > 0 ? String(weeklyCanvassDeals) : '',
+          weeklyCanvassLeads: '',
+          weeklyCanvassDealsClose: '',
           weeklyCollections: '',
           weeklyApprovedRevenue: '',
         };
