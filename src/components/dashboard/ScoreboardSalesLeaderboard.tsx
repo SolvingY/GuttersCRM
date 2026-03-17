@@ -55,6 +55,7 @@ export function ScoreboardSalesLeaderboard({ ytdUserDetails }: ScoreboardSalesLe
       contestsWon: 0,
       collections: u.collections,
       leads: u.leads,
+      selfGeneratedDeals: u.selfGeneratedDeals,
     }));
 
   useEffect(() => {
