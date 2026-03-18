@@ -188,7 +188,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
       setActiveShift(data as Shift);
       setElapsed(0);
       if (outOfZone) setIsFlagged(true);
-      toast.success("Clocked in!");
+      toast.success("Checked in!");
       onShiftChange?.();
 
       // Send flagged shift notification
