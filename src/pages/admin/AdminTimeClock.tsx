@@ -1134,7 +1134,7 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
   const [saving, setSaving] = useState(false);
 
   const fetchUsers = useCallback(async () => {
-    const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', role);
+    const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', role as any);
     if (!roles || roles.length === 0) { setUsers([]); return; }
     const userIds = roles.map(r => r.user_id);
     const { data: profiles } = await supabase.from('profiles').select('id, full_name, is_archived').in('id', userIds);
