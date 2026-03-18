@@ -531,7 +531,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         <CardContent className="py-5 space-y-3">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-5 w-5" />
-            <span className="font-medium">You are not clocked in</span>
+            <span className="font-medium">You are not checked in</span>
           </div>
           <Button
             className="w-full"
