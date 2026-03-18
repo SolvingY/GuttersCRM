@@ -1379,8 +1379,8 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check Out</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-In 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-Out 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
