@@ -454,7 +454,9 @@ export default function AdminTimeClock() {
     if (!shiftCanvasserId || !shiftClockIn || !shiftClockOut) return;
     setSavingShift(true);
     try {
-      const shiftHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(shiftClockIn);
+      const clockOutUTC = centralLocalToUTC(shiftClockOut);
+      const shiftHours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       const doors = parseInt(shiftDoors) || 0;
       const convos = parseInt(shiftConvos) || 0;
       const notInt = parseInt(shiftNotInterested) || 0;
@@ -462,13 +464,13 @@ export default function AdminTimeClock() {
 
       await supabase.from('canvasser_shifts').insert({
         canvasser_id: shiftCanvasserId,
-        clock_in_at: new Date(shiftClockIn).toISOString(), clock_out_at: new Date(shiftClockOut).toISOString(),
+        clock_in_at: clockInUTC, clock_out_at: clockOutUTC,
         doors_knocked: doors || null, conversations_had: convos || null,
         not_interested: notInt || null, leads_set: leads || null,
         notes: shiftNotes || null, status: 'completed',
       });
       try {
-        await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
+        await updateCanvasserHours(shiftCanvasserId, new Date(clockInUTC), shiftHours, doors, convos, notInt, leads);
       } catch (metricsErr: any) {
         console.error('Metrics update failed:', metricsErr);
         toast.warning('Shift added but metrics sync failed: ' + metricsErr.message);
