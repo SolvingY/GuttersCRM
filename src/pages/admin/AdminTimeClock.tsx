@@ -1449,9 +1449,9 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                       return (
                         <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="py-2 px-3 text-foreground font-medium text-sm">{shift.display_name || getName(shift.user_id)}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'date')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'time')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? formatCentralTime(shift.clock_out_at, 'time') : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{hrs !== '--' ? `${hrs}h` : '--'}</td>
                           <td className="py-2 px-3 text-sm text-muted-foreground max-w-[150px] truncate">{shift.notes || '--'}</td>
                           <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}</td>
