@@ -231,15 +231,11 @@ export default function AdminTimeClock() {
     if (activeIds.length === 0) { setAllTeamMembers([]); return; }
     const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('user_id', activeIds);
     const profileMap = new Map(activeProfiles.map(p => [p.id, p.full_name || 'Unknown']));
-    const seen = new Set<string>();
     const result: { userId: string; name: string; role: string }[] = [];
     (roles || []).forEach(r => {
-      if (!seen.has(r.user_id)) {
-        seen.add(r.user_id);
-        result.push({ userId: r.user_id, name: profileMap.get(r.user_id) || 'Unknown', role: r.role });
-      }
+      result.push({ userId: r.user_id, name: profileMap.get(r.user_id) || 'Unknown', role: r.role });
     });
-    result.sort((a, b) => a.name.localeCompare(b.name));
+    result.sort((a, b) => a.name.localeCompare(b.name) || a.role.localeCompare(b.role));
     setAllTeamMembers(result);
   }, []);
 
