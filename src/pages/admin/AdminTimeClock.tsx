@@ -443,7 +443,7 @@ export default function AdminTimeClock() {
   };
 
   const handleDismissShift = async (shift: any) => {
-    const clockOut = prompt('Enter clock-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    const clockOut = prompt('Enter check-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     if (!clockOut) return;
     try {
       const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
@@ -747,7 +747,7 @@ export default function AdminTimeClock() {
             </div>
             {activeShifts.filter(s => s.status === 'active').length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Checked In</h4>
                 <div className="space-y-2">
                   {activeShifts.filter(s => s.status === 'active').map((shift: any) => {
                     const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
@@ -822,16 +822,16 @@ export default function AdminTimeClock() {
                     <tr>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Canvasser</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Date</th>
-                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock In</th>
-                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock Out</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check In</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check Out</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Doors</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Convos</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Not Int.</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Leads Set</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-In 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-Out 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
@@ -880,7 +880,7 @@ export default function AdminTimeClock() {
               <Button size="sm" variant="outline" onClick={() => setAddZoneModalOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add Zone</Button>
             </div>
             {workZones.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No work zones configured. Team members can clock in from anywhere.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No work zones configured. Team members can check in from anywhere.</p>
             ) : (
               <div className="space-y-2">
                 {workZones.map((zone: any) => (
@@ -902,7 +902,7 @@ export default function AdminTimeClock() {
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">💡 When zones are configured, team members will see a warning if they try to clock in outside all active zones.</p>
+            <p className="text-xs text-muted-foreground">💡 When zones are configured, team members will see a warning if they try to check in outside all active zones.</p>
           </div>
         </SectionCarousel.Item>
       </SectionCarousel>
@@ -966,8 +966,8 @@ export default function AdminTimeClock() {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Doors Knocked</Label><Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} /></div>
             <div className="space-y-2"><Label>Conversations Had</Label><Input type="number" min="0" value={shiftConvos} onChange={e => setShiftConvos(e.target.value)} /></div>
             <div className="space-y-2"><Label>Not Interested</Label><Input type="number" min="0" value={shiftNotInterested} onChange={e => setShiftNotInterested(e.target.value)} /></div>
@@ -992,8 +992,8 @@ export default function AdminTimeClock() {
                 <SelectContent>{canvassers.map(c => (<SelectItem key={c.userId} value={c.userId}>{c.name}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Doors Knocked</Label><Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} /></div>
             <div className="space-y-2"><Label>Conversations Had</Label><Input type="number" min="0" value={shiftConvos} onChange={e => setShiftConvos(e.target.value)} /></div>
             <div className="space-y-2"><Label>Not Interested</Label><Input type="number" min="0" value={shiftNotInterested} onChange={e => setShiftNotInterested(e.target.value)} /></div>
@@ -1316,7 +1316,7 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
           <div className="space-y-4">
             {activeShifts.length > 0 ? (
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Checked In</h4>
                 <div className="space-y-2">
                   {activeShifts.map((shift: any) => {
                     const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
@@ -1340,7 +1340,7 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No {roleLabel.toLowerCase()} currently clocked in.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No {roleLabel.toLowerCase()} currently checked in.</p>
             )}
           </div>
         </SectionCarousel.Item>
@@ -1375,12 +1375,12 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                     <tr>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Name</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Date</th>
-                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock In</th>
-                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock Out</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check In</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check Out</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-In 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-Out 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>

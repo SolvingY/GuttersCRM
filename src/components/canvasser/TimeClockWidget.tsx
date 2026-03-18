@@ -197,7 +197,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         .maybeSingle();
 
       if (existingShift) {
-        toast.error('You already have an active shift. Please clock out first.');
+        toast.error('You already have an active shift. Please check out first.');
         return;
       }
 
@@ -217,7 +217,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
       setActiveShift(data as Shift);
       setElapsed(0);
       if (outOfZone) setIsFlagged(true);
-      toast.success("Clocked in!");
+      toast.success("Checked in!");
       onShiftChange?.();
 
       // Send flagged shift notification
@@ -243,7 +243,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         }
       }
     } catch (err: any) {
-      toast.error("Failed to clock in: " + err.message);
+      toast.error("Failed to check in: " + err.message);
     }
   };
 
@@ -268,7 +268,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         }
       }
     } catch (err: any) {
-      toast.error("Failed to clock in: " + err.message);
+      toast.error("Failed to check in: " + err.message);
     }
     setClockingIn(false);
   };
@@ -349,7 +349,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
       fetchShifts();
       onShiftChange?.();
     } catch (err: any) {
-      toast.error("Failed to clock out: " + err.message);
+      toast.error("Failed to check out: " + err.message);
     }
     setClockingOut(false);
   };
@@ -365,10 +365,10 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            You are not within any approved work zone. Your manager will be able to see your clock-in location.
+             You are not within any approved work zone. Your manager will be able to see your check-in location.
           </p>
           <p className="text-sm text-muted-foreground">
-            Do you still want to clock in from this location?
+            Do you still want to check in from this location?
           </p>
         </div>
         <DialogFooter>
@@ -376,7 +376,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirmOutOfZone}>
-            Clock In Anyway
+            Check In Anyway
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -387,7 +387,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     <Dialog open={clockOutModalOpen} onOpenChange={setClockOutModalOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Clock Out</DialogTitle>
+          <DialogTitle>Check Out</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {activeShift && (
@@ -455,7 +455,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           </Button>
           <Button onClick={handleClockOut} disabled={clockingOut}>
             {clockingOut ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Confirm Clock Out
+            Confirm Check Out
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -483,7 +483,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
               <span className="font-semibold">You have an open shift</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Clocked in: {format(new Date(activeShift.clock_in_at), "MMM d 'at' h:mm a")}
+              Checked in: {format(new Date(activeShift.clock_in_at), "MMM d 'at' h:mm a")}
             </p>
             <p className="text-sm text-muted-foreground">
               This shift has been flagged for manager review.
@@ -507,14 +507,14 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           <CardContent className="py-5 space-y-3">
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="font-semibold">Currently Clocked In</span>
+              <span className="font-semibold">Currently Checked In</span>
             </div>
             <div className="text-sm text-muted-foreground space-y-1">
               <p>Started: {format(new Date(activeShift.clock_in_at), "h:mm a")}</p>
               <p className="text-lg font-bold text-foreground">{formatElapsed(elapsed)}</p>
             </div>
             <Button variant="destructive" className="w-full" onClick={() => setClockOutModalOpen(true)}>
-              🔴 Clock Out
+              🔴 Check Out
             </Button>
           </CardContent>
         </Card>
@@ -531,7 +531,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         <CardContent className="py-5 space-y-3">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-5 w-5" />
-            <span className="font-medium">You are not clocked in</span>
+            <span className="font-medium">You are not checked in</span>
           </div>
           <Button
             className="w-full"
@@ -541,7 +541,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
             disabled={clockingIn}
           >
             {clockingIn ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            🟢 Clock In
+            🟢 Check In
           </Button>
           {lastShift && (
             <p className="text-xs text-muted-foreground">
