@@ -1316,7 +1316,7 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
           <div className="space-y-4">
             {activeShifts.length > 0 ? (
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Checked In</h4>
                 <div className="space-y-2">
                   {activeShifts.map((shift: any) => {
                     const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
