@@ -405,7 +405,7 @@ export default function AdminTimeClock() {
       const leadsSetDelta = newLeadsSet - (Number(selectedShift.leads_set) || 0);
 
       await supabase.from('canvasser_shifts').update({
-        clock_in_at: new Date(shiftClockIn).toISOString(), clock_out_at: new Date(shiftClockOut).toISOString(),
+        clock_in_at: clockInUTC, clock_out_at: clockOutUTC,
         doors_knocked: newDoors || null, conversations_had: newConvos || null,
         not_interested: newNotInterested || null, leads_set: newLeadsSet || null,
         notes: shiftNotes || null, status: 'completed', edited_at: new Date().toISOString(),
