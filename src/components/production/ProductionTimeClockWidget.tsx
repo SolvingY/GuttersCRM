@@ -423,7 +423,7 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
           </div>
           <Button className="w-full" variant="cta" size="lg" onClick={handleClockIn} disabled={clockingIn}>
             {clockingIn ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            🟢 Clock In
+            🟢 Check In
           </Button>
           {lastShift && (
             <p className="text-xs text-muted-foreground">
