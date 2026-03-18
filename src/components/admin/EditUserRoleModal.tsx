@@ -319,6 +319,21 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
                   </Label>
                 </div>
               </div>
+
+              {/* Office Role */}
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="office"
+                    checked={isOffice}
+                    onCheckedChange={(checked) => setIsOffice(checked === true)}
+                  />
+                  <Label htmlFor="office" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Office
+                  </Label>
+                </div>
+              </div>
             </div>
 
             {/* Hide from Leaderboard Toggle - only show for operational roles */}
