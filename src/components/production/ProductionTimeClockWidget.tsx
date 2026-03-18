@@ -350,7 +350,7 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
           <Button variant="outline" onClick={() => setClockOutModalOpen(false)}>Cancel</Button>
           <Button onClick={handleClockOut} disabled={clockingOut}>
             {clockingOut ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Confirm Clock Out
+            Confirm Check Out
           </Button>
         </DialogFooter>
       </DialogContent>
