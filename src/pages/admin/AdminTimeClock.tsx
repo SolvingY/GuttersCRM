@@ -902,7 +902,7 @@ export default function AdminTimeClock() {
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">💡 When zones are configured, team members will see a warning if they try to clock in outside all active zones.</p>
+            <p className="text-xs text-muted-foreground">💡 When zones are configured, team members will see a warning if they try to check in outside all active zones.</p>
           </div>
         </SectionCarousel.Item>
       </SectionCarousel>
