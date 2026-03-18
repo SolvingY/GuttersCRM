@@ -113,6 +113,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       if (isCanvasser) roles.push('canvasser');
       if (isSupplementer) roles.push('supplementer');
       if (isProduction) roles.push('production');
+      if (isOffice) roles.push('office');
 
       // Determine if this is admin-only (admin checked but no operational roles)
       const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction;
