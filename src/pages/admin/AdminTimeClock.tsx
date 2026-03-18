@@ -1274,8 +1274,8 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
 
   const handleEditShift = (shift: any) => {
     setEditingShift(shift);
-    setEditClockIn(shift.clock_in_at?.slice(0, 16) || '');
-    setEditClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setEditClockIn(utcToCentralLocal(shift.clock_in_at || ''));
+    setEditClockOut(utcToCentralLocal(shift.clock_out_at || ''));
     setEditNotes(shift.notes || '');
     setEditModalOpen(true);
   };
