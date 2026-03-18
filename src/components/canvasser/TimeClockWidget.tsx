@@ -514,7 +514,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
               <p className="text-lg font-bold text-foreground">{formatElapsed(elapsed)}</p>
             </div>
             <Button variant="destructive" className="w-full" onClick={() => setClockOutModalOpen(true)}>
-              🔴 Clock Out
+              🔴 Check Out
             </Button>
           </CardContent>
         </Card>
