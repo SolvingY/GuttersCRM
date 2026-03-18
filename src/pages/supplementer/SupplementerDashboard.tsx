@@ -124,6 +124,7 @@ export default function SupplementerDashboard() {
 
   return (
     <div className="space-y-4">
+      <RoleTimeClockWidget role="supplementer" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Stats</h1>

@@ -255,6 +255,20 @@ const App = () => (
               <Route path="settings" element={<ProductionSettings />} />
             </Route>
 
+            {/* Office Portal Routes */}
+            <Route
+              path="/office"
+              element={
+                <ProtectedRoute requireOffice>
+                  <OfficeLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/office/dashboard" replace />} />
+              <Route path="dashboard" element={<OfficeDashboard />} />
+              <Route path="settings" element={<OfficeSettings />} />
+            </Route>
+
             <Route
               path="/admin"
               element={

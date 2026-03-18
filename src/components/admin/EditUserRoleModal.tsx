@@ -337,7 +337,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
             </div>
 
             {/* Hide from Leaderboard Toggle - only show for operational roles */}
-            {(isSalesRep || isCanvasser || isSupplementer || isProduction) && (
+            {(isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice) && (
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
