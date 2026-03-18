@@ -164,9 +164,9 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
     }
   };
 
-  const isValid = isAdmin || isSalesRep || isCanvasser || isSupplementer || isProduction;
-  const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction;
-  const isSuperAdmin = isAdmin && (isSalesRep || isCanvasser || isSupplementer || isProduction);
+  const isValid = isAdmin || isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice;
+  const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction && !isOffice;
+  const isSuperAdmin = isAdmin && (isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
