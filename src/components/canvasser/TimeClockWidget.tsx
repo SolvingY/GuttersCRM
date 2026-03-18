@@ -197,7 +197,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         .maybeSingle();
 
       if (existingShift) {
-        toast.error('You already have an active shift. Please clock out first.');
+        toast.error('You already have an active shift. Please check out first.');
         return;
       }
 
