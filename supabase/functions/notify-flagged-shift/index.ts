@@ -54,13 +54,14 @@ Deno.serve(async (req) => {
     const APP_URL = Deno.env.get("APP_URL") || "https://nextgenroofing.lovable.app";
     const clockInDate = new Date(clockInAt);
     const formattedClockIn = clockInDate.toLocaleString("en-US", {
+      timeZone: "America/Chicago",
       weekday: "short",
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    });
+    }) + " CST";
 
     const nameWithRole = role ? `${canvasserName} (${role})` : canvasserName;
     const reasonLine = hoursOpen === 0

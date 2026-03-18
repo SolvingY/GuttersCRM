@@ -35,6 +35,56 @@ const roleLabels: Record<string, string> = {
 };
 
 // ---- Module-level helpers (shared by main component + sub-components) ----
+
+/** Convert a UTC ISO string to a "YYYY-MM-DDTHH:MM" string in Central Time (for datetime-local inputs) */
+const utcToCentralLocal = (isoString: string): string => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  // Format each component in Central Time
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '00';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+};
+
+/** Convert a "YYYY-MM-DDTHH:MM" string (assumed Central Time) to a UTC ISO string */
+const centralLocalToUTC = (localString: string): string => {
+  if (!localString) return '';
+  // Build a date string with explicit CST offset approach:
+  // Parse the components, create a Date in Central Time via Intl
+  const [datePart, timePart] = localString.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
+  
+  // Create a temporary date and figure out the Central Time offset
+  const tempDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  // Get what Central Time shows for this UTC time
+  const centralStr = tempDate.toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false });
+  const centralDate = new Date(centralStr);
+  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC', hour12: false }));
+  const offsetMs = utcDate.getTime() - centralDate.getTime();
+  
+  // The actual UTC time = local Central time + offset
+  const result = new Date(tempDate.getTime() + offsetMs);
+  return result.toISOString();
+};
+
+/** Format a UTC ISO string as a time string in Central Time */
+const formatCentralTime = (isoString: string, fmt: 'time' | 'date' | 'datetime' = 'time'): string => {
+  if (!isoString) return '--';
+  const d = new Date(isoString);
+  if (fmt === 'time') {
+    return d.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  if (fmt === 'date') {
+    return d.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' });
+  }
+  return d.toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
 const handleCopyCoords = async (lat: number, lng: number) => {
   const coords = `${lat}, ${lng}`;
   try { await navigator.clipboard.writeText(coords); toast.success('Coordinates copied'); }
@@ -326,8 +376,8 @@ export default function AdminTimeClock() {
 
   const handleEditShift = (shift: any) => {
     setSelectedShift(shift);
-    setShiftClockIn(shift.clock_in_at?.slice(0, 16) || '');
-    setShiftClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setShiftClockIn(utcToCentralLocal(shift.clock_in_at || ''));
+    setShiftClockOut(utcToCentralLocal(shift.clock_out_at || ''));
     setShiftDoors(shift.doors_knocked?.toString() || '');
     setShiftConvos(shift.conversations_had?.toString() || '');
     setShiftNotInterested(shift.not_interested?.toString() || '');
@@ -341,7 +391,9 @@ export default function AdminTimeClock() {
     setSavingShift(true);
     try {
       const oldHours = Number(selectedShift.hours_worked) || 0;
-      const newHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(shiftClockIn);
+      const clockOutUTC = centralLocalToUTC(shiftClockOut);
+      const newHours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       const newDoors = parseInt(shiftDoors) || 0;
       const newConvos = parseInt(shiftConvos) || 0;
       const newNotInterested = parseInt(shiftNotInterested) || 0;
@@ -353,7 +405,7 @@ export default function AdminTimeClock() {
       const leadsSetDelta = newLeadsSet - (Number(selectedShift.leads_set) || 0);
 
       await supabase.from('canvasser_shifts').update({
-        clock_in_at: new Date(shiftClockIn).toISOString(), clock_out_at: new Date(shiftClockOut).toISOString(),
+        clock_in_at: clockInUTC, clock_out_at: clockOutUTC,
         doors_knocked: newDoors || null, conversations_had: newConvos || null,
         not_interested: newNotInterested || null, leads_set: newLeadsSet || null,
         notes: shiftNotes || null, status: 'completed', edited_at: new Date().toISOString(),
@@ -361,7 +413,7 @@ export default function AdminTimeClock() {
 
       if (hoursDelta !== 0 || doorsDelta !== 0 || convosDelta !== 0 || notInterestedDelta !== 0 || leadsSetDelta !== 0) {
         try {
-          await updateCanvasserHours(selectedShift.canvasser_id, new Date(shiftClockIn), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
+          await updateCanvasserHours(selectedShift.canvasser_id, new Date(clockInUTC), hoursDelta, doorsDelta, convosDelta, notInterestedDelta, leadsSetDelta);
         } catch (metricsErr: any) {
           console.error('Metrics update failed:', metricsErr);
           toast.warning('Shift saved but metrics sync failed: ' + metricsErr.message);
@@ -372,7 +424,7 @@ export default function AdminTimeClock() {
       fetchShifts(); fetchShiftHistory();
 
       if (leadsSetDelta > 0) {
-        setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(shiftClockIn) });
+        setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(clockInUTC) });
         setShiftSalesRepId('');
         setRepPromptOpen(true);
       }
@@ -402,7 +454,9 @@ export default function AdminTimeClock() {
     if (!shiftCanvasserId || !shiftClockIn || !shiftClockOut) return;
     setSavingShift(true);
     try {
-      const shiftHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(shiftClockIn);
+      const clockOutUTC = centralLocalToUTC(shiftClockOut);
+      const shiftHours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       const doors = parseInt(shiftDoors) || 0;
       const convos = parseInt(shiftConvos) || 0;
       const notInt = parseInt(shiftNotInterested) || 0;
@@ -410,13 +464,13 @@ export default function AdminTimeClock() {
 
       await supabase.from('canvasser_shifts').insert({
         canvasser_id: shiftCanvasserId,
-        clock_in_at: new Date(shiftClockIn).toISOString(), clock_out_at: new Date(shiftClockOut).toISOString(),
+        clock_in_at: clockInUTC, clock_out_at: clockOutUTC,
         doors_knocked: doors || null, conversations_had: convos || null,
         not_interested: notInt || null, leads_set: leads || null,
         notes: shiftNotes || null, status: 'completed',
       });
       try {
-        await updateCanvasserHours(shiftCanvasserId, new Date(shiftClockIn), shiftHours, doors, convos, notInt, leads);
+        await updateCanvasserHours(shiftCanvasserId, new Date(clockInUTC), shiftHours, doors, convos, notInt, leads);
       } catch (metricsErr: any) {
         console.error('Metrics update failed:', metricsErr);
         toast.warning('Shift added but metrics sync failed: ' + metricsErr.message);
@@ -443,11 +497,13 @@ export default function AdminTimeClock() {
   };
 
   const handleDismissShift = async (shift: any) => {
-    const clockOut = prompt('Enter check-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    const defaultTime = utcToCentralLocal(new Date().toISOString());
+    const clockOut = prompt('Enter check-out time in Central Time (YYYY-MM-DDTHH:mm)', defaultTime);
     if (!clockOut) return;
     try {
-      const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
-      await supabase.from('canvasser_shifts').update({ clock_out_at: new Date(clockOut).toISOString(), status: 'completed', edited_at: new Date().toISOString() }).eq('id', shift.id);
+      const clockOutUTC = centralLocalToUTC(clockOut);
+      const shiftHours = Math.round(((new Date(clockOutUTC).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
+      await supabase.from('canvasser_shifts').update({ clock_out_at: clockOutUTC, status: 'completed', edited_at: new Date().toISOString() }).eq('id', shift.id);
       try {
         await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
       } catch (metricsErr: any) {
@@ -757,7 +813,7 @@ export default function AdminTimeClock() {
                       <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">{getCanvasserName(shift.canvasser_id)}</span>
-                          <span className="text-sm text-muted-foreground">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                          <span className="text-sm text-muted-foreground">since {formatCentralTime(shift.clock_in_at, 'time')}</span>
                           {shift.clock_in_lat && renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}
                         </div>
                         <Badge variant="outline" className="text-green-600">{hours}h {mins}m</Badge>
@@ -775,7 +831,7 @@ export default function AdminTimeClock() {
                     <div key={shift.id} className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
                       <div>
                         <span className="font-medium text-foreground">{getCanvasserName(shift.canvasser_id)}</span>
-                        <span className="text-sm text-muted-foreground ml-2">{format(new Date(shift.clock_in_at), "MMM d 'at' h:mm a")}</span>
+                        <span className="text-sm text-muted-foreground ml-2">{formatCentralTime(shift.clock_in_at, 'datetime')}</span>
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>Edit</Button>
@@ -842,9 +898,9 @@ export default function AdminTimeClock() {
                       return (
                         <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="py-2 px-3 text-foreground font-medium text-sm">{getCanvasserName(shift.canvasser_id)}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'date')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'time')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? formatCentralTime(shift.clock_out_at, 'time') : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{hrs != null ? `${hrs}h` : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{shift.doors_knocked || '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{shift.conversations_had || '--'}</td>
@@ -1218,8 +1274,8 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
 
   const handleEditShift = (shift: any) => {
     setEditingShift(shift);
-    setEditClockIn(shift.clock_in_at?.slice(0, 16) || '');
-    setEditClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setEditClockIn(utcToCentralLocal(shift.clock_in_at || ''));
+    setEditClockOut(utcToCentralLocal(shift.clock_out_at || ''));
     setEditNotes(shift.notes || '');
     setEditModalOpen(true);
   };
@@ -1228,10 +1284,12 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
     if (!editingShift || !editClockIn || !editClockOut) return;
     setSaving(true);
     try {
-      const hours = Math.round(((new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(editClockIn);
+      const clockOutUTC = centralLocalToUTC(editClockOut);
+      const hours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       await supabase.from('role_shifts' as any).update({
-        clock_in_at: new Date(editClockIn).toISOString(),
-        clock_out_at: new Date(editClockOut).toISOString(),
+        clock_in_at: clockInUTC,
+        clock_out_at: clockOutUTC,
         hours_worked: hours,
         notes: editNotes || null,
         status: 'completed',
@@ -1326,7 +1384,7 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                       <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">{shift.display_name || getName(shift.user_id)}</span>
-                          <span className="text-sm text-muted-foreground">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                          <span className="text-sm text-muted-foreground">since {formatCentralTime(shift.clock_in_at, 'time')}</span>
                           {shift.clock_in_lat && renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}
                         </div>
                         <div className="flex items-center gap-2">
@@ -1391,9 +1449,9 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                       return (
                         <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="py-2 px-3 text-foreground font-medium text-sm">{shift.display_name || getName(shift.user_id)}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'date')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'time')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? formatCentralTime(shift.clock_out_at, 'time') : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{hrs !== '--' ? `${hrs}h` : '--'}</td>
                           <td className="py-2 px-3 text-sm text-muted-foreground max-w-[150px] truncate">{shift.notes || '--'}</td>
                           <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}</td>
@@ -1423,8 +1481,8 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check In (Central Time)</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check Out (Central Time)</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Notes</Label><Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} /></div>
           </div>
           <DialogFooter>
@@ -1540,8 +1598,8 @@ function ProductionShiftManagement() {
 
   const handleEditShift = (shift: any) => {
     setEditingShift(shift);
-    setEditClockIn(shift.clock_in_at?.slice(0, 16) || '');
-    setEditClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setEditClockIn(utcToCentralLocal(shift.clock_in_at || ''));
+    setEditClockOut(utcToCentralLocal(shift.clock_out_at || ''));
     setEditNotes(shift.notes || '');
     setEditModalOpen(true);
   };
@@ -1550,10 +1608,12 @@ function ProductionShiftManagement() {
     if (!editingShift || !editClockIn || !editClockOut) return;
     setSaving(true);
     try {
-      const hours = Math.round(((new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(editClockIn);
+      const clockOutUTC = centralLocalToUTC(editClockOut);
+      const hours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       await supabase.from('production_shifts').update({
-        clock_in_at: new Date(editClockIn).toISOString(),
-        clock_out_at: new Date(editClockOut).toISOString(),
+        clock_in_at: clockInUTC,
+        clock_out_at: clockOutUTC,
         hours_worked: hours,
         notes: editNotes || null,
         status: 'completed',
@@ -1638,7 +1698,7 @@ function ProductionShiftManagement() {
           <div className="space-y-4">
             {activeShifts.length > 0 ? (
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Checked In</h4>
                 <div className="space-y-2">
                   {activeShifts.map((shift: any) => {
                     const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
@@ -1648,7 +1708,7 @@ function ProductionShiftManagement() {
                       <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">{shift.display_name || getName(shift.user_id)}</span>
-                          <span className="text-sm text-muted-foreground">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                          <span className="text-sm text-muted-foreground">since {formatCentralTime(shift.clock_in_at, 'time')}</span>
                           {shift.clock_in_lat && renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}
                         </div>
                         <div className="flex items-center gap-2">
@@ -1662,7 +1722,7 @@ function ProductionShiftManagement() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No production crew currently clocked in.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No production crew currently checked in.</p>
             )}
           </div>
         </SectionCarousel.Item>
@@ -1697,12 +1757,12 @@ function ProductionShiftManagement() {
                     <tr>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Name</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Date</th>
-                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock In</th>
-                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock Out</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check In</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Check Out</th>
                       <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
                       <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
-                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-In 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Check-Out 📍</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
                       <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
@@ -1713,9 +1773,9 @@ function ProductionShiftManagement() {
                       return (
                         <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="py-2 px-3 text-foreground font-medium text-sm">{shift.display_name || getName(shift.user_id)}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'date')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'time')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? formatCentralTime(shift.clock_out_at, 'time') : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{hrs !== '--' ? `${hrs}h` : '--'}</td>
                           <td className="py-2 px-3 text-sm text-muted-foreground max-w-[150px] truncate">{shift.notes || '--'}</td>
                           <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}</td>
@@ -1745,8 +1805,8 @@ function ProductionShiftManagement() {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check In (Central Time)</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check Out (Central Time)</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Notes</Label><Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} /></div>
           </div>
           <DialogFooter>
