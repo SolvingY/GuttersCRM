@@ -319,7 +319,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
   const clockOutModal = (
     <Dialog open={clockOutModalOpen} onOpenChange={setClockOutModalOpen}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Clock Out</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Check Out</DialogTitle></DialogHeader>
         <div className="space-y-4">
           {activeShift && (
             <p className="text-sm text-muted-foreground">
