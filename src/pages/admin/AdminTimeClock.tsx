@@ -35,6 +35,56 @@ const roleLabels: Record<string, string> = {
 };
 
 // ---- Module-level helpers (shared by main component + sub-components) ----
+
+/** Convert a UTC ISO string to a "YYYY-MM-DDTHH:MM" string in Central Time (for datetime-local inputs) */
+const utcToCentralLocal = (isoString: string): string => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  // Format each component in Central Time
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '00';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+};
+
+/** Convert a "YYYY-MM-DDTHH:MM" string (assumed Central Time) to a UTC ISO string */
+const centralLocalToUTC = (localString: string): string => {
+  if (!localString) return '';
+  // Build a date string with explicit CST offset approach:
+  // Parse the components, create a Date in Central Time via Intl
+  const [datePart, timePart] = localString.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
+  
+  // Create a temporary date and figure out the Central Time offset
+  const tempDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  // Get what Central Time shows for this UTC time
+  const centralStr = tempDate.toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false });
+  const centralDate = new Date(centralStr);
+  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC', hour12: false }));
+  const offsetMs = utcDate.getTime() - centralDate.getTime();
+  
+  // The actual UTC time = local Central time + offset
+  const result = new Date(tempDate.getTime() + offsetMs);
+  return result.toISOString();
+};
+
+/** Format a UTC ISO string as a time string in Central Time */
+const formatCentralTime = (isoString: string, fmt: 'time' | 'date' | 'datetime' = 'time'): string => {
+  if (!isoString) return '--';
+  const d = new Date(isoString);
+  if (fmt === 'time') {
+    return d.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  if (fmt === 'date') {
+    return d.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' });
+  }
+  return d.toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
 const handleCopyCoords = async (lat: number, lng: number) => {
   const coords = `${lat}, ${lng}`;
   try { await navigator.clipboard.writeText(coords); toast.success('Coordinates copied'); }
