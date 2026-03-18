@@ -966,8 +966,8 @@ export default function AdminTimeClock() {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check In</Label><Input type="datetime-local" value={shiftClockIn} onChange={e => setShiftClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check Out</Label><Input type="datetime-local" value={shiftClockOut} onChange={e => setShiftClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Doors Knocked</Label><Input type="number" min="0" value={shiftDoors} onChange={e => setShiftDoors(e.target.value)} /></div>
             <div className="space-y-2"><Label>Conversations Had</Label><Input type="number" min="0" value={shiftConvos} onChange={e => setShiftConvos(e.target.value)} /></div>
             <div className="space-y-2"><Label>Not Interested</Label><Input type="number" min="0" value={shiftNotInterested} onChange={e => setShiftNotInterested(e.target.value)} /></div>
