@@ -424,7 +424,7 @@ export default function AdminTimeClock() {
       fetchShifts(); fetchShiftHistory();
 
       if (leadsSetDelta > 0) {
-        setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(shiftClockIn) });
+        setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(clockInUTC) });
         setShiftSalesRepId('');
         setRepPromptOpen(true);
       }
