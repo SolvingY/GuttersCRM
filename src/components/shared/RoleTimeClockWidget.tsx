@@ -215,7 +215,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
         }
       }
     } catch (err: any) {
-      toast.error("Failed to clock in: " + err.message);
+      toast.error("Failed to check in: " + err.message);
     }
   };
 
