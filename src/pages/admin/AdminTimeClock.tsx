@@ -1608,10 +1608,12 @@ function ProductionShiftManagement() {
     if (!editingShift || !editClockIn || !editClockOut) return;
     setSaving(true);
     try {
-      const hours = Math.round(((new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(editClockIn);
+      const clockOutUTC = centralLocalToUTC(editClockOut);
+      const hours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       await supabase.from('production_shifts').update({
-        clock_in_at: new Date(editClockIn).toISOString(),
-        clock_out_at: new Date(editClockOut).toISOString(),
+        clock_in_at: clockInUTC,
+        clock_out_at: clockOutUTC,
         hours_worked: hours,
         notes: editNotes || null,
         status: 'completed',
