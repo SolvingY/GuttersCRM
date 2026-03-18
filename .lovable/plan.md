@@ -1,42 +1,69 @@
 
 
-# Add Edit Button to Shift History
+## Plan: Fix Timezone Handling + Devanae's Shift Visibility
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+### Problem Summary
 
-## Changes
+**Issue 1 — Incorrect times everywhere:**
+The root cause is that timestamps are stored in UTC but displayed/edited without converting to Central Time (America/Chicago). This affects three areas:
+- **Flagged shift emails**: The `notify-flagged-shift` edge function formats times with `toLocaleString("en-US")` but does NOT specify `timeZone: "America/Chicago"`. Deno defaults to UTC, so 1:10 PM CST shows as "7:10 PM".
+- **Edit Shift modal**: `shift.clock_in_at?.slice(0, 16)` takes the first 16 chars of a UTC ISO string (e.g., `2026-03-18T19:10`) and puts it in a `datetime-local` input. The browser interprets this as local time, but the value is UTC — showing the wrong time. When saved, `new Date(shiftClockIn).toISOString()` then double-converts, shifting the time again.
+- **Shift history display**: `format(new Date(...), 'h:mm a')` uses the browser's local timezone. This is correct only if the admin's browser is set to CST. Otherwise it's wrong.
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+**Issue 2 — Devanae's shift not showing:**
+Devanae has dual roles (canvasser + user/Sales Rep). She checked in today via the Sales Rep portal (`role_shifts` table, role=`user`). Her shift IS in the database with status `flagged`. The likely issue is the admin is looking at the **Canvassers** tab, but her shift is in the **Sales Reps** tab. This is expected behavior for dual-role users — the shift appears under whichever portal they checked in from.
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+### Changes
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**1. Fix `notify-flagged-shift` edge function — add CST timezone**
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+Add `timeZone: "America/Chicago"` to the `toLocaleString` call on line 56 so the email displays Central Time.
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+File: `supabase/functions/notify-flagged-shift/index.ts`
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
+**2. Fix Edit Shift modal — convert UTC to CST for display, CST back to UTC on save**
 
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
+Create a helper function `utcToCentralLocal(isoString)` that converts a UTC ISO string to the equivalent `datetime-local` value in Central Time. Use this when populating the edit modal inputs.
 
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
+On save, the reverse: treat the `datetime-local` value as Central Time and convert to UTC before storing.
 
-## Summary
+This affects three places in AdminTimeClock.tsx:
+- `handleEditShift` (canvasser) — line 329
+- `RoleShiftManagement.handleEditShift` — line 1221
+- `ProductionShiftManagement.handleEditShift` (if it exists)
+- All corresponding save handlers
 
-| Area | Change |
+**3. Fix shift history time display — force Central Time**
+
+Replace `format(new Date(shift.clock_in_at), 'h:mm a')` with a helper that explicitly formats in Central Time using `toLocaleTimeString('en-US', { timeZone: 'America/Chicago', ... })`. This ensures consistent display regardless of the admin's browser timezone.
+
+Affects all time display calls in AdminTimeClock.tsx (shift history tables, active shift cards, flagged shift cards).
+
+**4. Clarify Devanae's shift location (no code change)**
+
+Devanae's flagged shift is visible under Admin → Check-In Management → **Sales Reps** tab → Shift Management. She checked in via the Sales Rep portal. No code fix needed — just a visibility clarification.
+
+### Files touched
+
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `supabase/functions/notify-flagged-shift/index.ts` | Add `timeZone: "America/Chicago"` to date formatting |
+| `src/pages/admin/AdminTimeClock.tsx` | Add UTC↔CST conversion helpers; fix edit modal population + save; fix all time display calls to use Central Time |
+
+### Technical Detail
+
+The core helper functions added to AdminTimeClock.tsx:
+
+```text
+utcToCentralLocal(isoString) → "YYYY-MM-DDTHH:MM" in Central Time
+  - Used to populate datetime-local inputs
+
+centralLocalToUTC(localString) → ISO string in UTC  
+  - Used when saving edited shifts
+
+formatCentralTime(isoString, formatStr) → formatted time in CST
+  - Used for all display: "h:mm a", "MMM d", etc.
+```
+
+This ensures all admin-facing times and all email times are consistently Central Time, matching the business's operating timezone.
 
