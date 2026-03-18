@@ -1708,7 +1708,7 @@ function ProductionShiftManagement() {
                       <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">{shift.display_name || getName(shift.user_id)}</span>
-                          <span className="text-sm text-muted-foreground">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                          <span className="text-sm text-muted-foreground">since {formatCentralTime(shift.clock_in_at, 'time')}</span>
                           {shift.clock_in_lat && renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}
                         </div>
                         <div className="flex items-center gap-2">
