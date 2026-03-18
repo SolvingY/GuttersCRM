@@ -515,9 +515,19 @@ export default function AdminTimeClock() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-heading text-foreground">TimeClock</h2>
-        <p className="text-muted-foreground">Manage canvasser hours, shifts, and GPS locations</p>
+        <p className="text-muted-foreground">Manage team hours, shifts, and GPS locations</p>
       </div>
 
+      <Tabs defaultValue="canvassers" className="w-full">
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="canvassers">Canvassers</TabsTrigger>
+          <TabsTrigger value="sales">Sales Reps</TabsTrigger>
+          <TabsTrigger value="supplementers">Supplementers</TabsTrigger>
+          <TabsTrigger value="production">Production</TabsTrigger>
+          <TabsTrigger value="office">Office</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="canvassers" className="mt-4">
       <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
         {/* Hours Tracker */}
         <SectionCarousel.Item id="hours" title="Hours Tracker" icon={Clock}>
