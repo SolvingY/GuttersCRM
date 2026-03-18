@@ -365,10 +365,10 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            You are not within any approved work zone. Your manager will be able to see your clock-in location.
+             You are not within any approved work zone. Your manager will be able to see your check-in location.
           </p>
           <p className="text-sm text-muted-foreground">
-            Do you still want to clock in from this location?
+            Do you still want to check in from this location?
           </p>
         </div>
         <DialogFooter>
@@ -376,7 +376,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirmOutOfZone}>
-            Clock In Anyway
+            Check In Anyway
           </Button>
         </DialogFooter>
       </DialogContent>
