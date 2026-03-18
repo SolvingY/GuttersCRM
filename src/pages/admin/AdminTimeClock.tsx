@@ -747,7 +747,7 @@ export default function AdminTimeClock() {
             </div>
             {activeShifts.filter(s => s.status === 'active').length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Checked In</h4>
                 <div className="space-y-2">
                   {activeShifts.filter(s => s.status === 'active').map((shift: any) => {
                     const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
