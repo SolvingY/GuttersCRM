@@ -831,7 +831,7 @@ export default function AdminTimeClock() {
                     <div key={shift.id} className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
                       <div>
                         <span className="font-medium text-foreground">{getCanvasserName(shift.canvasser_id)}</span>
-                        <span className="text-sm text-muted-foreground ml-2">{format(new Date(shift.clock_in_at), "MMM d 'at' h:mm a")}</span>
+                        <span className="text-sm text-muted-foreground ml-2">{formatCentralTime(shift.clock_in_at, 'datetime')}</span>
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>Edit</Button>
