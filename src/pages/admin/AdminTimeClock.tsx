@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Loader2, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2, Copy, Users } from 'lucide-react';
+import { Loader2, Plus, MapPin, Clock, AlertTriangle, ShieldCheck, Trash2, Copy, Users, Pencil } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { format, subDays, addDays } from 'date-fns';
@@ -24,15 +24,52 @@ interface CanvasserInfo {
   name: string;
 }
 
+// Role label mapping
+const roleLabels: Record<string, string> = {
+  user: 'Sales Rep',
+  canvasser: 'Canvasser',
+  supplementer: 'Supplementer',
+  production: 'Production',
+  office: 'Office',
+  admin: 'Admin',
+};
+
+// ---- Module-level helpers (shared by main component + sub-components) ----
+const handleCopyCoords = async (lat: number, lng: number) => {
+  const coords = `${lat}, ${lng}`;
+  try { await navigator.clipboard.writeText(coords); toast.success('Coordinates copied'); }
+  catch { const input = document.createElement('input'); input.value = coords; document.body.appendChild(input); input.select(); document.execCommand('copy'); document.body.removeChild(input); toast.success('Coordinates copied'); }
+};
+
+const renderLocationLink = (lat: number | null, lng: number | null) => {
+  if (lat == null || lng == null) return <span className="text-muted-foreground">--</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <a href={`https://maps.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+          <MapPin className="h-3.5 w-3.5" />View on Maps
+        </a>
+        <button onClick={() => handleCopyCoords(lat, lng)} className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground text-xs" title="Copy coordinates">
+          <Copy className="h-3 w-3" />
+        </button>
+      </div>
+      <span className="text-[10px] text-muted-foreground">{lat.toFixed(4)}, {lng.toFixed(4)}</span>
+    </div>
+  );
+};
+
+const getThursdayWeekStart = (d?: Date): Date => {
+  const date = d ? new Date(d) : new Date();
+  const day = date.getDay();
+  const diff = date.getDate() - ((day + 3) % 7);
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+};
+
 export default function AdminTimeClock() {
   const [loading, setLoading] = useState(true);
   const [canvassers, setCanvassers] = useState<CanvasserInfo[]>([]);
   
-  const [selectedHoursWeek, setSelectedHoursWeek] = useState<Date>(() => {
-    const d = new Date(); const day = d.getDay();
-    const diff = d.getDate() - ((day + 3) % 7);
-    return new Date(d.getFullYear(), d.getMonth(), diff);
-  });
+  const [selectedHoursWeek, setSelectedHoursWeek] = useState<Date>(() => getThursdayWeekStart());
   const [canvasserHoursData, setCanvasserHoursData] = useState<any[]>([]);
   const [editingHoursCell, setEditingHoursCell] = useState<string | null>(null);
 
@@ -57,11 +94,7 @@ export default function AdminTimeClock() {
   const [shiftSalesRepId, setShiftSalesRepId] = useState('');
   const [pendingAttribution, setPendingAttribution] = useState<{ canvasserId: string; leadsCount: number; shiftDate: Date } | null>(null);
 
-  const [selectedPayPeriod, setSelectedPayPeriod] = useState<Date>(() => {
-    const d = new Date(); const day = d.getDay();
-    const diff = d.getDate() - ((day + 3) % 7);
-    return new Date(d.getFullYear(), d.getMonth(), diff);
-  });
+  const [selectedPayPeriod, setSelectedPayPeriod] = useState<Date>(() => getThursdayWeekStart());
   const [dailyActivityData, setDailyActivityData] = useState<any[]>([]);
 
   const [shiftHistory, setShiftHistory] = useState<any[]>([]);
@@ -81,20 +114,17 @@ export default function AdminTimeClock() {
   const [assigningZone, setAssigningZone] = useState<any>(null);
   const [assignedCanvasserIds, setAssignedCanvasserIds] = useState<Set<string>>(new Set());
   const [savingAssignments, setSavingAssignments] = useState(false);
+  const [allTeamMembers, setAllTeamMembers] = useState<{ userId: string; name: string; role: string }[]>([]);
 
   const parseCoordinates = (text: string): { lat: number; lng: number } | null => {
     if (!text.trim()) return null;
-    // Google Maps @lat,lng pattern
     const atMatch = text.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
-    // Google Maps ?q=lat,lng pattern
     const qMatch = text.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
     if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
-    // Google Maps embed !3d (lat) and !2d (lng)
     const lat3d = text.match(/!3d(-?\d+\.?\d*)/);
     const lng2d = text.match(/!2d(-?\d+\.?\d*)/);
     if (lat3d && lng2d) return { lat: parseFloat(lat3d[1]), lng: parseFloat(lng2d[1]) };
-    // Raw coordinate pair
     const rawMatch = text.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
     if (rawMatch) {
       const a = parseFloat(rawMatch[1]), b = parseFloat(rawMatch[2]);
@@ -193,10 +223,29 @@ export default function AdminTimeClock() {
     setSalesReps(result);
   }, []);
 
+  const fetchAllTeamMembers = useCallback(async () => {
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, is_archived');
+    const activeProfiles = (profiles || []).filter(p => !p.is_archived);
+    const activeIds = activeProfiles.map(p => p.id);
+    if (activeIds.length === 0) { setAllTeamMembers([]); return; }
+    const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('user_id', activeIds);
+    const profileMap = new Map(activeProfiles.map(p => [p.id, p.full_name || 'Unknown']));
+    const seen = new Set<string>();
+    const result: { userId: string; name: string; role: string }[] = [];
+    (roles || []).forEach(r => {
+      if (!seen.has(r.user_id)) {
+        seen.add(r.user_id);
+        result.push({ userId: r.user_id, name: profileMap.get(r.user_id) || 'Unknown', role: r.role });
+      }
+    });
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    setAllTeamMembers(result);
+  }, []);
+
   useEffect(() => {
-    const init = async () => { await fetchCanvassers(); await fetchSalesReps(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); setLoading(false); };
+    const init = async () => { await fetchCanvassers(); await fetchSalesReps(); await fetchShifts(); await fetchWorkZones(); await fetchZoneAssignments(); await fetchAllTeamMembers(); setLoading(false); };
     init();
-  }, [fetchCanvassers, fetchSalesReps, fetchShifts, fetchWorkZones, fetchZoneAssignments]);
+  }, [fetchCanvassers, fetchSalesReps, fetchShifts, fetchWorkZones, fetchZoneAssignments, fetchAllTeamMembers]);
 
   useEffect(() => { fetchShiftHistory(); }, [fetchShiftHistory]);
 
@@ -325,7 +374,6 @@ export default function AdminTimeClock() {
       setEditShiftModalOpen(false);
       fetchShifts(); fetchShiftHistory();
 
-      // If leads were added, prompt for sales rep attribution
       if (leadsSetDelta > 0) {
         setPendingAttribution({ canvasserId: selectedShift.canvasser_id, leadsCount: leadsSetDelta, shiftDate: new Date(shiftClockIn) });
         setShiftSalesRepId('');
@@ -388,7 +436,6 @@ export default function AdminTimeClock() {
       setShiftLeadsSet(''); setShiftNotes('');
       fetchShifts(); fetchShiftHistory();
 
-      // If leads were added, prompt for sales rep attribution
       if (savedLeads > 0) {
         setPendingAttribution({ canvasserId: savedCanvasserId, leadsCount: savedLeads, shiftDate: new Date(savedClockIn) });
         setShiftSalesRepId('');
@@ -464,9 +511,7 @@ export default function AdminTimeClock() {
     if (!assigningZone) return;
     setSavingAssignments(true);
     try {
-      // Delete all existing assignments for this zone
       await supabase.from('canvasser_zone_assignments').delete().eq('zone_id', assigningZone.id);
-      // Insert new assignments
       if (assignedCanvasserIds.size > 0) {
         const rows = Array.from(assignedCanvasserIds).map(cid => ({ zone_id: assigningZone.id, canvasser_id: cid }));
         const { error } = await supabase.from('canvasser_zone_assignments').insert(rows as any);
@@ -481,30 +526,7 @@ export default function AdminTimeClock() {
 
   const getZoneAssignmentLabel = (zoneId: string) => {
     const count = zoneAssignments.filter(a => a.zone_id === zoneId).length;
-    return count === 0 ? 'All canvassers' : `${count} assigned`;
-  };
-
-  const handleCopyCoords = async (lat: number, lng: number) => {
-    const coords = `${lat}, ${lng}`;
-    try { await navigator.clipboard.writeText(coords); toast.success('Coordinates copied'); }
-    catch { const input = document.createElement('input'); input.value = coords; document.body.appendChild(input); input.select(); document.execCommand('copy'); document.body.removeChild(input); toast.success('Coordinates copied'); }
-  };
-
-  const renderLocationLink = (lat: number | null, lng: number | null) => {
-    if (lat == null || lng == null) return <span className="text-muted-foreground">--</span>;
-    return (
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center gap-1.5">
-          <a href={`https://maps.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
-            <MapPin className="h-3.5 w-3.5" />View on Maps
-          </a>
-          <button onClick={() => handleCopyCoords(lat, lng)} className="inline-flex items-center gap-0.5 text-muted-foreground hover:text-foreground text-xs" title="Copy coordinates">
-            <Copy className="h-3 w-3" />
-          </button>
-        </div>
-        <span className="text-[10px] text-muted-foreground">{lat.toFixed(4)}, {lng.toFixed(4)}</span>
-      </div>
-    );
+    return count === 0 ? 'All team members' : `${count} assigned`;
   };
 
   if (loading) {
@@ -860,7 +882,7 @@ export default function AdminTimeClock() {
               <Button size="sm" variant="outline" onClick={() => setAddZoneModalOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add Zone</Button>
             </div>
             {workZones.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No work zones configured. Canvassers can clock in from anywhere.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No work zones configured. Team members can clock in from anywhere.</p>
             ) : (
               <div className="space-y-2">
                 {workZones.map((zone: any) => (
@@ -882,7 +904,7 @@ export default function AdminTimeClock() {
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">💡 When zones are configured, canvassers will see a warning if they try to clock in outside all active zones.</p>
+            <p className="text-xs text-muted-foreground">💡 When zones are configured, team members will see a warning if they try to clock in outside all active zones.</p>
           </div>
         </SectionCarousel.Item>
       </SectionCarousel>
@@ -910,7 +932,6 @@ export default function AdminTimeClock() {
                       allowFullScreen
                       title="Map preview"
                     />
-                    {/* Red radius circle overlay */}
                     {(() => {
                       const radiusM = (parseFloat(zoneRadius) || 1) * 1609.34;
                       const zoom = radiusM <= 500 ? 15 : radiusM <= 1000 ? 14 : radiusM <= 2000 ? 13 : radiusM <= 5000 ? 12 : 11;
@@ -1039,16 +1060,17 @@ export default function AdminTimeClock() {
       {/* Zone Assignment Modal */}
       <Dialog open={assignZoneModalOpen} onOpenChange={setAssignZoneModalOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Assign Canvassers — {assigningZone?.name}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Select canvassers who should be restricted to this zone. Leave all unchecked to apply this zone to everyone.</p>
+          <DialogHeader><DialogTitle>Assign Team Members — {assigningZone?.name}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Select team members who should be restricted to this zone. Leave all unchecked to apply this zone to everyone.</p>
           <div className="max-h-64 overflow-y-auto space-y-2">
-            {canvassers.map(c => (
-              <label key={c.userId} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
-                <Checkbox checked={assignedCanvasserIds.has(c.userId)} onCheckedChange={() => handleToggleCanvasserAssignment(c.userId)} />
-                <span className="text-sm text-foreground">{c.name}</span>
+            {allTeamMembers.map(member => (
+              <label key={member.userId} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                <Checkbox checked={assignedCanvasserIds.has(member.userId)} onCheckedChange={() => handleToggleCanvasserAssignment(member.userId)} />
+                <span className="text-sm text-foreground flex-1">{member.name}</span>
+                <span className="text-xs text-muted-foreground">{roleLabels[member.role] || member.role}</span>
               </label>
             ))}
-            {canvassers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No canvassers found.</p>}
+            {allTeamMembers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No team members found.</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignZoneModalOpen(false)}>Cancel</Button>
@@ -1082,21 +1104,55 @@ export default function AdminTimeClock() {
 
 /* ------------------------------------------------------------------ */
 /*  RoleShiftManagement – manages role_shifts for a given role        */
+/*  Full SectionCarousel with Hours Tracker, Shift Management, History */
 /* ------------------------------------------------------------------ */
 function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: string }) {
+  const [openSection, setOpenSection] = useState<string | null>('hours');
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
+
+  // Users
+  const [users, setUsers] = useState<{ userId: string; name: string }[]>([]);
+
+  // Hours Tracker
+  const [selectedWeek, setSelectedWeek] = useState<Date>(() => getThursdayWeekStart());
+  const [hoursData, setHoursData] = useState<any[]>([]);
+
+  // Shifts
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // History filters
+  const [historyDays, setHistoryDays] = useState(7);
+  const [historyUserFilter, setHistoryUserFilter] = useState('all');
+
+  // Edit modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<any>(null);
+  const [editClockIn, setEditClockIn] = useState('');
+  const [editClockOut, setEditClockOut] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', role);
+    if (!roles || roles.length === 0) { setUsers([]); return; }
+    const userIds = roles.map(r => r.user_id);
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, is_archived').in('id', userIds);
+    const result = (profiles || []).filter(p => !p.is_archived).map(p => ({ userId: p.id, name: p.full_name || 'Unknown' }));
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    setUsers(result);
+  }, [role]);
+
   const fetchShifts = useCallback(async () => {
     setLoading(true);
+    const since = subDays(new Date(), Math.max(historyDays, 90)).toISOString();
     const { data } = await supabase
       .from('role_shifts' as any)
       .select('*')
       .eq('role', role)
+      .gte('clock_in_at', since)
       .order('clock_in_at', { ascending: false })
-      .limit(200);
-    
-    // Enrich with profile names
+      .limit(500);
     if (data && data.length > 0) {
       const userIds = [...new Set((data as any[]).map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
@@ -1106,95 +1162,320 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
     }
     setShifts((data as any[]) || []);
     setLoading(false);
-  }, [role]);
+  }, [role, historyDays]);
 
+  const fetchHoursData = useCallback(async () => {
+    const weekStart = format(selectedWeek, 'yyyy-MM-dd');
+    const weekEnd = format(addDays(selectedWeek, 6), 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('role_shifts' as any)
+      .select('user_id, clock_in_at, hours_worked')
+      .eq('role', role)
+      .gte('clock_in_at', weekStart)
+      .lte('clock_in_at', weekEnd + 'T23:59:59')
+      .not('clock_out_at', 'is', null);
+    setHoursData((data as any[]) || []);
+  }, [role, selectedWeek]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useEffect(() => { fetchShifts(); }, [fetchShifts]);
+  useEffect(() => { fetchHoursData(); }, [fetchHoursData]);
+
+  const getName = (userId: string) => {
+    const shift = shifts.find(s => s.user_id === userId);
+    return shift?.display_name || users.find(u => u.userId === userId)?.name || 'Unknown';
+  };
 
   const activeShifts = shifts.filter((s: any) => !s.clock_out_at);
-  const historyShifts = shifts.filter((s: any) => !!s.clock_out_at);
+  const filteredHistory = shifts.filter((s: any) => {
+    if (!s.clock_out_at) return false;
+    const shiftDate = new Date(s.clock_in_at);
+    if (shiftDate < subDays(new Date(), historyDays)) return false;
+    if (historyUserFilter !== 'all' && s.user_id !== historyUserFilter) return false;
+    return true;
+  });
+
+  const handleForceClockOut = async (shift: any) => {
+    try {
+      const now = new Date().toISOString();
+      const hours = Math.round(((new Date(now).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
+      await supabase.from('role_shifts' as any).update({ clock_out_at: now, status: 'completed', hours_worked: hours } as any).eq('id', shift.id);
+      toast.success('Shift dismissed');
+      fetchShifts(); fetchHoursData();
+    } catch (err: any) { toast.error('Failed: ' + err.message); }
+  };
+
+  const handleEditShift = (shift: any) => {
+    setEditingShift(shift);
+    setEditClockIn(shift.clock_in_at?.slice(0, 16) || '');
+    setEditClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setEditNotes(shift.notes || '');
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingShift || !editClockIn || !editClockOut) return;
+    setSaving(true);
+    try {
+      const hours = Math.round(((new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / 3600000) * 4) / 4;
+      await supabase.from('role_shifts' as any).update({
+        clock_in_at: new Date(editClockIn).toISOString(),
+        clock_out_at: new Date(editClockOut).toISOString(),
+        hours_worked: hours,
+        notes: editNotes || null,
+        status: 'completed',
+      } as any).eq('id', editingShift.id);
+      toast.success('Shift updated');
+      setEditModalOpen(false);
+      fetchShifts(); fetchHoursData();
+    } catch (err: any) { toast.error('Failed: ' + err.message); }
+    setSaving(false);
+  };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Delete this shift?')) return;
     await supabase.from('role_shifts' as any).delete().eq('id', id);
-    fetchShifts();
+    toast.success('Shift deleted');
+    fetchShifts(); fetchHoursData();
   };
 
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <div className="space-y-6">
-      {/* Active Shifts */}
-      <div>
-        <h3 className="text-lg font-semibold text-foreground mb-3">Currently Clocked In ({activeShifts.length})</h3>
-        {activeShifts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No {roleLabel.toLowerCase()} currently clocked in.</p>
-        ) : (
-          <div className="overflow-x-auto border rounded-md">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-muted/50 text-muted-foreground">
-                <th className="text-left p-2">Name</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Location</th><th className="text-left p-2">Actions</th>
-              </tr></thead>
-              <tbody>
-                {activeShifts.map((s: any) => (
-                  <tr key={s.id} className="border-t">
-                    <td className="p-2 text-foreground">{s.display_name}</td>
-                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleString()}</td>
-                    <td className="p-2">{s.clock_in_lat ? <a href={`https://maps.google.com/maps?q=${s.clock_in_lat},${s.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs">View</a> : <span className="text-muted-foreground text-xs">N/A</span>}</td>
-                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+    <div className="space-y-4">
+      <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+        {/* Hours Tracker */}
+        <SectionCarousel.Item id="hours" title="Hours Tracker" icon={Clock}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" size="sm" onClick={() => setSelectedWeek(prev => { const w = new Date(prev); w.setDate(w.getDate() - 7); return w; })}>← Prev</Button>
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                {selectedWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(selectedWeek.getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setSelectedWeek(prev => { const w = new Date(prev); w.setDate(w.getDate() + 7); return w; })}>Next →</Button>
+            </div>
+            {users.length === 0 ? (
+              <div className="p-8 text-center"><p className="text-muted-foreground">No {roleLabel.toLowerCase()} found.</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                      {['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'].map(day => (
+                        <th key={day} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">{day}</th>
+                      ))}
+                      <th className="text-center py-3 px-4 text-sm font-bold text-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(user => {
+                      const weekDays = Array.from({ length: 7 }, (_, i) => {
+                        const date = new Date(selectedWeek); date.setDate(date.getDate() + i);
+                        return format(date, 'yyyy-MM-dd');
+                      });
+                      const dailyHours = weekDays.map(date => {
+                        return hoursData
+                          .filter(h => h.user_id === user.userId && h.clock_in_at?.startsWith(date))
+                          .reduce((sum: number, h: any) => sum + (Number(h.hours_worked) || 0), 0);
+                      });
+                      const weekTotal = dailyHours.reduce((sum, h) => sum + h, 0);
 
-      {/* Shift History */}
-      <div>
-        <h3 className="text-lg font-semibold text-foreground mb-3">Shift History</h3>
-        {historyShifts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No completed shifts yet.</p>
-        ) : (
-          <div className="overflow-x-auto border rounded-md">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-muted/50 text-muted-foreground">
-                <th className="text-left p-2">Name</th><th className="text-left p-2">Date</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Clock Out</th><th className="text-left p-2">Hours</th><th className="text-left p-2">Notes</th><th className="text-left p-2">Actions</th>
-              </tr></thead>
-              <tbody>
-                {historyShifts.map((s: any) => (
-                  <tr key={s.id} className="border-t">
-                    <td className="p-2 text-foreground">{s.display_name}</td>
-                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleDateString()}</td>
-                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleTimeString()}</td>
-                    <td className="p-2 text-foreground">{s.clock_out_at ? new Date(s.clock_out_at).toLocaleTimeString() : '—'}</td>
-                    <td className="p-2 text-foreground">{s.hours_worked ? Number(s.hours_worked).toFixed(1) : '—'}</td>
-                    <td className="p-2 text-muted-foreground text-xs max-w-[200px] truncate">{s.notes || '—'}</td>
-                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      return (
+                        <tr key={user.userId} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="py-3 px-4 text-foreground font-medium">{user.name}</td>
+                          {dailyHours.map((hours, i) => (
+                            <td key={i} className="text-center py-3 px-4 text-sm text-foreground">
+                              {hours > 0 ? hours.toFixed(1) : '-'}
+                            </td>
+                          ))}
+                          <td className="text-center py-3 px-4 font-bold text-foreground">{weekTotal > 0 ? weekTotal.toFixed(1) : '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </SectionCarousel.Item>
+
+        {/* Shift Management */}
+        <SectionCarousel.Item id="shifts" title="Shift Management" icon={Clock}>
+          <div className="space-y-4">
+            {activeShifts.length > 0 ? (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <div className="space-y-2">
+                  {activeShifts.map((shift: any) => {
+                    const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
+                    const hours = Math.floor(elapsed / 3600000);
+                    const mins = Math.floor((elapsed % 3600000) / 60000);
+                    return (
+                      <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{shift.display_name || getName(shift.user_id)}</span>
+                          <span className="text-sm text-muted-foreground">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                          {shift.clock_in_lat && renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-green-600">{hours}h {mins}m</Badge>
+                          <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>Edit</Button>
+                          <Button size="sm" variant="secondary" onClick={() => handleForceClockOut(shift)}>Dismiss</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No {roleLabel.toLowerCase()} currently clocked in.</p>
+            )}
+          </div>
+        </SectionCarousel.Item>
+
+        {/* Shift History */}
+        <SectionCarousel.Item id="history" title="Shift History" icon={Clock}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-end gap-3">
+              <Select value={historyUserFilter} onValueChange={setHistoryUserFilter}>
+                <SelectTrigger className="w-40"><SelectValue placeholder={`All ${roleLabel}`} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All {roleLabel}</SelectItem>
+                  {users.map(u => (<SelectItem key={u.userId} value={u.userId}>{u.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={historyDays.toString()} onValueChange={v => setHistoryDays(parseInt(v))}>
+                <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {filteredHistory.length === 0 ? (
+              <div className="p-8 text-center"><p className="text-muted-foreground">No shifts found for this period.</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Name</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock In</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock Out</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistory.map((shift: any) => {
+                      const hrs = shift.hours_worked ? Number(shift.hours_worked).toFixed(1) : (shift.clock_out_at ? (Math.round(((new Date(shift.clock_out_at).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4).toString() : '--');
+                      return (
+                        <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="py-2 px-3 text-foreground font-medium text-sm">{shift.display_name || getName(shift.user_id)}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-right text-foreground">{hrs !== '--' ? `${hrs}h` : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-muted-foreground max-w-[150px] truncate">{shift.notes || '--'}</td>
+                          <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}</td>
+                          <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_out_lat, shift.clock_out_lng)}</td>
+                          <td className="py-2 px-3 text-center">
+                            <Badge variant={shift.status === 'completed' ? 'secondary' : shift.status === 'flagged' ? 'destructive' : 'outline'} className="text-xs">{shift.status || 'completed'}</Badge>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEditShift(shift)} className="text-xs">Edit</Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDelete(shift.id)} className="text-xs text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </SectionCarousel.Item>
+      </SectionCarousel>
+
+      {/* Edit Shift Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Notes</Label><Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /*  ProductionShiftManagement – manages production_shifts             */
+/*  Full SectionCarousel with Hours Tracker, Shift Management, History */
 /* ------------------------------------------------------------------ */
 function ProductionShiftManagement() {
+  const [openSection, setOpenSection] = useState<string | null>('hours');
+  const toggleSection = (id: string) => setOpenSection(prev => prev === id ? null : id);
+
+  // Users
+  const [users, setUsers] = useState<{ userId: string; name: string }[]>([]);
+
+  // Hours Tracker
+  const [selectedWeek, setSelectedWeek] = useState<Date>(() => getThursdayWeekStart());
+  const [hoursData, setHoursData] = useState<any[]>([]);
+
+  // Shifts
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // History filters
+  const [historyDays, setHistoryDays] = useState(7);
+  const [historyUserFilter, setHistoryUserFilter] = useState('all');
+
+  // Edit modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<any>(null);
+  const [editClockIn, setEditClockIn] = useState('');
+  const [editClockOut, setEditClockOut] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', 'production');
+    if (!roles || roles.length === 0) { setUsers([]); return; }
+    const userIds = roles.map(r => r.user_id);
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, is_archived').in('id', userIds);
+    const result = (profiles || []).filter(p => !p.is_archived).map(p => ({ userId: p.id, name: p.full_name || 'Unknown' }));
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    setUsers(result);
+  }, []);
+
   const fetchShifts = useCallback(async () => {
     setLoading(true);
+    const since = subDays(new Date(), Math.max(historyDays, 90)).toISOString();
     const { data } = await supabase
       .from('production_shifts')
       .select('*')
+      .gte('clock_in_at', since)
       .order('clock_in_at', { ascending: false })
-      .limit(200);
-    
+      .limit(500);
     if (data && data.length > 0) {
       const userIds = [...new Set(data.map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
@@ -1204,73 +1485,265 @@ function ProductionShiftManagement() {
     }
     setShifts(data || []);
     setLoading(false);
-  }, []);
+  }, [historyDays]);
 
+  const fetchHoursData = useCallback(async () => {
+    const weekStart = format(selectedWeek, 'yyyy-MM-dd');
+    const weekEnd = format(addDays(selectedWeek, 6), 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('production_shifts')
+      .select('user_id, clock_in_at, hours_worked')
+      .gte('clock_in_at', weekStart)
+      .lte('clock_in_at', weekEnd + 'T23:59:59')
+      .not('clock_out_at', 'is', null);
+    setHoursData(data || []);
+  }, [selectedWeek]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useEffect(() => { fetchShifts(); }, [fetchShifts]);
+  useEffect(() => { fetchHoursData(); }, [fetchHoursData]);
+
+  const getName = (userId: string) => {
+    const shift = shifts.find(s => s.user_id === userId);
+    return shift?.display_name || users.find(u => u.userId === userId)?.name || 'Unknown';
+  };
 
   const activeShifts = shifts.filter((s: any) => !s.clock_out_at);
-  const historyShifts = shifts.filter((s: any) => !!s.clock_out_at);
+  const filteredHistory = shifts.filter((s: any) => {
+    if (!s.clock_out_at) return false;
+    const shiftDate = new Date(s.clock_in_at);
+    if (shiftDate < subDays(new Date(), historyDays)) return false;
+    if (historyUserFilter !== 'all' && s.user_id !== historyUserFilter) return false;
+    return true;
+  });
+
+  const handleForceClockOut = async (shift: any) => {
+    try {
+      const now = new Date().toISOString();
+      const hours = Math.round(((new Date(now).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
+      await supabase.from('production_shifts').update({ clock_out_at: now, status: 'completed', hours_worked: hours }).eq('id', shift.id);
+      toast.success('Shift dismissed');
+      fetchShifts(); fetchHoursData();
+    } catch (err: any) { toast.error('Failed: ' + err.message); }
+  };
+
+  const handleEditShift = (shift: any) => {
+    setEditingShift(shift);
+    setEditClockIn(shift.clock_in_at?.slice(0, 16) || '');
+    setEditClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setEditNotes(shift.notes || '');
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingShift || !editClockIn || !editClockOut) return;
+    setSaving(true);
+    try {
+      const hours = Math.round(((new Date(editClockOut).getTime() - new Date(editClockIn).getTime()) / 3600000) * 4) / 4;
+      await supabase.from('production_shifts').update({
+        clock_in_at: new Date(editClockIn).toISOString(),
+        clock_out_at: new Date(editClockOut).toISOString(),
+        hours_worked: hours,
+        notes: editNotes || null,
+        status: 'completed',
+      }).eq('id', editingShift.id);
+      toast.success('Shift updated');
+      setEditModalOpen(false);
+      fetchShifts(); fetchHoursData();
+    } catch (err: any) { toast.error('Failed: ' + err.message); }
+    setSaving(false);
+  };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Delete this shift?')) return;
     await supabase.from('production_shifts').delete().eq('id', id);
-    fetchShifts();
+    toast.success('Shift deleted');
+    fetchShifts(); fetchHoursData();
   };
 
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-foreground mb-3">Currently Clocked In ({activeShifts.length})</h3>
-        {activeShifts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No production crew currently clocked in.</p>
-        ) : (
-          <div className="overflow-x-auto border rounded-md">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-muted/50 text-muted-foreground">
-                <th className="text-left p-2">Name</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Location</th><th className="text-left p-2">Actions</th>
-              </tr></thead>
-              <tbody>
-                {activeShifts.map((s: any) => (
-                  <tr key={s.id} className="border-t">
-                    <td className="p-2 text-foreground">{s.display_name}</td>
-                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleString()}</td>
-                    <td className="p-2">{s.clock_in_lat ? <a href={`https://maps.google.com/maps?q=${s.clock_in_lat},${s.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs">View</a> : <span className="text-muted-foreground text-xs">N/A</span>}</td>
-                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="space-y-4">
+      <SectionCarousel activeSection={openSection} onToggle={toggleSection}>
+        {/* Hours Tracker */}
+        <SectionCarousel.Item id="hours" title="Hours Tracker" icon={Clock}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" size="sm" onClick={() => setSelectedWeek(prev => { const w = new Date(prev); w.setDate(w.getDate() - 7); return w; })}>← Prev</Button>
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                {selectedWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(selectedWeek.getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setSelectedWeek(prev => { const w = new Date(prev); w.setDate(w.getDate() + 7); return w; })}>Next →</Button>
+            </div>
+            {users.length === 0 ? (
+              <div className="p-8 text-center"><p className="text-muted-foreground">No production crew found.</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                      {['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'].map(day => (
+                        <th key={day} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">{day}</th>
+                      ))}
+                      <th className="text-center py-3 px-4 text-sm font-bold text-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(user => {
+                      const weekDays = Array.from({ length: 7 }, (_, i) => {
+                        const date = new Date(selectedWeek); date.setDate(date.getDate() + i);
+                        return format(date, 'yyyy-MM-dd');
+                      });
+                      const dailyHours = weekDays.map(date => {
+                        return hoursData
+                          .filter(h => h.user_id === user.userId && h.clock_in_at?.startsWith(date))
+                          .reduce((sum: number, h: any) => sum + (Number(h.hours_worked) || 0), 0);
+                      });
+                      const weekTotal = dailyHours.reduce((sum, h) => sum + h, 0);
+
+                      return (
+                        <tr key={user.userId} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="py-3 px-4 text-foreground font-medium">{user.name}</td>
+                          {dailyHours.map((hours, i) => (
+                            <td key={i} className="text-center py-3 px-4 text-sm text-foreground">
+                              {hours > 0 ? hours.toFixed(1) : '-'}
+                            </td>
+                          ))}
+                          <td className="text-center py-3 px-4 font-bold text-foreground">{weekTotal > 0 ? weekTotal.toFixed(1) : '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold text-foreground mb-3">Shift History</h3>
-        {historyShifts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No completed production shifts yet.</p>
-        ) : (
-          <div className="overflow-x-auto border rounded-md">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-muted/50 text-muted-foreground">
-                <th className="text-left p-2">Name</th><th className="text-left p-2">Date</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Clock Out</th><th className="text-left p-2">Hours</th><th className="text-left p-2">Notes</th><th className="text-left p-2">Actions</th>
-              </tr></thead>
-              <tbody>
-                {historyShifts.map((s: any) => (
-                  <tr key={s.id} className="border-t">
-                    <td className="p-2 text-foreground">{s.display_name}</td>
-                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleDateString()}</td>
-                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleTimeString()}</td>
-                    <td className="p-2 text-foreground">{s.clock_out_at ? new Date(s.clock_out_at).toLocaleTimeString() : '—'}</td>
-                    <td className="p-2 text-foreground">{s.hours_worked ? Number(s.hours_worked).toFixed(1) : '—'}</td>
-                    <td className="p-2 text-muted-foreground text-xs max-w-[200px] truncate">{s.notes || '—'}</td>
-                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        </SectionCarousel.Item>
+
+        {/* Shift Management */}
+        <SectionCarousel.Item id="shifts" title="Shift Management" icon={Clock}>
+          <div className="space-y-4">
+            {activeShifts.length > 0 ? (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Currently Clocked In</h4>
+                <div className="space-y-2">
+                  {activeShifts.map((shift: any) => {
+                    const elapsed = Date.now() - new Date(shift.clock_in_at).getTime();
+                    const hours = Math.floor(elapsed / 3600000);
+                    const mins = Math.floor((elapsed % 3600000) / 60000);
+                    return (
+                      <div key={shift.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{shift.display_name || getName(shift.user_id)}</span>
+                          <span className="text-sm text-muted-foreground">since {format(new Date(shift.clock_in_at), 'h:mm a')}</span>
+                          {shift.clock_in_lat && renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-green-600">{hours}h {mins}m</Badge>
+                          <Button size="sm" variant="outline" onClick={() => handleEditShift(shift)}>Edit</Button>
+                          <Button size="sm" variant="secondary" onClick={() => handleForceClockOut(shift)}>Dismiss</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No production crew currently clocked in.</p>
+            )}
           </div>
-        )}
-      </div>
+        </SectionCarousel.Item>
+
+        {/* Shift History */}
+        <SectionCarousel.Item id="history" title="Shift History" icon={Clock}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-end gap-3">
+              <Select value={historyUserFilter} onValueChange={setHistoryUserFilter}>
+                <SelectTrigger className="w-40"><SelectValue placeholder="All Production" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Production</SelectItem>
+                  {users.map(u => (<SelectItem key={u.userId} value={u.userId}>{u.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={historyDays.toString()} onValueChange={v => setHistoryDays(parseInt(v))}>
+                <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {filteredHistory.length === 0 ? (
+              <div className="p-8 text-center"><p className="text-muted-foreground">No shifts found for this period.</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Name</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock In</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Clock Out</th>
+                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Hours</th>
+                      <th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Notes</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-In 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Clock-Out 📍</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistory.map((shift: any) => {
+                      const hrs = shift.hours_worked ? Number(shift.hours_worked).toFixed(1) : (shift.clock_out_at ? (Math.round(((new Date(shift.clock_out_at).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4).toString() : '--');
+                      return (
+                        <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="py-2 px-3 text-foreground font-medium text-sm">{shift.display_name || getName(shift.user_id)}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-right text-foreground">{hrs !== '--' ? `${hrs}h` : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-muted-foreground max-w-[150px] truncate">{shift.notes || '--'}</td>
+                          <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_in_lat, shift.clock_in_lng)}</td>
+                          <td className="py-2 px-3 text-center">{renderLocationLink(shift.clock_out_lat, shift.clock_out_lng)}</td>
+                          <td className="py-2 px-3 text-center">
+                            <Badge variant={shift.status === 'completed' ? 'secondary' : shift.status === 'flagged' ? 'destructive' : 'outline'} className="text-xs">{shift.status || 'completed'}</Badge>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEditShift(shift)} className="text-xs">Edit</Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDelete(shift.id)} className="text-xs text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </SectionCarousel.Item>
+      </SectionCarousel>
+
+      {/* Edit Shift Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Notes</Label><Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
