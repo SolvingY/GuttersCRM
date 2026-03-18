@@ -492,6 +492,7 @@ export default function AdminTimeClock() {
     setAssigningZone(zone);
     const currentIds = new Set(zoneAssignments.filter(a => a.zone_id === zone.id).map(a => a.canvasser_id));
     setAssignedCanvasserIds(currentIds);
+    setZoneRoleFilter('all');
     setAssignZoneModalOpen(true);
   };
 
