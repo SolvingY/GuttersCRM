@@ -1058,6 +1058,219 @@ export default function AdminTimeClock() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="sales" className="mt-4">
+          <RoleShiftManagement role="user" roleLabel="Sales Reps" />
+        </TabsContent>
+
+        <TabsContent value="supplementers" className="mt-4">
+          <RoleShiftManagement role="supplementer" roleLabel="Supplementers" />
+        </TabsContent>
+
+        <TabsContent value="production" className="mt-4">
+          <ProductionShiftManagement />
+        </TabsContent>
+
+        <TabsContent value="office" className="mt-4">
+          <RoleShiftManagement role="office" roleLabel="Office Staff" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  RoleShiftManagement – manages role_shifts for a given role        */
+/* ------------------------------------------------------------------ */
+function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: string }) {
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchShifts = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('role_shifts' as any)
+      .select('*')
+      .eq('role', role)
+      .order('clock_in_at', { ascending: false })
+      .limit(200);
+    
+    // Enrich with profile names
+    if (data && data.length > 0) {
+      const userIds = [...new Set((data as any[]).map((s: any) => s.user_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+      const nameMap: Record<string, string> = {};
+      (profiles || []).forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+      (data as any[]).forEach((s: any) => { s.display_name = nameMap[s.user_id] || 'Unknown'; });
+    }
+    setShifts((data as any[]) || []);
+    setLoading(false);
+  }, [role]);
+
+  useEffect(() => { fetchShifts(); }, [fetchShifts]);
+
+  const activeShifts = shifts.filter((s: any) => !s.clock_out_at);
+  const historyShifts = shifts.filter((s: any) => !!s.clock_out_at);
+
+  const handleDelete = async (id: string) => {
+    await supabase.from('role_shifts' as any).delete().eq('id', id);
+    fetchShifts();
+  };
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Active Shifts */}
+      <div>
+        <h3 className="text-lg font-semibold text-foreground mb-3">Currently Clocked In ({activeShifts.length})</h3>
+        {activeShifts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No {roleLabel.toLowerCase()} currently clocked in.</p>
+        ) : (
+          <div className="overflow-x-auto border rounded-md">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/50 text-muted-foreground">
+                <th className="text-left p-2">Name</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Location</th><th className="text-left p-2">Actions</th>
+              </tr></thead>
+              <tbody>
+                {activeShifts.map((s: any) => (
+                  <tr key={s.id} className="border-t">
+                    <td className="p-2 text-foreground">{s.display_name}</td>
+                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleString()}</td>
+                    <td className="p-2">{s.clock_in_lat ? <a href={`https://maps.google.com/maps?q=${s.clock_in_lat},${s.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs">View</a> : <span className="text-muted-foreground text-xs">N/A</span>}</td>
+                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Shift History */}
+      <div>
+        <h3 className="text-lg font-semibold text-foreground mb-3">Shift History</h3>
+        {historyShifts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No completed shifts yet.</p>
+        ) : (
+          <div className="overflow-x-auto border rounded-md">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/50 text-muted-foreground">
+                <th className="text-left p-2">Name</th><th className="text-left p-2">Date</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Clock Out</th><th className="text-left p-2">Hours</th><th className="text-left p-2">Notes</th><th className="text-left p-2">Actions</th>
+              </tr></thead>
+              <tbody>
+                {historyShifts.map((s: any) => (
+                  <tr key={s.id} className="border-t">
+                    <td className="p-2 text-foreground">{s.display_name}</td>
+                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleDateString()}</td>
+                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleTimeString()}</td>
+                    <td className="p-2 text-foreground">{s.clock_out_at ? new Date(s.clock_out_at).toLocaleTimeString() : '—'}</td>
+                    <td className="p-2 text-foreground">{s.hours_worked ? Number(s.hours_worked).toFixed(1) : '—'}</td>
+                    <td className="p-2 text-muted-foreground text-xs max-w-[200px] truncate">{s.notes || '—'}</td>
+                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ProductionShiftManagement – manages production_shifts             */
+/* ------------------------------------------------------------------ */
+function ProductionShiftManagement() {
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchShifts = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('production_shifts')
+      .select('*')
+      .order('clock_in_at', { ascending: false })
+      .limit(200);
+    
+    if (data && data.length > 0) {
+      const userIds = [...new Set(data.map((s: any) => s.user_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+      const nameMap: Record<string, string> = {};
+      (profiles || []).forEach((p: any) => { nameMap[p.id] = p.full_name || 'Unknown'; });
+      data.forEach((s: any) => { s.display_name = nameMap[s.user_id] || 'Unknown'; });
+    }
+    setShifts(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchShifts(); }, [fetchShifts]);
+
+  const activeShifts = shifts.filter((s: any) => !s.clock_out_at);
+  const historyShifts = shifts.filter((s: any) => !!s.clock_out_at);
+
+  const handleDelete = async (id: string) => {
+    await supabase.from('production_shifts').delete().eq('id', id);
+    fetchShifts();
+  };
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-foreground mb-3">Currently Clocked In ({activeShifts.length})</h3>
+        {activeShifts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No production crew currently clocked in.</p>
+        ) : (
+          <div className="overflow-x-auto border rounded-md">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/50 text-muted-foreground">
+                <th className="text-left p-2">Name</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Location</th><th className="text-left p-2">Actions</th>
+              </tr></thead>
+              <tbody>
+                {activeShifts.map((s: any) => (
+                  <tr key={s.id} className="border-t">
+                    <td className="p-2 text-foreground">{s.display_name}</td>
+                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleString()}</td>
+                    <td className="p-2">{s.clock_in_lat ? <a href={`https://maps.google.com/maps?q=${s.clock_in_lat},${s.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline text-xs">View</a> : <span className="text-muted-foreground text-xs">N/A</span>}</td>
+                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-foreground mb-3">Shift History</h3>
+        {historyShifts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No completed production shifts yet.</p>
+        ) : (
+          <div className="overflow-x-auto border rounded-md">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/50 text-muted-foreground">
+                <th className="text-left p-2">Name</th><th className="text-left p-2">Date</th><th className="text-left p-2">Clock In</th><th className="text-left p-2">Clock Out</th><th className="text-left p-2">Hours</th><th className="text-left p-2">Notes</th><th className="text-left p-2">Actions</th>
+              </tr></thead>
+              <tbody>
+                {historyShifts.map((s: any) => (
+                  <tr key={s.id} className="border-t">
+                    <td className="p-2 text-foreground">{s.display_name}</td>
+                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleDateString()}</td>
+                    <td className="p-2 text-foreground">{new Date(s.clock_in_at).toLocaleTimeString()}</td>
+                    <td className="p-2 text-foreground">{s.clock_out_at ? new Date(s.clock_out_at).toLocaleTimeString() : '—'}</td>
+                    <td className="p-2 text-foreground">{s.hours_worked ? Number(s.hours_worked).toFixed(1) : '—'}</td>
+                    <td className="p-2 text-muted-foreground text-xs max-w-[200px] truncate">{s.notes || '—'}</td>
+                    <td className="p-2"><Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
