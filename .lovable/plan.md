@@ -1,42 +1,42 @@
 
 
-# Add Edit Button to Shift History
+## Plan: Auto-Flag Out-of-Zone Shifts + Notify All Roles
 
-## Problem
-Completed shifts in the "Shift History with Location" table have no Edit button. Admins can only edit active/flagged shifts, not already-logged ones.
+### Changes
 
-## Changes
+**1. `src/components/canvasser/TimeClockWidget.tsx`**
+- Add `outOfZone` param to `performClockIn(loc, outOfZone = false)`
+- When `outOfZone` is true: set `status: "flagged"` instead of `"active"`, set `isFlagged` state to true
+- After successful insert, fetch user name from `profiles` using `canvasser_id` (i.e. `user.id`), then invoke `supabase.functions.invoke("notify-flagged-shift", { body: { canvasserId: user.id, canvasserName, clockInAt, hoursOpen: 0, role: "Canvasser" } })`
+- Update `handleConfirmOutOfZone` to call `performClockIn(pendingClockIn, true)`
 
-### File: `src/pages/admin/AdminTimeClock.tsx`
+**2. `src/components/shared/RoleTimeClockWidget.tsx`**
+- Same pattern: add `outOfZone` param to `performClockIn`
+- When `outOfZone`: set `status: "flagged"`, set `isFlagged` to true
+- After insert, fetch name from `profiles` using `user_id` (i.e. `user.id`), invoke `notify-flagged-shift` with role label (map `user`→`Sales Rep`, `supplementer`→`Supplementer`, `office`→`Office`)
+- Update `handleConfirmOutOfZone` to pass `true`
 
-**1. Add state for extra shift fields**
-Add state variables for `shiftConvos`, `shiftNotInterested`, and `shiftLeadsSet` alongside the existing `shiftDoors` and `shiftNotes` state (around line 48).
+**3. `src/components/production/ProductionTimeClockWidget.tsx`**
+- Same pattern for `production_shifts` using `user_id`
+- Role passed as `"Production"`
+- Update `handleConfirmOutOfZone` to pass `true`
 
-**2. Update `handleEditShift` to populate all fields**
-When opening the edit modal, also populate conversations_had, not_interested, and leads_set from the shift data.
+**4. `supabase/functions/notify-flagged-shift/index.ts`**
+- Accept optional `role` param from request body
+- Update email subject: `⚠️ Flagged Shift — {name} ({role})` (falls back to no role suffix if not provided)
+- Update email body: show `{name} ({role})` and change "Hours open" line to "Reason: Clocked in outside geofence zone" when `hoursOpen` is 0
+- Redeploy after changes
 
-**3. Update `handleSaveEditShift` to handle all metric deltas**
-Currently only passes `hoursDelta` and `doorsDelta` to `updateCanvasserHours`. Update to also compute and pass `convosDelta`, `notInterestedDelta`, and `leadsSetDelta`. Also save conversations_had, not_interested, and leads_set to the shift row.
+**5. `src/pages/admin/NotificationRouting.tsx`**
+- Line 25: change description from `'When a canvasser shift is flagged'` to `'When any team member shift is flagged'`
 
-**4. Add an "Actions" column to the Shift History table**
-- Add a new `<th>` header for "Actions" (line ~668)
-- Add a new `<td>` in each row with an "Edit" button that calls `handleEditShift(shift)` (line ~693)
+### Files touched
 
-**5. Expand the Edit Shift Modal**
-Add input fields for Conversations Had, Not Interested, and Leads Set below the existing Doors Knocked field (around line 807).
-
-**6. Reset new state fields**
-Clear `shiftConvos`, `shiftNotInterested`, `shiftLeadsSet` when closing modals or after saving, same as existing `shiftDoors`/`shiftNotes` cleanup.
-
-**7. Update Add Manual Shift flow**
-Also add Conversations, Not Interested, and Leads Set fields to the Add Manual Shift modal and pass them through to `updateCanvasserHours`.
-
-## Summary
-
-| Area | Change |
+| File | Change |
 |------|--------|
-| Shift History table | Add "Actions" column with Edit button per row |
-| Edit Shift modal | Add Conversations, Not Interested, Leads Set fields |
-| Save logic | Compute deltas for all 5 metrics, update shift row + 3-tier metrics |
-| Add Manual Shift modal | Add same extra fields for consistency |
+| `src/components/canvasser/TimeClockWidget.tsx` | Flag shift + notify on out-of-zone (uses `canvasser_id`) |
+| `src/components/shared/RoleTimeClockWidget.tsx` | Flag shift + notify on out-of-zone (uses `user_id`) |
+| `src/components/production/ProductionTimeClockWidget.tsx` | Flag shift + notify on out-of-zone (uses `user_id`) |
+| `supabase/functions/notify-flagged-shift/index.ts` | Accept `role` param, update email copy |
+| `src/pages/admin/NotificationRouting.tsx` | Update description text |
 
