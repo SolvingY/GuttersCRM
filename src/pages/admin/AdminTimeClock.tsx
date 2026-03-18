@@ -443,7 +443,7 @@ export default function AdminTimeClock() {
   };
 
   const handleDismissShift = async (shift: any) => {
-    const clockOut = prompt('Enter clock-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    const clockOut = prompt('Enter check-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     if (!clockOut) return;
     try {
       const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
