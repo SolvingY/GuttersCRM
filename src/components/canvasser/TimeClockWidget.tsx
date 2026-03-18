@@ -387,7 +387,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     <Dialog open={clockOutModalOpen} onOpenChange={setClockOutModalOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Clock Out</DialogTitle>
+          <DialogTitle>Check Out</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {activeShift && (
