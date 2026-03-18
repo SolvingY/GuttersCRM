@@ -115,6 +115,7 @@ export default function AdminTimeClock() {
   const [assignedCanvasserIds, setAssignedCanvasserIds] = useState<Set<string>>(new Set());
   const [savingAssignments, setSavingAssignments] = useState(false);
   const [allTeamMembers, setAllTeamMembers] = useState<{ userId: string; name: string; role: string }[]>([]);
+  const [zoneRoleFilter, setZoneRoleFilter] = useState('all');
 
   const parseCoordinates = (text: string): { lat: number; lng: number } | null => {
     if (!text.trim()) return null;
