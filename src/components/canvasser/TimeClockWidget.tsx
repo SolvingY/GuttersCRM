@@ -507,7 +507,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
           <CardContent className="py-5 space-y-3">
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="font-semibold">Currently Clocked In</span>
+              <span className="font-semibold">Currently Checked In</span>
             </div>
             <div className="text-sm text-muted-foreground space-y-1">
               <p>Started: {format(new Date(activeShift.clock_in_at), "h:mm a")}</p>
