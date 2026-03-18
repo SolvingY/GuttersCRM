@@ -180,8 +180,9 @@ Deno.serve(async (req) => {
     // For admin-only users (admin but no operational roles), we don't create any metrics
     // Office-only users also skip metrics (no metrics table for office)
     const isOfficeOnly = hasOfficeRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole && !hasAdminRole;
-    if (isAdminOnly || isOfficeOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole && !hasOfficeRole)) {
-      console.log("Admin-only user, skipping metrics creation");
+    const isAdminWithOfficeOnly = hasAdminRole && hasOfficeRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole;
+    if (isAdminOnly || isOfficeOnly || isAdminWithOfficeOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole && !hasOfficeRole)) {
+      console.log("Admin-only or office-only user, skipping metrics creation");
       return new Response(
         JSON.stringify({ success: true, roles: rolesToSet, adminOnly: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

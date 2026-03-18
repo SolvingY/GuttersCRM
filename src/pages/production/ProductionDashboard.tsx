@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Star, HardHat, AlertTriangle, ClipboardCheck, Percent, FileText, Plus, X } from "lucide-react";
+import { Loader2, Star, HardHat, AlertTriangle, ClipboardCheck, Percent, FileText, Plus, X, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ProductionTimeClockWidget } from "@/components/production/ProductionTimeClockWidget";
 import { toast } from "sonner";
@@ -158,6 +159,7 @@ export default function ProductionDashboard() {
 
       {/* Time Clock */}
       <ProductionTimeClockWidget onShiftChange={fetchMetrics} />
+      <WorkZonesCard userId={user?.id} />
 
       {/* Daily Activity Log */}
       <Card>
@@ -259,5 +261,60 @@ export default function ProductionDashboard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function WorkZonesCard({ userId }: { userId?: string }) {
+  const [zones, setZones] = useState<{ id: string; name: string; radius_meters: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchZones = async () => {
+      const { data: allZones } = await supabase.from('geofence_work_zones').select('id, name, radius_meters, is_active').eq('is_active', true);
+      const { data: allAssignments } = await supabase.from('canvasser_zone_assignments').select('zone_id, canvasser_id');
+      const assignmentsByZone = new Map<string, string[]>();
+      (allAssignments || []).forEach((a: any) => {
+        const list = assignmentsByZone.get(a.zone_id) || [];
+        list.push(a.canvasser_id);
+        assignmentsByZone.set(a.zone_id, list);
+      });
+      const applicable = (allZones || []).filter((z: any) => {
+        const assigned = assignmentsByZone.get(z.id);
+        return !assigned || assigned.length === 0 || assigned.includes(userId);
+      });
+      setZones(applicable);
+      setLoading(false);
+    };
+    fetchZones();
+  }, [userId]);
+
+  if (loading) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-amber-500" />Your Work Zones
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {zones.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No specific zones assigned — all active zones apply to you.</p>
+        ) : (
+          <div className="space-y-2">
+            {zones.map(z => (
+              <div key={z.id} className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{z.name}</p>
+                  <p className="text-xs text-muted-foreground">{(z.radius_meters / 1609.34).toFixed(1)} mile radius</p>
+                </div>
+                <span className="text-[10px] font-medium text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded">Active</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
