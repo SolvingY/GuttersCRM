@@ -880,7 +880,7 @@ export default function AdminTimeClock() {
               <Button size="sm" variant="outline" onClick={() => setAddZoneModalOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add Zone</Button>
             </div>
             {workZones.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No work zones configured. Team members can clock in from anywhere.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No work zones configured. Team members can check in from anywhere.</p>
             ) : (
               <div className="space-y-2">
                 {workZones.map((zone: any) => (
