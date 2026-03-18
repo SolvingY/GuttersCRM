@@ -376,8 +376,8 @@ export default function AdminTimeClock() {
 
   const handleEditShift = (shift: any) => {
     setSelectedShift(shift);
-    setShiftClockIn(shift.clock_in_at?.slice(0, 16) || '');
-    setShiftClockOut(shift.clock_out_at?.slice(0, 16) || '');
+    setShiftClockIn(utcToCentralLocal(shift.clock_in_at || ''));
+    setShiftClockOut(utcToCentralLocal(shift.clock_out_at || ''));
     setShiftDoors(shift.doors_knocked?.toString() || '');
     setShiftConvos(shift.conversations_had?.toString() || '');
     setShiftNotInterested(shift.not_interested?.toString() || '');
