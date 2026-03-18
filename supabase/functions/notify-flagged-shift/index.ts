@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { canvasserId, canvasserName, clockInAt, hoursOpen } = await req.json();
+    const { canvasserId, canvasserName, clockInAt, hoursOpen, role } = await req.json();
 
     if (!canvasserId || !canvasserName) {
       return new Response(
