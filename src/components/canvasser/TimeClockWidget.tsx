@@ -349,7 +349,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
       fetchShifts();
       onShiftChange?.();
     } catch (err: any) {
-      toast.error("Failed to clock out: " + err.message);
+      toast.error("Failed to check out: " + err.message);
     }
     setClockingOut(false);
   };
