@@ -314,13 +314,13 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            You are not within any approved work zone. Your manager will be able to see your clock-in location.
+            You are not within any approved work zone. Your manager will be able to see your check-in location.
           </p>
-          <p className="text-sm text-muted-foreground">Do you still want to clock in?</p>
+          <p className="text-sm text-muted-foreground">Do you still want to check in?</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { setGeofenceWarning(false); setPendingClockIn(null); }}>Cancel</Button>
-          <Button variant="destructive" onClick={handleConfirmOutOfZone}>Clock In Anyway</Button>
+          <Button variant="destructive" onClick={handleConfirmOutOfZone}>Check In Anyway</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
