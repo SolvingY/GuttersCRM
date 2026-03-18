@@ -497,11 +497,13 @@ export default function AdminTimeClock() {
   };
 
   const handleDismissShift = async (shift: any) => {
-    const clockOut = prompt('Enter check-out time (YYYY-MM-DDTHH:mm)', format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    const defaultTime = utcToCentralLocal(new Date().toISOString());
+    const clockOut = prompt('Enter check-out time in Central Time (YYYY-MM-DDTHH:mm)', defaultTime);
     if (!clockOut) return;
     try {
-      const shiftHours = Math.round(((new Date(clockOut).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
-      await supabase.from('canvasser_shifts').update({ clock_out_at: new Date(clockOut).toISOString(), status: 'completed', edited_at: new Date().toISOString() }).eq('id', shift.id);
+      const clockOutUTC = centralLocalToUTC(clockOut);
+      const shiftHours = Math.round(((new Date(clockOutUTC).getTime() - new Date(shift.clock_in_at).getTime()) / 3600000) * 4) / 4;
+      await supabase.from('canvasser_shifts').update({ clock_out_at: clockOutUTC, status: 'completed', edited_at: new Date().toISOString() }).eq('id', shift.id);
       try {
         await updateCanvasserHours(shift.canvasser_id, new Date(shift.clock_in_at), shiftHours, 0);
       } catch (metricsErr: any) {
