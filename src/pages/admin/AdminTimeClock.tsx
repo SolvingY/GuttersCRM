@@ -1060,15 +1060,28 @@ export default function AdminTimeClock() {
         <DialogContent>
           <DialogHeader><DialogTitle>Assign Team Members — {assigningZone?.name}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">Select team members who should be restricted to this zone. Leave all unchecked to apply this zone to everyone.</p>
+          <Select value={zoneRoleFilter} onValueChange={setZoneRoleFilter}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Filter by role" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="canvasser">Canvasser</SelectItem>
+              <SelectItem value="user">Sales Rep</SelectItem>
+              <SelectItem value="supplementer">Supplementer</SelectItem>
+              <SelectItem value="production">Production</SelectItem>
+              <SelectItem value="office">Office</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="max-h-64 overflow-y-auto space-y-2">
-            {allTeamMembers.map(member => (
-              <label key={member.userId} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+            {allTeamMembers
+              .filter(m => zoneRoleFilter === 'all' || m.role === zoneRoleFilter)
+              .map((member, idx) => (
+              <label key={`${member.userId}-${member.role}-${idx}`} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                 <Checkbox checked={assignedCanvasserIds.has(member.userId)} onCheckedChange={() => handleToggleCanvasserAssignment(member.userId)} />
                 <span className="text-sm text-foreground flex-1">{member.name}</span>
-                <span className="text-xs text-muted-foreground">{roleLabels[member.role] || member.role}</span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">{roleLabels[member.role] || member.role}</Badge>
               </label>
             ))}
-            {allTeamMembers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No team members found.</p>}
+            {allTeamMembers.filter(m => zoneRoleFilter === 'all' || m.role === zoneRoleFilter).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No team members found.</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignZoneModalOpen(false)}>Cancel</Button>

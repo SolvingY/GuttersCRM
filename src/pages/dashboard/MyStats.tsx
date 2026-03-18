@@ -288,6 +288,7 @@ export default function MyStats() {
   return (
     <div className="space-y-4">
       <RoleTimeClockWidget role="user" />
+      <WorkZonesCard userId={user?.id} />
       {/* Motivational Quote Banner */}
       <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
         <CardContent className="py-4">

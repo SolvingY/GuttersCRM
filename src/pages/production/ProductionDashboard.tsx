@@ -159,6 +159,7 @@ export default function ProductionDashboard() {
 
       {/* Time Clock */}
       <ProductionTimeClockWidget onShiftChange={fetchMetrics} />
+      <WorkZonesCard userId={user?.id} />
 
       {/* Daily Activity Log */}
       <Card>
