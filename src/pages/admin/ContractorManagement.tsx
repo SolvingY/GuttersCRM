@@ -208,7 +208,7 @@ export default function ContractorManagement() {
 
       return {
         id: p.id,
-        name: sales?.display_name || canvasser?.display_name || p.full_name || "Unknown",
+        name: p.full_name || sales?.display_name || canvasser?.display_name || "Unknown",
         roles,
         isArchived: p.is_archived ?? false,
         createdAt: p.created_at,
