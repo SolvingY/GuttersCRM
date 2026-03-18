@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Star, DollarSign, TrendingUp, Clock, FileCheck, Percent, Info, Trophy, Plus, Calendar, Target } from "lucide-react";
+import { RoleTimeClockWidget } from "@/components/shared/RoleTimeClockWidget";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -123,6 +124,7 @@ export default function SupplementerDashboard() {
 
   return (
     <div className="space-y-4">
+      <RoleTimeClockWidget role="supplementer" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Stats</h1>

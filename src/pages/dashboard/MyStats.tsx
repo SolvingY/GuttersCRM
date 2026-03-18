@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActiveContestWidget } from '@/components/dashboard/ActiveContestWidget';
+import { RoleTimeClockWidget } from '@/components/shared/RoleTimeClockWidget';
 import { DollarSign, Star, Briefcase, Target, Loader2, Wallet, Calendar, Calculator, Percent, Users, TrendingUp, ChevronDown, ChevronRight, UserPlus, Quote, HelpCircle } from 'lucide-react';
 import { StaleContractsWidget } from '@/components/dashboard/StaleContractsWidget';
 import { CollectionsPipelineWidget } from '@/components/dashboard/CollectionsPipelineWidget';
@@ -286,6 +287,7 @@ export default function MyStats() {
 
   return (
     <div className="space-y-4">
+      <RoleTimeClockWidget role="user" />
       {/* Motivational Quote Banner */}
       <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
         <CardContent className="py-4">

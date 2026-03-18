@@ -173,6 +173,7 @@ export function HireApplicantDialog({ isOpen, onClose, applicant, onSuccess }: H
                 <SelectItem value="canvasser">Canvasser</SelectItem>
                 <SelectItem value="supplementer">Supplementer</SelectItem>
                 <SelectItem value="production">Production</SelectItem>
+                <SelectItem value="office">Office Staff</SelectItem>
                 <SelectItem value="admin_only">Admin</SelectItem>
                 <SelectItem value="super_admin">Manager (Super Admin)</SelectItem>
               </SelectContent>

@@ -84,11 +84,11 @@ Deno.serve(async (req) => {
     }
 
     // Validate roles - now including 'admin' and 'supplementer' as valid
-    const validRoles = ['user', 'canvasser', 'admin', 'supplementer', 'production'];
+    const validRoles = ['user', 'canvasser', 'admin', 'supplementer', 'production', 'office'];
     for (const role of rolesToSet) {
       if (!validRoles.includes(role)) {
         return new Response(
-          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', 'supplementer', or 'production'` }),
+          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', 'supplementer', 'production', or 'office'` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -175,9 +175,12 @@ Deno.serve(async (req) => {
     const hasAdminRole = rolesToSet.includes('admin');
     const hasSupplementerRole = rolesToSet.includes('supplementer');
     const hasProductionRole = rolesToSet.includes('production');
+    const hasOfficeRole = rolesToSet.includes('office');
 
     // For admin-only users (admin but no operational roles), we don't create any metrics
-    if (isAdminOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole)) {
+    // Office-only users also skip metrics (no metrics table for office)
+    const isOfficeOnly = hasOfficeRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole && !hasAdminRole;
+    if (isAdminOnly || isOfficeOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole && !hasOfficeRole)) {
       console.log("Admin-only user, skipping metrics creation");
       return new Response(
         JSON.stringify({ success: true, roles: rolesToSet, adminOnly: true }),

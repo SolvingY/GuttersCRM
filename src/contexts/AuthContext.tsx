@@ -2,13 +2,13 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer' | 'production';
+type AppRole = 'admin' | 'user' | 'canvasser' | 'supplementer' | 'production' | 'office';
 
 interface AuthState {
   user: User | null;
   session: Session | null;
   roles: AppRole[];
-  activeView: 'sales' | 'canvasser' | 'supplementer' | 'production';
+  activeView: 'sales' | 'canvasser' | 'supplementer' | 'production' | 'office';
   onboardingComplete: boolean;
   hasPendingMandatoryActions: boolean;
   sessionLoading: boolean;
@@ -27,13 +27,15 @@ interface AuthContextValue {
   hasCanvasserRole: boolean;
   hasSupplementerRole: boolean;
   hasProductionRole: boolean;
+  hasOfficeRole: boolean;
   isSupplementerOnly: boolean;
   isProductionOnly: boolean;
+  isOfficeOnly: boolean;
   isDualRole: boolean;
-  activeView: 'sales' | 'canvasser' | 'supplementer' | 'production';
+  activeView: 'sales' | 'canvasser' | 'supplementer' | 'production' | 'office';
   onboardingComplete: boolean;
   hasPendingMandatoryActions: boolean;
-  setActiveView: (view: 'sales' | 'canvasser' | 'supplementer' | 'production') => Promise<void>;
+  setActiveView: (view: 'sales' | 'canvasser' | 'supplementer' | 'production' | 'office') => Promise<void>;
   refreshOnboardingStatus: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
@@ -121,8 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Silent update: token refresh or re-sign-in for the SAME already-loaded user
-        // Supabase v2 fires both TOKEN_REFRESHED and SIGNED_IN on tab return
         if (
           (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') &&
           session?.user &&
@@ -137,7 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // INITIAL_SESSION, SIGNED_OUT, USER_UPDATED, or genuinely new SIGNED_IN
         setAuthState(prev => ({
           ...prev,
           session,
@@ -154,7 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setAuthState(prev => ({
         ...prev,
@@ -212,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }, []);
 
-  const setActiveView = useCallback(async (view: 'sales' | 'canvasser' | 'supplementer' | 'production') => {
+  const setActiveView = useCallback(async (view: 'sales' | 'canvasser' | 'supplementer' | 'production' | 'office') => {
     setAuthState(prev => ({ ...prev, activeView: view }));
     if (authState.user) {
       await supabase
@@ -241,11 +239,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hasCanvasserRole = authState.roles.includes('canvasser');
     const hasSupplementerRole = authState.roles.includes('supplementer');
     const hasProductionRole = authState.roles.includes('production');
-    const roleCount = [hasSalesRole, hasCanvasserRole, hasSupplementerRole, hasProductionRole].filter(Boolean).length;
+    const hasOfficeRole = authState.roles.includes('office');
+    const roleCount = [hasSalesRole, hasCanvasserRole, hasSupplementerRole, hasProductionRole, hasOfficeRole].filter(Boolean).length;
     const isDualRole = roleCount >= 2;
-    const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !hasProductionRole && !isAdmin;
-    const isProductionOnly = hasProductionRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !isAdmin;
-    const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : hasProductionRole && !hasSalesRole ? 'production' : 'user';
+    const isSupplementerOnly = hasSupplementerRole && !hasSalesRole && !hasCanvasserRole && !hasProductionRole && !hasOfficeRole && !isAdmin;
+    const isProductionOnly = hasProductionRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasOfficeRole && !isAdmin;
+    const isOfficeOnly = hasOfficeRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole && !isAdmin;
+    const role = isAdmin ? 'admin' : hasCanvasserRole && !hasSalesRole ? 'canvasser' : hasSupplementerRole && !hasSalesRole ? 'supplementer' : hasProductionRole && !hasSalesRole ? 'production' : hasOfficeRole && !hasSalesRole ? 'office' : 'user';
     const isCanvasser = hasCanvasserRole && !hasSalesRole && !isAdmin;
 
     return {
@@ -260,8 +260,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasCanvasserRole,
       hasSupplementerRole,
       hasProductionRole,
+      hasOfficeRole,
       isSupplementerOnly,
       isProductionOnly,
+      isOfficeOnly,
       isDualRole,
       activeView: authState.activeView,
       onboardingComplete: authState.onboardingComplete,

@@ -21,13 +21,13 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield, Users, UserCheck, EyeOff, FileText, HardHat } from 'lucide-react';
+import { Loader2, Shield, Users, UserCheck, EyeOff, FileText, HardHat, Briefcase } from 'lucide-react';
 import { RANK_OPTIONS, CANVASSER_RANK_OPTIONS } from '@/lib/constants';
 
 interface UserWithRole {
   id: string;
   fullName: string | null;
-  roles: ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production')[];
+  roles: ('admin' | 'user' | 'canvasser' | 'supplementer' | 'production' | 'office')[];
   salesRank: string | null;
   canvasserRank: string | null;
   isArchived: boolean;
@@ -51,6 +51,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
   const [isCanvasser, setIsCanvasser] = useState(false);
   const [isSupplementer, setIsSupplementer] = useState(false);
   const [isProduction, setIsProduction] = useState(false);
+  const [isOffice, setIsOffice] = useState(false);
   const [salesRank, setSalesRank] = useState<string>('SR1');
   const [canvasserRank, setCanvasserRank] = useState<string>('C1');
   const [hiddenFromLeaderboard, setHiddenFromLeaderboard] = useState(false);
@@ -63,6 +64,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       setIsCanvasser(user.roles.includes('canvasser'));
       setIsSupplementer(user.roles.includes('supplementer'));
       setIsProduction(user.roles.includes('production'));
+      setIsOffice(user.roles.includes('office'));
       setSalesRank(user.salesRank || 'SR1');
       setCanvasserRank(user.canvasserRank || 'C1');
       setHiddenFromLeaderboard(user.hiddenFromLeaderboard || false);
@@ -74,7 +76,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
     if (!user) return;
 
     // Validate at least one role is selected
-    if (!isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction) {
+    if (!isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction && !isOffice) {
       toast({
         title: 'Error',
         description: 'Please select at least one role',
@@ -111,9 +113,10 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
       if (isCanvasser) roles.push('canvasser');
       if (isSupplementer) roles.push('supplementer');
       if (isProduction) roles.push('production');
+      if (isOffice) roles.push('office');
 
       // Determine if this is admin-only (admin checked but no operational roles)
-      const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction;
+      const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction && !isOffice;
 
       const response = await supabase.functions.invoke('admin-set-user-role', {
         body: { 
@@ -122,7 +125,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
           salesRank: isSalesRep ? salesRank : undefined,
           canvasserRank: isCanvasser ? canvasserRank : undefined,
           isAdminOnly,
-          hiddenFromLeaderboard: (isSalesRep || isCanvasser || isSupplementer || isProduction) ? hiddenFromLeaderboard : false,
+          hiddenFromLeaderboard: (isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice) ? hiddenFromLeaderboard : false,
         },
       });
 
@@ -132,7 +135,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
 
       // Build success message
       const roleNames: string[] = [];
-      if (isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction) {
+      if (isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction && !isOffice) {
         roleNames.push('Admin Only');
       } else {
         if (isAdmin) roleNames.push('Admin');
@@ -140,6 +143,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
         if (isCanvasser) roleNames.push(`Canvasser (${canvasserRank})`);
         if (isSupplementer) roleNames.push('Supplementer');
         if (isProduction) roleNames.push('Production');
+        if (isOffice) roleNames.push('Office');
       }
 
       toast({
@@ -160,9 +164,9 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
     }
   };
 
-  const isValid = isAdmin || isSalesRep || isCanvasser || isSupplementer || isProduction;
-  const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction;
-  const isSuperAdmin = isAdmin && (isSalesRep || isCanvasser || isSupplementer || isProduction);
+  const isValid = isAdmin || isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice;
+  const isAdminOnly = isAdmin && !isSalesRep && !isCanvasser && !isSupplementer && !isProduction && !isOffice;
+  const isSuperAdmin = isAdmin && (isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -315,10 +319,25 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
                   </Label>
                 </div>
               </div>
+
+              {/* Office Role */}
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="office"
+                    checked={isOffice}
+                    onCheckedChange={(checked) => setIsOffice(checked === true)}
+                  />
+                  <Label htmlFor="office" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Office
+                  </Label>
+                </div>
+              </div>
             </div>
 
             {/* Hide from Leaderboard Toggle - only show for operational roles */}
-            {(isSalesRep || isCanvasser || isSupplementer || isProduction) && (
+            {(isSalesRep || isCanvasser || isSupplementer || isProduction || isOffice) && (
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">

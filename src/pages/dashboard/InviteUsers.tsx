@@ -33,7 +33,7 @@ interface Invitation {
   preset_sales_rank?: string;
   preset_yearly_goal?: number;
   preset_display_name?: string;
-  preset_role?: 'user' | 'canvasser' | 'admin' | 'supplementer' | 'production';
+  preset_role?: 'user' | 'canvasser' | 'admin' | 'supplementer' | 'production' | 'office';
 }
 
 export default function InviteUsers() {
