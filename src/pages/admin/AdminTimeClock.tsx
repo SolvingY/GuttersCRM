@@ -1340,7 +1340,7 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No {roleLabel.toLowerCase()} currently clocked in.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No {roleLabel.toLowerCase()} currently checked in.</p>
             )}
           </div>
         </SectionCarousel.Item>
