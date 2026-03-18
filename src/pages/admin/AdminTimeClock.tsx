@@ -1722,7 +1722,7 @@ function ProductionShiftManagement() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No production crew currently clocked in.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No production crew currently checked in.</p>
             )}
           </div>
         </SectionCarousel.Item>
