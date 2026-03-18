@@ -276,7 +276,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
   const handleConfirmOutOfZone = async () => {
     setGeofenceWarning(false);
     setClockingIn(true);
-    await performClockIn(pendingClockIn);
+    await performClockIn(pendingClockIn, true);
     setPendingClockIn(null);
     setClockingIn(false);
   };

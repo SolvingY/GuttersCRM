@@ -22,7 +22,7 @@ const NOTIFICATION_TYPES: { key: string; label: string; description: string }[] 
   { key: 'new_lead', label: 'New Internet Leads', description: 'When a new quote request is submitted' },
   { key: 'new_canvasser_lead', label: 'New Canvasser Leads', description: 'When a canvasser submits a new lead' },
   { key: 'lead_assigned', label: 'Lead Assignments', description: 'When a lead is assigned to a rep' },
-  { key: 'flagged_shift', label: 'Flagged Shifts', description: 'When a canvasser shift is flagged' },
+  { key: 'flagged_shift', label: 'Flagged Shifts', description: 'When any team member shift is flagged' },
 ];
 
 interface RoutingEntry {
