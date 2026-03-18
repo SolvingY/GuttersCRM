@@ -104,6 +104,11 @@ const ProductionPointsHistory = lazy(() => import("./pages/production/Production
 const ProductionSettings = lazy(() => import("./pages/production/ProductionSettings"));
 const SavedChecklists = lazy(() => import("./pages/tools/SavedChecklists"));
 
+// Office routes
+const OfficeLayout = lazy(() => import("./pages/office/OfficeLayout"));
+const OfficeDashboard = lazy(() => import("./pages/office/OfficeDashboard"));
+const OfficeSettings = lazy(() => import("./pages/office/OfficeSettings"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
