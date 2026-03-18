@@ -367,7 +367,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
               <span className="font-semibold">You have an open shift</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Clocked in: {format(new Date(activeShift.clock_in_at), "MMM d 'at' h:mm a")}
+              Checked in: {format(new Date(activeShift.clock_in_at), "MMM d 'at' h:mm a")}
             </p>
             <p className="text-sm text-muted-foreground">This shift has been flagged for manager review.</p>
             <Button variant="outline" size="sm" onClick={() => setClockOutModalOpen(true)}>Close Shift</Button>
