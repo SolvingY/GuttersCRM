@@ -1481,8 +1481,8 @@ function RoleShiftManagement({ role, roleLabel }: { role: string; roleLabel: str
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Shift</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Clock In</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Clock Out</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check In (Central Time)</Label><Input type="datetime-local" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Check Out (Central Time)</Label><Input type="datetime-local" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} /></div>
             <div className="space-y-2"><Label>Notes</Label><Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} /></div>
           </div>
           <DialogFooter>
