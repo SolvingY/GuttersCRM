@@ -2952,6 +2952,66 @@ export type Database = {
         }
         Relationships: []
       }
+      role_shifts: {
+        Row: {
+          clock_in_at: string
+          clock_in_lat: number | null
+          clock_in_lng: number | null
+          clock_out_at: string | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
+          created_at: string
+          edited_at: string | null
+          edited_by: string | null
+          flagged_reason: string | null
+          hours_worked: number | null
+          id: string
+          notes: string | null
+          role: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clock_in_at?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
+          created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
+          flagged_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          notes?: string | null
+          role: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clock_in_at?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_at?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
+          created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
+          flagged_reason?: string | null
+          hours_worked?: number | null
+          id?: string
+          notes?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       supplement_jobs: {
         Row: {
           assigned_at: string | null
@@ -3802,7 +3862,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "canvasser" | "supplementer" | "production"
+      app_role:
+        | "admin"
+        | "user"
+        | "canvasser"
+        | "supplementer"
+        | "production"
+        | "office"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3930,7 +3996,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "canvasser", "supplementer", "production"],
+      app_role: [
+        "admin",
+        "user",
+        "canvasser",
+        "supplementer",
+        "production",
+        "office",
+      ],
     },
   },
 } as const
