@@ -155,7 +155,7 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
     );
   };
 
-  const performClockIn = async (loc: { lat: number; lng: number } | null) => {
+  const performClockIn = async (loc: { lat: number; lng: number } | null, outOfZone = false) => {
     if (!user) return;
     try {
       // Safety check — DB index is the real guard, this is a UX safeguard
@@ -173,9 +173,10 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
       const { data, error } = await (supabase.from("production_shifts") as any)
         .insert({
           user_id: user.id,
-          status: "active",
+          status: outOfZone ? "flagged" : "active",
           clock_in_lat: loc?.lat ?? null,
           clock_in_lng: loc?.lng ?? null,
+          flagged_reason: outOfZone ? "Clocked in outside geofence zone" : null,
         })
         .select()
         .single();
@@ -183,8 +184,32 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
       if (error) throw error;
       setActiveShift(data as Shift);
       setElapsed(0);
+      if (outOfZone) setIsFlagged(true);
       toast.success("Clocked in!");
       onShiftChange?.();
+
+      // Send flagged shift notification
+      if (outOfZone) {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .single();
+          const userName = profile?.full_name || "Unknown";
+          await supabase.functions.invoke("notify-flagged-shift", {
+            body: {
+              canvasserId: user.id,
+              canvasserName: userName,
+              clockInAt: data.clock_in_at,
+              hoursOpen: 0,
+              role: "Production",
+            },
+          });
+        } catch (notifyErr) {
+          console.error("Failed to send flagged shift notification:", notifyErr);
+        }
+      }
     } catch (err: any) {
       toast.error("Failed to clock in: " + err.message);
     }
@@ -219,7 +244,7 @@ export function ProductionTimeClockWidget({ onShiftChange }: ProductionTimeClock
   const handleConfirmOutOfZone = async () => {
     setGeofenceWarning(false);
     setClockingIn(true);
-    await performClockIn(pendingClockIn);
+    await performClockIn(pendingClockIn, true);
     setPendingClockIn(null);
     setClockingIn(false);
   };

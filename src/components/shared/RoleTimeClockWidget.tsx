@@ -157,7 +157,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
     );
   };
 
-  const performClockIn = async (loc: { lat: number; lng: number } | null) => {
+  const performClockIn = async (loc: { lat: number; lng: number } | null, outOfZone = false) => {
     if (!user) return;
     try {
       // Check for ANY active shift (role-agnostic, matches unique index)
@@ -176,9 +176,10 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
         .insert({
           user_id: user.id,
           role: role,
-          status: "active",
+          status: outOfZone ? "flagged" : "active",
           clock_in_lat: loc?.lat ?? null,
           clock_in_lng: loc?.lng ?? null,
+          flagged_reason: outOfZone ? "Clocked in outside geofence zone" : null,
         })
         .select()
         .single();
@@ -186,8 +187,33 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
       if (error) throw error;
       setActiveShift(data as Shift);
       setElapsed(0);
+      if (outOfZone) setIsFlagged(true);
       toast.success("Clocked in!");
       onShiftChange?.();
+
+      // Send flagged shift notification
+      if (outOfZone) {
+        try {
+          const roleLabel = role === 'user' ? 'Sales Rep' : role === 'supplementer' ? 'Supplementer' : 'Office';
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .single();
+          const userName = profile?.full_name || "Unknown";
+          await supabase.functions.invoke("notify-flagged-shift", {
+            body: {
+              canvasserId: user.id,
+              canvasserName: userName,
+              clockInAt: data.clock_in_at,
+              hoursOpen: 0,
+              role: roleLabel,
+            },
+          });
+        } catch (notifyErr) {
+          console.error("Failed to send flagged shift notification:", notifyErr);
+        }
+      }
     } catch (err: any) {
       toast.error("Failed to clock in: " + err.message);
     }
@@ -222,7 +248,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
   const handleConfirmOutOfZone = async () => {
     setGeofenceWarning(false);
     setClockingIn(true);
-    await performClockIn(pendingClockIn);
+    await performClockIn(pendingClockIn, true);
     setPendingClockIn(null);
     setClockingIn(false);
   };

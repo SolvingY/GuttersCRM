@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { canvasserId, canvasserName, clockInAt, hoursOpen } = await req.json();
+    const { canvasserId, canvasserName, clockInAt, hoursOpen, role } = await req.json();
 
     if (!canvasserId || !canvasserName) {
       return new Response(
@@ -62,6 +62,11 @@ Deno.serve(async (req) => {
       hour12: true,
     });
 
+    const nameWithRole = role ? `${canvasserName} (${role})` : canvasserName;
+    const reasonLine = hoursOpen === 0
+      ? `<p style="margin: 4px 0;"><strong>Reason:</strong> Clocked in outside geofence zone</p>`
+      : `<p style="margin: 4px 0;"><strong>Hours open:</strong> ${hoursOpen} hours</p>`;
+
     const html = `
 <!DOCTYPE html>
 <html>
@@ -73,11 +78,11 @@ Deno.serve(async (req) => {
   </div>
   <div style="border: 1px solid #eee; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
     <p style="font-size: 16px; margin: 0 0 16px;">
-      <strong>${canvasserName}</strong> has an open shift that has been automatically flagged.
+      <strong>${nameWithRole}</strong> has an open shift that has been automatically flagged.
     </p>
     <div style="background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">
       <p style="margin: 4px 0;"><strong>Clocked in:</strong> ${formattedClockIn}</p>
-      <p style="margin: 4px 0;"><strong>Hours open:</strong> ${hoursOpen} hours</p>
+      ${reasonLine}
     </div>
     <p style="margin: 16px 0; color: #666;">
       Please review and correct this shift in the admin panel.
@@ -104,7 +109,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "Next Generation Roofing <notifications@oknextgen.com>",
         to: recipientEmails,
-        subject: `⚠️ Flagged Shift — ${canvasserName}`,
+        subject: `⚠️ Flagged Shift — ${nameWithRole}`,
         html,
       }),
     });
