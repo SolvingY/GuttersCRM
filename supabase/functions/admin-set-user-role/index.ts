@@ -175,6 +175,7 @@ Deno.serve(async (req) => {
     const hasAdminRole = rolesToSet.includes('admin');
     const hasSupplementerRole = rolesToSet.includes('supplementer');
     const hasProductionRole = rolesToSet.includes('production');
+    const hasOfficeRole = rolesToSet.includes('office');
 
     // For admin-only users (admin but no operational roles), we don't create any metrics
     if (isAdminOnly || (hasAdminRole && !hasSalesRole && !hasCanvasserRole && !hasSupplementerRole && !hasProductionRole)) {
