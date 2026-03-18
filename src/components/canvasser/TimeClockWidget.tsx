@@ -185,7 +185,7 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
     );
   };
 
-  const performClockIn = async (loc: { lat: number; lng: number } | null) => {
+  const performClockIn = async (loc: { lat: number; lng: number } | null, outOfZone = false) => {
     if (!user) return;
     try {
       // Safety check — DB index is the real guard, this is a UX safeguard
@@ -205,9 +205,10 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
         .from("canvasser_shifts")
         .insert({
           canvasser_id: user.id,
-          status: "active",
+          status: outOfZone ? "flagged" : "active",
           clock_in_lat: loc?.lat ?? null,
           clock_in_lng: loc?.lng ?? null,
+          flagged_reason: outOfZone ? "Clocked in outside geofence zone" : null,
         } as any)
         .select()
         .single();
@@ -215,8 +216,32 @@ export function TimeClockWidget({ onShiftChange }: TimeClockWidgetProps) {
       if (error) throw error;
       setActiveShift(data as Shift);
       setElapsed(0);
+      if (outOfZone) setIsFlagged(true);
       toast.success("Clocked in!");
       onShiftChange?.();
+
+      // Send flagged shift notification
+      if (outOfZone) {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .single();
+          const canvasserName = profile?.full_name || "Unknown";
+          await supabase.functions.invoke("notify-flagged-shift", {
+            body: {
+              canvasserId: user.id,
+              canvasserName,
+              clockInAt: data.clock_in_at,
+              hoursOpen: 0,
+              role: "Canvasser",
+            },
+          });
+        } catch (notifyErr) {
+          console.error("Failed to send flagged shift notification:", notifyErr);
+        }
+      }
     } catch (err: any) {
       toast.error("Failed to clock in: " + err.message);
     }
