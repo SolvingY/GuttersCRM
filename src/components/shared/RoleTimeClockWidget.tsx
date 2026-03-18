@@ -168,7 +168,7 @@ export function RoleTimeClockWidget({ role, onShiftChange }: RoleTimeClockWidget
         .maybeSingle();
 
       if (existingShift) {
-        toast.error('You already have an active shift. Please clock out before starting a new shift.');
+        toast.error('You already have an active shift. Please check out before starting a new shift.');
         return;
       }
 
