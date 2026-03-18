@@ -898,9 +898,9 @@ export default function AdminTimeClock() {
                       return (
                         <tr key={shift.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                           <td className="py-2 px-3 text-foreground font-medium text-sm">{getCanvasserName(shift.canvasser_id)}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'MMM d')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{format(new Date(shift.clock_in_at), 'h:mm a')}</td>
-                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? format(new Date(shift.clock_out_at), 'h:mm a') : '--'}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'date')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{formatCentralTime(shift.clock_in_at, 'time')}</td>
+                          <td className="py-2 px-3 text-sm text-foreground">{shift.clock_out_at ? formatCentralTime(shift.clock_out_at, 'time') : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{hrs != null ? `${hrs}h` : '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{shift.doors_knocked || '--'}</td>
                           <td className="py-2 px-3 text-sm text-right text-foreground">{shift.conversations_had || '--'}</td>
