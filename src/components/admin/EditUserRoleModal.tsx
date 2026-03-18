@@ -143,6 +143,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
         if (isCanvasser) roleNames.push(`Canvasser (${canvasserRank})`);
         if (isSupplementer) roleNames.push('Supplementer');
         if (isProduction) roleNames.push('Production');
+        if (isOffice) roleNames.push('Office');
       }
 
       toast({
