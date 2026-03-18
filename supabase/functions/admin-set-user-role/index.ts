@@ -84,11 +84,11 @@ Deno.serve(async (req) => {
     }
 
     // Validate roles - now including 'admin' and 'supplementer' as valid
-    const validRoles = ['user', 'canvasser', 'admin', 'supplementer', 'production'];
+    const validRoles = ['user', 'canvasser', 'admin', 'supplementer', 'production', 'office'];
     for (const role of rolesToSet) {
       if (!validRoles.includes(role)) {
         return new Response(
-          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', 'supplementer', or 'production'` }),
+          JSON.stringify({ error: `Invalid role: ${role}. Must be 'user', 'canvasser', 'admin', 'supplementer', 'production', or 'office'` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
