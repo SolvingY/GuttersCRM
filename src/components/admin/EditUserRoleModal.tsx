@@ -51,6 +51,7 @@ export function EditUserRoleModal({ open, onOpenChange, user, onSuccess }: EditU
   const [isCanvasser, setIsCanvasser] = useState(false);
   const [isSupplementer, setIsSupplementer] = useState(false);
   const [isProduction, setIsProduction] = useState(false);
+  const [isOffice, setIsOffice] = useState(false);
   const [salesRank, setSalesRank] = useState<string>('SR1');
   const [canvasserRank, setCanvasserRank] = useState<string>('C1');
   const [hiddenFromLeaderboard, setHiddenFromLeaderboard] = useState(false);
