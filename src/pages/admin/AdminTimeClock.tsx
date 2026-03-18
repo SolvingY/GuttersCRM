@@ -391,7 +391,9 @@ export default function AdminTimeClock() {
     setSavingShift(true);
     try {
       const oldHours = Number(selectedShift.hours_worked) || 0;
-      const newHours = Math.round(((new Date(shiftClockOut).getTime() - new Date(shiftClockIn).getTime()) / 3600000) * 4) / 4;
+      const clockInUTC = centralLocalToUTC(shiftClockIn);
+      const clockOutUTC = centralLocalToUTC(shiftClockOut);
+      const newHours = Math.round(((new Date(clockOutUTC).getTime() - new Date(clockInUTC).getTime()) / 3600000) * 4) / 4;
       const newDoors = parseInt(shiftDoors) || 0;
       const newConvos = parseInt(shiftConvos) || 0;
       const newNotInterested = parseInt(shiftNotInterested) || 0;
