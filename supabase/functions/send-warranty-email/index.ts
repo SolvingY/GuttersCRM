@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { clientName, clientEmail, quoteAmount, referenceNumber, installDate, completedAt, protectionProduct } = await req.json();
+    const { clientName, clientEmail, quoteAmount, referenceNumber, installDate, completedAt, protectionProduct, protectionWarrantyYears } = await req.json();
 
     if (!clientEmail || !clientName) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -40,20 +40,26 @@ Deno.serve(async (req) => {
       });
     };
 
-    // Protection warranty section based on product
+    // Protection warranty section. Prefer the explicit years resolved by the
+    // caller from the shared warrantyTerms mapping (the single source of truth
+    // that also drives the signed contract), so the email can never
+    // under-promise relative to the contract. Fall back to string-matching only
+    // for older callers that don't send protectionWarrantyYears.
+    let years: number | null = null;
+    if (typeof protectionWarrantyYears === "number") {
+      years = protectionWarrantyYears;
+    } else {
+      const normalizedProduct = (protectionProduct || "").toLowerCase().trim();
+      if (!normalizedProduct || normalizedProduct.includes("cheap mesh")) years = null;
+      else if (normalizedProduct.includes("gutter rx")) years = 10;
+      else if (normalizedProduct) years = 45;
+    }
+
     let protectionWarrantyHtml = "";
-    const normalizedProduct = (protectionProduct || "").toLowerCase().trim();
-    
-    if (normalizedProduct.includes("hydro flow") || normalizedProduct.includes("pro flo")) {
+    if (years) {
       protectionWarrantyHtml = `
       <div style="padding: 12px 0; border-bottom: 1px solid #eee;">
-        <p style="margin: 0; color: #2e7d32;">✓ <strong>45-Year Manufacturer Warranty on Gutter Protection</strong></p>
-        <p style="margin: 4px 0 0 20px; font-size: 13px; color: #666;">Check full manufacturer documentation for complete terms.</p>
-      </div>`;
-    } else if (normalizedProduct.includes("gutter rx")) {
-      protectionWarrantyHtml = `
-      <div style="padding: 12px 0; border-bottom: 1px solid #eee;">
-        <p style="margin: 0; color: #2e7d32;">✓ <strong>10-Year Manufacturer Warranty on Gutter Protection</strong></p>
+        <p style="margin: 0; color: #2e7d32;">✓ <strong>${years}-Year Manufacturer Warranty on Gutter Protection</strong></p>
         <p style="margin: 4px 0 0 20px; font-size: 13px; color: #666;">Check full manufacturer documentation for complete terms.</p>
       </div>`;
     }
@@ -137,6 +143,14 @@ Deno.serve(async (req) => {
     });
 
     const result = await res.json();
+
+    if (!res.ok) {
+      console.error("Resend send failed:", res.status, result);
+      return new Response(JSON.stringify({ error: "Email send failed", details: result }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

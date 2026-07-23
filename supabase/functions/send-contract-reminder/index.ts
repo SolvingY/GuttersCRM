@@ -26,9 +26,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    const nowIso = new Date().toISOString();
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
-    // Get stale contracts (sent > 48 hours ago, not yet signed)
+    // Get stale contracts: sent > 48 hours ago, not yet signed, and whose
+    // signing link has not expired. The expiry guard keeps a daily cron from
+    // reminding customers about a dead link indefinitely.
     const { data: staleContracts, error: queryError } = await supabaseAdmin
       .from("lead_forms")
       .select(`
@@ -37,7 +40,8 @@ Deno.serve(async (req) => {
       `)
       .eq("form_type", "contract")
       .eq("status", "sent")
-      .lt("sent_for_signing_at", fortyEightHoursAgo);
+      .lt("sent_for_signing_at", fortyEightHoursAgo)
+      .gt("token_expires_at", nowIso);
 
     if (queryError) {
       console.error("Query error:", queryError);
@@ -124,7 +128,7 @@ Deno.serve(async (req) => {
 </html>`;
 
       try {
-        await fetch("https://api.resend.com/emails", {
+        const reminderRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -138,7 +142,11 @@ Deno.serve(async (req) => {
             html,
           }),
         });
-        sentCount++;
+        if (reminderRes.ok) {
+          sentCount++;
+        } else {
+          console.error(`Failed to send reminder to ${lead.email}:`, reminderRes.status, await reminderRes.text());
+        }
       } catch (emailErr) {
         console.error(`Failed to send reminder to ${lead.email}:`, emailErr);
       }

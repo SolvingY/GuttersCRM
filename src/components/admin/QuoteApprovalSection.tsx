@@ -198,7 +198,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         }
       }
 
-      // 6. Auto-set lead status to Won (with _silent flag to prevent duplicate notification)
+      // 6. Auto-set lead status to Won
       await supabase.from("quote_requests").update({
         status: "won",
         won_at: new Date().toISOString(),
@@ -212,8 +212,32 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         content: "Quote approved — lead automatically marked as Won",
       });
 
+      // Fire the deal-won notification. This path bypasses the status-dropdown
+      // handler that normally sends it, so without this the most common win
+      // path (quote approval) never triggered the deal-won alert.
+      let repName = "Unknown";
+      if (lead.assigned_to) {
+        const { data: repProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", lead.assigned_to)
+          .single();
+        if (repProfile?.full_name) repName = repProfile.full_name;
+      }
+      const { error: dealWonError } = await supabase.functions.invoke("notify-deal-won", {
+        body: {
+          leadId: lead.id,
+          customerName: lead.full_name,
+          quoteAmount: lead.quote_amount,
+          serviceType: lead.service_type,
+          repName,
+          leadSource: (lead as any).lead_source || "internet",
+        },
+      });
+      if (dealWonError) console.error("notify-deal-won failed:", dealWonError);
+
       // 7. Call edge function to send email
-      await supabase.functions.invoke("send-quote-approval-email", {
+      const { error: emailError } = await supabase.functions.invoke("send-quote-approval-email", {
         body: {
           clientName: lead.full_name,
           clientEmail: lead.email,
@@ -229,7 +253,15 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       queryClient.invalidateQueries({ queryKey: ["lead-detail", lead.id] });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
       queryClient.invalidateQueries({ queryKey: ["lead-files", lead.id] });
-      toast({ title: "Quote approved, lead marked Won, estimate emailed to customer" });
+      if (emailError) {
+        toast({
+          title: "Quote approved, lead marked Won",
+          description: "But the estimate email failed to send — please send it to the customer manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Quote approved, lead marked Won, estimate emailed to customer" });
+      }
     } catch (err: any) {
       console.error("Approval failed:", err);
       toast({ title: "Approval failed", description: err.message, variant: "destructive" });

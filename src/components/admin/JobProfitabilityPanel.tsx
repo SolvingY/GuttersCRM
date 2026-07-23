@@ -58,6 +58,22 @@ export default function JobProfitabilityPanel({
     },
   });
 
+  // Actual revenue collected from the customer, so profit can be reconciled
+  // against money in the door rather than only the quoted price.
+  const { data: collectedRevenue = 0 } = useQuery({
+    queryKey: ["job-collected-revenue", leadId],
+    queryFn: async () => {
+      if (!leadId) return 0;
+      const { data, error } = await supabase
+        .from("lead_payments")
+        .select("amount")
+        .eq("lead_id", leadId);
+      if (error) throw error;
+      return (data || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+    },
+    enabled: !!leadId,
+  });
+
   useEffect(() => {
     if (existing) {
       setMaterialCost(Number(existing.material_cost) || 0);
@@ -74,6 +90,10 @@ export default function JobProfitabilityPanel({
 
   const marginPct = useMemo(() =>
     quotedPrice > 0 ? Math.round(((grossProfit) / quotedPrice) * 10000) / 100 : 0, [grossProfit, quotedPrice]);
+
+  const collectedProfit = useMemo(() =>
+    collectedRevenue - commission - materialCost - laborCost - otherCosts,
+    [collectedRevenue, commission, materialCost, laborCost, otherCosts]);
 
   const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -290,6 +310,17 @@ export default function JobProfitabilityPanel({
           <span>MARGIN</span>
           <span className={cn(grossProfit >= 0 ? "text-green-600" : "text-destructive")}>{marginPct}%</span>
         </div>
+        <hr className="border-border my-2" />
+        <div className="flex justify-between"><span>COLLECTED TO DATE</span><span>${fmt(collectedRevenue)}</span></div>
+        <div className="flex justify-between font-bold">
+          <span>PROFIT (ON COLLECTED)</span>
+          <span className={cn(collectedProfit >= 0 ? "text-green-600" : "text-destructive")}>${fmt(collectedProfit)}</span>
+        </div>
+        {collectedRevenue < quotedPrice && (
+          <div className="text-xs text-muted-foreground pt-1" style={{ fontFamily: "system-ui, sans-serif" }}>
+            Uncollected balance: ${fmt(quotedPrice - collectedRevenue)}. "Gross profit" above is projected on the full quoted price; "profit on collected" reflects money actually received.
+          </div>
+        )}
       </div>
 
       {/* Invoice upload */}

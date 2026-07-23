@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { clientName, clientEmail, serviceType, referenceNumber, quoteAmount } = await req.json();
+    const { clientName, clientEmail, serviceType, referenceNumber, quoteAmount, type } = await req.json();
 
     if (!clientEmail || !clientName || !referenceNumber) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -42,6 +42,81 @@ Deno.serve(async (req) => {
 
     const serviceLabel = serviceLabels[serviceType] || serviceType;
     const formattedAmount = quoteAmount ? formatCurrency(quoteAmount) : null;
+
+    // Intake confirmation: a web-form submission has no quote yet, so the
+    // generic quote template ("here is your quote: contact us for pricing")
+    // was misleading. type === "received" sends a proper request-received
+    // confirmation instead, with neutral branding for gutters or roofing.
+    if (type === "received") {
+      const receivedHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <div style="background: #000; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+    <h1 style="color: #fff; font-size: 24px; margin: 0;">Next Generation Roofing &amp; Guttering</h1>
+    <p style="color: #2e7d32; font-size: 14px; margin: 8px 0 0;">Request Received</p>
+  </div>
+  <div style="border: 1px solid #eee; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+    <p>Dear ${clientName},</p>
+    <p>Thank you for reaching out to Next Generation. We've received your request and a member of our team will contact you shortly to discuss the details and schedule your free evaluation.</p>
+
+    <div style="background: #fafafa; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2e7d32;">
+      <p style="margin: 4px 0;"><strong>Service:</strong> ${serviceLabel}</p>
+      <p style="margin: 4px 0;"><strong>Reference #:</strong> ${referenceNumber}</p>
+      <p style="margin: 4px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+    </div>
+
+    <h3 style="color: #000;">What happens next?</h3>
+    <ul style="padding-left: 20px;">
+      <li>A team member will reach out to confirm the details of your request</li>
+      <li>We'll schedule a free evaluation at a time that works for you</li>
+      <li>You'll receive your custom quote after the evaluation</li>
+    </ul>
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="tel:4057248092" style="display: inline-block; background: #2e7d32; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;">Call Us: (405) 724-8092</a>
+    </div>
+
+    <p style="font-size: 13px; color: #666;">Keep your reference number handy for any questions about your request.</p>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+    <p style="font-size: 12px; color: #999; text-align: center;">
+      Next Generation Roofing &amp; Guttering • Oklahoma's Premier Team<br>
+      Veteran-Operated &amp; Supported
+    </p>
+  </div>
+</body>
+</html>`;
+
+      const receivedRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: "Next Generation <notifications@oknextgen.com>",
+          to: [clientEmail],
+          subject: `We received your request — Ref #${referenceNumber}`,
+          html: receivedHtml,
+        }),
+      });
+
+      const receivedResult = await receivedRes.json();
+
+      if (!receivedRes.ok) {
+        console.error("Resend send failed:", receivedRes.status, receivedResult);
+        return new Response(JSON.stringify({ error: "Email send failed", details: receivedResult }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, result: receivedResult }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const html = `
 <!DOCTYPE html>
@@ -110,6 +185,14 @@ Deno.serve(async (req) => {
     });
 
     const result = await res.json();
+
+    if (!res.ok) {
+      console.error("Resend send failed:", res.status, result);
+      return new Response(JSON.stringify({ error: "Email send failed", details: result }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, result, html }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

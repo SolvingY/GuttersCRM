@@ -95,7 +95,7 @@ export default function SignContract() {
 
       if (error) throw error;
 
-      await supabase.functions.invoke("notify-contract-signed", {
+      const { error: notifyError } = await supabase.functions.invoke("notify-contract-signed", {
         body: {
           formId: form.id,
           leadId: form.lead_id,
@@ -103,6 +103,26 @@ export default function SignContract() {
           signedAt: new Date().toISOString(),
         },
       });
+      if (notifyError) {
+        // The signature is saved; this only affects the internal status advance + rep alert.
+        console.error("notify-contract-signed failed:", notifyError);
+      }
+
+      // Send the customer their signed-contract confirmation copy. The remote
+      // signing path previously only notified the rep, even though the success
+      // screen promises the customer a copy by email (the in-person path sends
+      // this, so remote signers were the only ones left out).
+      if (lead?.email) {
+        const { error: confirmError } = await supabase.functions.invoke("send-signed-contract-confirmation", {
+          body: {
+            clientName: signedName || lead.full_name,
+            clientEmail: lead.email,
+            contractAmount: (form?.form_data as any)?.contractPrice ?? lead.quote_amount,
+            signedDate: new Date().toISOString(),
+          },
+        });
+        if (confirmError) console.error("send-signed-contract-confirmation failed:", confirmError);
+      }
 
       // Auto-generate and upload PDF for remote signing
       if (form.lead_id && form.created_by) {

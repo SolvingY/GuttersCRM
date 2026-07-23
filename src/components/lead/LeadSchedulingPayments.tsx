@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { CalendarCheck, DollarSign, CheckCircle, Loader2, Plus } from "lucide-react";
+import { protectionWarrantyYears } from "@/lib/warrantyTerms";
 
 interface LeadSchedulingPaymentsProps {
   lead: any;
@@ -115,7 +116,7 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
       });
 
       // Send confirmation email
-      await supabase.functions.invoke("send-install-confirmation", {
+      const { error: emailError } = await supabase.functions.invoke("send-install-confirmation", {
         body: {
           clientName: lead.full_name,
           clientEmail: lead.email,
@@ -127,7 +128,15 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
         },
       });
 
-      toast({ title: "Installation scheduled", description: "Confirmation email sent to customer" });
+      if (emailError) {
+        toast({
+          title: "Installation scheduled",
+          description: "But the confirmation email failed to send — please notify the customer manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Installation scheduled", description: "Confirmation email sent to customer" });
+      }
       onLeadUpdate();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -167,7 +176,32 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
         content: `Payment received: $${amount.toFixed(2)} via ${methodLabel}`,
       });
 
-      toast({ title: "Payment logged" });
+      // Email the customer a receipt. The payments query hasn't refetched yet,
+      // so compute the new running totals from the current values.
+      const newTotalPaid = totalPaid + amount;
+      const newBalanceDue = quoteAmount - newTotalPaid;
+      if (lead.email) {
+        const { error: receiptError } = await supabase.functions.invoke("send-payment-receipt", {
+          body: {
+            clientName: lead.full_name,
+            clientEmail: lead.email,
+            amount,
+            paymentMethod: methodLabel,
+            paymentDate,
+            referenceNumber: lead.reference_number,
+            paymentRef: paymentRef || null,
+            totalPaid: newTotalPaid,
+            balanceDue: newBalanceDue,
+            quoteAmount,
+          },
+        });
+        if (receiptError) console.error("send-payment-receipt failed:", receiptError);
+      }
+
+      toast({
+        title: "Payment logged",
+        description: lead.email ? "Receipt emailed to customer" : undefined,
+      });
       setPaymentAmount("");
       setPaymentRef("");
       setPaymentDate(new Date().toISOString().split("T")[0]);
@@ -202,7 +236,7 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
       if (error) throw error;
 
       // Send warranty email
-      await supabase.functions.invoke("send-warranty-email", {
+      const { error: warrantyError } = await supabase.functions.invoke("send-warranty-email", {
         body: {
           clientName: lead.full_name,
           clientEmail: lead.email,
@@ -211,6 +245,7 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
           installDate: lead.install_date,
           completedAt,
           protectionProduct,
+          protectionWarrantyYears: protectionWarrantyYears(protectionProduct),
         },
       });
 
@@ -218,10 +253,20 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
         lead_id: lead.id,
         user_id: user?.id,
         activity_type: "closeout",
-        content: "Job closed — warranty documents sent to customer",
+        content: warrantyError
+          ? "Job closed — warranty email FAILED to send (send manually)"
+          : "Job closed — warranty documents sent to customer",
       });
 
-      toast({ title: "Job closed!", description: "Warranty documents sent to customer." });
+      if (warrantyError) {
+        toast({
+          title: "Job closed",
+          description: "But the warranty email failed to send — please send it to the customer manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Job closed!", description: "Warranty documents sent to customer." });
+      }
       onLeadUpdate();
       queryClient.invalidateQueries({ queryKey: ["lead-activities", lead.id] });
     } catch (err: any) {
