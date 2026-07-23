@@ -95,7 +95,7 @@ export default function SignContract() {
 
       if (error) throw error;
 
-      await supabase.functions.invoke("notify-contract-signed", {
+      const { error: notifyError } = await supabase.functions.invoke("notify-contract-signed", {
         body: {
           formId: form.id,
           leadId: form.lead_id,
@@ -103,6 +103,10 @@ export default function SignContract() {
           signedAt: new Date().toISOString(),
         },
       });
+      if (notifyError) {
+        // The signature is saved; this only affects the internal status advance + rep alert.
+        console.error("notify-contract-signed failed:", notifyError);
+      }
 
       // Auto-generate and upload PDF for remote signing
       if (form.lead_id && form.created_by) {

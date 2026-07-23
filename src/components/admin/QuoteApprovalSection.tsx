@@ -213,7 +213,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       });
 
       // 7. Call edge function to send email
-      await supabase.functions.invoke("send-quote-approval-email", {
+      const { error: emailError } = await supabase.functions.invoke("send-quote-approval-email", {
         body: {
           clientName: lead.full_name,
           clientEmail: lead.email,
@@ -229,7 +229,15 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
       queryClient.invalidateQueries({ queryKey: ["lead-detail", lead.id] });
       queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
       queryClient.invalidateQueries({ queryKey: ["lead-files", lead.id] });
-      toast({ title: "Quote approved, lead marked Won, estimate emailed to customer" });
+      if (emailError) {
+        toast({
+          title: "Quote approved, lead marked Won",
+          description: "But the estimate email failed to send — please send it to the customer manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Quote approved, lead marked Won, estimate emailed to customer" });
+      }
     } catch (err: any) {
       console.error("Approval failed:", err);
       toast({ title: "Approval failed", description: err.message, variant: "destructive" });

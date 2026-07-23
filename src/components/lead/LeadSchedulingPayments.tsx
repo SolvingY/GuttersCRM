@@ -115,7 +115,7 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
       });
 
       // Send confirmation email
-      await supabase.functions.invoke("send-install-confirmation", {
+      const { error: emailError } = await supabase.functions.invoke("send-install-confirmation", {
         body: {
           clientName: lead.full_name,
           clientEmail: lead.email,
@@ -127,7 +127,15 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
         },
       });
 
-      toast({ title: "Installation scheduled", description: "Confirmation email sent to customer" });
+      if (emailError) {
+        toast({
+          title: "Installation scheduled",
+          description: "But the confirmation email failed to send — please notify the customer manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Installation scheduled", description: "Confirmation email sent to customer" });
+      }
       onLeadUpdate();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -202,7 +210,7 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
       if (error) throw error;
 
       // Send warranty email
-      await supabase.functions.invoke("send-warranty-email", {
+      const { error: warrantyError } = await supabase.functions.invoke("send-warranty-email", {
         body: {
           clientName: lead.full_name,
           clientEmail: lead.email,
@@ -218,10 +226,20 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
         lead_id: lead.id,
         user_id: user?.id,
         activity_type: "closeout",
-        content: "Job closed — warranty documents sent to customer",
+        content: warrantyError
+          ? "Job closed — warranty email FAILED to send (send manually)"
+          : "Job closed — warranty documents sent to customer",
       });
 
-      toast({ title: "Job closed!", description: "Warranty documents sent to customer." });
+      if (warrantyError) {
+        toast({
+          title: "Job closed",
+          description: "But the warranty email failed to send — please send it to the customer manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Job closed!", description: "Warranty documents sent to customer." });
+      }
       onLeadUpdate();
       queryClient.invalidateQueries({ queryKey: ["lead-activities", lead.id] });
     } catch (err: any) {

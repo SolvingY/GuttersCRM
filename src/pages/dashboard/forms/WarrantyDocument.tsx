@@ -96,7 +96,7 @@ export default function WarrantyDocument() {
     setSendingEmail(true);
     try {
       const protectionProduct = estimate?.protection_product || "Standard";
-      await supabase.functions.invoke("send-warranty-email", {
+      const { error: emailError } = await supabase.functions.invoke("send-warranty-email", {
         body: {
           clientName: homeownerName,
           clientEmail: lead.email,
@@ -107,6 +107,7 @@ export default function WarrantyDocument() {
           protectionProduct,
         },
       });
+      if (emailError) throw emailError;
       toast({ title: "Warranty email sent to homeowner" });
     } catch (err: any) {
       console.error("Warranty email failed:", err);
