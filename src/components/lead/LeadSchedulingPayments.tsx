@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { CalendarCheck, DollarSign, CheckCircle, Loader2, Plus } from "lucide-react";
+import { protectionWarrantyYears } from "@/lib/warrantyTerms";
 
 interface LeadSchedulingPaymentsProps {
   lead: any;
@@ -219,6 +220,7 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
           installDate: lead.install_date,
           completedAt,
           protectionProduct,
+          protectionWarrantyYears: protectionWarrantyYears(protectionProduct),
         },
       });
 

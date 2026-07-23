@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, ChevronDown, ChevronRight, Mail } from "lucide-reac
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { protectionWarrantyYears } from "@/lib/warrantyTerms";
 
 export default function WarrantyDocument() {
   const { id } = useParams();
@@ -105,6 +106,7 @@ export default function WarrantyDocument() {
           installDate,
           completedAt: lead.completed_at || new Date().toISOString(),
           protectionProduct,
+          protectionWarrantyYears: protectionWarrantyYears(estimate?.protection_product),
         },
       });
       if (emailError) throw emailError;

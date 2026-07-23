@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { protectionWarrantyYears } from "@/lib/warrantyTerms";
 
 interface GutterContractProps {
   lead?: any;
@@ -154,13 +155,9 @@ export default function GutterContract({
         if (estimate.protection_product && (estimate.protection_footage ?? 0) > 0) {
           lines.push("");
           lines.push(`${estimate.protection_product}${protPrice ? ` — ${protPrice}` : ""}`);
-          const prod = estimate.protection_product || "";
-          if (prod.includes("Cheap Mesh")) {
-            // no warranty
-          } else if (prod.includes("Gutter RX Collector")) {
-            lines.push("  • 10-Year Manufacturer Warranty");
-          } else {
-            lines.push("  • 45-Year Manufacturer Warranty");
+          const protYears = protectionWarrantyYears(estimate.protection_product);
+          if (protYears) {
+            lines.push(`  • ${protYears}-Year Manufacturer Warranty`);
           }
         }
         setScopeOfWork(lines.join("\n"));
