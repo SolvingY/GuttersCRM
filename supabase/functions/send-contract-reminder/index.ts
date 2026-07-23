@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
 </html>`;
 
       try {
-        await fetch("https://api.resend.com/emails", {
+        const reminderRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -138,7 +138,11 @@ Deno.serve(async (req) => {
             html,
           }),
         });
-        sentCount++;
+        if (reminderRes.ok) {
+          sentCount++;
+        } else {
+          console.error(`Failed to send reminder to ${lead.email}:`, reminderRes.status, await reminderRes.text());
+        }
       } catch (emailErr) {
         console.error(`Failed to send reminder to ${lead.email}:`, emailErr);
       }

@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-        await fetch("https://api.resend.com/emails", {
+        const repRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -135,6 +135,10 @@ Deno.serve(async (req) => {
             html,
           }),
         });
+        if (!repRes.ok) {
+          // Status update already succeeded; the rep notification is best-effort. Log, don't fail.
+          console.error("Rep contract-signed email failed:", repRes.status, await repRes.text());
+        }
       }
     }
 
