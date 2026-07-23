@@ -76,6 +76,7 @@ export default function GetQuote() {
               clientEmail: contactData.email.trim(),
               serviceType,
               referenceNumber: refNumber,
+              type: "received",
             },
           }),
           supabase.functions.invoke("notify-new-lead", {
