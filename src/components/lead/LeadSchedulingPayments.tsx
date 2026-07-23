@@ -176,7 +176,32 @@ export function LeadSchedulingPayments({ lead, onLeadUpdate }: LeadSchedulingPay
         content: `Payment received: $${amount.toFixed(2)} via ${methodLabel}`,
       });
 
-      toast({ title: "Payment logged" });
+      // Email the customer a receipt. The payments query hasn't refetched yet,
+      // so compute the new running totals from the current values.
+      const newTotalPaid = totalPaid + amount;
+      const newBalanceDue = quoteAmount - newTotalPaid;
+      if (lead.email) {
+        const { error: receiptError } = await supabase.functions.invoke("send-payment-receipt", {
+          body: {
+            clientName: lead.full_name,
+            clientEmail: lead.email,
+            amount,
+            paymentMethod: methodLabel,
+            paymentDate,
+            referenceNumber: lead.reference_number,
+            paymentRef: paymentRef || null,
+            totalPaid: newTotalPaid,
+            balanceDue: newBalanceDue,
+            quoteAmount,
+          },
+        });
+        if (receiptError) console.error("send-payment-receipt failed:", receiptError);
+      }
+
+      toast({
+        title: "Payment logged",
+        description: lead.email ? "Receipt emailed to customer" : undefined,
+      });
       setPaymentAmount("");
       setPaymentRef("");
       setPaymentDate(new Date().toISOString().split("T")[0]);
