@@ -376,7 +376,8 @@ function UnassignedCanvasserQueue({ salesReps }: { salesReps: any[] }) {
   });
 
   const assignMutation = useMutation({
-    mutationFn: async ({ leadId, repId }: { leadId: string; repId: string }) => {
+    mutationFn: async ({ lead, repId, repName }: { lead: any; repId: string; repName: string }) => {
+      const leadId = lead.id;
       const { error } = await supabase.from("quote_requests").update({
         assigned_to: repId, assigned_at: new Date().toISOString(), assigned_by: user?.id,
       }).eq("id", leadId);
@@ -385,6 +386,24 @@ function UnassignedCanvasserQueue({ salesReps }: { salesReps: any[] }) {
         lead_id: leadId, user_id: user?.id, activity_type: "assignment",
         content: `Lead assigned by manager`,
       });
+      // Notify the assigned rep. The lead-detail assignment path sends this,
+      // but assigning from this queue previously did not — reps got no alert.
+      supabase.functions.invoke("notify-lead-assigned", {
+        body: {
+          clientName: lead.full_name,
+          clientEmail: lead.email,
+          clientPhone: lead.phone,
+          serviceType: lead.service_type,
+          referenceNumber: lead.reference_number,
+          streetAddress: lead.street_address,
+          city: lead.city,
+          state: lead.state,
+          zipCode: lead.zip_code,
+          leadId,
+          assignedRepName: repName || "Unknown",
+          assignedRepUserId: repId,
+        },
+      }).catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unassigned-canvasser-leads"] });
@@ -443,7 +462,7 @@ function UnassignedCanvasserQueue({ salesReps }: { salesReps: any[] }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Select onValueChange={(repId) => assignMutation.mutate({ leadId: lead.id, repId })}>
+                <Select onValueChange={(repId) => assignMutation.mutate({ lead, repId, repName: salesReps.find((r: any) => r.user_id === repId)?.display_name || "Unknown" })}>
                   <SelectTrigger className="w-[200px] text-xs"><SelectValue placeholder="Assign to Rep..." /></SelectTrigger>
                   <SelectContent>
                     {salesReps.map((rep: any) => (
