@@ -348,8 +348,12 @@ export default function LeadDetailView() {
             const updates: Record<string, any> = { status: v };
             if (v === "contacted" && !lead.contacted_at) updates.contacted_at = new Date().toISOString();
             if (v === "quoted" && !lead.quoted_at) updates.quoted_at = new Date().toISOString();
-            if (v === "won") updates.won_at = new Date().toISOString();
+            if (v === "won" && !lead.won_at) updates.won_at = new Date().toISOString();
             if (v === "scheduled" && !lead.won_at) updates.won_at = new Date().toISOString();
+            // Stamp terminal-status timestamps so the metrics-reversal triggers
+            // fire. Use the Lost/Cancelled buttons to also capture a reason.
+            if (v === "lost" && !lead.lost_at) updates.lost_at = new Date().toISOString();
+            if (v === "cancelled" && !lead.cancelled_at) updates.cancelled_at = new Date().toISOString();
             updateLead.mutate(updates);
           }}>
             <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
