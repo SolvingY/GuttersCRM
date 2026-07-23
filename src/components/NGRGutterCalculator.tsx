@@ -381,6 +381,16 @@ export default function NGRGutterCalculator({ lead = null, onSave, existingEstim
       if (error) throw error;
       if (data?.id) setEstimateId(data.id);
 
+      // Keep the lead's quote_amount in sync with the estimate's quoted price so
+      // the pipeline has a single source of truth for "the quote" — previously
+      // the rep had to re-type the amount into the approval form separately.
+      if (lead?.id) {
+        await supabase
+          .from("quote_requests")
+          .update({ quote_amount: clampedQuoted })
+          .eq("id", lead.id);
+      }
+
       toast.success(estimateId ? "Estimate updated!" : "Estimate saved successfully!");
       if (onSave) onSave(estimatePayload);
     } catch (err: any) {
