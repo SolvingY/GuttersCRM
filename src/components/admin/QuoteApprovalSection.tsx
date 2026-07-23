@@ -198,7 +198,7 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         }
       }
 
-      // 6. Auto-set lead status to Won (with _silent flag to prevent duplicate notification)
+      // 6. Auto-set lead status to Won
       await supabase.from("quote_requests").update({
         status: "won",
         won_at: new Date().toISOString(),
@@ -211,6 +211,30 @@ export function QuoteApprovalSection({ lead, isAdmin }: QuoteApprovalSectionProp
         activity_type: "status_change",
         content: "Quote approved — lead automatically marked as Won",
       });
+
+      // Fire the deal-won notification. This path bypasses the status-dropdown
+      // handler that normally sends it, so without this the most common win
+      // path (quote approval) never triggered the deal-won alert.
+      let repName = "Unknown";
+      if (lead.assigned_to) {
+        const { data: repProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", lead.assigned_to)
+          .single();
+        if (repProfile?.full_name) repName = repProfile.full_name;
+      }
+      const { error: dealWonError } = await supabase.functions.invoke("notify-deal-won", {
+        body: {
+          leadId: lead.id,
+          customerName: lead.full_name,
+          quoteAmount: lead.quote_amount,
+          serviceType: lead.service_type,
+          repName,
+          leadSource: (lead as any).lead_source || "internet",
+        },
+      });
+      if (dealWonError) console.error("notify-deal-won failed:", dealWonError);
 
       // 7. Call edge function to send email
       const { error: emailError } = await supabase.functions.invoke("send-quote-approval-email", {
