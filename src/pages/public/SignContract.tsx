@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import GutterContract from "@/pages/dashboard/forms/GutterContract";
 import { generateAndUploadContractPDF } from "@/lib/generateContractPDF";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function SignContract() {
   const { token } = useParams();
@@ -16,6 +17,8 @@ export default function SignContract() {
   const [signing, setSigning] = useState(false);
   const [tokenExpired, setTokenExpired] = useState(false);
   const [alreadySigned, setAlreadySigned] = useState(false);
+
+  usePageTitle("Contract Review & Signature | Next Generation Guttering");
 
   useEffect(() => {
     const loadForm = async () => {
@@ -147,17 +150,18 @@ export default function SignContract() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <span className="sr-only">Loading contract…</span>
       </div>
     );
   }
 
   if (tokenExpired) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <main className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="max-w-md text-center space-y-4">
-          <div className="text-5xl">⚠️</div>
+          <div className="text-5xl" aria-hidden="true">⚠️</div>
           <h1 className="text-2xl font-bold">This signing link has expired or is invalid.</h1>
           <p className="text-muted-foreground">Please contact your representative to request a new link.</p>
           <div className="pt-4 text-sm text-muted-foreground">
@@ -165,15 +169,15 @@ export default function SignContract() {
             <p>(405) 724-8092 • www.OKNEXTGEN.com</p>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (alreadySigned) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <main className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="max-w-md text-center space-y-4">
-          <div className="text-5xl">✅</div>
+          <div className="text-5xl" aria-hidden="true">✅</div>
           <h1 className="text-2xl font-bold">This contract has already been signed.</h1>
           <p className="text-muted-foreground">
             Signed on {new Date((form as any)?.customer_signed_at || (form as any)?.signed_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}.
@@ -185,16 +189,16 @@ export default function SignContract() {
             <p>(405) 724-8092 • www.OKNEXTGEN.com</p>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (completed) {
     const customerName = (form?.form_data as any)?.ownerName || lead?.full_name || "Customer";
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <main className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="max-w-md text-center space-y-4">
-          <div className="text-5xl">✅</div>
+          <div className="text-5xl" aria-hidden="true">✅</div>
           <h1 className="text-2xl font-bold">Contract Signed Successfully</h1>
           <p className="text-muted-foreground">
             Thank you, {customerName}! Your signature has been recorded on{" "}
@@ -209,12 +213,12 @@ export default function SignContract() {
             <p>(405) 724-8092 • www.OKNEXTGEN.com</p>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8">
+    <main className="min-h-screen bg-background p-4 sm:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold">Next Generation Guttering</h1>
@@ -228,6 +232,6 @@ export default function SignContract() {
           onCustomerSign={handleSign}
         />
       </div>
-    </div>
+    </main>
   );
 }

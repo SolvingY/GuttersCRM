@@ -730,9 +730,13 @@ export default function GutterContract({
           <h2 className="font-heading text-lg uppercase text-center">Please Review & Sign Below</h2>
           <p className="text-sm text-muted-foreground text-center">Please review the contract above and sign below to confirm your agreement.</p>
 
+          {/* Public signing form: labels are tied to their controls (WCAG 1.3.1 / 4.1.2) */}
           <div>
-            <label className="text-sm font-medium">Type your full legal name</label>
+            <label htmlFor="customer-typed-name" className="text-sm font-medium">Type your full legal name</label>
             <Input
+              id="customer-typed-name"
+              autoComplete="name"
+              required
               value={customerTypedName}
               onChange={(e) => setCustomerTypedName(e.target.value)}
               placeholder="Full legal name as it appears above"
@@ -742,8 +746,8 @@ export default function GutterContract({
           <SignaturePad label="Your Signature" value={customerSigData} onChange={setCustomerSigData} />
 
           <div className="flex items-start gap-2">
-            <Checkbox checked={customerAgreed} onCheckedChange={(v) => setCustomerAgreed(!!v)} className="mt-1" />
-            <label className="text-sm">
+            <Checkbox id="customer-agree" checked={customerAgreed} onCheckedChange={(v) => setCustomerAgreed(!!v)} className="mt-1" />
+            <label htmlFor="customer-agree" className="text-sm">
               I have read and agree to all terms of this contract. I understand this constitutes a legally binding agreement.
             </label>
           </div>
