@@ -5,6 +5,7 @@ import ngrLogo from "@/assets/ngr-logo.png";
 import teamRob from "@/assets/team-rob.png";
 import teamJonathan from "@/assets/team-jonathan.png";
 import teamKara from "@/assets/team-kara.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const leaders = [
   {
@@ -41,18 +42,21 @@ const values = [
 ];
 
 export default function ApplicationThankYou() {
+  usePageTitle("Thank You for Applying | Next Generation Roofing");
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-accent text-accent-foreground py-8 px-4 text-center">
-        <img src={ngrLogo} alt="NGR" className="h-16 mx-auto mb-4 [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
+      <header className="bg-accent text-accent-foreground py-8 px-4 text-center">
+        <img src={ngrLogo} alt="Next Generation Roofing" className="h-16 mx-auto mb-4 [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
         <h1 className="font-heading text-3xl md:text-4xl uppercase">Welcome to the Next Generation</h1>
-        <p className="text-sm opacity-80 mt-2 max-w-lg mx-auto">
+        {/* Full opacity: white at 80% on the red header was 3.6:1 (WCAG 1.4.3) */}
+        <p className="text-sm mt-2 max-w-lg mx-auto">
           Thank you for your interest. At NGR, we don't just "hire"—we build high-performance teams that protect Oklahoma homes.
         </p>
-      </div>
+      </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+      <main className="max-w-4xl mx-auto px-4 py-12 space-y-12">
         {/* Who We Are */}
         <section>
           <h2 className="font-heading text-2xl uppercase mb-6 text-center">Who We Are</h2>
@@ -123,6 +127,7 @@ export default function ApplicationThankYou() {
               className="inline-flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-lg hover:border-accent transition-colors"
             >
               <Facebook className="w-5 h-5 text-accent" /> Facebook
+              <span className="sr-only">(opens in a new tab)</span>
             </a>
             <a
               href="https://www.instagram.com/next_generation_roofing?igsh=eWF1eHZ5eXlpaDFv"
@@ -131,6 +136,7 @@ export default function ApplicationThankYou() {
               className="inline-flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-lg hover:border-accent transition-colors"
             >
               <Instagram className="w-5 h-5 text-accent" /> Instagram
+              <span className="sr-only">(opens in a new tab)</span>
             </a>
           </div>
         </section>
@@ -140,13 +146,14 @@ export default function ApplicationThankYou() {
           <p className="text-muted-foreground mb-6">
             We will review your application and reach out if there's a fit. Thank you for your interest in Next Generation Roofing.
           </p>
-          <Link to="/">
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+          {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2) */}
+          <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Link to="/">
               <ArrowLeft className="w-4 h-4 mr-2" /> Return to Home
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
