@@ -131,7 +131,7 @@ export function Header() {
             <a
               href="#home"
               onClick={(e) => scrollToSection(e, "#home")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               Home
             </a>
@@ -153,7 +153,7 @@ export function Header() {
                 href="#services"
                 onClick={(e) => scrollToSection(e, "#services")}
                 aria-expanded={servicesOpen}
-                className="flex items-center gap-1 font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+                className="flex items-center gap-1 font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
               >
                 Services
                 <ChevronDown className={`w-4 h-4 transition-transform ${servicesOpen ? "rotate-180" : ""}`} />
@@ -177,28 +177,28 @@ export function Header() {
             <a
               href="#about"
               onClick={(e) => scrollToSection(e, "#about")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               About
             </a>
             <a
               href="#team"
               onClick={(e) => scrollToSection(e, "#team")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               Team
             </a>
             <a
               href="#why-choose-us"
               onClick={(e) => scrollToSection(e, "#why-choose-us")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent whitespace-nowrap"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark whitespace-nowrap"
             >
               Why Choose Us
             </a>
             <a
               href="#contact"
               onClick={(e) => scrollToSection(e, "#contact")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               Contact
             </a>
@@ -260,7 +260,7 @@ export function Header() {
                   key={link.name}
                   href={link.href}
                   onClick={(e) => scrollToSection(e, link.href)}
-                  className="block py-2 font-heading uppercase tracking-wider hover:text-accent transition-colors"
+                  className="block py-2 font-heading uppercase tracking-wider hover:text-accent-on-dark transition-colors"
                 >
                   {link.name}
                 </a>
@@ -268,28 +268,28 @@ export function Header() {
 
               <Link
                 to="/get-quote"
-                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-primary-foreground bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent-on-dark bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <ClipboardList className="w-5 h-5 text-accent" />
+                <ClipboardList className="w-5 h-5" />
                 Get an Estimate
               </Link>
 
               <Link
                 to="/apply"
-                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-primary-foreground bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent-on-dark bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <Briefcase className="w-5 h-5 text-accent" />
+                <Briefcase className="w-5 h-5" />
                 Apply Now
               </Link>
 
               <Link
                 to="/dashboard"
-                className="block py-2 font-heading uppercase tracking-wider text-primary-foreground hover:text-accent transition-colors"
+                className="block py-2 font-heading uppercase tracking-wider text-accent-on-dark hover:text-primary-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <KeyRound className="inline w-4 h-4 mr-2 text-accent" />
+                <KeyRound className="inline w-4 h-4 mr-2" />
                 Team Dashboard
               </Link>
 

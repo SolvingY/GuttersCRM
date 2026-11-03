@@ -105,9 +105,9 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Services (headings are text-xl so the red-on-black passes as large text, WCAG 1.4.3) */}
+          {/* Services (headings use the accent-on-dark tint: brand red is only 4.2:1 on black, WCAG 1.4.3) */}
           <div>
-            <h4 className="font-heading text-xl uppercase mb-6 text-accent">Our Services</h4>
+            <h4 className="font-heading text-lg uppercase mb-6 text-accent-on-dark">Our Services</h4>
             <ul className="space-y-3">
               {services.map((service) => (
                 <li key={service.name}>
@@ -125,7 +125,7 @@ export function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-heading text-xl uppercase mb-6 text-accent">Quick Links</h4>
+            <h4 className="font-heading text-lg uppercase mb-6 text-accent-on-dark">Quick Links</h4>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.name}>
@@ -151,7 +151,7 @@ export function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h4 className="font-heading text-xl uppercase mb-6 text-accent">Contact Us</h4>
+            <h4 className="font-heading text-lg uppercase mb-6 text-accent-on-dark">Contact Us</h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <Phone className="w-5 h-5 mt-0.5 text-accent" />

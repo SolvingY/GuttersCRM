@@ -56,7 +56,8 @@ export function Hero() {
             
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-heading uppercase leading-tight">
               The Last{" "}
-              <span className="text-accent">Contractor</span>{" "}
+              {/* accent-on-dark: brand red tint that keeps 3:1+ over the photo (WCAG 1.4.3) */}
+              <span className="text-accent-on-dark">Contractor</span>{" "}
               You Will Ever Need
             </h1>
             
@@ -66,19 +67,20 @@ export function Hero() {
 
             <div className="flex items-center justify-center gap-4 pt-2 lg:pt-0">
               <span className="text-primary-foreground/90 text-sm sm:text-base font-heading uppercase tracking-wide">
-                We Cover <span className="text-accent font-bold">1.15 Million</span> Square Feet Of Oklahoma Homes & Businesses Every Year.
+                We Cover <span className="text-accent-on-dark font-bold">1.15 Million</span> Square Feet Of Oklahoma Homes & Businesses Every Year.
               </span>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 lg:pt-2 justify-center px-4 sm:px-0">
-              {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2) */}
-              <Button asChild variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+              {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2).
+                  whitespace-normal lets the labels wrap at 320px instead of forcing sideways scroll (WCAG 1.4.10). */}
+              <Button asChild variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base whitespace-normal h-auto min-h-12 text-center">
                 <a href="tel:4057248092">
                   <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                   Schedule Inspection NOW
                 </a>
               </Button>
-              <Button asChild variant="heroOutline" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+              <Button asChild variant="heroOutline" size="lg" className="w-full sm:w-auto text-sm sm:text-base whitespace-normal h-auto min-h-12 text-center">
                 <Link to="/get-quote">
                   <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />
                   Get a Free Estimate
