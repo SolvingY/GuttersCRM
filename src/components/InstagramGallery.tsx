@@ -63,6 +63,7 @@ export function InstagramGallery() {
             className="text-lg md:text-xl text-muted-foreground hover:text-accent transition-colors font-heading"
           >
             @next_generation_roofing
+            <span className="sr-only"> on Instagram (opens in a new tab)</span>
           </a>
         </div>
 
@@ -86,8 +87,9 @@ export function InstagramGallery() {
                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                 }}
               />
-              {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+              <span className="sr-only">(opens Instagram in a new tab)</span>
+              {/* Hover Overlay (decorative repeat of the image's alt text) */}
+              <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
                 <p className="text-white text-xs sm:text-sm line-clamp-2 font-body">
                   {post.caption}
                 </p>
@@ -100,12 +102,14 @@ export function InstagramGallery() {
 
         {/* CTA Button */}
         <div className="text-center mt-8 md:mt-12">
-          <a href={INSTAGRAM_PROFILE_URL} target="_blank" rel="noopener noreferrer">
-            <Button variant="cta" size="lg" className="gap-2">
+          {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2) */}
+          <Button asChild variant="cta" size="lg" className="gap-2">
+            <a href={INSTAGRAM_PROFILE_URL} target="_blank" rel="noopener noreferrer">
               <Instagram className="w-5 h-5" />
               Follow Us on Instagram
-            </Button>
-          </a>
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </Button>
         </div>
       </div>
     </section>

@@ -61,6 +61,8 @@ export function WhyChooseUsSection() {
             {/* Dropdown Header */}
             <button
               onClick={() => setIsExpanded(!isExpanded)}
+              aria-expanded={isExpanded}
+              aria-controls="next-gen-experience-steps"
               className="w-full flex items-center justify-between p-6 md:p-8 hover:bg-muted/50 transition-colors text-left"
             >
               <div className="flex items-center gap-4">
@@ -83,10 +85,11 @@ export function WhyChooseUsSection() {
               />
             </button>
 
-            {/* Expandable Content */}
+            {/* Expandable Content ("invisible" when collapsed keeps hidden links out of the tab order, WCAG 2.4.3) */}
             <div
+              id="next-gen-experience-steps"
               className={`overflow-hidden transition-all duration-500 ${
-                isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+                isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 invisible"
               }`}
             >
               <div className="p-6 md:p-8 pt-0 border-t border-border">

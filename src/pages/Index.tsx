@@ -10,12 +10,22 @@ import { InstagramGallery } from "@/components/InstagramGallery";
 import { ContactSection } from "@/components/ContactSection";
 import { Footer } from "@/components/Footer";
 import { StickyCallCTA } from "@/components/StickyCallCTA";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const Index = () => {
+  usePageTitle("Next Generation Roofing | Roofing Oklahoma City | Commercial Roofing OKC | Gutter Installation Edmond");
+
   return (
     <div className="min-h-screen">
+      {/* Skip link: first focusable element, visible on focus (WCAG 2.4.1) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Skip to main content
+      </a>
       <Header />
-      <main>
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
         <section id="home">
           <Hero />
         </section>

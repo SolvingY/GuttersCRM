@@ -122,8 +122,9 @@ const queryClient = new QueryClient({
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex items-center justify-center h-screen" role="status">
       <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <span className="sr-only">Loading…</span>
     </div>
   );
 }

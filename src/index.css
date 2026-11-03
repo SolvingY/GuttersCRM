@@ -25,12 +25,14 @@
     --secondary-foreground: 0 0% 0%;
 
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    /* 40% (was 45%) so muted text keeps 4.5:1 on the light grey section/card backgrounds (WCAG 1.4.3). */
+    --muted-foreground: 0 0% 40%;
 
     --accent: 348 83% 47%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    /* 48% lightness (was 60%) so error text and white-on-red buttons reach 4.5:1 (WCAG 1.4.3). */
+    --destructive: 0 84% 48%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 90%;
@@ -88,6 +90,13 @@
 
   html {
     scroll-behavior: smooth;
+  }
+
+  /* Respect the visitor's reduced-motion setting (WCAG 2.2.2 / 2.3.3). */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   body {
@@ -174,5 +183,11 @@
 
   .animate-scroll {
     animation: scroll 20s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-scroll {
+      animation: none;
+    }
   }
 }
