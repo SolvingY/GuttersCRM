@@ -68,7 +68,8 @@ export function ContactSection() {
                   </div>
                   <div>
                     <h4 className="font-heading uppercase mb-1">Email</h4>
-                    <a href="mailto:nextgenroofing@oknextgen.com" className="text-muted-foreground hover:text-accent transition-colors">
+                    {/* break-all: the long address would otherwise force sideways scroll at 320px (WCAG 1.4.10) */}
+                    <a href="mailto:nextgenroofing@oknextgen.com" className="text-muted-foreground hover:text-accent transition-colors break-all">
                       nextgenroofing@oknextgen.com
                     </a>
                   </div>

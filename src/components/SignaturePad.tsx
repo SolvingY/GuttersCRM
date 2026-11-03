@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useId } from "react";
 import { Button } from "@/components/ui/button";
 
 interface SignaturePadProps {
@@ -13,6 +13,7 @@ export function SignaturePad({ label, value, onChange, width = 400, height = 150
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
+  const labelId = useId();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -127,14 +128,17 @@ export function SignaturePad({ label, value, onChange, width = 400, height = 150
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">{label}</label>
-        <Button type="button" variant="ghost" size="sm" onClick={handleClear}>
+        <span id={labelId} className="text-sm font-medium">{label}</span>
+        <Button type="button" variant="ghost" size="sm" onClick={handleClear} aria-label={`Clear ${label}`}>
           Clear
         </Button>
       </div>
       <div className="relative border border-border rounded-lg overflow-hidden bg-muted/30" style={{ maxWidth: width }}>
+        {/* Named drawing area so screen readers announce what it is (WCAG 4.1.2). Drawing still needs a pointer: see PR follow-ups. */}
         <canvas
           ref={canvasRef}
+          role="img"
+          aria-labelledby={labelId}
           className="w-full cursor-crosshair touch-none"
           style={{ height }}
         />

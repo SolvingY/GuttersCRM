@@ -63,18 +63,19 @@ export function QuoteConfirmation({ referenceNumber, serviceType, email }: Quote
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-        <a href="tel:4057248092">
-          <Button variant="outline" className="gap-2">
+        {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2) */}
+        <Button asChild variant="outline" className="gap-2">
+          <a href="tel:4057248092">
             <Phone className="w-4 h-4" />
             (405) 724-8092
-          </Button>
-        </a>
-        <Link to="/">
-          <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+          </a>
+        </Button>
+        <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+          <Link to="/">
             <ArrowLeft className="w-4 h-4" />
             Return to Home
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     </div>
   );

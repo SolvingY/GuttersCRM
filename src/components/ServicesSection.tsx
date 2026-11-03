@@ -98,9 +98,10 @@ export function ServicesSection() {
             >
               {/* Image Header */}
               <div className="relative h-48 overflow-hidden">
+                {/* Decorative: the service title is the heading right below (WCAG 1.1.1) */}
                 <img
                   src={service.image}
-                  alt={service.title}
+                  alt=""
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/50 to-transparent" />
@@ -123,9 +124,12 @@ export function ServicesSection() {
                 {/* Expand Button */}
                 <button
                   onClick={() => toggleExpand(index)}
+                  aria-expanded={expandedIndex === index}
+                  aria-controls={`service-details-${index}`}
                   className="flex items-center gap-2 text-accent font-heading uppercase text-sm tracking-wider hover:text-accent/80 transition-colors"
                 >
                   {expandedIndex === index ? "Show Less" : "Learn More"}
+                  <span className="sr-only"> about {service.title}</span>
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-300 ${
                       expandedIndex === index ? "rotate-180" : ""
@@ -133,10 +137,11 @@ export function ServicesSection() {
                   />
                 </button>
 
-                {/* Expandable Content */}
+                {/* Expandable Content ("invisible" when collapsed keeps hidden links out of the tab order, WCAG 2.4.3) */}
                 <div
+                  id={`service-details-${index}`}
                   className={`overflow-hidden transition-all duration-500 ${
-                    expandedIndex === index ? "max-h-[2000px] opacity-100 mt-6" : "max-h-0 opacity-0"
+                    expandedIndex === index ? "max-h-[2000px] opacity-100 mt-6" : "max-h-0 opacity-0 invisible"
                   }`}
                 >
                   <p className="text-foreground mb-4 leading-relaxed">

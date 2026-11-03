@@ -4,11 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -30,6 +31,8 @@ export default function Auth() {
   const { toast } = useToast();
 
   const fromState = (location.state as { from?: { pathname: string } })?.from?.pathname;
+
+  usePageTitle(isLogin ? 'Sign In | Next Generation Roofing' : 'Create Account | Next Generation Roofing');
 
   // Pre-fill from URL params (invite link)
   useEffect(() => {
@@ -152,7 +155,11 @@ export default function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      // Move focus to the first field with an error so it is announced (WCAG 3.3.1)
+      setTimeout(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(), 0);
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -212,19 +219,21 @@ export default function Auth() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <span className="sr-only">Loading…</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <main className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md border-border">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-heading text-foreground">
+          {/* The page's single h1 (WCAG 1.3.1 / 2.4.6) */}
+          <h1 className="text-2xl font-semibold leading-none tracking-tight font-heading text-foreground">
             {isLogin ? 'Welcome Back' : 'Create Account'}
-          </CardTitle>
+          </h1>
           <CardDescription className="text-muted-foreground">
             {isLogin
               ? 'Sign in to access your performance dashboard'
@@ -232,7 +241,7 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {!isLogin && (
               <>
                 <div className="space-y-2">
@@ -244,6 +253,10 @@ export default function Auth() {
                     <Input
                       id="inviteCode"
                       type="text"
+                      autoComplete="off"
+                      required
+                      aria-invalid={!!errors.inviteCode}
+                      aria-describedby={errors.inviteCode ? 'inviteCode-error' : undefined}
                       placeholder="Enter your invite code"
                       value={inviteCode}
                       onChange={(e) => {
@@ -254,7 +267,7 @@ export default function Auth() {
                     />
                   </div>
                   {errors.inviteCode && (
-                    <p className="text-sm text-destructive">{errors.inviteCode}</p>
+                    <p id="inviteCode-error" className="text-sm text-destructive">{errors.inviteCode}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -262,6 +275,7 @@ export default function Auth() {
                   <Input
                     id="fullName"
                     type="text"
+                    autoComplete="name"
                     placeholder="John Doe"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -275,6 +289,10 @@ export default function Auth() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
+                required
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'email-error' : undefined}
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => {
@@ -284,7 +302,7 @@ export default function Auth() {
                 className={errors.email ? 'border-destructive' : 'border-input'}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
+                <p id="email-error" className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -292,6 +310,10 @@ export default function Auth() {
               <Input
                 id="password"
                 type="password"
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                required
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => {
@@ -301,7 +323,7 @@ export default function Auth() {
                 className={errors.password ? 'border-destructive' : 'border-input'}
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
+                <p id="password-error" className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
             <Button
@@ -331,6 +353,6 @@ export default function Auth() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

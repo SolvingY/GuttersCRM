@@ -38,19 +38,21 @@ export function ContactInfoStep({ data, onChange }: ContactInfoStepProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-heading text-2xl uppercase">Contact Information</h2>
+      <p className="text-sm text-muted-foreground">Fields marked * are required.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2 sm:col-span-2">
-          <Label>Full Name *</Label>
-          <Input placeholder="John Smith" value={data.fullName || ""} onChange={(e) => update("fullName", e.target.value)} />
+          {/* Labels, autocomplete and required flags let assistive tech and autofill identify each field (WCAG 1.3.1 / 1.3.5 / 3.3.2) */}
+          <Label htmlFor="quote-fullName">Full Name *</Label>
+          <Input id="quote-fullName" autoComplete="name" required placeholder="John Smith" value={data.fullName || ""} onChange={(e) => update("fullName", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Email *</Label>
-          <Input type="email" placeholder="john@example.com" value={data.email || ""} onChange={(e) => update("email", e.target.value)} />
+          <Label htmlFor="quote-email">Email *</Label>
+          <Input id="quote-email" type="email" autoComplete="email" required placeholder="john@example.com" value={data.email || ""} onChange={(e) => update("email", e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Phone Number *</Label>
-          <Input type="tel" placeholder="(405) 555-1234" value={data.phone || ""} onChange={(e) => update("phone", formatPhone(e.target.value))} />
+          <Label htmlFor="quote-phone">Phone Number *</Label>
+          <Input id="quote-phone" type="tel" autoComplete="tel" required placeholder="(405) 555-1234" value={data.phone || ""} onChange={(e) => update("phone", formatPhone(e.target.value))} />
         </div>
       </div>
 
@@ -58,33 +60,33 @@ export function ContactInfoStep({ data, onChange }: ContactInfoStepProps) {
         <h3 className="font-heading text-lg uppercase">Property Address</h3>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Street Address *</Label>
-            <Input placeholder="123 Main St" value={data.streetAddress || ""} onChange={(e) => update("streetAddress", e.target.value)} />
+            <Label htmlFor="quote-streetAddress">Street Address *</Label>
+            <Input id="quote-streetAddress" autoComplete="street-address" required placeholder="123 Main St" value={data.streetAddress || ""} onChange={(e) => update("streetAddress", e.target.value)} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>City *</Label>
-              <Input placeholder="Oklahoma City" value={data.city || ""} onChange={(e) => update("city", e.target.value)} />
+              <Label htmlFor="quote-city">City *</Label>
+              <Input id="quote-city" autoComplete="address-level2" required placeholder="Oklahoma City" value={data.city || ""} onChange={(e) => update("city", e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>State</Label>
+              <Label htmlFor="quote-state">State</Label>
               <Select value={data.state || "Oklahoma"} onValueChange={(v) => update("state", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="quote-state"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {states.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Zip Code *</Label>
-              <Input placeholder="73101" value={data.zipCode || ""} onChange={(e) => update("zipCode", e.target.value.replace(/\D/g, "").slice(0, 5))} />
+              <Label htmlFor="quote-zipCode">Zip Code *</Label>
+              <Input id="quote-zipCode" autoComplete="postal-code" inputMode="numeric" required placeholder="73101" value={data.zipCode || ""} onChange={(e) => update("zipCode", e.target.value.replace(/\D/g, "").slice(0, 5))} />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Best Time to Contact (select all that apply)</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Best Time to Contact (select all that apply)</legend></Label>
         <div className="grid grid-cols-2 gap-2">
           {contactTimes.map((time) => (
             <label key={time} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 cursor-pointer transition-colors">
@@ -93,12 +95,12 @@ export function ContactInfoStep({ data, onChange }: ContactInfoStepProps) {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label>How did you hear about us?</Label>
+        <Label htmlFor="quote-referralSource">How did you hear about us?</Label>
         <Select value={data.referralSource || ""} onValueChange={(v) => update("referralSource", v)}>
-          <SelectTrigger><SelectValue placeholder="Select one" /></SelectTrigger>
+          <SelectTrigger id="quote-referralSource"><SelectValue placeholder="Select one" /></SelectTrigger>
           <SelectContent>
             {referralSources.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>

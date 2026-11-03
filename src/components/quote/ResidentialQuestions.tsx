@@ -31,11 +31,11 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
     <div className="space-y-6">
       <h2 className="font-heading text-2xl uppercase">Residential Roofing Details</h2>
 
-      <div className="space-y-2">
-        <Label>Property Type</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Property Type</legend></Label>
         <div className="space-y-2">
           {propertyTypes.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.propertyType === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.propertyType === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="propertyType" className="sr-only" checked={data.propertyType === opt} onChange={() => update("propertyType", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.propertyType === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.propertyType === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -44,12 +44,12 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label>Home Age</Label>
+        <Label htmlFor="quote-homeAge">Home Age</Label>
         <Select value={data.homeAge || ""} onValueChange={(v) => update("homeAge", v)}>
-          <SelectTrigger><SelectValue placeholder="Select home age" /></SelectTrigger>
+          <SelectTrigger id="quote-homeAge"><SelectValue placeholder="Select home age" /></SelectTrigger>
           <SelectContent>
             {homeAges.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
@@ -57,32 +57,32 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
       </div>
 
       <div className="space-y-2">
-        <Label>Current Roof Type</Label>
+        <Label htmlFor="quote-roofType">Current Roof Type</Label>
         <Select value={data.roofType || ""} onValueChange={(v) => update("roofType", v)}>
-          <SelectTrigger><SelectValue placeholder="Select roof type" /></SelectTrigger>
+          <SelectTrigger id="quote-roofType"><SelectValue placeholder="Select roof type" /></SelectTrigger>
           <SelectContent>
             {roofTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label>Number of Stories</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Number of Stories</legend></Label>
         <div className="flex gap-3">
           {stories.map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.stories === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.stories === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="stories" className="sr-only" checked={data.stories === opt} onChange={() => update("stories", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Roof Age */}
       <div className="space-y-2">
-        <Label>Roof Age</Label>
+        <Label htmlFor="quote-roofAge">Roof Age</Label>
         <Select value={data.roofAge || ""} onValueChange={(v) => update("roofAge", v)}>
-          <SelectTrigger><SelectValue placeholder="Select roof age" /></SelectTrigger>
+          <SelectTrigger id="quote-roofAge"><SelectValue placeholder="Select roof age" /></SelectTrigger>
           <SelectContent>
             {roofAgeOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
@@ -90,11 +90,11 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
       </div>
 
       {/* Home Square Footage */}
-      <div className="space-y-2">
-        <Label>Approximate Square Footage of Home</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Approximate Square Footage of Home</legend></Label>
         <div className="space-y-2">
           {homeSqftOptions.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.homeSqft === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.homeSqft === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="homeSqft" className="sr-only" checked={data.homeSqft === opt} onChange={() => update("homeSqft", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.homeSqft === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.homeSqft === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -103,44 +103,44 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Mortgage */}
-      <div className="space-y-2">
-        <Label>Do you have a mortgage on this property?</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Do you have a mortgage on this property?</legend></Label>
         <div className="flex gap-3">
           {["Yes", "No"].map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.hasMortgage === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.hasMortgage === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="hasMortgage" className="sr-only" checked={data.hasMortgage === opt} onChange={() => update("hasMortgage", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Active Insurance Claim */}
-      <div className="space-y-2">
-        <Label>Do you have an active insurance claim?</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Do you have an active insurance claim?</legend></Label>
         <div className="flex gap-3">
           {["Yes", "No"].map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.activeClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.activeClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="activeClaim" className="sr-only" checked={data.activeClaim === opt} onChange={() => update("activeClaim", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Insurance Company — conditional */}
       {data.activeClaim === "Yes" && (
         <div className="space-y-2">
-          <Label>Insurance Company</Label>
-          <Input placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
+          <Label htmlFor="quote-insuranceCompany">Insurance Company</Label>
+          <Input id="quote-insuranceCompany" placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label>What do you need? (select all that apply)</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>What do you need? (select all that apply)</legend></Label>
         <div className="space-y-2">
           {needOptions.map((need) => (
             <label key={need} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 cursor-pointer transition-colors">
@@ -149,10 +149,10 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>Known Issues (select all that apply)</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Known Issues (select all that apply)</legend></Label>
         <div className="space-y-2">
           {issueOptions.map((issue) => (
             <label key={issue} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 cursor-pointer transition-colors">
@@ -161,13 +161,13 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>Timeline</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Timeline</legend></Label>
         <div className="space-y-2">
           {timelineOptions.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.timeline === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.timeline === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="timeline" className="sr-only" checked={data.timeline === opt} onChange={() => update("timeline", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.timeline === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.timeline === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -176,11 +176,11 @@ export function ResidentialQuestions({ data, onChange }: ResidentialQuestionsPro
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label>Additional Details (optional)</Label>
-        <Textarea placeholder="Tell us more about your project..." value={data.additionalDetails || ""} onChange={(e) => update("additionalDetails", e.target.value)} />
+        <Label htmlFor="quote-additionalDetails">Additional Details (optional)</Label>
+        <Textarea id="quote-additionalDetails" placeholder="Tell us more about your project..." value={data.additionalDetails || ""} onChange={(e) => update("additionalDetails", e.target.value)} />
       </div>
     </div>
   );

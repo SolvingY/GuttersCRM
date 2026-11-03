@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { CheckCircle2, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   availabilityOptions,
 } from "@/lib/dnaAssessment";
 import ngrLogo from "@/assets/ngr-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const intakeSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required").max(100),
@@ -34,6 +35,15 @@ function wordCount(text: string): number {
 }
 
 const STEPS = ["The Basics", "DNA Assessment", "Your Story", "Confirmation"];
+
+/** Turns an option label into a valid id fragment (labels contain spaces and "+"). */
+const toId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+/** Props that tie a field to its error message so the error is announced (WCAG 3.3.1). */
+const errorProps = (errors: Record<string, string>, field: string) => ({
+  "aria-invalid": !!errors[field],
+  "aria-describedby": errors[field] ? `${field}-error` : undefined,
+});
 
 export default function JobApplication() {
   const navigate = useNavigate();
@@ -59,6 +69,24 @@ export default function JobApplication() {
   const [narrativeOwnership, setNarrativeOwnership] = useState("");
   const [narrativeMentor, setNarrativeMentor] = useState("");
   const [narrativeWhyNgr, setNarrativeWhyNgr] = useState("");
+
+  usePageTitle("Apply to Join the Team | Next Generation Roofing");
+
+  // Move focus to the new step's heading when the step changes (WCAG 2.4.3)
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    stepHeadingRef.current?.focus({ preventScroll: true });
+  }, [step]);
+
+  /** After a failed validation, focus the first invalid field so its error is read out (WCAG 3.3.1). */
+  const focusFirstError = () => {
+    setTimeout(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(), 0);
+  };
 
   const validateStep1 = (): boolean => {
     const result = intakeSchema.safeParse({
@@ -101,10 +129,10 @@ export default function JobApplication() {
   };
 
   const handleNext = () => {
-    if (step === 0 && !validateStep1()) return;
+    if (step === 0 && !validateStep1()) return focusFirstError();
     if (step === 1 && !validateStep2()) return;
     if (step === 2) {
-      if (!validateStep3()) return;
+      if (!validateStep3()) return focusFirstError();
       handleSubmit();
       return;
     }
@@ -166,19 +194,22 @@ export default function JobApplication() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-accent text-accent-foreground py-4 px-4">
+      <header className="bg-accent text-accent-foreground py-4 px-4">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <img src={ngrLogo} alt="NGR" className="h-10 w-auto [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
+          {/* Decorative: the company name is in the heading beside it */}
+          <img src={ngrLogo} alt="" className="h-10 w-auto [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
           <div>
             <h1 className="font-heading text-xl uppercase">Join Next Generation Roofing</h1>
-            <p className="text-xs opacity-80">Start Your Application</p>
+            {/* Full opacity: white at 80% on the red header was 3.6:1 (WCAG 1.4.3) */}
+            <p className="text-xs">Start Your Application</p>
           </div>
         </div>
-      </div>
+      </header>
 
+      <main>
       {/* Progress */}
       <div className="max-w-3xl mx-auto px-4 pt-6">
-        <div className="flex items-center gap-2 mb-8">
+        <div className="flex items-center gap-2 mb-8" aria-hidden="true">
           {STEPS.map((label, i) => (
             <div key={label} className="flex-1 flex items-center gap-2">
               <div className={`h-2 flex-1 rounded-full transition-colors ${i <= step ? "bg-accent" : "bg-muted"}`} />
@@ -186,7 +217,7 @@ export default function JobApplication() {
           ))}
         </div>
         <p className="text-sm text-muted-foreground mb-2">Step {Math.min(step + 1, 4)} of 4</p>
-        <h2 className="font-heading text-2xl uppercase mb-6">{STEPS[Math.min(step, 3)]}</h2>
+        <h2 ref={stepHeadingRef} tabIndex={-1} className="font-heading text-2xl uppercase mb-6 focus:outline-none">{STEPS[Math.min(step, 3)]}</h2>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pb-16">
@@ -195,56 +226,57 @@ export default function JobApplication() {
           <div className="space-y-5">
             <div>
               <Label htmlFor="fullName">Full Name *</Label>
-              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Smith" />
-              {errors.fullName && <p className="text-destructive text-sm mt-1">{errors.fullName}</p>}
+              <Input id="fullName" autoComplete="name" required {...errorProps(errors, "fullName")} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Smith" />
+              {errors.fullName && <p id="fullName-error" className="text-destructive text-sm mt-1">{errors.fullName}</p>}
             </div>
             <div>
               <Label htmlFor="email">Email *</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" />
-              {errors.email && <p className="text-destructive text-sm mt-1">{errors.email}</p>}
+              <Input id="email" type="email" autoComplete="email" required {...errorProps(errors, "email")} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" />
+              {errors.email && <p id="email-error" className="text-destructive text-sm mt-1">{errors.email}</p>}
             </div>
             <div>
               <Label htmlFor="phone">Phone *</Label>
-              <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(405) 555-1234" />
-              {errors.phone && <p className="text-destructive text-sm mt-1">{errors.phone}</p>}
+              <Input id="phone" type="tel" autoComplete="tel" required {...errorProps(errors, "phone")} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(405) 555-1234" />
+              {errors.phone && <p id="phone-error" className="text-destructive text-sm mt-1">{errors.phone}</p>}
             </div>
             <div>
               <Label htmlFor="currentJobTitle">Current Job Title</Label>
-              <Input id="currentJobTitle" value={currentJobTitle} onChange={(e) => setCurrentJobTitle(e.target.value)} placeholder="Optional" />
+              <Input id="currentJobTitle" autoComplete="organization-title" value={currentJobTitle} onChange={(e) => setCurrentJobTitle(e.target.value)} placeholder="Optional" />
             </div>
             <div>
-              <Label>Desired Position *</Label>
+              <Label htmlFor="desiredPosition">Desired Position *</Label>
               <Select value={desiredPosition} onValueChange={setDesiredPosition}>
-                <SelectTrigger><SelectValue placeholder="Select a position" /></SelectTrigger>
+                <SelectTrigger id="desiredPosition" {...errorProps(errors, "desiredPosition")}><SelectValue placeholder="Select a position" /></SelectTrigger>
                 <SelectContent>
                   {desiredPositions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {errors.desiredPosition && <p className="text-destructive text-sm mt-1">{errors.desiredPosition}</p>}
+              {errors.desiredPosition && <p id="desiredPosition-error" className="text-destructive text-sm mt-1">{errors.desiredPosition}</p>}
             </div>
             <div>
-              <Label>Years of Experience *</Label>
-              <RadioGroup value={yearsExperience} onValueChange={setYearsExperience} className="flex flex-wrap gap-4 mt-2">
+              {/* Radio groups are named by their visible label (WCAG 1.3.1 / 4.1.2) */}
+              <Label id="yearsExperience-label">Years of Experience *</Label>
+              <RadioGroup value={yearsExperience} onValueChange={setYearsExperience} aria-labelledby="yearsExperience-label" aria-required="true" {...errorProps(errors, "yearsExperience")} className="flex flex-wrap gap-4 mt-2">
                 {experienceOptions.map((o) => (
                   <div key={o} className="flex items-center gap-2">
-                    <RadioGroupItem value={o} id={`exp-${o}`} />
-                    <Label htmlFor={`exp-${o}`} className="font-normal cursor-pointer">{o}</Label>
+                    <RadioGroupItem value={o} id={`exp-${toId(o)}`} />
+                    <Label htmlFor={`exp-${toId(o)}`} className="font-normal cursor-pointer">{o}</Label>
                   </div>
                 ))}
               </RadioGroup>
-              {errors.yearsExperience && <p className="text-destructive text-sm mt-1">{errors.yearsExperience}</p>}
+              {errors.yearsExperience && <p id="yearsExperience-error" className="text-destructive text-sm mt-1">{errors.yearsExperience}</p>}
             </div>
             <div>
-              <Label>Availability *</Label>
-              <RadioGroup value={availability} onValueChange={setAvailability} className="flex flex-wrap gap-4 mt-2">
+              <Label id="availability-label">Availability *</Label>
+              <RadioGroup value={availability} onValueChange={setAvailability} aria-labelledby="availability-label" aria-required="true" {...errorProps(errors, "availability")} className="flex flex-wrap gap-4 mt-2">
                 {availabilityOptions.map((o) => (
                   <div key={o} className="flex items-center gap-2">
-                    <RadioGroupItem value={o} id={`avail-${o}`} />
-                    <Label htmlFor={`avail-${o}`} className="font-normal cursor-pointer">{o}</Label>
+                    <RadioGroupItem value={o} id={`avail-${toId(o)}`} />
+                    <Label htmlFor={`avail-${toId(o)}`} className="font-normal cursor-pointer">{o}</Label>
                   </div>
                 ))}
               </RadioGroup>
-              {errors.availability && <p className="text-destructive text-sm mt-1">{errors.availability}</p>}
+              {errors.availability && <p id="availability-error" className="text-destructive text-sm mt-1">{errors.availability}</p>}
             </div>
           </div>
         )}
@@ -258,11 +290,12 @@ export default function JobApplication() {
               </p>
             </div>
             <p className="text-sm text-muted-foreground">{Object.keys(dnaAnswers).length}/20 answered</p>
-            {errors.dna && <p className="text-destructive text-sm">{errors.dna}</p>}
+            {errors.dna && <p role="alert" className="text-destructive text-sm">{errors.dna}</p>}
             {dnaQuestions.map((q) => (
               <div key={q.id} className="bg-card border border-border rounded-lg p-4">
-                <p className="font-heading text-sm uppercase text-accent mb-2">{q.number}. {q.topic}</p>
+                <p id={`${q.id}-topic`} className="font-heading text-sm uppercase text-accent mb-2">{q.number}. {q.topic}</p>
                 <RadioGroup
+                  aria-labelledby={`${q.id}-topic`}
                   value={dnaAnswers[q.id] || ""}
                   onValueChange={(v) => setDnaAnswers((prev) => ({ ...prev, [q.id]: v as "A" | "B" }))}
                   className="space-y-2"
@@ -292,52 +325,64 @@ export default function JobApplication() {
               Tell us your story. Be honest and specific—we want to know the real you. Each response requires a minimum of 25 words.
             </p>
             <div>
-              <Label className="text-base font-heading uppercase">1. The Ownership Standard</Label>
-              <p className="text-sm text-muted-foreground mt-1 mb-2">
+              <Label htmlFor="narrativeOwnership" className="text-base font-heading uppercase">1. The Ownership Standard</Label>
+              <p id="narrativeOwnership-hint" className="text-sm text-muted-foreground mt-1 mb-2">
                 NGR is Veteran-operated. We live by a code of "Extreme Ownership." Describe a time you failed at something. How did you handle the fallout and what did you learn?
               </p>
               <Textarea
+                id="narrativeOwnership"
+                required
+                aria-invalid={!!errors.narrativeOwnership}
+                aria-describedby={`narrativeOwnership-hint narrativeOwnership-count${errors.narrativeOwnership ? " narrativeOwnership-error" : ""}`}
                 value={narrativeOwnership}
                 onChange={(e) => setNarrativeOwnership(e.target.value)}
                 rows={6}
                 placeholder="Share your experience..."
               />
-              <p className={`text-xs mt-1 ${wordCount(narrativeOwnership) >= 25 ? "text-green-600" : "text-muted-foreground"}`}>
+              <p id="narrativeOwnership-count" className={`text-xs mt-1 ${wordCount(narrativeOwnership) >= 25 ? "text-green-700" : "text-muted-foreground"}`}>
                 {wordCount(narrativeOwnership)}/25 words
               </p>
-              {errors.narrativeOwnership && <p className="text-destructive text-sm">{errors.narrativeOwnership}</p>}
+              {errors.narrativeOwnership && <p id="narrativeOwnership-error" className="text-destructive text-sm">{errors.narrativeOwnership}</p>}
             </div>
             <div>
-              <Label className="text-base font-heading uppercase">2. The Mentor Mindset</Label>
-              <p className="text-sm text-muted-foreground mt-1 mb-2">
+              <Label htmlFor="narrativeMentor" className="text-base font-heading uppercase">2. The Mentor Mindset</Label>
+              <p id="narrativeMentor-hint" className="text-sm text-muted-foreground mt-1 mb-2">
                 Our team includes dedicated trainers like Matt Fowler who invest in your success. Why is it important to you to be in a role where you are constantly being coached and developed?
               </p>
               <Textarea
+                id="narrativeMentor"
+                required
+                aria-invalid={!!errors.narrativeMentor}
+                aria-describedby={`narrativeMentor-hint narrativeMentor-count${errors.narrativeMentor ? " narrativeMentor-error" : ""}`}
                 value={narrativeMentor}
                 onChange={(e) => setNarrativeMentor(e.target.value)}
                 rows={6}
                 placeholder="Share your thoughts..."
               />
-              <p className={`text-xs mt-1 ${wordCount(narrativeMentor) >= 25 ? "text-green-600" : "text-muted-foreground"}`}>
+              <p id="narrativeMentor-count" className={`text-xs mt-1 ${wordCount(narrativeMentor) >= 25 ? "text-green-700" : "text-muted-foreground"}`}>
                 {wordCount(narrativeMentor)}/25 words
               </p>
-              {errors.narrativeMentor && <p className="text-destructive text-sm">{errors.narrativeMentor}</p>}
+              {errors.narrativeMentor && <p id="narrativeMentor-error" className="text-destructive text-sm">{errors.narrativeMentor}</p>}
             </div>
             <div>
-              <Label className="text-base font-heading uppercase">3. The "Next Gen" Why</Label>
-              <p className="text-sm text-muted-foreground mt-1 mb-2">
+              <Label htmlFor="narrativeWhyNgr" className="text-base font-heading uppercase">3. The "Next Gen" Why</Label>
+              <p id="narrativeWhyNgr-hint" className="text-sm text-muted-foreground mt-1 mb-2">
                 We cover 1.15 million square feet of homes a year. Why are you the right person to handle the pace and expectations of Oklahoma's premier roofing team?
               </p>
               <Textarea
+                id="narrativeWhyNgr"
+                required
+                aria-invalid={!!errors.narrativeWhyNgr}
+                aria-describedby={`narrativeWhyNgr-hint narrativeWhyNgr-count${errors.narrativeWhyNgr ? " narrativeWhyNgr-error" : ""}`}
                 value={narrativeWhyNgr}
                 onChange={(e) => setNarrativeWhyNgr(e.target.value)}
                 rows={6}
                 placeholder="Tell us why you..."
               />
-              <p className={`text-xs mt-1 ${wordCount(narrativeWhyNgr) >= 25 ? "text-green-600" : "text-muted-foreground"}`}>
+              <p id="narrativeWhyNgr-count" className={`text-xs mt-1 ${wordCount(narrativeWhyNgr) >= 25 ? "text-green-700" : "text-muted-foreground"}`}>
                 {wordCount(narrativeWhyNgr)}/25 words
               </p>
-              {errors.narrativeWhyNgr && <p className="text-destructive text-sm">{errors.narrativeWhyNgr}</p>}
+              {errors.narrativeWhyNgr && <p id="narrativeWhyNgr-error" className="text-destructive text-sm">{errors.narrativeWhyNgr}</p>}
             </div>
           </div>
         )}
@@ -378,6 +423,7 @@ export default function JobApplication() {
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 }

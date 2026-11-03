@@ -108,6 +108,7 @@ interface TeamMember {
 
 function TeamMemberCard({ member }: { member: TeamMember }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const bioId = `team-bio-${member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-xl transition-shadow group">
@@ -123,17 +124,22 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
         <h3 className="font-heading text-2xl uppercase mb-1">{member.name}</h3>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          aria-controls={bioId}
           className="flex items-center gap-2 text-accent font-heading uppercase text-sm mb-3 hover:text-accent/80 transition-colors"
         >
           {member.role}
+          <span className="sr-only">: show bio for {member.name}</span>
           <ChevronDown 
             className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} 
           />
         </button>
         
+        {/* "invisible" when collapsed keeps the hidden email link out of the tab order (WCAG 2.4.3) */}
         <div 
+          id={bioId}
           className={`overflow-hidden transition-all duration-300 ${
-            isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+            isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 invisible'
           }`}
         >
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
@@ -195,6 +201,8 @@ export function TeamSection() {
         <div className="mt-12">
           <button
             onClick={() => setIsKeyTeamExpanded(!isKeyTeamExpanded)}
+            aria-expanded={isKeyTeamExpanded}
+            aria-controls="key-team-members"
             className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-center gap-3 hover:border-accent transition-colors"
           >
             <Users className="w-5 h-5 text-accent" />
@@ -205,8 +213,9 @@ export function TeamSection() {
           </button>
 
           <div 
+            id="key-team-members"
             className={`overflow-hidden transition-all duration-500 ease-in-out ${
-              isKeyTeamExpanded ? 'max-h-[3000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
+              isKeyTeamExpanded ? 'max-h-[3000px] opacity-100 mt-4' : 'max-h-0 opacity-0 invisible'
             }`}
           >
             <div className="space-y-3">
@@ -214,6 +223,8 @@ export function TeamSection() {
                 <div key={department.name}>
                   <button
                     onClick={() => toggleDepartment(department.name)}
+                    aria-expanded={expandedDepartments.includes(department.name)}
+                    aria-controls={`department-${department.name.toLowerCase()}`}
                     className="w-full bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:border-accent transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -227,8 +238,9 @@ export function TeamSection() {
                   </button>
 
                   <div 
+                    id={`department-${department.name.toLowerCase()}`}
                     className={`overflow-hidden transition-all duration-500 ease-in-out ${
-                      expandedDepartments.includes(department.name) ? 'max-h-[1000px] opacity-100 mt-2' : 'max-h-0 opacity-0'
+                      expandedDepartments.includes(department.name) ? 'max-h-[1000px] opacity-100 mt-2' : 'max-h-0 opacity-0 invisible'
                     }`}
                   >
                     <div className="bg-card border border-border rounded-lg p-4 ml-4">
@@ -252,6 +264,8 @@ export function TeamSection() {
         <div className="mt-16">
           <button
             onClick={() => setIsJoinExpanded(!isJoinExpanded)}
+            aria-expanded={isJoinExpanded}
+            aria-controls="join-the-team"
             className="w-full bg-card border border-border rounded-lg p-6 flex items-center justify-between hover:border-accent transition-colors group"
           >
             <div className="flex items-center gap-4">
@@ -269,8 +283,9 @@ export function TeamSection() {
           </button>
 
           <div 
+            id="join-the-team"
             className={`overflow-hidden transition-all duration-500 ease-in-out ${
-              isJoinExpanded ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
+              isJoinExpanded ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0 invisible'
             }`}
           >
             <div className="bg-card border border-border rounded-lg p-8">

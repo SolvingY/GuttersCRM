@@ -74,6 +74,8 @@ const ToastClose = React.forwardRef<
     {...props}
   >
     <X className="h-4 w-4" />
+    {/* Icon-only button needs a text name (WCAG 4.1.2) */}
+    <span className="sr-only">Close</span>
   </ToastPrimitives.Close>
 ));
 ToastClose.displayName = ToastPrimitives.Close.displayName;
