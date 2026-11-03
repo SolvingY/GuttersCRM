@@ -27,24 +27,24 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
     <div className="space-y-6">
       <h2 className="font-heading text-2xl uppercase">Gutter Service Details</h2>
 
-      <div className="space-y-2">
-        <Label>Property Type</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Property Type</legend></Label>
         <div className="flex gap-3">
           {propertyTypes.map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.propertyType === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.propertyType === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="propertyType" className="sr-only" checked={data.propertyType === opt} onChange={() => update("propertyType", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Gutter Type */}
-      <div className="space-y-2">
-        <Label>Gutter Type</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Gutter Type</legend></Label>
         <div className="space-y-2">
           {gutterTypes.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.gutterType === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.gutterType === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="gutterType" className="sr-only" checked={data.gutterType === opt} onChange={() => update("gutterType", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.gutterType === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.gutterType === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -53,31 +53,31 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Insurance Claim */}
-      <div className="space-y-2">
-        <Label>Is this an insurance-related claim?</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Is this an insurance-related claim?</legend></Label>
         <div className="flex gap-3">
           {["Yes", "No"].map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.insuranceClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.insuranceClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="insuranceClaim" className="sr-only" checked={data.insuranceClaim === opt} onChange={() => update("insuranceClaim", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Insurance Company — conditional */}
       {data.insuranceClaim === "Yes" && (
         <div className="space-y-2">
-          <Label>Insurance Company</Label>
-          <Input placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
+          <Label htmlFor="quote-insuranceCompany">Insurance Company</Label>
+          <Input id="quote-insuranceCompany" placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label>What do you need? (select all that apply)</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>What do you need? (select all that apply)</legend></Label>
         <div className="space-y-2">
           {needOptions.map((need) => (
             <label key={need} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 cursor-pointer transition-colors">
@@ -86,13 +86,13 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>Approximate Linear Footage</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Approximate Linear Footage</legend></Label>
         <div className="space-y-2">
           {footageOptions.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.linearFootage === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.linearFootage === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="linearFootage" className="sr-only" checked={data.linearFootage === opt} onChange={() => update("linearFootage", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.linearFootage === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.linearFootage === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -101,10 +101,10 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>Current Issues (select all that apply)</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Current Issues (select all that apply)</legend></Label>
         <div className="space-y-2">
           {issueOptions.map((issue) => (
             <label key={issue} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 cursor-pointer transition-colors">
@@ -113,13 +113,13 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>Timeline</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Timeline</legend></Label>
         <div className="space-y-2">
           {timelineOptions.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.timeline === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.timeline === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="timeline" className="sr-only" checked={data.timeline === opt} onChange={() => update("timeline", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.timeline === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.timeline === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -128,11 +128,11 @@ export function GutterQuestions({ data, onChange }: GutterQuestionsProps) {
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label>Additional Details (optional)</Label>
-        <Textarea placeholder="Tell us more about your project..." value={data.additionalDetails || ""} onChange={(e) => update("additionalDetails", e.target.value)} />
+        <Label htmlFor="quote-additionalDetails">Additional Details (optional)</Label>
+        <Textarea id="quote-additionalDetails" placeholder="Tell us more about your project..." value={data.additionalDetails || ""} onChange={(e) => update("additionalDetails", e.target.value)} />
       </div>
     </div>
   );
