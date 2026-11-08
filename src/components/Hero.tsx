@@ -12,9 +12,10 @@ export function Hero() {
     <section className="relative min-h-screen flex items-center lg:items-start pt-20 lg:pt-[72px]">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
+        {/* Decorative background behind a dark overlay (WCAG 1.1.1) */}
         <img
           src={heroImage}
-          alt="Beautiful residential home with new roof in Oklahoma"
+          alt=""
           className="w-full h-full object-cover brightness-110"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/80 to-primary/60" />
@@ -55,7 +56,8 @@ export function Hero() {
             
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-heading uppercase leading-tight">
               The Last{" "}
-              <span className="text-accent">Contractor</span>{" "}
+              {/* accent-on-dark: brand red tint that keeps 3:1+ over the photo (WCAG 1.4.3) */}
+              <span className="text-accent-on-dark">Contractor</span>{" "}
               You Will Ever Need
             </h1>
             
@@ -65,23 +67,25 @@ export function Hero() {
 
             <div className="flex items-center justify-center gap-4 pt-2 lg:pt-0">
               <span className="text-primary-foreground/90 text-sm sm:text-base font-heading uppercase tracking-wide">
-                We Cover <span className="text-accent font-bold">1.15 Million</span> Square Feet Of Oklahoma Homes & Businesses Every Year.
+                We Cover <span className="text-accent-on-dark font-bold">1.15 Million</span> Square Feet Of Oklahoma Homes & Businesses Every Year.
               </span>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 lg:pt-2 justify-center px-4 sm:px-0">
-              <a href="tel:4057248092" className="w-full sm:w-auto">
-                <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+              {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2).
+                  whitespace-normal lets the labels wrap at 320px instead of forcing sideways scroll (WCAG 1.4.10). */}
+              <Button asChild variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base whitespace-normal h-auto min-h-12 text-center">
+                <a href="tel:4057248092">
                   <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                   Schedule Inspection NOW
-                </Button>
-              </a>
-              <Link to="/get-quote" className="w-full sm:w-auto">
-                <Button variant="heroOutline" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+                </a>
+              </Button>
+              <Button asChild variant="heroOutline" size="lg" className="w-full sm:w-auto text-sm sm:text-base whitespace-normal h-auto min-h-12 text-center">
+                <Link to="/get-quote">
                   <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />
                   Get a Free Estimate
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

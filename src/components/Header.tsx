@@ -16,6 +16,7 @@ const TikTokIcon = ({ className }: { className?: string }) => (
     viewBox="0 0 24 24" 
     fill="currentColor" 
     className={className}
+    aria-hidden="true"
   >
     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
   </svg>
@@ -82,6 +83,12 @@ export function Header() {
         top: offsetPosition,
         behavior: "smooth"
       });
+
+      // Move keyboard/screen-reader focus to the section we scrolled to (WCAG 2.4.3)
+      if (element instanceof HTMLElement) {
+        if (!element.hasAttribute("tabindex")) element.setAttribute("tabindex", "-1");
+        element.focus({ preventScroll: true });
+      }
     }
     setMobileMenuOpen(false);
   };
@@ -101,7 +108,7 @@ export function Header() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1 sm:p-2 rounded-full bg-primary-foreground/10 hover:bg-accent hover:text-accent-foreground transition-colors"
-                  aria-label={link.label}
+                  aria-label={`${link.label} (opens in a new tab)`}
                 >
                   <link.icon className="w-3 h-3 sm:w-4 sm:h-4" />
                 </a>
@@ -120,25 +127,33 @@ export function Header() {
 
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-4">
+          <nav aria-label="Main" className="hidden lg:flex items-center gap-4">
             <a
               href="#home"
               onClick={(e) => scrollToSection(e, "#home")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               Home
             </a>
 
-            {/* Services Dropdown */}
+            {/* Services Dropdown: opens on hover or keyboard focus, Escape dismisses it (WCAG 1.4.13 / 2.1.1) */}
             <div
               className="relative"
               onMouseEnter={() => setServicesOpen(true)}
               onMouseLeave={() => setServicesOpen(false)}
+              onFocus={() => setServicesOpen(true)}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setServicesOpen(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setServicesOpen(false);
+              }}
             >
               <a 
                 href="#services"
                 onClick={(e) => scrollToSection(e, "#services")}
-                className="flex items-center gap-1 font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+                aria-expanded={servicesOpen}
+                className="flex items-center gap-1 font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
               >
                 Services
                 <ChevronDown className={`w-4 h-4 transition-transform ${servicesOpen ? "rotate-180" : ""}`} />
@@ -162,28 +177,28 @@ export function Header() {
             <a
               href="#about"
               onClick={(e) => scrollToSection(e, "#about")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               About
             </a>
             <a
               href="#team"
               onClick={(e) => scrollToSection(e, "#team")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               Team
             </a>
             <a
               href="#why-choose-us"
               onClick={(e) => scrollToSection(e, "#why-choose-us")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent whitespace-nowrap"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark whitespace-nowrap"
             >
               Why Choose Us
             </a>
             <a
               href="#contact"
               onClick={(e) => scrollToSection(e, "#contact")}
-              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent"
+              className="font-heading text-sm uppercase tracking-wider transition-colors hover:text-accent-on-dark"
             >
               Contact
             </a>
@@ -191,21 +206,22 @@ export function Header() {
 
           {/* CTA Button + Dashboard Key */}
           <div className="flex items-center gap-2 md:gap-4">
-            <Link to="/get-quote" className="hidden lg:flex">
-              <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1 bg-accent text-accent-foreground hover:bg-accent/90">
+            {/* asChild: one focusable link instead of a button nested inside a link (WCAG 4.1.2) */}
+            <Button asChild variant="nav" size="sm" className="hidden lg:flex gap-2 rounded-full px-3 py-1 bg-accent text-accent-foreground hover:bg-accent/90">
+              <Link to="/get-quote">
                 <ClipboardList className="w-4 h-4" />
                 <span>Get an Estimate</span>
-              </Button>
-            </Link>
-            <a href="tel:4057248092" className="hidden lg:flex">
-              <Button variant="nav" size="sm" className="gap-2 rounded-full px-3 py-1">
+              </Link>
+            </Button>
+            <Button asChild variant="nav" size="sm" className="hidden lg:flex gap-2 rounded-full px-3 py-1">
+              <a href="tel:4057248092">
                 <Phone className="w-4 h-4" />
                 <span>(405) 724-8092</span>
-              </Button>
-            </a>
+              </a>
+            </Button>
 
-            {/* Dashboard Key Icon Dropdown */}
-            <DropdownMenu>
+            {/* Dashboard Key Icon Dropdown (non-modal: a single link, so the rest of the page is not aria-hidden while open) */}
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-accent hover:text-accent hover:bg-accent/10">
                   <KeyRound className="h-5 w-5" />
@@ -227,6 +243,8 @@ export function Header() {
               className="lg:hidden p-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -235,14 +253,14 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-primary border-t border-primary-foreground/20 animate-slide-up">
-            <nav className="py-4 px-4 space-y-2">
+          <div id="mobile-menu" className="lg:hidden bg-primary border-t border-primary-foreground/20 animate-slide-up">
+            <nav aria-label="Mobile" className="py-4 px-4 space-y-2">
               {navLinks.map((link) => (
                 <a
                   key={link.name}
                   href={link.href}
                   onClick={(e) => scrollToSection(e, link.href)}
-                  className="block py-2 font-heading uppercase tracking-wider hover:text-accent transition-colors"
+                  className="block py-2 font-heading uppercase tracking-wider hover:text-accent-on-dark transition-colors"
                 >
                   {link.name}
                 </a>
@@ -250,7 +268,7 @@ export function Header() {
 
               <Link
                 to="/get-quote"
-                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent-on-dark bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <ClipboardList className="w-5 h-5" />
@@ -259,7 +277,7 @@ export function Header() {
 
               <Link
                 to="/apply"
-                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                className="flex items-center gap-3 py-3 px-4 font-heading uppercase tracking-wider text-accent-on-dark bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Briefcase className="w-5 h-5" />
@@ -268,19 +286,21 @@ export function Header() {
 
               <Link
                 to="/dashboard"
-                className="block py-2 font-heading uppercase tracking-wider text-accent hover:text-accent/80 transition-colors"
+                className="block py-2 font-heading uppercase tracking-wider text-accent-on-dark hover:text-primary-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <KeyRound className="inline w-4 h-4 mr-2" />
                 Team Dashboard
               </Link>
 
-              <a href="tel:4057248092" className="block pt-4">
-                <Button variant="cta" className="w-full gap-2">
-                  <Phone className="w-4 h-4" />
-                  Call (405) 724-8092
+              <div className="pt-4">
+                <Button asChild variant="cta" className="w-full gap-2">
+                  <a href="tel:4057248092">
+                    <Phone className="w-4 h-4" />
+                    Call (405) 724-8092
+                  </a>
                 </Button>
-              </a>
+              </div>
             </nav>
           </div>
         )}

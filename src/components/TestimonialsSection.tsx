@@ -98,12 +98,14 @@ export function TestimonialsSection() {
 
         {/* Featured Testimonial - Mobile Carousel */}
         <div className="lg:hidden relative">
-          <div className="bg-card border border-border rounded-xl p-6 md:p-8">
+          {/* Announce the newly shown review when Previous/Next is used (WCAG 4.1.3) */}
+          <div className="bg-card border border-border rounded-xl p-6 md:p-8" aria-live="polite">
             <Quote className="w-10 h-10 text-accent/30 mb-4" />
             <div className="flex gap-1 mb-4">
               {[...Array(testimonials[currentIndex].rating)].map((_, i) => (
                 <Star key={i} className="w-5 h-5 fill-accent text-accent" />
               ))}
+              <span className="sr-only">Rated {testimonials[currentIndex].rating} out of 5</span>
             </div>
             <p className="text-lg leading-relaxed mb-6">
               "{testimonials[currentIndex].text}"
@@ -141,6 +143,7 @@ export function TestimonialsSection() {
                   i === currentIndex ? 'bg-accent' : 'bg-muted-foreground/30'
                 }`}
                 aria-label={`Go to testimonial ${i + 1}`}
+                aria-current={i === currentIndex ? "true" : undefined}
               />
             ))}
           </div>
@@ -158,6 +161,7 @@ export function TestimonialsSection() {
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-accent text-accent" />
                 ))}
+                <span className="sr-only">Rated {testimonial.rating} out of 5</span>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 "{testimonial.text}"
@@ -180,6 +184,7 @@ export function TestimonialsSection() {
           >
             <Star className="w-4 h-4" />
             Read More Reviews on Google
+            <span className="sr-only">(opens in a new tab)</span>
           </a>
         </div>
       </div>

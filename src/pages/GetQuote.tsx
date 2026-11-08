@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/ngr-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const stepLabels = ["Service", "Details", "Contact", "Confirmation"];
 
@@ -24,6 +25,24 @@ export default function GetQuote() {
   const [contactData, setContactData] = useState<Record<string, any>>({ state: "Oklahoma" });
   const [submitting, setSubmitting] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
+  const stepContentRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
+
+  usePageTitle("Get a Free Estimate | Next Generation Roofing");
+
+  // When the step changes, move focus to the new step's heading so keyboard and
+  // screen-reader users start there instead of on the old button (WCAG 2.4.3)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const heading = stepContentRef.current?.querySelector<HTMLElement>("h2");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
+  }, [step]);
 
   const canProceedStep0 = serviceType !== "";
   const canProceedStep1 = (() => {
@@ -121,30 +140,34 @@ export default function GetQuote() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground py-4 px-4">
+      <header className="bg-primary text-primary-foreground py-4 px-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <img src={logo} alt="NGR" className="h-10 w-10 rounded-full [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
-            <span className="font-heading text-lg uppercase hidden sm:block">Next Generation Roofing</span>
+            <img src={logo} alt="Next Generation Roofing home" className="h-10 w-10 rounded-full [filter:drop-shadow(0_0_8px_rgba(255,255,255,0.6))]" />
+            <span className="font-heading text-lg uppercase hidden sm:block" aria-hidden="true">Next Generation Roofing</span>
           </Link>
           <Link to="/" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors">
-            ← Back to Home
+            <span aria-hidden="true">← </span>Back to Home
           </Link>
         </div>
-      </div>
+      </header>
+
+      <main>
+      <h1 className="sr-only">Get a Free Estimate</h1>
 
       {/* Progress bar */}
       {step < 3 && (
         <div className="bg-secondary border-b border-border">
           <div className="max-w-3xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
+            <p className="sr-only">Step {step + 1} of {stepLabels.length}: {stepLabels[step]}</p>
+            <div className="flex items-center justify-between mb-2" aria-hidden="true">
               {stepLabels.map((label, i) => (
                 <span key={label} className={cn("text-xs font-heading uppercase", i <= step ? "text-accent" : "text-muted-foreground")}>
                   {label}
                 </span>
               ))}
             </div>
-            <div className="h-2 bg-border rounded-full overflow-hidden">
+            <div className="h-2 bg-border rounded-full overflow-hidden" aria-hidden="true">
               <div
                 className="h-full bg-accent rounded-full transition-all duration-500"
                 style={{ width: `${((step + 1) / 4) * 100}%` }}
@@ -156,6 +179,7 @@ export default function GetQuote() {
 
       {/* Form content */}
       <div className="max-w-3xl mx-auto px-4 py-8">
+        <div ref={stepContentRef}>
         {step === 0 && <ServiceSelection value={serviceType} onChange={setServiceType} />}
         {step === 1 && renderQuestions()}
         {step === 2 && <ContactInfoStep data={contactData} onChange={setContactData} />}
@@ -166,6 +190,7 @@ export default function GetQuote() {
             email={contactData.email}
           />
         )}
+        </div>
 
         {/* Navigation buttons */}
         {step < 3 && (
@@ -199,6 +224,7 @@ export default function GetQuote() {
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 }

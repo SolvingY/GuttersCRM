@@ -30,20 +30,20 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
       <h2 className="font-heading text-2xl uppercase">Commercial Roofing Details</h2>
 
       <div className="space-y-2">
-        <Label>Building Type</Label>
+        <Label htmlFor="quote-buildingType">Building Type</Label>
         <Select value={data.buildingType || ""} onValueChange={(v) => update("buildingType", v)}>
-          <SelectTrigger><SelectValue placeholder="Select building type" /></SelectTrigger>
+          <SelectTrigger id="quote-buildingType"><SelectValue placeholder="Select building type" /></SelectTrigger>
           <SelectContent>
             {buildingTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label>Approximate Square Footage</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Approximate Square Footage</legend></Label>
         <div className="space-y-2">
           {sqFootageOptions.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.squareFootage === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.squareFootage === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="sqFootage" className="sr-only" checked={data.squareFootage === opt} onChange={() => update("squareFootage", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.squareFootage === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.squareFootage === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -52,12 +52,12 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label>Current Roof Type</Label>
+        <Label htmlFor="quote-roofType">Current Roof Type</Label>
         <Select value={data.roofType || ""} onValueChange={(v) => update("roofType", v)}>
-          <SelectTrigger><SelectValue placeholder="Select roof type" /></SelectTrigger>
+          <SelectTrigger id="quote-roofType"><SelectValue placeholder="Select roof type" /></SelectTrigger>
           <SelectContent>
             {roofTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
@@ -65,46 +65,46 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
       </div>
 
       {/* Retail or Insurance */}
-      <div className="space-y-2">
-        <Label>Retail or Insurance Job?</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Retail or Insurance Job?</legend></Label>
         <div className="flex gap-3">
           {jobTypeOptions.map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.jobType === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.jobType === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="jobType" className="sr-only" checked={data.jobType === opt} onChange={() => update("jobType", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Active Insurance Claim — shown when Insurance Claim selected */}
       {data.jobType === "Insurance Claim" && (
-        <div className="space-y-2">
-          <Label>Do you have an active insurance claim?</Label>
+        <fieldset className="space-y-2">
+          <Label asChild><legend>Do you have an active insurance claim?</legend></Label>
           <div className="flex gap-3">
             {["Yes", "No"].map((opt) => (
-              <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.activeClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+              <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.activeClaim === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
                 <input type="radio" name="activeClaim" className="sr-only" checked={data.activeClaim === opt} onChange={() => update("activeClaim", opt)} />
                 {opt}
               </label>
             ))}
           </div>
-        </div>
+        </fieldset>
       )}
 
       {/* Insurance Company — shown when Insurance Claim selected */}
       {data.jobType === "Insurance Claim" && (
         <div className="space-y-2">
-          <Label>Insurance Company</Label>
-          <Input placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
+          <Label htmlFor="quote-insuranceCompany">Insurance Company</Label>
+          <Input id="quote-insuranceCompany" placeholder="e.g., State Farm, Allstate..." value={data.insuranceCompany || ""} onChange={(e) => update("insuranceCompany", e.target.value)} />
         </div>
       )}
 
       {/* Roof Age */}
       <div className="space-y-2">
-        <Label>Roof Age</Label>
+        <Label htmlFor="quote-roofAge">Roof Age</Label>
         <Select value={data.roofAge || ""} onValueChange={(v) => update("roofAge", v)}>
-          <SelectTrigger><SelectValue placeholder="Select roof age" /></SelectTrigger>
+          <SelectTrigger id="quote-roofAge"><SelectValue placeholder="Select roof age" /></SelectTrigger>
           <SelectContent>
             {roofAgeOptions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
@@ -112,20 +112,20 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
       </div>
 
       {/* Routine Maintenance */}
-      <div className="space-y-2">
-        <Label>Has routine maintenance been done on this roof?</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Has routine maintenance been done on this roof?</legend></Label>
         <div className="flex gap-3">
           {["Yes", "No", "Not Sure"].map((opt) => (
-            <label key={opt} className={cn("flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.routineMaintenance === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors text-sm", data.routineMaintenance === opt ? "border-accent bg-accent/5 font-medium" : "border-border hover:border-accent/50")}>
               <input type="radio" name="routineMaintenance" className="sr-only" checked={data.routineMaintenance === opt} onChange={() => update("routineMaintenance", opt)} />
               {opt}
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>What do you need? (select all that apply)</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>What do you need? (select all that apply)</legend></Label>
         <div className="space-y-2">
           {needOptions.map((need) => (
             <label key={need} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-accent/50 cursor-pointer transition-colors">
@@ -134,13 +134,13 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label>Timeline</Label>
+      <fieldset className="space-y-2">
+        <Label asChild><legend>Timeline</legend></Label>
         <div className="space-y-2">
           {timelineOptions.map((opt) => (
-            <label key={opt} className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.timeline === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
+            <label key={opt} className={cn("has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors", data.timeline === opt ? "border-accent bg-accent/5" : "border-border hover:border-accent/50")}>
               <input type="radio" name="timeline" className="sr-only" checked={data.timeline === opt} onChange={() => update("timeline", opt)} />
               <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", data.timeline === opt ? "border-accent" : "border-muted-foreground")}>
                 {data.timeline === opt && <div className="w-2 h-2 rounded-full bg-accent" />}
@@ -149,11 +149,11 @@ export function CommercialQuestions({ data, onChange }: CommercialQuestionsProps
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label>Additional Details (optional)</Label>
-        <Textarea placeholder="Any specific concerns, leaks, or requirements?" value={data.additionalDetails || ""} onChange={(e) => update("additionalDetails", e.target.value)} />
+        <Label htmlFor="quote-additionalDetails">Additional Details (optional)</Label>
+        <Textarea id="quote-additionalDetails" placeholder="Any specific concerns, leaks, or requirements?" value={data.additionalDetails || ""} onChange={(e) => update("additionalDetails", e.target.value)} />
       </div>
     </div>
   );

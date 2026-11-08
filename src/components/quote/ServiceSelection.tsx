@@ -46,6 +46,8 @@ export function ServiceSelection({ value, onChange }: ServiceSelectionProps) {
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
+            // Tells screen readers which service is currently chosen (WCAG 4.1.2)
+            aria-pressed={value === option.id}
             className={cn(
               "flex items-start gap-4 p-5 rounded-lg border-2 text-left transition-all hover-lift",
               value === option.id
